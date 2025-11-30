@@ -113,6 +113,13 @@ const App = {
                 eventSelect.innerHTML = '<option value="">Bitte zuerst eine Band auswählen</option>';
             }
 
+            // Hide notification checkbox for new rehearsals
+            const notifyGroup = document.getElementById('notifyMembersGroup');
+            if (notifyGroup) {
+                notifyGroup.style.display = 'none';
+                document.getElementById('notifyMembersOnUpdate').checked = false;
+            }
+
             UI.openModal('createRehearsalModal');
         });
 
@@ -194,6 +201,21 @@ const App = {
             }
         });
 
+        // Onboarding handlers
+        document.getElementById('onboardingCreateBandBtn').addEventListener('click', () => {
+            UI.closeModal('onboardingModal');
+            UI.openModal('createBandModal');
+        });
+
+        document.getElementById('onboardingJoinBandBtn').addEventListener('click', () => {
+            UI.closeModal('onboardingModal');
+            UI.openModal('joinBandModal');
+        });
+
+        document.getElementById('onboardingSkipBtn').addEventListener('click', () => {
+            UI.closeModal('onboardingModal');
+        });
+
         // Send confirmation button
         const sendConfirmBtn = document.getElementById('sendConfirmationBtn');
         if (sendConfirmBtn) {
@@ -216,6 +238,10 @@ const App = {
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
+                    // Don't close auth modal or onboarding modal on background click
+                    if (modal.id === 'authModal' || modal.id === 'onboardingModal') {
+                        return;
+                    }
                     UI.closeModal(modal.id);
                 }
             });
@@ -352,9 +378,16 @@ const App = {
 
         try {
             Auth.register(registrationCode, name, email, username, password);
-            UI.showToast('Registrierung erfolgreich! Bitte melde dich an.', 'success');
-            this.switchAuthTab('login');
+            Auth.login(username, password); // Auto-login after registration
+
+            UI.showToast('Registrierung erfolgreich!', 'success');
             UI.clearForm('registerForm');
+
+            // Show app first (behind modal)
+            this.showApp();
+
+            // Then show onboarding modal
+            UI.openModal('onboardingModal');
         } catch (error) {
             UI.showToast(error.message, 'error');
         }
@@ -691,7 +724,8 @@ const App = {
 
         if (editId) {
             // Update existing
-            Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId);
+            const notifyMembers = document.getElementById('notifyMembersOnUpdate').checked;
+            Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId, notifyMembers);
         } else {
             // Create new
             Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);

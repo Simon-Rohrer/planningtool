@@ -167,15 +167,18 @@ const Rehearsals = {
     attachVoteHandlers() {
         // Accordion toggle handlers
         document.querySelectorAll('.accordion-header').forEach(header => {
-            header.addEventListener('click', (e) => {
-                // Don't toggle if clicking on action buttons
-                if (e.target.closest('.rehearsal-status') || e.target.closest('.accordion-toggle')) {
-                    const rehearsalId = header.dataset.rehearsalId;
-                    this.toggleAccordion(rehearsalId);
-                } else if (!e.target.closest('button')) {
-                    const rehearsalId = header.dataset.rehearsalId;
-                    this.toggleAccordion(rehearsalId);
+            // Remove existing listeners to prevent duplicates
+            const newHeader = header.cloneNode(true);
+            header.parentNode.replaceChild(newHeader, header);
+
+            newHeader.addEventListener('click', (e) => {
+                // Don't toggle if clicking on action buttons or vote buttons
+                if (e.target.closest('button') && !e.target.closest('.accordion-toggle')) {
+                    return;
                 }
+
+                const card = newHeader.closest('.rehearsal-card');
+                this.toggleAccordion(card);
             });
         });
 
@@ -207,13 +210,27 @@ const Rehearsals = {
     },
 
     // Toggle accordion
-    toggleAccordion(rehearsalId) {
-        const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+    toggleAccordion(cardOrId) {
+        let card;
+        let rehearsalId;
+
+        if (typeof cardOrId === 'string') {
+            // Legacy support or call by ID (finds first match)
+            rehearsalId = cardOrId;
+            card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+        } else {
+            // Call with element
+            card = cardOrId;
+            rehearsalId = card.dataset.rehearsalId;
+        }
+
         if (!card) return;
 
         const content = card.querySelector('.accordion-content');
         const toggle = card.querySelector('.toggle-icon');
-        const wasExpanded = this.expandedRehearsalId === rehearsalId;
+
+        // Check if THIS card is expanded
+        const wasExpanded = card.classList.contains('expanded');
 
         // Close all accordions
         document.querySelectorAll('.rehearsal-card').forEach(c => {
@@ -224,7 +241,7 @@ const Rehearsals = {
             if (tog) tog.textContent = '▶';
         });
 
-        // If it was already expanded, just close it
+        // If it was already expanded, just close it (already done above)
         if (wasExpanded) {
             this.expandedRehearsalId = null;
         } else {
@@ -451,15 +468,8 @@ const Rehearsals = {
 
         const savedRehearsal = Storage.createRehearsal(rehearsal);
 
-        // Create initial votes for proposer (auto-yes)
-        dates.forEach((_, index) => {
-            Storage.createVote({
-                rehearsalId: savedRehearsal.id,
-                userId: user.id,
-                dateIndex: index,
-                availability: 'yes'
-            });
-        });
+        // No auto-vote for proposer anymore - they start with 'maybe' (no vote)
+        // Votes will be created when they interact with the buttons
 
         UI.showToast('Probetermin vorgeschlagen', 'success');
         UI.closeModal('createRehearsalModal');
@@ -516,12 +526,19 @@ const Rehearsals = {
 
         this.updateRemoveButtons();
 
+        // Show notification checkbox for editing
+        const notifyGroup = document.getElementById('notifyMembersGroup');
+        if (notifyGroup) {
+            notifyGroup.style.display = 'block';
+            document.getElementById('notifyMembersOnUpdate').checked = false;
+        }
+
         UI.openModal('createRehearsalModal');
     },
 
     // Update rehearsal
-    updateRehearsal(rehearsalId, bandId, title, description, dates, locationId, eventId) {
-        Storage.updateRehearsal(rehearsalId, {
+    updateRehearsal(rehearsalId, bandId, title, description, dates, locationId, eventId, notifyMembers = false) {
+        const updatedRehearsal = Storage.updateRehearsal(rehearsalId, {
             bandId,
             title,
             description,
@@ -529,6 +546,16 @@ const Rehearsals = {
             eventId,
             proposedDates: dates
         });
+
+        if (notifyMembers) {
+            EmailService.sendRehearsalUpdate(updatedRehearsal).then(result => {
+                if (result.success) {
+                    UI.showToast('Update-E-Mails wurden versendet', 'success');
+                } else {
+                    UI.showToast('Fehler beim Senden der E-Mails', 'error');
+                }
+            });
+        }
 
         UI.showToast('Probetermin aktualisiert', 'success');
         UI.closeModal('createRehearsalModal');

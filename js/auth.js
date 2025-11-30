@@ -64,16 +64,21 @@ const Auth = {
         return user;
     },
 
-    login(username, password) {
+    login(usernameOrEmail, password) {
         // Validate inputs
-        if (!username || !password) {
-            throw new Error('Benutzername und Passwort sind erforderlich');
+        if (!usernameOrEmail || !password) {
+            throw new Error('Benutzername/E-Mail und Passwort sind erforderlich');
         }
 
-        // Find user
-        const user = Storage.getUserByUsername(username);
+        // Find user by username or email
+        const users = Storage.getAll('users');
+        const user = users.find(u =>
+            u.username.toLowerCase() === usernameOrEmail.toLowerCase() ||
+            u.email.toLowerCase() === usernameOrEmail.toLowerCase()
+        );
+
         if (!user) {
-            throw new Error('Ungültiger Benutzername oder Passwort');
+            throw new Error('Ungültiger Benutzername/E-Mail oder Passwort');
         }
 
         // Check password
@@ -114,9 +119,9 @@ const Auth = {
         return this.currentUser && this.currentUser.isAdmin === true;
     },
 
-    // Check if user can create bands (only admin)
+    // Check if user can create bands (everyone can)
     canCreateBand() {
-        return this.isAdmin();
+        return true;
     },
 
     // Check if user can manage band (admin or leader)

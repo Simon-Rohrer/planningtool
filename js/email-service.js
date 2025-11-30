@@ -111,6 +111,79 @@ const EmailService = {
         }
     },
 
+    // Send rehearsal update email to all band members
+    async sendRehearsalUpdate(rehearsal) {
+        if (!this.isConfigured()) {
+            return { success: false, message: 'EmailJS ist nicht konfiguriert' };
+        }
+
+        try {
+            if (typeof emailjs === 'undefined') {
+                await this.loadEmailJS();
+            }
+            emailjs.init(this.config.publicKey);
+
+            const band = Storage.getBand(rehearsal.bandId);
+            const members = Storage.getBandMembers(band.id);
+
+            // Format dates
+            let dateString = '';
+            if (rehearsal.finalDate) {
+                dateString = UI.formatDate(rehearsal.finalDate);
+            } else {
+                dateString = rehearsal.proposedDates.map(d => UI.formatDate(d)).join(', ');
+            }
+
+            // Get location name
+            let locationName = 'Kein Ort angegeben';
+            if (rehearsal.locationId) {
+                const location = Storage.getLocation(rehearsal.locationId);
+                if (location) {
+                    locationName = location.name;
+                    if (location.address) {
+                        locationName += ` (${location.address})`;
+                    }
+                }
+            }
+
+            const promises = members.map(async (member) => {
+                const user = Storage.getById('users', member.userId);
+                if (!user || !user.email) return null;
+
+                const templateParams = {
+                    to_email: user.email,
+                    to_name: user.name,
+                    band_name: band.name,
+                    rehearsal_title: `UPDATE: ${rehearsal.title}`,
+                    rehearsal_description: rehearsal.description || 'Keine Beschreibung',
+                    rehearsal_date: dateString,
+                    rehearsal_location: locationName,
+                    from_name: 'Band Planning Tool',
+                    reply_to: 'noreply@bandplanning.local'
+                };
+
+                try {
+                    await emailjs.send(
+                        this.config.serviceId,
+                        this.config.templateId,
+                        templateParams
+                    );
+                    return { success: true };
+                } catch (error) {
+                    console.error(`Failed to send email to ${user.email}:`, error);
+                    return { success: false };
+                }
+            });
+
+            await Promise.all(promises);
+            return { success: true, message: 'Update-E-Mails wurden versendet' };
+
+        } catch (error) {
+            console.error('EmailJS error:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
     // Load EmailJS library dynamically
     loadEmailJS() {
         return new Promise((resolve, reject) => {

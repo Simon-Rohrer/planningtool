@@ -129,6 +129,18 @@ const Bands = {
         const newName = prompt('Neuer Bandname:', band.name);
 
         if (newName && newName.trim() !== '' && newName !== band.name) {
+            // Check for duplicate name
+            const allBands = Storage.getAllBands();
+            const duplicate = allBands.find(b =>
+                b.name.toLowerCase() === newName.trim().toLowerCase() &&
+                b.id !== bandId
+            );
+
+            if (duplicate) {
+                UI.showToast(`Eine Band mit dem Namen "${newName}" existiert bereits`, 'error');
+                return;
+            }
+
             Storage.updateBand(bandId, { name: newName.trim() });
             UI.showToast('Bandname aktualisiert', 'success');
 
@@ -282,12 +294,25 @@ const Bands = {
             return;
         }
 
+        // Check for duplicate name
+        const allBands = Storage.getAllBands();
+        const duplicate = allBands.find(b => b.name.toLowerCase() === name.trim().toLowerCase());
+
+        if (duplicate) {
+            UI.showToast(`Eine Band mit dem Namen "${name}" existiert bereits`, 'error');
+            return;
+        }
+
         // Create band
         const band = Storage.createBand({
             name,
             description,
             createdBy: user.id
         });
+
+        // Automatically add creator as leader
+        Storage.addBandMember(band.id, user.id, 'leader');
+        Auth.updateCurrentUser();
 
         UI.showToast(`Band "${name}" erstellt!`, 'success');
         UI.closeModal('createBandModal');

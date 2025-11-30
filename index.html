@@ -24,7 +24,7 @@
             <!-- Login Form -->
             <form id="loginForm" class="auth-form active">
                 <div class="form-group">
-                    <label for="loginUsername">Benutzername</label>
+                    <label for="loginUsername">Benutzername oder E-Mail</label>
                     <input type="text" id="loginUsername" required>
                 </div>
                 <div class="form-group">
@@ -64,6 +64,27 @@
                 </div>
                 <button type="submit" class="btn btn-primary">Registrieren</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboardingModal" class="modal">
+        <div class="modal-content auth-modal">
+            <h1>Willkommen! 🎉</h1>
+            <p class="subtitle">Schön, dass du da bist! Wie möchtest du starten?</p>
+
+            <div class="onboarding-actions" style="display: flex; flex-direction: column; gap: 1rem;">
+                <button id="onboardingCreateBandBtn" class="btn btn-primary" style="justify-content: center;">
+                    🎸 Neue Band gründen
+                </button>
+                <button id="onboardingJoinBandBtn" class="btn btn-secondary" style="justify-content: center;">
+                    👋 Bestehender Band beitreten
+                </button>
+                <button id="onboardingSkipBtn" class="btn btn-secondary"
+                    style="border: none; color: var(--color-text-secondary);">
+                    Erstmal nur umschauen
+                </button>
+            </div>
         </div>
     </div>
 
@@ -383,6 +404,12 @@
                     </div>
                     <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin
                         hinzufügen</button>
+                </div>
+                <div class="form-group checkbox-group" id="notifyMembersGroup" style="display: none;">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="notifyMembersOnUpdate">
+                        <label for="notifyMembersOnUpdate">Update-E-Mail an alle Beteiligten senden</label>
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
