@@ -149,7 +149,6 @@
                         <button id="joinBandBtn" class="btn btn-secondary"
                             style="margin-right: 10px; margin-top: 20px;">Band
                             beitreten</button>
-                        <button id="createBandBtn" class="btn btn-primary">+ Neue Band erstellen</button>
                     </div>
                 </div>
                 <div id="bandsList" class="bands-grid"></div>
@@ -237,7 +236,11 @@
                 <!-- Bands Management Tab -->
                 <div id="bandsSettingsTab" class="settings-tab-content">
                     <div class="section">
-                        <h3>Alle Bands</h3>
+                        <div>
+                            <h3>Alle Bands</h3>
+                            <button id="createBandBtn" class="btn btn-primary">+ Neue Band erstellen</button>
+
+                        </div>
                         <div id="allBandsList" class="bands-management-list"></div>
                     </div>
                 </div>
@@ -262,7 +265,7 @@
                     <textarea id="bandDescription" rows="3"></textarea>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary modal-close">Abbrechen</button>
+                    <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary">Band erstellen</button>
                 </div>
             </form>
@@ -327,7 +330,7 @@
                     </select>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary modal-close">Abbrechen</button>
+                    <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary">Hinzufügen</button>
                 </div>
             </form>
@@ -375,7 +378,7 @@
                         hinzufügen</button>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary modal-close">Abbrechen</button>
+                    <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag erstellen</button>
                 </div>
             </form>
@@ -425,7 +428,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary modal-close">Abbrechen</button>
+                    <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="button" id="sendConfirmationBtn" class="btn btn-primary">✅ Probe bestätigen & E-Mail
                         senden</button>
                 </div>
@@ -481,7 +484,7 @@
                     <div id="eventRehearsals" class="checkbox-list"></div>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary modal-close">Abbrechen</button>
+                    <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary" id="saveEventBtn">Auftritt erstellen</button>
                 </div>
             </form>
@@ -516,7 +519,7 @@
                     <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem Code</small>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary modal-close">Abbrechen</button>
+                    <button type="button" class="btn-cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary">Beitreten</button>
                 </div>
             </form>

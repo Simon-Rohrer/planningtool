@@ -109,7 +109,7 @@ const Bands = {
                 codeSection.innerHTML = `
                     <h3>Band-Beitrittscode</h3>
                     <div class="join-code-display">
-                        <code class="join-code">${band.joinCode || 'Kein Code'}</code>
+                        <b><code class="join-code">${band.joinCode || 'Kein Code'}</code></b>
                         <p class="help-text">Teile diesen Code mit neuen Mitgliedern, damit sie der Band beitreten können.</p>
                     </div>
                 `;

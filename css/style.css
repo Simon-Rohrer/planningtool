@@ -88,6 +88,7 @@ body {
     max-height: 90vh;
     overflow-y: auto;
     animation: slideUp var(--transition-slow);
+    padding: var(--spacing-xl);
 }
 
 .modal-large {
@@ -312,6 +313,22 @@ body {
 .btn-icon:disabled {
     opacity: 0.3;
     cursor: not-allowed;
+}
+
+.cancel {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 2px solid var(--color-border);
+    padding: var(--spacing-sm);
+}
+
+.cancel:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-text-light);
+}
+
+.cancel:active {
+    transform: translateY(0);
 }
 
 /* ===== App Container ===== */

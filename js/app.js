@@ -162,7 +162,7 @@ const App = {
         }
 
         // Modal close buttons
-        document.querySelectorAll('.modal-close').forEach(btn => {
+        document.querySelectorAll('.cancel').forEach(btn => {
             btn.addEventListener('click', () => {
                 const modal = btn.closest('.modal');
                 if (modal) {
