@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Start Local HTTP Server (Port 8000)",
+            "type": "python", // Benutzt den Python-Typ für eine saubere Ausführung
+            "request": "launch",
+            "module": "http.server", // Führt 'python -m http.server' aus
+            "args": [
+                "8000"
+            ], // Port 8000
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                // NEU: Dieser Pattern nutzt einen Capture Group (\\d+)
+                // um die Portnummer zu erfassen und für %s bereitzustellen.
+                "pattern": "Serving HTTP on .* port (\\d+)",
+                "uriFormat": "http://localhost:%s",
+                "action": "openExternally"
+            }
+        }
+    ]
+}
