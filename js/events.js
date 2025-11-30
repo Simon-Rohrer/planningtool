@@ -48,11 +48,6 @@ const Events = {
         });
 
         const guests = event.guests || [];
-        const rehearsals = event.rehearsals || [];
-        const rehearsalNames = rehearsals.map(rId => {
-            const r = Storage.getRehearsal(rId);
-            return r ? r.title : 'Unbekannt';
-        });
 
         return `
             <div class="event-card accordion-card ${isPast ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}">
@@ -116,15 +111,6 @@ const Events = {
                                     <div class="detail-label">🎭 Gäste (${guests.length}):</div>
                                     <div class="detail-value">
                                         ${guests.map(guest => `<span class="guest-tag">${Bands.escapeHtml(guest)}</span>`).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-
-                            ${rehearsalNames.length > 0 ? `
-                                <div class="detail-row">
-                                    <div class="detail-label">📅 Zugewiesene Proben (${rehearsalNames.length}):</div>
-                                    <div class="detail-value">
-                                        ${rehearsalNames.map(name => `<span class="rehearsal-tag">${Bands.escapeHtml(name)}</span>`).join('')}
                                     </div>
                                 </div>
                             ` : ''}
@@ -218,7 +204,7 @@ const Events = {
     },
 
     // Create new event
-    createEvent(bandId, title, date, location, info, techInfo, members, guests, rehearsals) {
+    createEvent(bandId, title, date, location, info, techInfo, members, guests) {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
@@ -231,7 +217,6 @@ const Events = {
             techInfo,
             members,
             guests,
-            rehearsals,
             createdBy: user.id
         };
 
@@ -263,17 +248,14 @@ const Events = {
         document.getElementById('eventTechInfo').value = event.techInfo || '';
         document.getElementById('eventGuests').value = (event.guests || []).join('\n');
 
-        // Load band members
+        // Load band members with existing selection
         this.loadBandMembers(event.bandId, event.members);
-
-        // Load rehearsals
-        this.loadRehearsalsForBand(event.bandId, event.rehearsals);
 
         UI.openModal('createEventModal');
     },
 
     // Update event
-    updateEvent(eventId, bandId, title, date, location, info, techInfo, members, guests, rehearsals) {
+    updateEvent(eventId, bandId, title, date, location, info, techInfo, members, guests) {
         Storage.updateEvent(eventId, {
             bandId,
             title,
@@ -282,8 +264,7 @@ const Events = {
             info,
             techInfo,
             members,
-            guests,
-            rehearsals
+            guests
         });
 
         UI.showToast('Auftritt aktualisiert', 'success');
@@ -303,17 +284,20 @@ const Events = {
     },
 
     // Load band members for selection
-    loadBandMembers(bandId, selectedMembers = []) {
+    loadBandMembers(bandId, selectedMembers = null) {
         const container = document.getElementById('eventBandMembers');
         if (!container || !bandId) return;
 
         const members = Storage.getBandMembers(bandId);
 
+        // Pre-select all members if selectedMembers is null (new event)
+        const membersToSelect = selectedMembers !== null ? selectedMembers : members.map(m => m.userId);
+
         container.innerHTML = members.map(member => {
             const user = Storage.getById('users', member.userId);
             if (!user) return '';
 
-            const isChecked = selectedMembers.includes(user.id);
+            const isChecked = membersToSelect.includes(user.id);
 
             return `
                 <div class="checkbox-item">
@@ -324,39 +308,9 @@ const Events = {
         }).join('');
     },
 
-    // Load rehearsals for band
-    loadRehearsalsForBand(bandId, selectedRehearsals = []) {
-        const container = document.getElementById('eventRehearsals');
-        if (!container || !bandId) return;
-
-        const rehearsals = Storage.getBandRehearsals(bandId);
-
-        if (rehearsals.length === 0) {
-            container.innerHTML = '<p class="text-muted">Keine Probetermine vorhanden</p>';
-            return;
-        }
-
-        container.innerHTML = rehearsals.map(rehearsal => {
-            const isChecked = selectedRehearsals.includes(rehearsal.id);
-
-            return `
-                <div class="checkbox-item">
-                    <input type="checkbox" id="rehearsal_${rehearsal.id}" value="${rehearsal.id}" ${isChecked ? 'checked' : ''}>
-                    <label for="rehearsal_${rehearsal.id}">${Bands.escapeHtml(rehearsal.title)}</label>
-                </div>
-            `;
-        }).join('');
-    },
-
     // Get selected members
     getSelectedMembers() {
         const checkboxes = document.querySelectorAll('#eventBandMembers input[type="checkbox"]:checked');
-        return Array.from(checkboxes).map(cb => cb.value);
-    },
-
-    // Get selected rehearsals
-    getSelectedRehearsals() {
-        const checkboxes = document.querySelectorAll('#eventRehearsals input[type="checkbox"]:checked');
         return Array.from(checkboxes).map(cb => cb.value);
     },
 

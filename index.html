@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Band Planning Tool</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
 </head>
 
 <body>
@@ -367,6 +368,12 @@
                     <textarea id="rehearsalDescription" rows="3"></textarea>
                 </div>
                 <div class="form-group">
+                    <label for="rehearsalEvent">Zugewiesener Auftritt (Optional)</label>
+                    <select id="rehearsalEvent">
+                        <option value="">Kein Auftritt ausgewählt</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>Terminvorschläge</label>
                     <div id="dateProposals" class="date-proposals">
                         <div class="date-proposal-item">
@@ -478,10 +485,6 @@
                 <div class="form-group">
                     <label for="eventGuests">Gäste (einer pro Zeile)</label>
                     <textarea id="eventGuests" rows="3" placeholder="Name des Gastes"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Zugewiesene Probetermine</label>
-                    <div id="eventRehearsals" class="checkbox-list"></div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>

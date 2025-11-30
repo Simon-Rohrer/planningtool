@@ -429,7 +429,7 @@ const Rehearsals = {
     },
 
     // Create new rehearsal
-    createRehearsal(bandId, title, description, dates, locationId = null) {
+    createRehearsal(bandId, title, description, dates, locationId = null, eventId = null) {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
@@ -444,6 +444,7 @@ const Rehearsals = {
             title,
             description,
             locationId,
+            eventId,
             proposedDates: dates,
             status: 'pending'
         };
@@ -490,6 +491,12 @@ const Rehearsals = {
         document.getElementById('rehearsalDescription').value = rehearsal.description || '';
         document.getElementById('rehearsalLocation').value = rehearsal.locationId || '';
 
+        // Populate event select
+        if (typeof App !== 'undefined' && App.populateEventSelect) {
+            App.populateEventSelect(rehearsal.bandId);
+            document.getElementById('rehearsalEvent').value = rehearsal.eventId || '';
+        }
+
         // Populate dates
         const container = document.getElementById('dateProposals');
         container.innerHTML = rehearsal.proposedDates.map(date => `
@@ -513,12 +520,13 @@ const Rehearsals = {
     },
 
     // Update rehearsal
-    updateRehearsal(rehearsalId, bandId, title, description, dates, locationId) {
+    updateRehearsal(rehearsalId, bandId, title, description, dates, locationId, eventId) {
         Storage.updateRehearsal(rehearsalId, {
             bandId,
             title,
             description,
             locationId,
+            eventId,
             proposedDates: dates
         });
 

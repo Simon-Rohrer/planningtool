@@ -154,6 +154,10 @@ const Storage = {
         return this.getAll('bands');
     },
 
+    getAllBands() {
+        return this.getAll('bands');
+    },
+
     updateBand(bandId, updates) {
         return this.update('bands', bandId, updates);
     },

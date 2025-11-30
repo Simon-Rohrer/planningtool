@@ -170,7 +170,6 @@ const Auth = {
     // Check if user is member of band
     isMemberOfBand(bandId) {
         if (!this.currentUser) return false;
-        if (this.isAdmin()) return true;
         const role = Storage.getUserRoleInBand(this.currentUser.id, bandId);
         return role !== null;
     },

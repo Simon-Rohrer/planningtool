@@ -161,8 +161,11 @@ const Bands = {
             return;
         }
 
-        // Add as member
-        Storage.addBandMember(band.id, user.id, 'member');
+        // Determine role: Admin gets leader, others get member
+        const role = Auth.isAdmin() ? 'leader' : 'member';
+
+        // Add as member or leader
+        Storage.addBandMember(band.id, user.id, role);
         Auth.updateCurrentUser();
 
         UI.showToast(`Erfolgreich der Band "${band.name}" beigetreten!`, 'success');
@@ -274,6 +277,11 @@ const Bands = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
+        if (!Auth.canCreateBand()) {
+            UI.showToast('Du hast keine Berechtigung, Bands zu erstellen', 'error');
+            return;
+        }
+
         // Create band
         const band = Storage.createBand({
             name,
@@ -281,15 +289,11 @@ const Bands = {
             createdBy: user.id
         });
 
-        // Add creator as leader
-        Storage.addBandMember(band.id, user.id, 'leader');
-
-        // Update current user
-        Auth.updateCurrentUser();
-
-        UI.showToast('Band erfolgreich erstellt!', 'success');
+        UI.showToast(`Band "${name}" erstellt!`, 'success');
         UI.closeModal('createBandModal');
         this.renderBands();
+
+        return band;
     },
 
     // Add member to band

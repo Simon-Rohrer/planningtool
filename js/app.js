@@ -47,6 +47,16 @@ const App = {
             });
         });
 
+        // Modal close buttons
+        document.querySelectorAll('.modal-close').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const modal = btn.closest('.modal');
+                if (modal) {
+                    UI.closeModal(modal.id);
+                }
+            });
+        });
+
         // Create band button
         document.getElementById('createBandBtn').addEventListener('click', () => {
             UI.openModal('createBandModal');
@@ -76,6 +86,7 @@ const App = {
             }
         });
 
+
         // Create rehearsal button
         document.getElementById('createRehearsalBtn').addEventListener('click', () => {
             // Reset form for new rehearsal
@@ -95,8 +106,31 @@ const App = {
 
             Bands.populateBandSelects();
             this.populateLocationSelect();
+
+            // Clear event select initially
+            const eventSelect = document.getElementById('rehearsalEvent');
+            if (eventSelect) {
+                eventSelect.innerHTML = '<option value="">Bitte zuerst eine Band auswählen</option>';
+            }
+
             UI.openModal('createRehearsalModal');
         });
+
+        // Listen for band selection changes in rehearsal form
+        const rehearsalBandSelect = document.getElementById('rehearsalBand');
+        if (rehearsalBandSelect) {
+            rehearsalBandSelect.addEventListener('change', (e) => {
+                const bandId = e.target.value;
+                if (bandId) {
+                    this.populateEventSelect(bandId);
+                } else {
+                    const eventSelect = document.getElementById('rehearsalEvent');
+                    if (eventSelect) {
+                        eventSelect.innerHTML = '<option value="">Bitte zuerst eine Band auswählen</option>';
+                    }
+                }
+            });
+        }
 
         // Create rehearsal form
         document.getElementById('createRehearsalForm').addEventListener('submit', (e) => {
@@ -142,8 +176,7 @@ const App = {
         document.getElementById('eventBand').addEventListener('change', (e) => {
             const bandId = e.target.value;
             if (bandId) {
-                Events.loadBandMembers(bandId);
-                Events.loadRehearsalsForBand(bandId);
+                Events.loadBandMembers(bandId, null); // null = pre-select all
             }
         });
 
@@ -151,6 +184,14 @@ const App = {
         document.getElementById('eventBandFilter').addEventListener('change', (e) => {
             Events.currentFilter = e.target.value;
             Events.renderEvents(e.target.value);
+        });
+
+        // Rehearsal band change - load events for selection
+        document.getElementById('rehearsalBand').addEventListener('change', (e) => {
+            const bandId = e.target.value;
+            if (bandId) {
+                this.populateEventSelect(bandId);
+            }
         });
 
         // Send confirmation button
@@ -407,19 +448,81 @@ const App = {
 
         container.innerHTML = bands.map(band => {
             const members = Storage.getBandMembers(band.id);
+            const isExpanded = this.expandedBandId === band.id;
+
             return `
-                <div class="band-management-item">
-                    <div class="band-info">
-                        <h4>${Bands.escapeHtml(band.name)}</h4>
-                        <p>${members.length} Mitglieder • Beitrittscode: <code>${band.joinCode}</code></p>
+                <div class="band-management-card accordion-card ${isExpanded ? 'expanded' : ''}" data-band-id="${band.id}">
+                    <div class="accordion-header" data-band-id="${band.id}">
+                        <div class="accordion-title">
+                            <h4>${Bands.escapeHtml(band.name)}</h4>
+                            <p class="band-meta">${members.length} Mitglieder • Code: <b><code>${band.joinCode}</code></b></p>
+                        </div>
+                        <div class="accordion-actions">
+                            <button class="btn btn-danger btn-sm delete-band-admin" data-id="${band.id}">Löschen</button>
+                            <button class="accordion-toggle" aria-label="Ausklappen">
+                                <span class="toggle-icon">${isExpanded ? '▼' : '▶'}</span>
+                            </button>
+                        </div>
                     </div>
-                    <button class="btn btn-danger btn-sm delete-band-admin" data-id="${band.id}">Löschen</button>
+                    
+                    <div class="accordion-content" style="display: ${isExpanded ? 'block' : 'none'};">
+                        <div class="accordion-body">
+                            <div class="band-details-expanded">
+                                ${band.description ? `
+                                    <div class="detail-row">
+                                        <div class="detail-label">📝 Beschreibung:</div>
+                                        <div class="detail-value">${Bands.escapeHtml(band.description)}</div>
+                                    </div>
+                                ` : ''}
+                                
+                                <div class="detail-row">
+                                    <div class="detail-label">👥 Mitglieder (${members.length}):</div>
+                                    <div class="detail-value">
+                                        ${members.length > 0 ? members.map(member => {
+                const user = Storage.getById('users', member.userId);
+                if (!user) return '';
+
+                const roleClass = `role-${member.role}`;
+                const roleText = member.role === 'leader' ? 'Leiter' :
+                    member.role === 'co-leader' ? 'Co-Leiter' : 'Mitglied';
+
+                return `
+                                                <div class="member-item">
+                                                    <span class="member-name">${Bands.escapeHtml(user.name)}</span>
+                                                    <span class="role-badge ${roleClass}">${roleText}</span>
+                                                </div>
+                                            `;
+            }).join('') : '<p class="text-muted">Keine Mitglieder</p>'}
+                                    </div>
+                                </div>
+                                
+                                <div class="detail-row">
+                                    <div class="detail-label">📅 Erstellt:</div>
+                                    <div class="detail-value">${UI.formatDate(band.createdAt)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
         }).join('');
 
+        // Add accordion toggle handlers
+        container.querySelectorAll('.band-management-card .accordion-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                // Don't toggle if clicking on delete button
+                if (e.target.closest('.delete-band-admin')) {
+                    return;
+                }
+                const bandId = header.dataset.bandId;
+                this.toggleBandAccordion(bandId);
+            });
+        });
+
+        // Add delete handlers
         container.querySelectorAll('.delete-band-admin').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const bandId = btn.dataset.id;
                 const band = Storage.getBand(bandId);
                 if (confirm(`Band "${band.name}" wirklich löschen?`)) {
@@ -429,6 +532,36 @@ const App = {
                 }
             });
         });
+    },
+
+    // Toggle band accordion in management view
+    toggleBandAccordion(bandId) {
+        const card = document.querySelector(`.band-management-card[data-band-id="${bandId}"]`);
+        if (!card) return;
+
+        const content = card.querySelector('.accordion-content');
+        const toggle = card.querySelector('.toggle-icon');
+        const wasExpanded = this.expandedBandId === bandId;
+
+        // Close all accordions
+        document.querySelectorAll('.band-management-card').forEach(c => {
+            c.classList.remove('expanded');
+            const cont = c.querySelector('.accordion-content');
+            const tog = c.querySelector('.toggle-icon');
+            if (cont) cont.style.display = 'none';
+            if (tog) tog.textContent = '▶';
+        });
+
+        // If it was already expanded, just close it
+        if (wasExpanded) {
+            this.expandedBandId = null;
+        } else {
+            // Open this accordion
+            card.classList.add('expanded');
+            if (content) content.style.display = 'block';
+            if (toggle) toggle.textContent = '▼';
+            this.expandedBandId = bandId;
+        }
     },
 
     // Handle create location
@@ -523,6 +656,11 @@ const App = {
 
         Bands.createBand(name, description);
         UI.clearForm('createBandForm');
+
+        // Refresh band management list if admin
+        if (Auth.isAdmin()) {
+            this.renderAllBandsList();
+        }
     },
 
     // Handle add member
@@ -543,6 +681,7 @@ const App = {
         const title = document.getElementById('rehearsalTitle').value;
         const description = document.getElementById('rehearsalDescription').value;
         const locationId = document.getElementById('rehearsalLocation').value;
+        const eventId = document.getElementById('rehearsalEvent').value;
         const dates = Rehearsals.getDatesFromForm();
 
         if (dates.length === 0) {
@@ -552,10 +691,10 @@ const App = {
 
         if (editId) {
             // Update existing
-            Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId);
+            Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId);
         } else {
             // Create new
-            Rehearsals.createRehearsal(bandId, title, description, dates, locationId);
+            Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);
         }
     },
 
@@ -570,15 +709,27 @@ const App = {
         const techInfo = document.getElementById('eventTechInfo').value;
         const members = Events.getSelectedMembers();
         const guests = Events.getGuests();
-        const rehearsals = Events.getSelectedRehearsals();
 
         if (editId) {
             // Update existing
-            Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, rehearsals);
+            Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests);
         } else {
             // Create new
-            Events.createEvent(bandId, title, date, location, info, techInfo, members, guests, rehearsals);
+            Events.createEvent(bandId, title, date, location, info, techInfo, members, guests);
         }
+    },
+
+    // Populate event select for rehearsal form
+    populateEventSelect(bandId) {
+        const select = document.getElementById('rehearsalEvent');
+        if (!select) return;
+
+        const events = Storage.getBandEvents(bandId);
+
+        select.innerHTML = '<option value="">Kein Auftritt ausgewählt</option>' +
+            events.map(event =>
+                `<option value="${event.id}">${Bands.escapeHtml(event.title)} - ${UI.formatDateShort(event.date)}</option>`
+            ).join('');
     }
 };
 
