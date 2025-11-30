@@ -3,9 +3,9 @@
 const EmailService = {
     // EmailJS Configuration
     config: {
-        serviceId: '', // Wird vom Benutzer konfiguriert
-        templateId: '', // Wird vom Benutzer konfiguriert
-        publicKey: '', // Wird vom Benutzer konfiguriert
+        serviceId: 'service_cadjeiq', // Wird vom Benutzer konfiguriert
+        templateId: 'template_l9a8mdf', // Wird vom Benutzer konfiguriert
+        publicKey: '5upXiXp5loj1iOMv7', // Wird vom Benutzer konfiguriert
         isConfigured: false
     },
 
