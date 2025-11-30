@@ -3,6 +3,7 @@
 const Rehearsals = {
     currentFilter: '',
     currentRehearsalId: null,
+    expandedRehearsalId: null,
 
     // Render all rehearsals
     renderRehearsals(filterBandId = '') {
@@ -40,39 +41,74 @@ const Rehearsals = {
         const proposer = Storage.getById('users', rehearsal.proposedBy);
         const user = Auth.getCurrentUser();
         const canManage = Auth.canConfirmRehearsal(rehearsal.bandId);
+        const isExpanded = this.expandedRehearsalId === rehearsal.id;
+
+        // Get location name if set
+        let locationName = 'Kein Ort angegeben';
+        if (rehearsal.locationId) {
+            const location = Storage.getLocation(rehearsal.locationId);
+            if (location) {
+                locationName = location.name;
+                if (location.address) {
+                    locationName += ` (${location.address})`;
+                }
+            }
+        }
 
         return `
-            <div class="rehearsal-card" data-rehearsal-id="${rehearsal.id}">
-                <div class="rehearsal-header">
-                    <div>
+            <div class="rehearsal-card accordion-card ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}">
+                <div class="accordion-header" data-rehearsal-id="${rehearsal.id}">
+                    <div class="accordion-title">
                         <h3>${Bands.escapeHtml(rehearsal.title)}</h3>
                         <div class="rehearsal-band">
-                            🎸 ${Bands.escapeHtml(band?.name || 'Unbekannte Band')} • 
-                            Vorgeschlagen von ${Bands.escapeHtml(proposer?.name || 'Unbekannt')}
+                            🎸 ${Bands.escapeHtml(band?.name || 'Unbekannte Band')}
                         </div>
                     </div>
-                    <div class="rehearsal-actions">
+                    <div class="accordion-actions">
                         <span class="rehearsal-status status-${rehearsal.status}">
                             ${rehearsal.status === 'pending' ? 'Abstimmung läuft' : 'Bestätigt'}
                         </span>
-                        ${canManage && rehearsal.status === 'pending' ? `
-                            <button class="btn btn-sm btn-primary open-rehearsal-btn" 
-                                    data-rehearsal-id="${rehearsal.id}">
-                                Öffnen & Bestätigen
-                            </button>
-                        ` : ''}
-                        ${canManage ? `
-                            <button class="btn-icon edit-rehearsal" data-rehearsal-id="${rehearsal.id}" title="Bearbeiten">✏️</button>
-                        ` : ''}
+                        <button class="accordion-toggle" aria-label="Ausklappen">
+                            <span class="toggle-icon">${isExpanded ? '▼' : '▶'}</span>
+                        </button>
                     </div>
                 </div>
-                ${rehearsal.description ? `
-                    <p class="rehearsal-description">${Bands.escapeHtml(rehearsal.description)}</p>
-                ` : ''}
-                <div class="date-options">
-                    ${rehearsal.proposedDates.map((date, index) =>
+                
+                <div class="accordion-content" style="display: ${isExpanded ? 'block' : 'none'};">
+                    <div class="accordion-body">
+                        <div class="rehearsal-info">
+                            <p><strong>Vorgeschlagen von:</strong> ${Bands.escapeHtml(proposer?.name || 'Unbekannt')}</p>
+                            ${rehearsal.description ? `
+                                <p><strong>Beschreibung:</strong> ${Bands.escapeHtml(rehearsal.description)}</p>
+                            ` : ''}
+                            ${rehearsal.status === 'confirmed' && rehearsal.confirmedDateIndex !== undefined ? `
+                                <p><strong>Bestätigter Termin:</strong> ${UI.formatDate(rehearsal.proposedDates[rehearsal.confirmedDateIndex])}</p>
+                                <p><strong>Ort:</strong> ${locationName}</p>
+                            ` : ''}
+                        </div>
+
+                        ${rehearsal.status === 'pending' ? `
+                            <div class="date-options">
+                                ${rehearsal.proposedDates.map((date, index) =>
             this.renderDateOption(rehearsal.id, date, index, user.id)
         ).join('')}
+                            </div>
+                        ` : ''}
+
+                        <div class="rehearsal-action-buttons">
+                            ${canManage && rehearsal.status === 'pending' ? `
+                                <button class="btn btn-primary open-rehearsal-btn" 
+                                        data-rehearsal-id="${rehearsal.id}">
+                                    Öffnen & Bestätigen
+                                </button>
+                            ` : ''}
+                            ${canManage ? `
+                                <button class="btn btn-secondary edit-rehearsal" data-rehearsal-id="${rehearsal.id}">
+                                    ✏️ Bearbeiten
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -129,8 +165,23 @@ const Rehearsals = {
 
     // Attach vote and open handlers
     attachVoteHandlers() {
+        // Accordion toggle handlers
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                // Don't toggle if clicking on action buttons
+                if (e.target.closest('.rehearsal-status') || e.target.closest('.accordion-toggle')) {
+                    const rehearsalId = header.dataset.rehearsalId;
+                    this.toggleAccordion(rehearsalId);
+                } else if (!e.target.closest('button')) {
+                    const rehearsalId = header.dataset.rehearsalId;
+                    this.toggleAccordion(rehearsalId);
+                }
+            });
+        });
+
         document.querySelectorAll('.vote-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
                 const dateIndex = parseInt(btn.dataset.dateIndex);
                 const availability = btn.dataset.availability;
@@ -153,6 +204,36 @@ const Rehearsals = {
                 this.editRehearsal(rehearsalId);
             });
         });
+    },
+
+    // Toggle accordion
+    toggleAccordion(rehearsalId) {
+        const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+        if (!card) return;
+
+        const content = card.querySelector('.accordion-content');
+        const toggle = card.querySelector('.toggle-icon');
+        const wasExpanded = this.expandedRehearsalId === rehearsalId;
+
+        // Close all accordions
+        document.querySelectorAll('.rehearsal-card').forEach(c => {
+            c.classList.remove('expanded');
+            const cont = c.querySelector('.accordion-content');
+            const tog = c.querySelector('.toggle-icon');
+            if (cont) cont.style.display = 'none';
+            if (tog) tog.textContent = '▶';
+        });
+
+        // If it was already expanded, just close it
+        if (wasExpanded) {
+            this.expandedRehearsalId = null;
+        } else {
+            // Open this accordion
+            card.classList.add('expanded');
+            if (content) content.style.display = 'block';
+            if (toggle) toggle.textContent = '▼';
+            this.expandedRehearsalId = rehearsalId;
+        }
     },
 
     // Open rehearsal details for confirmation

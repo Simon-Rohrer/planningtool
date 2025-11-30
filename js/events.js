@@ -3,6 +3,7 @@
 const Events = {
     currentFilter: '',
     currentEventId: null,
+    expandedEventId: null,
 
     // Render all events
     renderEvents(filterBandId = '') {
@@ -38,66 +39,9 @@ const Events = {
     renderEventCard(event) {
         const band = Storage.getBand(event.bandId);
         const isPast = new Date(event.date) < new Date();
+        const isExpanded = this.expandedEventId === event.id;
 
-        return `
-            <div class="event-card ${isPast ? 'event-past' : ''}" data-event-id="${event.id}">
-                <div class="event-header">
-                    <div>
-                        <h3>${Bands.escapeHtml(event.title)}</h3>
-                        <div class="event-band">
-                            🎸 ${Bands.escapeHtml(band?.name || 'Unbekannte Band')}
-                        </div>
-                    </div>
-                    ${Auth.canManageEvents(event.bandId) ? `
-                        <button class="btn-icon edit-event" data-event-id="${event.id}" title="Bearbeiten">✏️</button>
-                    ` : ''}
-                </div>
-                <div class="event-details">
-                    <div class="event-info-item">
-                        <span class="info-icon">📅</span>
-                        <span>${UI.formatDate(event.date)}</span>
-                    </div>
-                    <div class="event-info-item">
-                        <span class="info-icon">📍</span>
-                        <span>${Bands.escapeHtml(event.location)}</span>
-                    </div>
-                    ${event.info ? `
-                        <div class="event-info-item">
-                            <span class="info-icon">ℹ️</span>
-                            <span>${Bands.escapeHtml(event.info)}</span>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    },
-
-    // Attach event handlers
-    attachEventHandlers() {
-        document.querySelectorAll('.event-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('.edit-event')) {
-                    const eventId = card.dataset.eventId;
-                    this.showEventDetails(eventId);
-                }
-            });
-        });
-
-        document.querySelectorAll('.edit-event').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const eventId = btn.dataset.eventId;
-                this.editEvent(eventId);
-            });
-        });
-    },
-
-    // Show event details
-    showEventDetails(eventId) {
-        const event = Storage.getEvent(eventId);
-        if (!event) return;
-
-        const band = Storage.getBand(event.bandId);
+        // Get member names
         const members = event.members.map(memberId => {
             const member = Storage.getById('users', memberId);
             return member ? member.name : 'Unbekannt';
@@ -110,74 +54,167 @@ const Events = {
             return r ? r.title : 'Unbekannt';
         });
 
-        document.getElementById('eventDetailsTitle').textContent = event.title;
-
-        document.getElementById('eventDetailsContent').innerHTML = `
-            <div class="event-details-view">
-                <div class="detail-section">
-                    <h3>🎸 Band</h3>
-                    <p>${Bands.escapeHtml(band?.name || 'Unbekannt')}</p>
+        return `
+            <div class="event-card accordion-card ${isPast ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}">
+                <div class="accordion-header" data-event-id="${event.id}">
+                    <div class="accordion-title">
+                        <h3>${Bands.escapeHtml(event.title)}</h3>
+                        <div class="event-band">
+                            🎸 ${Bands.escapeHtml(band?.name || 'Unbekannte Band')}
+                        </div>
+                    </div>
+                    <div class="accordion-actions">
+                        <div class="event-quick-info">
+                            <span class="quick-info-item">📅 ${UI.formatDateShort(event.date)}</span>
+                            <span class="quick-info-item">📍 ${Bands.escapeHtml(event.location)}</span>
+                        </div>
+                        ${Auth.canManageEvents(event.bandId) ? `
+                            <button class="btn-icon edit-event-icon" data-event-id="${event.id}" title="Bearbeiten">✏️</button>
+                        ` : ''}
+                        <button class="accordion-toggle" aria-label="Ausklappen">
+                            <span class="toggle-icon">${isExpanded ? '▼' : '▶'}</span>
+                        </button>
+                    </div>
                 </div>
+                
+                <div class="accordion-content" style="display: ${isExpanded ? 'block' : 'none'};">
+                    <div class="accordion-body">
+                        <div class="event-details-expanded">
+                            <div class="detail-row">
+                                <div class="detail-label">📅 Datum:</div>
+                                <div class="detail-value">${UI.formatDate(event.date)}</div>
+                            </div>
+                            
+                            <div class="detail-row">
+                                <div class="detail-label">📍 Ort:</div>
+                                <div class="detail-value">${Bands.escapeHtml(event.location)}</div>
+                            </div>
 
-                <div class="detail-section">
-                    <h3>📅 Datum</h3>
-                    <p>${UI.formatDate(event.date)}</p>
+                            ${event.info ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">ℹ️ Event-Infos:</div>
+                                    <div class="detail-value">${Bands.escapeHtml(event.info)}</div>
+                                </div>
+                            ` : ''}
+
+                            ${event.techInfo ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">🔧 Technik:</div>
+                                    <div class="detail-value">${Bands.escapeHtml(event.techInfo)}</div>
+                                </div>
+                            ` : ''}
+
+                            <div class="detail-row">
+                                <div class="detail-label">👥 Bandmitglieder (${members.length}):</div>
+                                <div class="detail-value">
+                                    ${members.map(name => `<span class="member-tag">${Bands.escapeHtml(name)}</span>`).join('')}
+                                </div>
+                            </div>
+
+                            ${guests.length > 0 ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">🎭 Gäste (${guests.length}):</div>
+                                    <div class="detail-value">
+                                        ${guests.map(guest => `<span class="guest-tag">${Bands.escapeHtml(guest)}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${rehearsalNames.length > 0 ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">📅 Zugewiesene Proben (${rehearsalNames.length}):</div>
+                                    <div class="detail-value">
+                                        ${rehearsalNames.map(name => `<span class="rehearsal-tag">${Bands.escapeHtml(name)}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        ${Auth.canManageEvents(event.bandId) ? `
+                            <div class="event-action-buttons">
+                                <button class="btn btn-secondary edit-event" data-event-id="${event.id}">
+                                    ✏️ Bearbeiten
+                                </button>
+                                <button class="btn btn-danger delete-event" data-event-id="${event.id}">
+                                    🗑️ Löschen
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
-
-                <div class="detail-section">
-                    <h3>📍 Ort</h3>
-                    <p>${Bands.escapeHtml(event.location)}</p>
-                </div>
-
-                ${event.info ? `
-                    <div class="detail-section">
-                        <h3>ℹ️ Event-Infos</h3>
-                        <p>${Bands.escapeHtml(event.info)}</p>
-                    </div>
-                ` : ''}
-
-                ${event.techInfo ? `
-                    <div class="detail-section">
-                        <h3>🔧 Technik-Infos</h3>
-                        <p>${Bands.escapeHtml(event.techInfo)}</p>
-                    </div>
-                ` : ''}
-
-                <div class="detail-section">
-                    <h3>👥 Bandmitglieder (${members.length})</h3>
-                    <ul class="detail-list">
-                        ${members.map(name => `<li>${Bands.escapeHtml(name)}</li>`).join('')}
-                    </ul>
-                </div>
-
-                ${guests.length > 0 ? `
-                    <div class="detail-section">
-                        <h3>🎭 Gäste (${guests.length})</h3>
-                        <ul class="detail-list">
-                            ${guests.map(guest => `<li>${Bands.escapeHtml(guest)}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-
-                ${rehearsalNames.length > 0 ? `
-                    <div class="detail-section">
-                        <h3>📅 Zugewiesene Proben (${rehearsalNames.length})</h3>
-                        <ul class="detail-list">
-                            ${rehearsalNames.map(name => `<li>${Bands.escapeHtml(name)}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-
-                ${Auth.canManageEvents(event.bandId) ? `
-                    <div class="detail-actions">
-                        <button class="btn btn-primary" onclick="Events.editEvent('${event.id}')">Bearbeiten</button>
-                        <button class="btn btn-danger" onclick="Events.deleteEvent('${event.id}')">Löschen</button>
-                    </div>
-                ` : ''}
             </div>
         `;
+    },
 
-        UI.openModal('eventDetailsModal');
+    // Attach event handlers
+    attachEventHandlers() {
+        // Accordion toggle handlers
+        document.querySelectorAll('.event-card .accordion-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                // Don't toggle if clicking on action buttons
+                if (e.target.closest('.edit-event-icon') || e.target.closest('.accordion-toggle')) {
+                    const eventId = header.dataset.eventId;
+                    this.toggleAccordion(eventId);
+                } else if (!e.target.closest('button')) {
+                    const eventId = header.dataset.eventId;
+                    this.toggleAccordion(eventId);
+                }
+            });
+        });
+
+        document.querySelectorAll('.edit-event-icon').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                this.editEvent(eventId);
+            });
+        });
+
+        document.querySelectorAll('.edit-event').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                this.editEvent(eventId);
+            });
+        });
+
+        document.querySelectorAll('.delete-event').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                this.deleteEvent(eventId);
+            });
+        });
+    },
+
+    // Toggle accordion
+    toggleAccordion(eventId) {
+        const card = document.querySelector(`.event-card[data-event-id="${eventId}"]`);
+        if (!card) return;
+
+        const content = card.querySelector('.accordion-content');
+        const toggle = card.querySelector('.toggle-icon');
+        const wasExpanded = this.expandedEventId === eventId;
+
+        // Close all accordions
+        document.querySelectorAll('.event-card').forEach(c => {
+            c.classList.remove('expanded');
+            const cont = c.querySelector('.accordion-content');
+            const tog = c.querySelector('.toggle-icon');
+            if (cont) cont.style.display = 'none';
+            if (tog) tog.textContent = '▶';
+        });
+
+        // If it was already expanded, just close it
+        if (wasExpanded) {
+            this.expandedEventId = null;
+        } else {
+            // Open this accordion
+            card.classList.add('expanded');
+            if (content) content.style.display = 'block';
+            if (toggle) toggle.textContent = '▼';
+            this.expandedEventId = eventId;
+        }
     },
 
     // Create new event
@@ -232,7 +269,6 @@ const Events = {
         // Load rehearsals
         this.loadRehearsalsForBand(event.bandId, event.rehearsals);
 
-        UI.closeModal('eventDetailsModal');
         UI.openModal('createEventModal');
     },
 
@@ -263,7 +299,6 @@ const Events = {
 
         Storage.deleteEvent(eventId);
         UI.showToast('Auftritt gelöscht', 'success');
-        UI.closeModal('eventDetailsModal');
         this.renderEvents(this.currentFilter);
     },
 
