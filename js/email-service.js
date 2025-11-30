@@ -1,41 +1,25 @@
 // EmailJS Integration Module
 
 const EmailService = {
-    // EmailJS Configuration
+    // EmailJS Configuration - Set your credentials here
     config: {
-        serviceId: 'service_cadjeiq', // Wird vom Benutzer konfiguriert
-        templateId: 'template_l9a8mdf', // Wird vom Benutzer konfiguriert
-        publicKey: '5upXiXp5loj1iOMv7', // Wird vom Benutzer konfiguriert
-        isConfigured: false
+        serviceId: 'service_cadjeiq',
+        templateId: 'template_l9a8mdf',
+        publicKey: '5upXiXp5loj1iOMv7',
+        isConfigured: true
     },
 
     // Initialize EmailJS
     init(serviceId, templateId, publicKey) {
-        this.config.serviceId = serviceId;
-        this.config.templateId = templateId;
-        this.config.publicKey = publicKey;
-        this.config.isConfigured = !!(serviceId && templateId && publicKey);
-
-        // Load configuration from localStorage if exists
-        const savedConfig = localStorage.getItem('emailjsConfig');
-        if (savedConfig) {
-            const config = JSON.parse(savedConfig);
-            this.config = { ...this.config, ...config, isConfigured: true };
+        if (serviceId && templateId && publicKey) {
+            this.config.serviceId = serviceId;
+            this.config.templateId = templateId;
+            this.config.publicKey = publicKey;
+            this.config.isConfigured = true;
+        } else {
+            // Use hardcoded config if no parameters provided
+            this.config.isConfigured = !!(this.config.serviceId && this.config.templateId && this.config.publicKey);
         }
-    },
-
-    // Save configuration
-    saveConfig(serviceId, templateId, publicKey) {
-        this.config.serviceId = serviceId;
-        this.config.templateId = templateId;
-        this.config.publicKey = publicKey;
-        this.config.isConfigured = true;
-
-        localStorage.setItem('emailjsConfig', JSON.stringify({
-            serviceId,
-            templateId,
-            publicKey
-        }));
     },
 
     // Check if EmailJS is configured
@@ -44,7 +28,7 @@ const EmailService = {
     },
 
     // Send rehearsal confirmation email to all band members
-    async sendRehearsalConfirmation(rehearsal, selectedDate, bandMembers) {
+    async sendRehearsalConfirmation(rehearsal, selectedDate, selectedMembers) {
         if (!this.isConfigured()) {
             console.warn('EmailJS not configured. Skipping email send.');
             return {
@@ -65,8 +49,8 @@ const EmailService = {
             const band = Storage.getBand(rehearsal.bandId);
             const dateFormatted = UI.formatDate(selectedDate);
 
-            // Send email to each band member
-            const promises = bandMembers.map(async (member) => {
+            // Send email to each selected band member
+            const promises = selectedMembers.map(async (member) => {
                 const user = Storage.getById('users', member.userId);
                 if (!user || !user.email) return null;
 
@@ -141,49 +125,8 @@ const EmailService = {
             script.onerror = () => reject(new Error('Failed to load EmailJS library'));
             document.head.appendChild(script);
         });
-    },
-
-    // Test email configuration
-    async testConfiguration(testEmail) {
-        if (!this.isConfigured()) {
-            return {
-                success: false,
-                message: 'EmailJS ist nicht konfiguriert'
-            };
-        }
-
-        try {
-            await this.loadEmailJS();
-            emailjs.init(this.config.publicKey);
-
-            const templateParams = {
-                to_email: testEmail,
-                to_name: 'Test User',
-                band_name: 'Test Band',
-                rehearsal_title: 'Test Probe',
-                rehearsal_description: 'Dies ist eine Test-E-Mail',
-                rehearsal_date: new Date().toLocaleDateString('de-DE'),
-                from_name: 'Band Planning Tool'
-            };
-
-            await emailjs.send(
-                this.config.serviceId,
-                this.config.templateId,
-                templateParams
-            );
-
-            return {
-                success: true,
-                message: 'Test-E-Mail erfolgreich versendet!'
-            };
-        } catch (error) {
-            return {
-                success: false,
-                message: 'Fehler: ' + error.message
-            };
-        }
     }
 };
 
-// Initialize on load
+// Initialize on load with hardcoded config
 EmailService.init();

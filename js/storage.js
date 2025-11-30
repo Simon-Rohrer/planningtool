@@ -18,6 +18,12 @@ const Storage = {
         if (!localStorage.getItem('votes')) {
             localStorage.setItem('votes', JSON.stringify([]));
         }
+        if (!localStorage.getItem('events')) {
+            localStorage.setItem('events', JSON.stringify([]));
+        }
+        if (!localStorage.getItem('locations')) {
+            localStorage.setItem('locations', JSON.stringify([]));
+        }
 
         // Create admin user if not exists
         this.ensureAdminUser();
@@ -165,6 +171,11 @@ const Storage = {
         const rehearsals = this.getAll('rehearsals');
         const filteredRehearsals = rehearsals.filter(r => r.bandId !== bandId);
         localStorage.setItem('rehearsals', JSON.stringify(filteredRehearsals));
+
+        // Delete all events
+        const events = this.getAll('events');
+        const filteredEvents = events.filter(e => e.bandId !== bandId);
+        localStorage.setItem('events', JSON.stringify(filteredEvents));
 
         // Update users' bandIds
         const users = this.getAll('users');
@@ -333,9 +344,41 @@ const Storage = {
         );
     },
 
-    // --- Locations ---
+    // Event operations
+    createEvent(eventData) {
+        const event = {
+            id: this.generateId(),
+            ...eventData,
+            createdAt: new Date().toISOString()
+        };
+        return this.save('events', event);
+    },
 
-    // Create new location
+    getEvent(eventId) {
+        return this.getById('events', eventId);
+    },
+
+    getBandEvents(bandId) {
+        const events = this.getAll('events');
+        return events.filter(e => e.bandId === bandId);
+    },
+
+    getUserEvents(userId) {
+        const userBands = this.getUserBands(userId);
+        const bandIds = userBands.map(b => b.id);
+        const events = this.getAll('events');
+        return events.filter(e => bandIds.includes(e.bandId));
+    },
+
+    updateEvent(eventId, updates) {
+        return this.update('events', eventId, updates);
+    },
+
+    deleteEvent(eventId) {
+        return this.delete('events', eventId);
+    },
+
+    // Location operations
     createLocation(name, address) {
         const location = {
             id: this.generateId(),
@@ -346,17 +389,14 @@ const Storage = {
         return this.save('locations', location);
     },
 
-    // Get all locations
     getLocations() {
         return this.getAll('locations');
     },
 
-    // Get location by ID
     getLocation(id) {
         return this.getById('locations', id);
     },
 
-    // Delete location
     deleteLocation(id) {
         this.delete('locations', id);
     },

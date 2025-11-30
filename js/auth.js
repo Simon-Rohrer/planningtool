@@ -14,7 +14,6 @@ const Auth = {
         }
 
         // Set the single valid registration code
-        // We overwrite any existing codes to enforce the single code policy
         const validCode = 'c2j5Dps!';
         localStorage.setItem('registrationCodes', JSON.stringify([validCode]));
         this.validRegistrationCodes = [validCode];
@@ -154,6 +153,14 @@ const Auth = {
 
     // Check if user can edit band details (leader or co-leader)
     canEditBandDetails(bandId) {
+        if (!this.currentUser) return false;
+        if (this.isAdmin()) return true;
+        const role = Storage.getUserRoleInBand(this.currentUser.id, bandId);
+        return role === 'leader' || role === 'co-leader';
+    },
+
+    // Check if user can manage events (leader or co-leader)
+    canManageEvents(bandId) {
         if (!this.currentUser) return false;
         if (this.isAdmin()) return true;
         const role = Storage.getUserRoleInBand(this.currentUser.id, bandId);

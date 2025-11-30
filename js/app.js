@@ -78,7 +78,23 @@ const App = {
 
         // Create rehearsal button
         document.getElementById('createRehearsalBtn').addEventListener('click', () => {
+            // Reset form for new rehearsal
+            document.getElementById('rehearsalModalTitle').textContent = 'Neuen Probetermin vorschlagen';
+            document.getElementById('saveRehearsalBtn').textContent = 'Vorschlag erstellen';
+            document.getElementById('editRehearsalId').value = '';
+            UI.clearForm('createRehearsalForm');
+
+            // Reset date proposals
+            const container = document.getElementById('dateProposals');
+            container.innerHTML = `
+                <div class="date-proposal-item">
+                    <input type="datetime-local" class="date-input" required>
+                    <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
+                </div>
+            `;
+
             Bands.populateBandSelects();
+            this.populateLocationSelect();
             UI.openModal('createRehearsalModal');
         });
 
@@ -103,6 +119,47 @@ const App = {
         document.getElementById('statsRehearsalSelect').addEventListener('change', (e) => {
             Statistics.renderStatistics(e.target.value);
         });
+
+        // Create event button
+        document.getElementById('createEventBtn').addEventListener('click', () => {
+            // Reset form for new event
+            document.getElementById('eventModalTitle').textContent = 'Neuen Auftritt erstellen';
+            document.getElementById('saveEventBtn').textContent = 'Auftritt erstellen';
+            document.getElementById('editEventId').value = '';
+            UI.clearForm('createEventForm');
+
+            Events.populateBandSelect();
+            UI.openModal('createEventModal');
+        });
+
+        // Create event form
+        document.getElementById('createEventForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleCreateEvent();
+        });
+
+        // Event band change
+        document.getElementById('eventBand').addEventListener('change', (e) => {
+            const bandId = e.target.value;
+            if (bandId) {
+                Events.loadBandMembers(bandId);
+                Events.loadRehearsalsForBand(bandId);
+            }
+        });
+
+        // Event band filter
+        document.getElementById('eventBandFilter').addEventListener('change', (e) => {
+            Events.currentFilter = e.target.value;
+            Events.renderEvents(e.target.value);
+        });
+
+        // Send confirmation button
+        const sendConfirmBtn = document.getElementById('sendConfirmationBtn');
+        if (sendConfirmBtn) {
+            sendConfirmBtn.addEventListener('click', () => {
+                Rehearsals.confirmRehearsal();
+            });
+        }
 
         // Modal close buttons
         document.querySelectorAll('.modal-close').forEach(btn => {
@@ -140,6 +197,14 @@ const App = {
             });
         });
 
+        // Settings tabs
+        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                this.switchSettingsTab(tabName);
+            });
+        });
+
         // Join Band Button
         const joinBandBtn = document.getElementById('joinBandBtn');
         if (joinBandBtn) {
@@ -157,54 +222,10 @@ const App = {
                 Bands.joinBand(code);
             });
         }
-
-        // Email Settings Form
-        const emailSettingsForm = document.getElementById('emailSettingsForm');
-        if (emailSettingsForm) {
-            emailSettingsForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const serviceId = document.getElementById('emailServiceId').value;
-                const templateId = document.getElementById('emailTemplateId').value;
-                const publicKey = document.getElementById('emailPublicKey').value;
-
-                EmailService.saveConfig(serviceId, templateId, publicKey);
-                UI.showToast('E-Mail Einstellungen gespeichert', 'success');
-                UI.closeModal('emailSettingsModal');
-            });
-        }
-
-        // Test Email Button
-        const testEmailBtn = document.getElementById('testEmailBtn');
-        if (testEmailBtn) {
-            testEmailBtn.addEventListener('click', async () => {
-                const user = Auth.getCurrentUser();
-                if (!user || !user.email) {
-                    UI.showToast('Keine E-Mail-Adresse gefunden', 'error');
-                    return;
-                }
-
-                // Save current values temporarily for test
-                const serviceId = document.getElementById('emailServiceId').value;
-                const templateId = document.getElementById('emailTemplateId').value;
-                const publicKey = document.getElementById('emailPublicKey').value;
-
-                EmailService.init(serviceId, templateId, publicKey);
-
-                UI.showToast('Sende Test-E-Mail...', 'info');
-                const result = await EmailService.testConfiguration(user.email);
-
-                if (result.success) {
-                    UI.showToast(result.message, 'success');
-                } else {
-                    UI.showToast(result.message, 'error');
-                }
-            });
-        }
     },
 
     // Auth tab switching
     switchAuthTab(tabName) {
-        // Update tab buttons
         document.querySelectorAll('.auth-tab').forEach(tab => {
             if (tab.dataset.tab === tabName) {
                 tab.classList.add('active');
@@ -213,7 +234,6 @@ const App = {
             }
         });
 
-        // Update forms
         document.querySelectorAll('.auth-form').forEach(form => {
             if (form.id === `${tabName}Form`) {
                 form.classList.add('active');
@@ -225,7 +245,6 @@ const App = {
 
     // Tab switching in modals
     switchTab(tabName) {
-        // Update tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => {
             if (btn.dataset.tab === tabName) {
                 btn.classList.add('active');
@@ -234,9 +253,27 @@ const App = {
             }
         });
 
-        // Update tab content
         document.querySelectorAll('.tab-content').forEach(content => {
             if (content.id === `${tabName}Tab`) {
+                content.classList.add('active');
+            } else {
+                content.classList.remove('active');
+            }
+        });
+    },
+
+    // Settings tab switching
+    switchSettingsTab(tabName) {
+        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+            if (btn.dataset.tab === tabName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        document.querySelectorAll('.settings-tab-content').forEach(content => {
+            if (content.id === `${tabName}SettingsTab`) {
                 content.classList.add('active');
             } else {
                 content.classList.remove('active');
@@ -267,7 +304,6 @@ const App = {
         const password = document.getElementById('registerPassword').value;
         const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
 
-        // Validate password confirmation
         if (password !== passwordConfirm) {
             UI.showToast('Passwörter stimmen nicht überein', 'error');
             return;
@@ -301,53 +337,32 @@ const App = {
         document.getElementById('authModal').classList.remove('active');
         document.getElementById('app').style.display = 'flex';
 
-        // Update user name
         const user = Auth.getCurrentUser();
         document.getElementById('currentUserName').textContent = user.name;
 
-        // Show admin buttons if admin
         const isAdmin = Auth.isAdmin();
 
-        // Admin Settings Button
-        const adminBtn = document.getElementById('adminSettingsBtn');
-        if (adminBtn) {
-            adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
-            // Remove old listener
-            const newBtn = adminBtn.cloneNode(true);
-            adminBtn.parentNode.replaceChild(newBtn, adminBtn);
+        // Settings Button (renamed from Admin)
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+            settingsBtn.style.display = isAdmin ? 'inline-block' : 'none';
+            const newBtn = settingsBtn.cloneNode(true);
+            settingsBtn.parentNode.replaceChild(newBtn, settingsBtn);
 
             newBtn.addEventListener('click', () => {
-                if (EmailService.config) {
-                    document.getElementById('emailServiceId').value = EmailService.config.serviceId || '';
-                    document.getElementById('emailTemplateId').value = EmailService.config.templateId || '';
-                    document.getElementById('emailPublicKey').value = EmailService.config.publicKey || '';
-                }
-                UI.openModal('emailSettingsModal');
+                this.openSettingsModal();
             });
         }
 
-        // Locations Button
-        const locationsBtn = document.getElementById('manageLocationsBtn');
-        if (locationsBtn) {
-            locationsBtn.style.display = isAdmin ? 'inline-block' : 'none';
-            // Remove old listener
-            const newBtn = locationsBtn.cloneNode(true);
-            locationsBtn.parentNode.replaceChild(newBtn, locationsBtn);
-
-            newBtn.addEventListener('click', () => {
-                this.openLocationsModal();
-            });
-        }
-
-        // Load initial data
         this.updateDashboard();
         this.navigateTo('dashboard');
     },
 
-    // Open locations modal
-    openLocationsModal() {
-        UI.openModal('locationsModal');
+    // Open settings modal
+    openSettingsModal() {
+        UI.openModal('settingsModal');
         this.renderLocationsList();
+        this.renderAllBandsList();
     },
 
     // Render locations list
@@ -370,12 +385,47 @@ const App = {
             </div>
         `).join('');
 
-        // Add delete handlers
         container.querySelectorAll('.delete-location').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (confirm('Standort wirklich löschen?')) {
                     Storage.deleteLocation(btn.dataset.id);
                     this.renderLocationsList();
+                }
+            });
+        });
+    },
+
+    // Render all bands list for management
+    renderAllBandsList() {
+        const container = document.getElementById('allBandsList');
+        const bands = Storage.getAllBands();
+
+        if (bands.length === 0) {
+            container.innerHTML = '<p class="text-muted">Keine Bands vorhanden.</p>';
+            return;
+        }
+
+        container.innerHTML = bands.map(band => {
+            const members = Storage.getBandMembers(band.id);
+            return `
+                <div class="band-management-item">
+                    <div class="band-info">
+                        <h4>${Bands.escapeHtml(band.name)}</h4>
+                        <p>${members.length} Mitglieder • Beitrittscode: <code>${band.joinCode}</code></p>
+                    </div>
+                    <button class="btn btn-danger btn-sm delete-band-admin" data-id="${band.id}">Löschen</button>
+                </div>
+            `;
+        }).join('');
+
+        container.querySelectorAll('.delete-band-admin').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const bandId = btn.dataset.id;
+                const band = Storage.getBand(bandId);
+                if (confirm(`Band "${band.name}" wirklich löschen?`)) {
+                    Storage.deleteBand(bandId);
+                    this.renderAllBandsList();
+                    UI.showToast('Band gelöscht', 'success');
                 }
             });
         });
@@ -415,7 +465,6 @@ const App = {
     navigateTo(viewName) {
         UI.showView(`${viewName}View`);
 
-        // Load view-specific data
         switch (viewName) {
             case 'dashboard':
                 this.updateDashboard();
@@ -423,9 +472,13 @@ const App = {
             case 'bands':
                 Bands.renderBands();
                 break;
+            case 'events':
+                Events.populateBandSelect();
+                Events.renderEvents();
+                break;
             case 'rehearsals':
                 Bands.populateBandSelects();
-                this.populateLocationSelect(); // Added this line
+                this.populateLocationSelect();
                 Rehearsals.renderRehearsals();
                 break;
             case 'statistics':
@@ -439,11 +492,9 @@ const App = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        // Update band count
         const bands = Storage.getUserBands(user.id);
         document.getElementById('bandCount').textContent = bands.length;
 
-        // Update pending votes count
         const rehearsals = Storage.getUserRehearsals(user.id);
         const pendingRehearsals = rehearsals.filter(r => r.status === 'pending');
 
@@ -459,11 +510,9 @@ const App = {
 
         document.getElementById('pendingVotes').textContent = pendingVotesCount;
 
-        // Update confirmed rehearsals count
         const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
         document.getElementById('confirmedRehearsals').textContent = confirmedRehearsals.length;
 
-        // Render recent votes
         Rehearsals.renderRecentVotes();
     },
 
@@ -489,6 +538,7 @@ const App = {
 
     // Handle create rehearsal
     handleCreateRehearsal() {
+        const editId = document.getElementById('editRehearsalId').value;
         const bandId = document.getElementById('rehearsalBand').value;
         const title = document.getElementById('rehearsalTitle').value;
         const description = document.getElementById('rehearsalDescription').value;
@@ -500,17 +550,35 @@ const App = {
             return;
         }
 
-        Rehearsals.createRehearsal(bandId, title, description, dates, locationId);
-        UI.clearForm('createRehearsalForm');
+        if (editId) {
+            // Update existing
+            Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId);
+        } else {
+            // Create new
+            Rehearsals.createRehearsal(bandId, title, description, dates, locationId);
+        }
+    },
 
-        // Reset date proposals to one field
-        const container = document.getElementById('dateProposals');
-        container.innerHTML = `
-            <div class="date-proposal-item">
-                <input type="datetime-local" class="date-input" required>
-                <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
-            </div>
-        `;
+    // Handle create event
+    handleCreateEvent() {
+        const editId = document.getElementById('editEventId').value;
+        const bandId = document.getElementById('eventBand').value;
+        const title = document.getElementById('eventTitle').value;
+        const date = new Date(document.getElementById('eventDate').value).toISOString();
+        const location = document.getElementById('eventLocation').value;
+        const info = document.getElementById('eventInfo').value;
+        const techInfo = document.getElementById('eventTechInfo').value;
+        const members = Events.getSelectedMembers();
+        const guests = Events.getGuests();
+        const rehearsals = Events.getSelectedRehearsals();
+
+        if (editId) {
+            // Update existing
+            Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, rehearsals);
+        } else {
+            // Create new
+            Events.createEvent(bandId, title, date, location, info, techInfo, members, guests, rehearsals);
+        }
     }
 };
 
