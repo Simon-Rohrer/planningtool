@@ -11,6 +11,9 @@ const App = {
 
         // Setup event listeners
         this.setupEventListeners();
+        // init draft song list for new events
+        this.draftEventSongIds = [];
+        this.lastSongModalContext = null; // { eventId, bandId, origin }
     },
 
     setupEventListeners() {
@@ -170,6 +173,9 @@ const App = {
             UI.clearForm('createEventForm');
 
             Events.populateBandSelect();
+            // Clear draft song selection for new event
+            this.draftEventSongIds = [];
+            this.renderDraftEventSongs();
             UI.openModal('createEventModal');
         });
 
@@ -187,16 +193,53 @@ const App = {
             }
         });
 
-        // Add event song button
+        // Add event song button (create new song)
         const addEventSongBtn = document.getElementById('addEventSongBtn');
         if (addEventSongBtn) {
             addEventSongBtn.addEventListener('click', () => {
                 const eventId = document.getElementById('editEventId').value;
-                if (!eventId) {
-                    UI.showToast('Bitte speichere den Auftritt erst, bevor du Songs hinzufügst', 'warning');
+                const bandId = document.getElementById('eventBand').value;
+                // If editing existing event -> create song attached to event
+                if (eventId) {
+                    this.lastSongModalContext = { eventId, bandId: null, origin: 'event' };
+                    this.openSongModal(eventId, null, null);
                     return;
                 }
-                this.openSongModal(eventId, null, null);
+
+                // Creating new event -> require band selected, open song modal to create song for the band
+                if (!bandId) {
+                    UI.showToast('Bitte wähle zuerst eine Band aus', 'warning');
+                    return;
+                }
+                this.lastSongModalContext = { eventId: null, bandId, origin: 'createEvent' };
+                this.openSongModal(null, bandId, null);
+            });
+        }
+
+        // Add existing event song button (pick from band's songs)
+        const addExistingEventSongBtn = document.getElementById('addExistingEventSongBtn');
+        if (addExistingEventSongBtn) {
+            addExistingEventSongBtn.addEventListener('click', () => {
+                const eventId = document.getElementById('editEventId').value;
+                const bandId = document.getElementById('eventBand').value;
+                if (!bandId) {
+                    UI.showToast('Bitte wähle zuerst eine Band aus', 'warning');
+                    return;
+                }
+
+                const bandSongs = Storage.getBandSongs(bandId);
+                if (!bandSongs || bandSongs.length === 0) {
+                    UI.showToast('Für diese Band sind noch keine Songs vorhanden', 'info');
+                    return;
+                }
+
+                if (eventId) {
+                    // Existing event: copy selected songs to event immediately
+                    this.showBandSongSelector(eventId, bandSongs);
+                } else {
+                    // Draft mode: allow selecting songs and add to draft list
+                    this.showBandSongSelectorForDraft(bandSongs);
+                }
             });
         }
 
@@ -287,10 +330,32 @@ const App = {
             });
         }
 
+        // Cancel edit absence button
+        const cancelEditBtn = document.getElementById('cancelEditAbsenceBtn');
+        if (cancelEditBtn) {
+            cancelEditBtn.addEventListener('click', () => {
+                this.cancelEditAbsence();
+            });
+        }
+
         // Create news button
         const createNewsBtn = document.getElementById('createNewsBtn');
         if (createNewsBtn) {
             createNewsBtn.addEventListener('click', () => {
+                // Reset modal for new news
+                const modalTitle = document.querySelector('#createNewsModal .modal-header h2');
+                if (modalTitle) modalTitle.textContent = 'News erstellen';
+                const submitBtn = document.querySelector('#createNewsModal .modal-actions .btn-primary');
+                if (submitBtn) submitBtn.textContent = 'Veröffentlichen';
+                const editInput = document.getElementById('editNewsId');
+                if (editInput) editInput.value = '';
+                const preview = document.getElementById('newsImagesPreview');
+                if (preview) preview.innerHTML = '';
+                const imagesInput = document.getElementById('newsImages');
+                if (imagesInput) imagesInput.value = null;
+                document.getElementById('newsTitle').value = '';
+                document.getElementById('newsContent').value = '';
+
                 UI.openModal('createNewsModal');
             });
         }
@@ -301,6 +366,30 @@ const App = {
             createNewsForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleCreateNews();
+            });
+        }
+
+        // News images preview handler
+        const newsImagesInput = document.getElementById('newsImages');
+        const newsImagesPreview = document.getElementById('newsImagesPreview');
+        if (newsImagesInput && newsImagesPreview) {
+            newsImagesInput.addEventListener('change', () => {
+                newsImagesPreview.innerHTML = '';
+                const files = Array.from(newsImagesInput.files || []);
+                files.slice(0, 6).forEach(file => {
+                    if (!file.type.startsWith('image/')) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const img = document.createElement('img');
+                        img.src = ev.target.result;
+                        img.style.width = '80px';
+                        img.style.height = '80px';
+                        img.style.objectFit = 'cover';
+                        img.style.borderRadius = '6px';
+                        newsImagesPreview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
             });
         }
 
@@ -384,10 +473,16 @@ const App = {
             } else if (view === 'news') {
                 this.renderNewsView();
 
-                // Show/hide create button based on admin status
+                // Show/hide create button based on admin or band leader/co-leader status
                 const createNewsBtn = document.getElementById('createNewsBtn');
                 if (createNewsBtn) {
-                    createNewsBtn.style.display = Auth.isAdmin() ? 'inline-flex' : 'none';
+                    const user = Auth.getCurrentUser();
+                    let canCreate = Auth.isAdmin();
+                    if (!canCreate && user) {
+                        const userBands = Storage.getUserBands(user.id) || [];
+                        canCreate = userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
+                    }
+                    createNewsBtn.style.display = canCreate ? 'inline-flex' : 'none';
                 }
             }
         }
@@ -507,6 +602,7 @@ const App = {
         const container = document.getElementById('newsContainer');
         const newsItems = Storage.getAllNews();
         const isAdmin = Auth.isAdmin();
+        const currentUser = Auth.getCurrentUser();
 
         if (newsItems.length === 0) {
             container.innerHTML = `
@@ -531,15 +627,43 @@ const App = {
                 </button>
             ` : '';
 
+            // allow editing for admins or the author
+            let canEdit = false;
+            if (currentUser) {
+                canEdit = isAdmin || news.createdBy === currentUser.id;
+            }
+
+            const editBtn = canEdit ? `
+                <button class="btn-icon edit-news" data-id="${news.id}" title="News bearbeiten">✏️</button>
+            ` : '';
+
+            // Render images if present
+            let imagesHtml = '';
+            if (news.images && Array.isArray(news.images) && news.images.length > 0) {
+                const imgs = news.images.map(imgSrc => `
+                    <div style="flex: 0 0 120px; max-width:120px;">
+                        <img src="${imgSrc}" style="width:100%; height:80px; object-fit:cover; border-radius:6px;" />
+                    </div>
+                `).join('');
+                imagesHtml = `<div style="display:flex; gap:0.5rem; margin:0.75rem 0; flex-wrap:wrap;">${imgs}</div>`;
+            }
+
+            // mark unread for this user
+            const isReadForUser = currentUser && Array.isArray(news.readBy) && news.readBy.includes(currentUser.id);
+
             return `
-                <div class="news-card" style="background: var(--color-surface); padding: var(--spacing-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: var(--spacing-lg); border-left: 4px solid var(--color-primary);">
+                <div class="news-card" data-id="${news.id}" style="background: var(--color-surface); padding: var(--spacing-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: var(--spacing-lg); border-left: 4px solid var(--color-primary);">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md);">
                         <div style="flex: 1;">
-                            <h3 style="margin-bottom: var(--spacing-xs); color: var(--color-text);">${this.escapeHtml(news.title)}</h3>
+                            <h3 style="margin-bottom: var(--spacing-xs); color: var(--color-text);">${this.escapeHtml(news.title)} ${!isReadForUser ? '<span style="color: #e11d48; font-size:0.75rem; margin-left:0.5rem;">NEU</span>' : ''}</h3>
                             <p style="font-size: 0.875rem; color: var(--color-text-light);">📅 ${date}</p>
                         </div>
-                        ${deleteBtn}
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            ${editBtn}
+                            ${deleteBtn}
+                        </div>
                     </div>
+                    ${imagesHtml}
                     <p style="color: var(--color-text-secondary); white-space: pre-wrap;">${this.escapeHtml(news.content)}</p>
                 </div>
             `;
@@ -547,15 +671,39 @@ const App = {
 
         // Add delete handlers
         container.querySelectorAll('.delete-news').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.deleteNews(btn.dataset.id);
+            });
+        });
+
+        // Add edit handlers
+        container.querySelectorAll('.edit-news').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openEditNews(btn.dataset.id);
+            });
+        });
+
+        // Mark news read on card click (when user explicitly clicks a news card)
+        container.querySelectorAll('.news-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                // Ignore clicks on interactive buttons (they stopPropagation above)
+                const id = card.dataset.id;
+                const user = Auth.getCurrentUser();
+                if (user) {
+                    Storage.markNewsRead(id, user.id);
+                    this.updateNewsNavBadge();
+                }
             });
         });
     },
 
-    handleCreateNews() {
+    async handleCreateNews() {
         const title = document.getElementById('newsTitle').value;
         const content = document.getElementById('newsContent').value;
+        const imagesInput = document.getElementById('newsImages');
+        const editIdInput = document.getElementById('editNewsId');
         const user = Auth.getCurrentUser();
 
         if (!user || !Auth.isAdmin()) {
@@ -563,24 +711,198 @@ const App = {
             return;
         }
 
-        Storage.createNewsItem(title, content, user.id);
-        UI.showToast('News veröffentlicht!', 'success');
+        // Read image files (convert to data URLs)
+        const images = [];
+        if (imagesInput && imagesInput.files && imagesInput.files.length > 0) {
+            const files = Array.from(imagesInput.files).slice(0, 6); // limit to 6 images
+            const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            try {
+                const results = await Promise.all(files.map(f => readFileAsDataURL(f)));
+                results.forEach(r => images.push(r));
+            } catch (err) {
+                console.error('Fehler beim Lesen der Bilddateien', err);
+                UI.showToast('Fehler beim Verarbeiten der Bilder', 'error');
+            }
+        }
+
+        // If edit mode -> update existing item, else create new
+        const editId = editIdInput ? editIdInput.value : '';
+        if (editId) {
+            // fetch existing
+            const existing = Storage.getById('news', editId);
+            if (!existing) {
+                UI.showToast('News nicht gefunden', 'error');
+                return;
+            }
+
+            // Only allow editor if admin or original author
+            if (!(Auth.isAdmin() || existing.createdBy === user.id)) {
+                UI.showToast('Keine Berechtigung zum Bearbeiten', 'error');
+                return;
+            }
+
+            // If no new images selected, keep existing images
+            let finalImages = existing.images || [];
+            if (imagesInput && imagesInput.files && imagesInput.files.length > 0) {
+                const files = Array.from(imagesInput.files).slice(0, 6);
+                const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                try {
+                    const results = await Promise.all(files.map(f => readFileAsDataURL(f)));
+                    finalImages = results.slice();
+                } catch (err) {
+                    console.error('Fehler beim Lesen der Bilddateien', err);
+                    UI.showToast('Fehler beim Verarbeiten der Bilder', 'error');
+                }
+            }
+
+            Storage.updateNewsItem(editId, {
+                title,
+                content,
+                images: finalImages,
+                updatedAt: new Date().toISOString(),
+                updatedBy: user.id,
+                // reset read state so others see it as new again
+                readBy: [user.id]
+            });
+            UI.showToast('News aktualisiert!', 'success');
+        } else {
+            Storage.createNewsItem(title, content, user.id, images);
+            UI.showToast('News veröffentlicht!', 'success');
+        }
 
         // Clear form and close modal
         document.getElementById('newsTitle').value = '';
         document.getElementById('newsContent').value = '';
+        if (imagesInput) {
+            imagesInput.value = null;
+        }
+        const preview = document.getElementById('newsImagesPreview');
+        if (preview) preview.innerHTML = '';
         UI.closeModal('createNewsModal');
 
         // Refresh news view
         this.renderNewsView();
+        this.updateNewsNavBadge();
+
+        // reset edit id if any
+        if (editIdInput) editIdInput.value = '';
     },
 
     deleteNews(newsId) {
-        if (!confirm('News wirklich löschen?')) return;
+        UI.showConfirm('News wirklich löschen?', () => {
+            Storage.deleteNewsItem(newsId);
+            UI.showToast('News gelöscht', 'success');
+            this.renderNewsView();
+            this.updateNewsNavBadge();
+        });
+    },
 
-        Storage.deleteNewsItem(newsId);
-        UI.showToast('News gelöscht', 'success');
-        this.renderNewsView();
+    // Open the create/edit news modal populated for editing
+    openEditNews(newsId) {
+        const news = Storage.getById('news', newsId);
+        if (!news) return;
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        // Only allow editing if admin or author
+        if (!(Auth.isAdmin() || news.createdBy === user.id)) {
+            UI.showToast('Keine Berechtigung zum Bearbeiten', 'error');
+            return;
+        }
+
+        // Populate form
+        document.getElementById('newsTitle').value = news.title || '';
+        document.getElementById('newsContent').value = news.content || '';
+        const editInput = document.getElementById('editNewsId');
+        if (editInput) editInput.value = news.id;
+
+        // Render previews from existing images
+        const preview = document.getElementById('newsImagesPreview');
+        if (preview) {
+            preview.innerHTML = '';
+            if (news.images && Array.isArray(news.images)) {
+                news.images.forEach(src => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.style.width = '80px';
+                    img.style.height = '80px';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '6px';
+                    preview.appendChild(img);
+                });
+            }
+        }
+
+        // Update modal title
+        const modalTitle = document.querySelector('#createNewsModal .modal-header h2');
+        if (modalTitle) modalTitle.textContent = 'News bearbeiten';
+        const submitBtn = document.querySelector('#createNewsModal .modal-actions .btn-primary');
+        if (submitBtn) submitBtn.textContent = 'Speichern';
+
+        UI.openModal('createNewsModal');
+    },
+
+    // Update the news nav item with an unread indicator for the current user
+    updateNewsNavBadge() {
+        const user = Auth.getCurrentUser();
+        const navLabel = document.querySelector('.nav-item[data-view="news"] .nav-label');
+        if (!navLabel) return;
+        const existing = document.getElementById('newsUnreadBadge');
+        const count = user ? Storage.getUnreadNewsCountForUser(user.id) : 0;
+        if (count > 0) {
+            if (!existing) {
+                const span = document.createElement('span');
+                span.id = 'newsUnreadBadge';
+                span.textContent = ' •';
+                span.style.color = '#e11d48';
+                span.style.fontSize = '0.9rem';
+                span.style.marginLeft = '6px';
+                span.setAttribute('aria-hidden', 'true');
+                navLabel.appendChild(span);
+            }
+        } else {
+            if (existing) existing.remove();
+        }
+    },
+
+    // Return array of conflicts for given band and dates (dates = array of ISO strings)
+    getAbsenceConflicts(bandId, dates) {
+        if (!bandId || !dates || dates.length === 0) return [];
+        const members = Storage.getBandMembers(bandId) || [];
+        const conflicts = [];
+
+        members.forEach(m => {
+            const user = Storage.getById('users', m.userId);
+            if (!user) return;
+            const badDates = [];
+            dates.forEach(d => {
+                if (!d) return;
+                try {
+                    if (Storage.isUserAbsentOnDate(user.id, d)) {
+                        // Format date nicely
+                        badDates.push(UI.formatDateOnly(new Date(d).toISOString()));
+                    }
+                } catch (e) {
+                    // ignore parse errors
+                }
+            });
+            if (badDates.length > 0) {
+                conflicts.push({ name: user.name, userId: user.id, dates: badDates });
+            }
+        });
+
+        return conflicts;
     },
 
     escapeHtml(text) {
@@ -603,6 +925,7 @@ const App = {
                 document.getElementById('songArtist').value = song.artist;
                 document.getElementById('songBPM').value = song.bpm || '';
                 document.getElementById('songKey').value = song.key || '';
+                document.getElementById('songCcli').value = song.ccli || '';
                 document.getElementById('songLeadVocal').value = song.leadVocal || '';
             }
         } else {
@@ -611,6 +934,7 @@ const App = {
             document.getElementById('songArtist').value = '';
             document.getElementById('songBPM').value = '';
             document.getElementById('songKey').value = '';
+            document.getElementById('songCcli').value = '';
             document.getElementById('songLeadVocal').value = '';
         }
 
@@ -625,6 +949,7 @@ const App = {
         const artist = document.getElementById('songArtist').value;
         const bpm = document.getElementById('songBPM').value;
         const key = document.getElementById('songKey').value;
+        const ccli = document.getElementById('songCcli').value;
         const leadVocal = document.getElementById('songLeadVocal').value;
         const user = Auth.getCurrentUser();
 
@@ -633,6 +958,7 @@ const App = {
             artist,
             bpm: bpm ? parseInt(bpm) : null,
             key: key || null,
+            ccli: ccli || null,
             leadVocal: leadVocal || null,
             createdBy: user.id
         };
@@ -646,11 +972,21 @@ const App = {
             UI.showToast('Song aktualisiert', 'success');
         } else {
             // Create new song
-            Storage.createSong(songData);
+            const created = Storage.createSong(songData);
             UI.showToast('Song hinzugefügt', 'success');
+
+            // If this song was created from the create-event modal, add to draft list
+            if (this.lastSongModalContext && this.lastSongModalContext.origin === 'createEvent') {
+                if (!this.draftEventSongIds.includes(created.id)) {
+                    this.draftEventSongIds.push(created.id);
+                }
+                this.renderDraftEventSongs();
+            }
         }
 
-        UI.closeModal('songModal');
+    UI.closeModal('songModal');
+    // reset last song modal context
+    this.lastSongModalContext = null;
 
         // Refresh the appropriate list
         if (eventId) {
@@ -803,6 +1139,60 @@ const App = {
         });
     },
 
+    // Similar to showBandSongSelector but adds selected songs to the draft for a new event
+    showBandSongSelectorForDraft(bandSongs) {
+        const songList = bandSongs.map(song => `
+            <label style="display: block; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border);">
+                <input type="checkbox" value="${song.id}" class="band-song-checkbox-draft">
+                <strong>${this.escapeHtml(song.title)}</strong> - ${this.escapeHtml(song.artist)}
+                ${song.bpm ? `| ${song.bpm} BPM` : ''}
+                ${song.key ? `| ${song.key}` : ''}
+            </label>
+        `).join('');
+
+        const modalContent = `
+            <div style="max-height: 400px; overflow-y: auto;">
+                ${songList}
+            </div>
+            <div style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
+                <button type="button" id="cancelDraftSongs" class="btn">Abbrechen</button>
+                <button type="button" id="confirmDraftSongs" class="btn btn-primary">Ausgewählte hinzufügen</button>
+            </div>
+        `;
+
+        const tempModal = document.createElement('div');
+        tempModal.className = 'modal active';
+        tempModal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Songs aus Band-Pool wählen</h2>
+                </div>
+                <div class="modal-body">
+                    ${modalContent}
+                </div>
+            </div>
+        `;
+        document.body.appendChild(tempModal);
+
+        tempModal.querySelector('#cancelDraftSongs').addEventListener('click', () => {
+            tempModal.remove();
+        });
+
+        tempModal.querySelector('#confirmDraftSongs').addEventListener('click', () => {
+            const selectedIds = Array.from(tempModal.querySelectorAll('.band-song-checkbox-draft:checked')).map(cb => cb.value);
+            // Merge into draft list (avoid duplicates)
+            selectedIds.forEach(id => {
+                if (!this.draftEventSongIds.includes(id)) this.draftEventSongIds.push(id);
+            });
+            this.renderDraftEventSongs();
+            tempModal.remove();
+        });
+
+        tempModal.addEventListener('click', (e) => {
+            if (e.target === tempModal) tempModal.remove();
+        });
+    },
+
     copyBandSongsToEvent(eventId, songIds) {
         const user = Auth.getCurrentUser();
         let count = 0;
@@ -888,6 +1278,39 @@ const App = {
         });
     },
 
+    renderDraftEventSongs() {
+        const container = document.getElementById('eventSongsList');
+        if (!container) return;
+
+        if (!this.draftEventSongIds || this.draftEventSongIds.length === 0) {
+            container.innerHTML = '<p class="text-muted">Noch keine Songs für diesen Auftritt ausgewählt.</p>';
+            return;
+        }
+
+        const items = this.draftEventSongIds.map((songId, idx) => {
+            const s = Storage.getById('songs', songId);
+            if (!s) return '';
+            return `
+                <div class="draft-song-item" data-id="${songId}" style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0;">
+                    <div>${idx + 1}. ${this.escapeHtml(s.title)} — ${this.escapeHtml(s.artist || '-')}</div>
+                    <div>
+                        <button class="btn btn-sm btn-secondary remove-draft-song" data-id="${songId}">Entfernen</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = items;
+
+        container.querySelectorAll('.remove-draft-song').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                this.draftEventSongIds = this.draftEventSongIds.filter(x => x !== id);
+                this.renderDraftEventSongs();
+            });
+        });
+    },
+
     // Show authentication screen
     showAuth() {
         document.getElementById('authModal').classList.add('active');
@@ -929,7 +1352,44 @@ const App = {
         }
 
         this.updateDashboard();
+        this.updateNavigationVisibility();
         this.navigateTo('dashboard');
+        // Ensure create news button visibility immediately after login (so admins/leaders see it without navigating)
+        const createNewsBtnGlobal = document.getElementById('createNewsBtn');
+        if (createNewsBtnGlobal) {
+            const user = Auth.getCurrentUser();
+            let canCreate = Auth.isAdmin();
+            if (!canCreate && user) {
+                const userBands = Storage.getUserBands(user.id) || [];
+                canCreate = userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
+            }
+            createNewsBtnGlobal.style.display = canCreate ? 'inline-flex' : 'none';
+        }
+        // Update unread news badge
+        this.updateNewsNavBadge();
+    },
+
+    // Update navigation visibility based on band membership
+    updateNavigationVisibility() {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const bands = Storage.getUserBands(user.id);
+        const hasBands = bands.length > 0;
+
+        // Hide/Show Events and Rehearsals nav items
+        const eventsNav = document.querySelector('.nav-item[data-view="events"]');
+        const rehearsalsNav = document.querySelector('.nav-item[data-view="rehearsals"]');
+
+        if (eventsNav) eventsNav.style.display = hasBands ? 'flex' : 'none';
+        if (rehearsalsNav) rehearsalsNav.style.display = hasBands ? 'flex' : 'none';
+    },
+
+    // Open absence modal and render current user's absences
+    openAbsenceModal() {
+        // Render existing absences
+        this.renderUserAbsences();
+        UI.openModal('absenceModal');
     },
 
     // Open settings modal
@@ -1010,9 +1470,10 @@ const App = {
                     <div class="accordion-header" data-band-id="${band.id}">
                         <div class="accordion-title">
                             <h4>${Bands.escapeHtml(band.name)}</h4>
-                            <p class="band-meta">${members.length} Mitglieder • Code: <b><code>${band.joinCode}</code></b></p>
+                            <p class="band-meta">${members.length} Mitglieder • Code: <b><code id="joinCode_${band.id}">${band.joinCode}</code></b></p>
                         </div>
                         <div class="accordion-actions">
+                            <button class="btn btn-secondary btn-sm copy-code-btn" data-code="${band.joinCode}" data-id="${band.id}">📋 Code kopieren</button>
                             <button class="btn btn-danger btn-sm delete-band-admin" data-id="${band.id}">Löschen</button>
                             <button class="accordion-toggle" aria-label="Ausklappen">
                                 <span class="toggle-icon">${isExpanded ? '▼' : '▶'}</span>
@@ -1084,6 +1545,38 @@ const App = {
                     Storage.deleteBand(bandId);
                     this.renderAllBandsList();
                     UI.showToast('Band gelöscht', 'success');
+                }
+            });
+        });
+
+        // Add copy code handlers
+        container.querySelectorAll('.copy-code-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const code = btn.dataset.code;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(() => {
+                        UI.showToast('Beitrittscode in die Zwischenablage kopiert', 'success');
+                    }).catch(() => {
+                        UI.showToast('Konnte Code nicht kopieren', 'error');
+                    });
+                } else {
+                    // Fallback: select the code element text
+                    const codeEl = document.getElementById(`joinCode_${btn.dataset.id}`);
+                    if (codeEl) {
+                        const range = document.createRange();
+                        range.selectNodeContents(codeEl);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        try {
+                            document.execCommand('copy');
+                            UI.showToast('Beitrittscode in die Zwischenablage kopiert', 'success');
+                        } catch (err) {
+                            UI.showToast('Konnte Code nicht kopieren', 'error');
+                        }
+                        sel.removeAllRanges();
+                    }
                 }
             });
         });
@@ -1201,6 +1694,20 @@ const App = {
                 break;
             case 'statistics':
                 Rehearsals.populateStatsSelect();
+                Rehearsals.populateStatsBandSelect();
+                // Wire up band select change to render band stats
+                const statsBandSelect = document.getElementById('statsBandSelect');
+                if (statsBandSelect) {
+                    statsBandSelect.addEventListener('change', (e) => {
+                        const bandId = e.target.value;
+                        if (bandId) {
+                            Statistics.renderBandStatistics(bandId);
+                        } else {
+                            // Clear or show rehearsal selection
+                            document.getElementById('statisticsContent').innerHTML = '';
+                        }
+                    });
+                }
                 break;
         }
     },
@@ -1274,13 +1781,28 @@ const App = {
             return;
         }
 
-        if (editId) {
-            // Update existing
-            const notifyMembers = document.getElementById('notifyMembersOnUpdate').checked;
-            Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId, notifyMembers);
+        const proceed = () => {
+            if (editId) {
+                // Update existing
+                const notifyMembers = document.getElementById('notifyMembersOnUpdate').checked;
+                Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId, notifyMembers);
+            } else {
+                // Create new
+                Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);
+            }
+        };
+
+        // Check for absence conflicts
+        const conflicts = this.getAbsenceConflicts(bandId, dates);
+        if (conflicts && conflicts.length > 0) {
+            // Build message
+            const lines = conflicts.map(c => `${c.name}: ${c.dates.join(', ')}`);
+            const msg = `Achtung — Folgende Mitglieder haben für die ausgewählten Termine Abwesenheiten eingetragen:\n\n${lines.join('\n')}\n\nTrotzdem fortfahren?`;
+            UI.showConfirm(msg, () => {
+                proceed();
+            });
         } else {
-            // Create new
-            Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);
+            proceed();
         }
     },
 
@@ -1290,19 +1812,190 @@ const App = {
         const bandId = document.getElementById('eventBand').value;
         const title = document.getElementById('eventTitle').value;
         const date = new Date(document.getElementById('eventDate').value).toISOString();
+        const soundcheckInput = document.getElementById('eventSoundcheckDate').value;
+        const soundcheckDate = soundcheckInput ? new Date(soundcheckInput).toISOString() : null;
+        const soundcheckLocation = document.getElementById('eventSoundcheckLocation').value || null;
         const location = document.getElementById('eventLocation').value;
         const info = document.getElementById('eventInfo').value;
         const techInfo = document.getElementById('eventTechInfo').value;
         const members = Events.getSelectedMembers();
         const guests = Events.getGuests();
 
-        if (editId) {
-            // Update existing
-            Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests);
+        const proceed = () => {
+            if (editId) {
+                // Update existing
+                Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
+                // If there are draft songs, copy them to the existing event
+                if (this.draftEventSongIds && this.draftEventSongIds.length > 0) {
+                    this.copyBandSongsToEvent(editId, this.draftEventSongIds);
+                    this.draftEventSongIds = [];
+                }
+            } else {
+                // Create new
+                const saved = Events.createEvent(bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
+                if (saved && saved.id && this.draftEventSongIds && this.draftEventSongIds.length > 0) {
+                    this.copyBandSongsToEvent(saved.id, this.draftEventSongIds);
+                    this.draftEventSongIds = [];
+                }
+            }
+        };
+
+        // Build list of dates to check (event date and optional soundcheck)
+        const datesToCheck = [date];
+        if (soundcheckDate) datesToCheck.push(soundcheckDate);
+
+        const conflicts = this.getAbsenceConflicts(bandId, datesToCheck);
+        if (conflicts && conflicts.length > 0) {
+            const lines = conflicts.map(c => `${c.name}: ${c.dates.join(', ')}`);
+            const msg = `Achtung — Folgende Mitglieder sind an den gewählten Terminen abwesend:<br><b>\n\n${lines.join('\n')}\n\n </b><br>Trotzdem fortfahren?`;
+            UI.showConfirm(msg, () => {
+                proceed();
+            });
         } else {
-            // Create new
-            Events.createEvent(bandId, title, date, location, info, techInfo, members, guests);
+            proceed();
         }
+    },
+
+    // Handle create absence
+    handleCreateAbsence() {
+        const start = document.getElementById('absenceStart').value;
+        const end = document.getElementById('absenceEnd').value;
+        const reason = document.getElementById('absenceReason').value || '';
+        const editIdEl = document.getElementById('editAbsenceId');
+        const editId = editIdEl ? editIdEl.value : '';
+
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        if (!start || !end) {
+            UI.showToast('Bitte Anfangs- und Enddatum angeben', 'error');
+            return;
+        }
+
+        // Ensure ISO strings
+        const startIso = new Date(start).toISOString();
+        const endIso = new Date(end).toISOString();
+
+        if (editId && editId.trim() !== '') {
+            // update existing absence
+            Storage.update('absences', editId, { startDate: startIso, endDate: endIso, reason });
+            UI.showToast('Abwesenheit aktualisiert', 'success');
+        } else {
+            Storage.createAbsence(user.id, startIso, endIso, reason);
+            UI.showToast('Abwesenheit eingetragen', 'success');
+        }
+
+        // Clear form
+        document.getElementById('absenceStart').value = '';
+        document.getElementById('absenceEnd').value = '';
+        document.getElementById('absenceReason').value = '';
+        if (editIdEl) {
+            editIdEl.value = '';
+        }
+        // reset save button / cancel
+        const saveBtn = document.getElementById('saveAbsenceBtn');
+        const cancelBtn = document.getElementById('cancelEditAbsenceBtn');
+        if (saveBtn) saveBtn.textContent = 'Abwesenheit hinzufügen';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+
+        // Re-render lists
+        this.renderUserAbsences();
+        // If band details modal open and has absences tab, re-render band absences
+        if (typeof Bands !== 'undefined' && Bands.currentBandId) {
+            Bands.renderBandAbsences(Bands.currentBandId);
+        }
+    },
+
+    // Render the current user's absences into the Absence modal
+    renderUserAbsences() {
+        const container = document.getElementById('absencesList');
+        const user = Auth.getCurrentUser();
+        if (!container || !user) return;
+
+        const absences = Storage.getUserAbsences(user.id);
+        if (!absences || absences.length === 0) {
+            container.innerHTML = '<p class="text-muted">Du hast keine eingetragenen Abwesenheiten.</p>';
+            return;
+        }
+
+        // sort by start date desc
+        absences.sort((a,b)=> new Date(b.startDate) - new Date(a.startDate));
+
+        container.innerHTML = absences.map(a => `
+            <div class="absence-item" data-id="${a.id}" style="padding:8px; border-bottom:1px solid var(--color-border); display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                <div>
+                    <div><strong>${UI.formatDateOnly(a.startDate)} — ${UI.formatDateOnly(a.endDate)}</strong></div>
+                    ${a.reason ? `<div class="help-text">${Bands.escapeHtml(a.reason)}</div>` : ''}
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-secondary btn-sm edit-absence" data-id="${a.id}">✏️ Bearbeiten</button>
+                    <button class="btn btn-danger btn-sm delete-absence" data-id="${a.id}">🗑️ Löschen</button>
+                </div>
+            </div>
+        `).join('');
+
+        // Wire up edit/delete handlers
+        container.querySelectorAll('.edit-absence').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                this.startEditAbsence(id);
+            });
+        });
+
+        container.querySelectorAll('.delete-absence').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                UI.showConfirm('Möchtest du diese Abwesenheit wirklich löschen?', () => {
+                    Storage.deleteAbsence(id);
+                    UI.showToast('Abwesenheit gelöscht', 'success');
+                    this.renderUserAbsences();
+                    if (typeof Bands !== 'undefined' && Bands.currentBandId) {
+                        Bands.renderBandAbsences(Bands.currentBandId);
+                    }
+                });
+            });
+        });
+    },
+
+    // Start editing an absence: populate form and switch to edit-mode
+    startEditAbsence(absenceId) {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const absences = Storage.getUserAbsences(user.id) || [];
+        const a = absences.find(x => x.id === absenceId);
+        if (!a) return;
+
+        // populate form
+        document.getElementById('absenceStart').value = a.startDate.slice(0,10);
+        document.getElementById('absenceEnd').value = a.endDate.slice(0,10);
+        document.getElementById('absenceReason').value = a.reason || '';
+        document.getElementById('editAbsenceId').value = a.id;
+
+        // change submit button text and show cancel
+        const saveBtn = document.getElementById('saveAbsenceBtn');
+        const cancelBtn = document.getElementById('cancelEditAbsenceBtn');
+        if (saveBtn) saveBtn.textContent = 'Speichern';
+        if (cancelBtn) cancelBtn.style.display = '';
+
+        // ensure modal open
+        UI.openModal('absenceModal');
+    },
+
+    // Cancel editing absence
+    cancelEditAbsence() {
+        // reset form
+        document.getElementById('absenceStart').value = '';
+        document.getElementById('absenceEnd').value = '';
+        document.getElementById('absenceReason').value = '';
+        const editIdEl = document.getElementById('editAbsenceId');
+        if (editIdEl) editIdEl.value = '';
+        const saveBtn = document.getElementById('saveAbsenceBtn');
+        const cancelBtn = document.getElementById('cancelEditAbsenceBtn');
+        if (saveBtn) saveBtn.textContent = 'Abwesenheit hinzufügen';
+        if (cancelBtn) cancelBtn.style.display = 'none';
     },
 
     // Populate event select for rehearsal form

@@ -78,6 +78,9 @@ const Bands = {
                 this.showBandDetails(bandId);
             });
         });
+
+        // Update nav visibility based on current membership
+        this.updateNavVisibility();
     },
 
     // Show band details modal
@@ -145,6 +148,29 @@ const Bands = {
             if (existingCode) existingCode.remove();
         }
 
+        // Add Leave Band button (if not already present)
+        const existingLeaveSection = settingsTab.querySelector('.leave-band-section');
+        if (existingLeaveSection) existingLeaveSection.remove();
+
+        const leaveSection = document.createElement('div');
+        leaveSection.className = 'section leave-band-section';
+        leaveSection.style.marginTop = 'var(--spacing-lg)';
+        leaveSection.style.borderTop = '1px solid var(--color-border)';
+        leaveSection.style.paddingTop = 'var(--spacing-md)';
+        leaveSection.innerHTML = `
+            <h3>Band verlassen</h3>
+            <p class="help-text">Möchtest du diese Band verlassen?</p>
+            <button class="btn btn-warning" id="leaveBandBtn">Band verlassen</button>
+        `;
+
+        // Insert before the delete section (which is the last section usually)
+        // Or just append to settingsTab
+        settingsTab.appendChild(leaveSection);
+
+        leaveSection.querySelector('#leaveBandBtn').addEventListener('click', () => {
+            this.leaveBand(bandId);
+        });
+
         // Wire up song button
         const addBandSongBtn = document.getElementById('addBandSongBtn');
         if (addBandSongBtn) {
@@ -157,6 +183,86 @@ const Bands = {
 
         // Render band songs
         App.renderBandSongs(bandId);
+
+        // Add 'Abwesenheiten' tab for leaders and co-leaders
+        const roleOfUser = Storage.getUserRoleInBand(user.id, bandId);
+        const tabButtons = document.querySelector('.tab-buttons');
+        const existingAbsencesTabBtn = tabButtons ? tabButtons.querySelector('[data-tab="absences"]') : null;
+        if ((roleOfUser === 'leader' || roleOfUser === 'co-leader') && tabButtons) {
+            // If a static tab button exists (from HTML), unhide and bind it; otherwise create one
+            if (!existingAbsencesTabBtn) {
+                const absBtn = document.createElement('button');
+                absBtn.className = 'tab-btn';
+                absBtn.dataset.tab = 'absences';
+                absBtn.textContent = 'Abwesenheiten';
+                tabButtons.appendChild(absBtn);
+
+                absBtn.addEventListener('click', () => {
+                    if (window.App && typeof window.App.switchTab === 'function') {
+                        window.App.switchTab('absences');
+                    }
+                });
+            } else {
+                // unhide existing button and ensure it has a click handler
+                existingAbsencesTabBtn.style.display = '';
+                // ensure event bound only once
+                if (!existingAbsencesTabBtn._bound) {
+                    existingAbsencesTabBtn.addEventListener('click', () => {
+                        if (window.App && typeof window.App.switchTab === 'function') {
+                            window.App.switchTab('absences');
+                        }
+                    });
+                    existingAbsencesTabBtn._bound = true;
+                }
+            }
+
+            // Use existing absences tab content if present (from HTML), otherwise create it
+            let absencesTab = document.getElementById('absencesTab');
+            if (!absencesTab) {
+                absencesTab = document.createElement('div');
+                absencesTab.id = 'absencesTab';
+                absencesTab.className = 'tab-content';
+                const section = document.createElement('div');
+                section.className = 'section';
+                section.innerHTML = `<h3>Abwesenheiten der Mitglieder</h3><div id="bandAbsencesList"></div>`;
+                absencesTab.appendChild(section);
+                const settingsPanel = document.getElementById('bandDetailsModal').querySelector('.modal-body');
+                if (settingsPanel) settingsPanel.appendChild(absencesTab);
+            }
+
+            // Populate absences list (use date-only formatting)
+            const absList = document.getElementById('bandAbsencesList');
+            if (absList) {
+                const members = Storage.getBandMembers(bandId);
+                const rows = members.map(m => {
+                    const u = Storage.getById('users', m.userId);
+                    if (!u) return '';
+                    const abs = Storage.getUserAbsences(u.id) || [];
+                    if (abs.length === 0) return `
+                        <div class="absence-member">
+                            <strong>${this.escapeHtml(u.name)}</strong>
+                            <div class="help-text">Keine Abwesenheiten</div>
+                        </div>
+                    `;
+
+                    return `
+                        <div class="absence-member">
+                            <strong>${this.escapeHtml(u.name)}</strong>
+                            <ul>
+                                ${abs.sort((a,b)=> new Date(b.startDate)-new Date(a.startDate)).map(a => `<li>${UI.formatDateOnly(a.startDate)} — ${UI.formatDateOnly(a.endDate)}${a.reason ? ' — ' + this.escapeHtml(a.reason) : ''}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }).join('');
+
+                absList.innerHTML = rows && rows.trim().length > 0 ? rows : '<p class="text-muted">Keine Abwesenheiten vorhanden.</p>';
+            }
+        } else {
+            // Hide absences tab button if present and user not leader/co-leader
+            if (existingAbsencesTabBtn) existingAbsencesTabBtn.style.display = 'none';
+            const absencesTabEl = document.getElementById('absencesTab');
+            if (absencesTabEl) absencesTabEl.remove();
+        }
     },
 
     // Edit band name
@@ -283,7 +389,6 @@ const Bands = {
                         </div>
                     </div>
                     <div class="member-actions">
-                        ${instrumentDisplay}
                         ${roleDisplay}
                         ${canRemove ? `
                             <button class="btn-icon remove-member" data-user-id="${user.id}" title="Entfernen">
@@ -313,6 +418,51 @@ const Bands = {
                 this.updateMemberRole(bandId, userId, newRole);
             });
         });
+    },
+
+    // Render absences for all members of a band (helper, can be called from App)
+    renderBandAbsences(bandId) {
+        const container = document.getElementById('bandAbsencesList');
+        if (!container) return;
+
+        const members = Storage.getBandMembers(bandId);
+        if (!members || members.length === 0) {
+            container.innerHTML = '<p class="text-muted">Keine Mitglieder</p>';
+            return;
+        }
+        // Determine if any member has absences
+        const membersWithAbs = members.map(m => {
+            const u = Storage.getById('users', m.userId);
+            if (!u) return null;
+            const abs = Storage.getUserAbsences(u.id) || [];
+            return { user: u, absences: abs };
+        }).filter(x => x !== null);
+
+        const anyAbsences = membersWithAbs.some(m => m.absences && m.absences.length > 0);
+
+        if (!anyAbsences) {
+            container.innerHTML = '<p class="text-muted">Kein Mitglied hat eine Abwesenheit eingetragen.</p>';
+            return;
+        }
+
+        // Render only members who have absences
+        const rows = membersWithAbs.filter(m => m.absences && m.absences.length > 0).map(m => {
+            const list = m.absences.sort((a,b)=> new Date(b.startDate)-new Date(a.startDate)).map(a => `
+                <div style="padding:6px 0;">
+                    <div><strong>${UI.formatDateOnly(a.startDate)} — ${UI.formatDateOnly(a.endDate)}</strong></div>
+                    ${a.reason ? `<div class="help-text">${this.escapeHtml(a.reason)}</div>` : ''}
+                </div>
+            `).join('');
+
+            return `
+                <div class="absence-member" style="padding:8px; border-bottom:1px solid var(--color-border);">
+                    <strong>${this.escapeHtml(m.user.name)}</strong>
+                    <div class="absence-list">${list}</div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = rows;
     },
 
     // Update member role
@@ -391,13 +541,11 @@ const Bands = {
         const user = Storage.getById('users', userId);
         if (!user) return;
 
-        if (!UI.confirm(`Möchtest du ${user.name} wirklich aus der Band entfernen?`)) {
-            return;
-        }
-
-        Storage.removeBandMember(bandId, userId);
-        UI.showToast('Mitglied entfernt', 'success');
-        this.renderBandMembers(bandId);
+        UI.showConfirm(`Möchtest du ${user.name} wirklich aus der Band entfernen?`, () => {
+            Storage.removeBandMember(bandId, userId);
+            UI.showToast('Mitglied entfernt', 'success');
+            this.renderBandMembers(bandId);
+        });
     },
 
     // Delete band
@@ -405,18 +553,63 @@ const Bands = {
         const band = Storage.getBand(bandId);
         if (!band) return;
 
-        if (!UI.confirm(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
-            return;
-        }
-
-        Storage.deleteBand(bandId);
-        UI.showToast('Band gelöscht', 'success');
-        UI.closeModal('bandDetailsModal');
-        this.renderBands();
+        UI.showConfirm(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`, () => {
+            Storage.deleteBand(bandId);
+            UI.showToast('Band gelöscht', 'success');
+            UI.closeModal('bandDetailsModal');
+            this.renderBands();
+        });
 
         // Update dashboard if needed
         if (typeof App !== 'undefined' && App.updateDashboard) {
             App.updateDashboard();
+        }
+        // Update nav visibility after deleting a band
+        this.updateNavVisibility();
+    },
+
+    // Leave band (current user)
+    leaveBand(bandId) {
+        const band = Storage.getBand(bandId);
+        const user = Auth.getCurrentUser();
+        if (!band || !user) return;
+
+        UI.showConfirm('Willst du die Band wirklich verlassen?', () => {
+            // Remove current user from band members
+            const ok = Storage.removeBandMember(bandId, user.id);
+            if (ok) {
+                UI.showToast('Du hast die Band verlassen', 'success');
+                UI.closeModal('bandDetailsModal');
+                this.renderBands();
+                if (typeof App !== 'undefined' && App.updateDashboard) App.updateDashboard();
+                // Notify other modules
+                document.dispatchEvent(new Event('bandsUpdated'));
+                // Update nav visibility
+                this.updateNavVisibility();
+            } else {
+                UI.showToast('Konnte die Band-Zugehörigkeit nicht entfernen', 'error');
+            }
+        });
+    },
+
+    // Show/hide navigation items depending on whether the current user is in at least one band
+    updateNavVisibility() {
+        try {
+            const user = Auth.getCurrentUser();
+            const count = user ? (Storage.getUserBands(user.id) || []).length : 0;
+            const show = count > 0;
+
+            const eventsBtn = document.querySelector('.nav-item[data-view="events"]');
+            const rehearsalsBtn = document.querySelector('.nav-item[data-view="rehearsals"]');
+            const absenceBtn = document.getElementById('absenceBtn');
+            const settingsBtn = document.getElementById('settingsBtn');
+
+            if (eventsBtn) eventsBtn.style.display = show ? '' : 'none';
+            if (rehearsalsBtn) rehearsalsBtn.style.display = show ? '' : 'none';
+            if (absenceBtn) absenceBtn.style.display = show ? '' : 'none';
+            if (settingsBtn) settingsBtn.style.display = show ? '' : 'none';
+        } catch (e) {
+            console.error('updateNavVisibility error', e);
         }
     },
 

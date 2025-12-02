@@ -495,12 +495,15 @@ const Storage = {
     },
 
     // News operations
-    createNewsItem(title, content, createdBy) {
+    createNewsItem(title, content, createdBy, images = []) {
         const newsItem = {
             id: this.generateId(),
             title,
             content,
+            images, // array of data-URLs or image metadata
             createdBy,
+            // mark creator as having read it immediately
+            readBy: [createdBy],
             createdAt: new Date().toISOString()
         };
         return this.save('news', newsItem);
@@ -514,6 +517,51 @@ const Storage = {
 
     deleteNewsItem(newsId) {
         return this.delete('news', newsId);
+    },
+
+    // Update an existing news item
+    updateNewsItem(newsId, updates) {
+        return this.update('news', newsId, updates);
+    },
+
+    // Mark a single news item as read by a user
+    markNewsRead(newsId, userId) {
+        const news = this.getById('news', newsId);
+        if (!news) return null;
+        if (!Array.isArray(news.readBy)) news.readBy = [];
+        if (!news.readBy.includes(userId)) {
+            news.readBy.push(userId);
+            // persist
+            this.update('news', newsId, { readBy: news.readBy });
+        }
+        return news;
+    },
+
+    // Mark all news items as read for a user
+    markAllNewsReadForUser(userId) {
+        const news = this.getAll('news');
+        let updated = false;
+        news.forEach(n => {
+            if (!Array.isArray(n.readBy)) n.readBy = [];
+            if (!n.readBy.includes(userId)) {
+                n.readBy.push(userId);
+                updated = true;
+            }
+        });
+        if (updated) {
+            localStorage.setItem('news', JSON.stringify(news));
+        }
+        return true;
+    },
+
+    // Count unread news items for a user
+    getUnreadNewsCountForUser(userId) {
+        const news = this.getAll('news');
+        if (!userId) return 0;
+        return news.reduce((acc, n) => {
+            if (!Array.isArray(n.readBy) || !n.readBy.includes(userId)) return acc + 1;
+            return acc;
+        }, 0);
     },
 
     // Song/Setlist operations

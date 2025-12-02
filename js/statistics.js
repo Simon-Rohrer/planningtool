@@ -87,6 +87,51 @@ const Statistics = {
         `;
     },
 
+    // Render statistics for a band (overview)
+    renderBandStatistics(bandId) {
+        const container = document.getElementById('statisticsContent');
+        if (!bandId) {
+            UI.showEmptyState(container, '📊', 'Wähle eine Band aus, um die Statistiken zu sehen');
+            return;
+        }
+
+        const band = Storage.getBand(bandId);
+        if (!band) return;
+
+        const members = Storage.getBandMembers(bandId);
+        const events = Storage.getBandEvents(bandId);
+        const rehearsals = Storage.getBandRehearsals(bandId);
+
+        container.innerHTML = `
+            <div class="stats-header">
+                <h3>${Bands.escapeHtml(band.name)} • Band-Übersicht</h3>
+                <p class="stats-subtitle">👥 ${members.length} Mitglieder</p>
+            </div>
+
+            <div class="band-stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">${events.length}</div>
+                    <div class="stat-label">Alle Auftritte</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${rehearsals.length}</div>
+                    <div class="stat-label">Alle Proben</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${rehearsals.filter(r=>r.status==='confirmed').length}</div>
+                    <div class="stat-label">Bestätigte Proben</div>
+                </div>
+            </div>
+
+            <div style="margin-top: var(--spacing-md);">
+                <h4>Letzte 5 Auftritte</h4>
+                <ul>
+                    ${events.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5).map(e => `<li>${UI.formatDateShort(e.date)} — ${Bands.escapeHtml(e.title)}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    },
+
     // Render chart bar for a date
     renderChartBar(stat) {
         const total = stat.memberCount;

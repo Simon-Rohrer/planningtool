@@ -49,6 +49,9 @@ const Events = {
 
         const guests = event.guests || [];
 
+        // get event songs to show inside expanded card
+        const eventSongs = Storage.getEventSongs(event.id || event.id);
+
         return `
             <div class="event-card accordion-card ${isPast ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}">
                 <div class="accordion-header" data-event-id="${event.id}">
@@ -61,7 +64,7 @@ const Events = {
                     <div class="accordion-actions">
                         <div class="event-quick-info">
                             <span class="quick-info-item">📅 ${UI.formatDateShort(event.date)}</span>
-                            <span class="quick-info-item">📍 ${Bands.escapeHtml(event.location)}</span>
+                            <span class="quick-info-item">📍 ${event.location ? Bands.escapeHtml(event.location) : '-'}</span>
                         </div>
                         ${Auth.canManageEvents(event.bandId) ? `
                             <button class="btn-icon edit-event-icon" data-event-id="${event.id}" title="Bearbeiten">✏️</button>
@@ -82,7 +85,7 @@ const Events = {
                             
                             <div class="detail-row">
                                 <div class="detail-label">📍 Ort:</div>
-                                <div class="detail-value">${Bands.escapeHtml(event.location)}</div>
+                                <div class="detail-value">${event.location ? Bands.escapeHtml(event.location) : '-'}</div>
                             </div>
 
                             ${event.info ? `
@@ -111,6 +114,26 @@ const Events = {
                                     <div class="detail-label">🎭 Gäste (${guests.length}):</div>
                                     <div class="detail-value">
                                         ${guests.map(guest => `<span class="guest-tag">${Bands.escapeHtml(guest)}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            <div class="detail-row">
+                                <div class="detail-label">🎚️ Soundcheck Datum & Uhrzeit:</div>
+                                <div class="detail-value">${event.soundcheckDate ? UI.formatDate(event.soundcheckDate) : '-'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">🎚️ Soundcheck Ort:</div>
+                                <div class="detail-value">${event.soundcheckLocation ? Bands.escapeHtml(event.soundcheckLocation) : '-'}</div>
+                            </div>
+
+                            ${eventSongs && eventSongs.length > 0 ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
+                                    <div class="detail-value">
+                                        <ol class="event-songs-list">
+                                            ${eventSongs.map(s => `<li>${Bands.escapeHtml(s.title)}</li>`).join('')}
+                                        </ol>
                                     </div>
                                 </div>
                             ` : ''}
@@ -204,7 +227,7 @@ const Events = {
     },
 
     // Create new event
-    createEvent(bandId, title, date, location, info, techInfo, members, guests) {
+    createEvent(bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation) {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
@@ -215,6 +238,8 @@ const Events = {
             location,
             info,
             techInfo,
+            soundcheckDate,
+            soundcheckLocation,
             members,
             guests,
             createdBy: user.id
@@ -245,17 +270,24 @@ const Events = {
         document.getElementById('eventDate').value = event.date.slice(0, 16);
         document.getElementById('eventLocation').value = event.location;
         document.getElementById('eventInfo').value = event.info || '';
-        document.getElementById('eventTechInfo').value = event.techInfo || '';
+    document.getElementById('eventTechInfo').value = event.techInfo || '';
+    document.getElementById('eventSoundcheckDate').value = event.soundcheckDate ? event.soundcheckDate.slice(0,16) : '';
+    document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
         document.getElementById('eventGuests').value = (event.guests || []).join('\n');
 
         // Load band members with existing selection
         this.loadBandMembers(event.bandId, event.members);
 
+        // Render setlist
+        if (window.App && window.App.renderEventSongs) {
+            window.App.renderEventSongs(eventId);
+        }
+
         UI.openModal('createEventModal');
     },
 
     // Update event
-    updateEvent(eventId, bandId, title, date, location, info, techInfo, members, guests) {
+    updateEvent(eventId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation) {
         Storage.updateEvent(eventId, {
             bandId,
             title,
@@ -263,6 +295,8 @@ const Events = {
             location,
             info,
             techInfo,
+            soundcheckDate,
+            soundcheckLocation,
             members,
             guests
         });
@@ -274,13 +308,11 @@ const Events = {
 
     // Delete event
     deleteEvent(eventId) {
-        if (!UI.confirm('Möchtest du diesen Auftritt wirklich löschen?')) {
-            return;
-        }
-
-        Storage.deleteEvent(eventId);
-        UI.showToast('Auftritt gelöscht', 'success');
-        this.renderEvents(this.currentFilter);
+        UI.showConfirm('Möchtest du diesen Auftritt wirklich löschen?', () => {
+            Storage.deleteEvent(eventId);
+            UI.showToast('Auftritt gelöscht', 'success');
+            this.renderEvents(this.currentFilter);
+        });
     },
 
     // Load band members for selection

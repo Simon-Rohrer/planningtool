@@ -91,6 +91,17 @@ const UI = {
         return date.toLocaleDateString('de-DE', options);
     },
 
+    // Date only (no time)
+    formatDateOnly(dateString) {
+        const date = new Date(dateString);
+        const options = {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        };
+        return date.toLocaleDateString('de-DE', options);
+    },
+
     formatRelativeTime(dateString) {
         const date = new Date(dateString);
         const now = new Date();
@@ -143,7 +154,54 @@ const UI = {
 
     // Confirmation dialog
     confirm(message) {
+        // legacy synchronous confirm (keeps backward compatibility)
         return window.confirm(message);
+    },
+
+    // Show a custom confirmation modal with callbacks
+    // onConfirm: function called when user confirms
+    // onCancel: optional function called when user cancels
+    showConfirm(message, onConfirm, onCancel) {
+        // Create modal markup
+        let existing = document.getElementById('customConfirmModal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'customConfirmModal';
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Bestätigung</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>${message}</p>
+                </div>
+                <div class="modal-actions" style="display:flex; gap:8px; justify-content:flex-end; padding:12px;">
+                    <button id="confirmCancelBtn" class="btn">Abbrechen</button>
+                    <button id="confirmOkBtn" class="btn btn-primary">Bestätigen</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Wire events
+        modal.querySelector('.modal-close').addEventListener('click', () => {
+            modal.remove();
+            if (typeof onCancel === 'function') onCancel();
+        });
+
+        modal.querySelector('#confirmCancelBtn').addEventListener('click', () => {
+            modal.remove();
+            if (typeof onCancel === 'function') onCancel();
+        });
+
+        modal.querySelector('#confirmOkBtn').addEventListener('click', () => {
+            modal.remove();
+            if (typeof onConfirm === 'function') onConfirm();
+        });
     },
 
     // Clear form

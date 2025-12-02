@@ -98,7 +98,9 @@
                     <span id="currentUserName" class="user-name">User</span>
                     <button id="absenceBtn" class="btn btn-secondary" style="display: none;">📅 Abwesenheiten</button>
                     <button id="settingsBtn" class="btn btn-secondary" style="display: none;">⚙️ Settings</button>
-                    <button id="logoutBtn" class="btn btn-secondary">Abmelden</button>
+                    <button id="logoutBtn" class="btn btn-secondary">
+                        <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
+                    </button>
                 </div>
             </div>
         </header>
@@ -113,11 +115,11 @@
                 <span class="nav-icon">🎸</span>
                 <span class="nav-label">Meine Bands</span>
             </button>
-            <button class="nav-item" data-view="events">
+            <button class="nav-item" data-view="events" style="display: none;">
                 <span class="nav-icon">🎤</span>
                 <span class="nav-label">Auftritte</span>
             </button>
-            <button class="nav-item" data-view="rehearsals">
+            <button class="nav-item" data-view="rehearsals" style="display: none;">
                 <span class="nav-icon">📅</span>
                 <span class="nav-label">Probetermine</span>
             </button>
@@ -220,9 +222,14 @@
             <div id="statisticsView" class="view">
                 <div class="view-header">
                     <h2>Statistiken</h2>
-                    <select id="statsRehearsalSelect" class="form-select">
-                        <option value="">Probetermin auswählen</option>
-                    </select>
+                    <div style="display:flex; gap: 0.5rem; align-items:center;">
+                        <select id="statsBandSelect" class="form-select">
+                            <option value="">Band auswählen</option>
+                        </select>
+                        <select id="statsRehearsalSelect" class="form-select">
+                            <option value="">Probetermin auswählen</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="statisticsContent" class="statistics-content">
                     <div class="empty-state">
@@ -372,6 +379,8 @@
                     <button class="tab-btn active" data-tab="members">Mitglieder</button>
                     <button class="tab-btn" data-tab="setlist">Setlist</button>
                     <button class="tab-btn" data-tab="settings">Einstellungen</button>
+                    <!-- Abwesenheiten-Tab (sichtbar für Leiter/Co-Leiter) -->
+                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn" style="display: none;">Abwesenheiten</button>
                 </div>
 
                 <!-- Members Tab -->
@@ -403,6 +412,14 @@
                         <div class="settings-actions">
                             <button id="deleteBandBtn" class="btn btn-danger">Band löschen</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Absences Tab (for leaders/co-leaders) -->
+                <div id="absencesTab" class="tab-content">
+                    <div class="section">
+                        <h3>Abwesenheiten der Mitglieder</h3>
+                        <div id="bandAbsencesList">Keine Abwesenheiten vorhanden.</div>
                     </div>
                 </div>
             </div>
@@ -572,8 +589,16 @@
                     <input type="datetime-local" id="eventDate" required>
                 </div>
                 <div class="form-group">
-                    <label for="eventLocation">Ort</label>
-                    <input type="text" id="eventLocation" required>
+                    <label for="eventSoundcheckDate">Soundcheck Datum & Uhrzeit (Optional)</label>
+                    <input type="datetime-local" id="eventSoundcheckDate">
+                </div>
+                <div class="form-group">
+                    <label for="eventSoundcheckLocation">Soundcheck Ort (Optional)</label>
+                    <input type="text" id="eventSoundcheckLocation" placeholder="Ort des Soundchecks">
+                </div>
+                <div class="form-group">
+                    <label for="eventLocation">Ort (optional)</label>
+                    <input type="text" id="eventLocation">
                 </div>
                 <div class="form-group">
                     <label for="eventInfo">Sonstige Infos zum Event</label>
@@ -594,8 +619,8 @@
                 <div class="form-group">
                     <div class="section-header">
                         <label>Setlist</label>
-                        <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">+ Song
-                            hinzufügen</button>
+                        <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">Neuen Song erstellen</button>
+                        <button type="button" id="addExistingEventSongBtn" class="btn btn-secondary btn-sm">Song aus Pool hinzufügen</button>
                     </div>
                     <div id="eventSongsList"></div>
                 </div>
@@ -632,7 +657,39 @@
                 </div>
                 <div class="form-group">
                     <label for="songKey">Tonart</label>
-                    <input type="text" id="songKey" placeholder="z.B. C-Dur, Am">
+                    <select id="songKey">
+                        <option value="">— Auswahl —</option>
+                        <!-- Major keys -->
+                        <option value="C">C</option>
+                        <option value="C#">C# / Db</option>
+                        <option value="D">D</option>
+                        <option value="D#">D# / Eb</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="F#">F# / Gb</option>
+                        <option value="G">G</option>
+                        <option value="G#">G# / Ab</option>
+                        <option value="A">A</option>
+                        <option value="A#">A# / Bb</option>
+                        <option value="B">B</option>
+                        <!-- Minor keys -->
+                        <option value="Cm">Cm</option>
+                        <option value="C#m">C#m / Dbm</option>
+                        <option value="Dm">Dm</option>
+                        <option value="D#m">D#m / Ebm</option>
+                        <option value="Em">Em</option>
+                        <option value="Fm">Fm</option>
+                        <option value="F#m">F#m / Gbm</option>
+                        <option value="Gm">Gm</option>
+                        <option value="G#m">G#m / Abm</option>
+                        <option value="Am">Am</option>
+                        <option value="A#m">A#m / Bbm</option>
+                        <option value="Bm">Bm</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="songCcli">Songselect CCLI Nummer (optional)</label>
+                    <input type="text" id="songCcli" placeholder="CCLI Nummer">
                 </div>
                 <div class="form-group">
                     <label for="songLeadVocal">Lead Vocal</label>
@@ -693,6 +750,7 @@
                 <div class="section">
                     <h3>Neue Abwesenheit eintragen</h3>
                     <form id="createAbsenceForm">
+                        <input type="hidden" id="editAbsenceId">
                         <div class="form-group">
                             <label for="absenceStart">Von (Datum)</label>
                             <input type="date" id="absenceStart" required>
@@ -705,7 +763,10 @@
                             <label for="absenceReason">Grund (optional)</label>
                             <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
                         </div>
-                        <button type="submit" class="btn btn-primary">Abwesenheit hinzufügen</button>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit hinzufügen</button>
+                            <button type="button" id="cancelEditAbsenceBtn" class="btn cancel" style="display:none;">Abbrechen</button>
+                        </div>
                     </form>
                 </div>
 
@@ -726,6 +787,7 @@
                 <button class="modal-close">&times;</button>
             </div>
             <form id="createNewsForm">
+                <input type="hidden" id="editNewsId">
                 <div class="form-group">
                     <label for="newsTitle">Titel</label>
                     <input type="text" id="newsTitle" required placeholder="z.B. Neue Feature: Abwesenheiten">
@@ -734,6 +796,11 @@
                     <label for="newsContent">Inhalt</label>
                     <textarea id="newsContent" rows="5" required
                         placeholder="Beschreibe das Update oder Feature..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="newsImages">Bilder (optional)</label>
+                    <input type="file" id="newsImages" accept="image/*" multiple>
+                    <div id="newsImagesPreview" style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;"></div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="cancel">Abbrechen</button>

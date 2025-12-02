@@ -457,7 +457,21 @@ const Rehearsals = {
             UI.showToast('Abstimmung gespeichert!', 'success');
         }
 
-        this.renderRehearsals(this.currentFilter);
+        // Update only this rehearsal card instead of re-rendering entire list (preserves scroll position)
+        const rehearsal = Storage.getRehearsal(rehearsalId);
+        if (rehearsal) {
+            const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+            if (card) {
+                const newCardHtml = this.renderRehearsalCard(rehearsal);
+                card.outerHTML = newCardHtml;
+                
+                // Re-attach handlers to the updated card
+                const updatedCard = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+                if (updatedCard) {
+                    this.attachVoteHandlers(updatedCard);
+                }
+            }
+        }
 
         if (typeof App !== 'undefined' && App.updateDashboard) {
             App.updateDashboard();
@@ -583,13 +597,11 @@ const Rehearsals = {
 
     // Delete rehearsal
     deleteRehearsal(rehearsalId) {
-        if (!UI.confirm('Möchtest du diesen Probetermin wirklich löschen?')) {
-            return;
-        }
-
-        Storage.deleteRehearsal(rehearsalId);
-        UI.showToast('Probetermin gelöscht', 'success');
-        this.renderRehearsals(this.currentFilter);
+        UI.showConfirm('Möchtest du diesen Probetermin wirklich löschen?', () => {
+            Storage.deleteRehearsal(rehearsalId);
+            UI.showToast('Probetermin gelöscht', 'success');
+            this.renderRehearsals(this.currentFilter);
+        });
     },
 
     // Render recent votes for dashboard
@@ -630,6 +642,18 @@ const Rehearsals = {
                 const band = Storage.getBand(r.bandId);
                 return `<option value="${r.id}">${Bands.escapeHtml(r.title)} (${Bands.escapeHtml(band?.name || '')})</option>`;
             }).join('');
+    },
+
+    // Populate band select for statistics
+    populateStatsBandSelect() {
+        const select = document.getElementById('statsBandSelect');
+        const user = Auth.getCurrentUser();
+        if (!select || !user) return;
+
+        const bands = Storage.getUserBands(user.id);
+
+        select.innerHTML = '<option value="">Band auswählen</option>' +
+            bands.map(b => `<option value="${b.id}">${Bands.escapeHtml(b.name)}</option>`).join('');
     },
 
     // Add date proposal field
