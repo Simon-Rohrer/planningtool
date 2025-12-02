@@ -24,9 +24,38 @@ const Storage = {
         if (!localStorage.getItem('locations')) {
             localStorage.setItem('locations', JSON.stringify([]));
         }
+        if (!localStorage.getItem('absences')) {
+            localStorage.setItem('absences', JSON.stringify([]));
+        }
+        if (!localStorage.getItem('news')) {
+            localStorage.setItem('news', JSON.stringify([]));
+        }
+        if (!localStorage.getItem('songs')) {
+            localStorage.setItem('songs', JSON.stringify([]));
+        }
 
         // Create admin user if not exists
         this.ensureAdminUser();
+
+        // Migrate existing bands to have colors
+        this.migrateBandColors();
+    },
+
+    // Migration: Assign colors to bands that don't have one
+    migrateBandColors() {
+        const bands = this.getAll('bands');
+        let updated = false;
+
+        bands.forEach(band => {
+            if (!band.color) {
+                band.color = this.generateBandColor();
+                updated = true;
+            }
+        });
+
+        if (updated) {
+            localStorage.setItem('bands', JSON.stringify(bands));
+        }
     },
 
     // Ensure admin user exists
@@ -124,10 +153,17 @@ const Storage = {
         const band = {
             id: this.generateId(),
             ...bandData,
+            color: this.generateBandColor(),
             joinCode: this.generateJoinCode(),
             createdAt: new Date().toISOString()
         };
         return this.save('bands', band);
+    },
+
+    // Generate random pastel color for bands
+    generateBandColor() {
+        const hue = Math.floor(Math.random() * 360);
+        return `hsl(${hue}, 70%, 50%)`;
     },
 
     // Generate 8-character join code for bands
@@ -348,6 +384,10 @@ const Storage = {
         );
     },
 
+    deleteVote(voteId) {
+        return this.delete('votes', voteId);
+    },
+
     // Event operations
     createEvent(eventData) {
         const event = {
@@ -403,6 +443,105 @@ const Storage = {
 
     deleteLocation(id) {
         this.delete('locations', id);
+    },
+
+    // Absence operations
+    createAbsence(userId, startDate, endDate, reason = '') {
+        const absence = {
+            id: this.generateId(),
+            userId,
+            startDate,
+            endDate,
+            reason,
+            createdAt: new Date().toISOString()
+        };
+        return this.save('absences', absence);
+    },
+
+    getUserAbsences(userId) {
+        const absences = this.getAll('absences');
+        return absences.filter(a => a.userId === userId);
+    },
+
+    deleteAbsence(absenceId) {
+        return this.delete('absences', absenceId);
+    },
+
+    // Check if a user is absent on a specific date
+    isUserAbsentOnDate(userId, date) {
+        const absences = this.getUserAbsences(userId);
+        const checkDate = new Date(date);
+
+        return absences.some(absence => {
+            const start = new Date(absence.startDate);
+            const end = new Date(absence.endDate);
+            return checkDate >= start && checkDate <= end;
+        });
+    },
+
+    // Get all users absent during a date range
+    getAbsentUsersDuringRange(startDate, endDate) {
+        const absences = this.getAll('absences');
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        return absences.filter(absence => {
+            const absStart = new Date(absence.startDate);
+            const absEnd = new Date(absence.endDate);
+
+            // Check if date ranges overlap
+            return absStart <= end && absEnd >= start;
+        });
+    },
+
+    // News operations
+    createNewsItem(title, content, createdBy) {
+        const newsItem = {
+            id: this.generateId(),
+            title,
+            content,
+            createdBy,
+            createdAt: new Date().toISOString()
+        };
+        return this.save('news', newsItem);
+    },
+
+    getAllNews() {
+        const news = this.getAll('news');
+        // Sort by creation date, newest first
+        return news.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    },
+
+    deleteNewsItem(newsId) {
+        return this.delete('news', newsId);
+    },
+
+    // Song/Setlist operations
+    createSong(songData) {
+        const song = {
+            id: this.generateId(),
+            ...songData,
+            createdAt: new Date().toISOString()
+        };
+        return this.save('songs', song);
+    },
+
+    getEventSongs(eventId) {
+        const songs = this.getAll('songs');
+        return songs.filter(s => s.eventId === eventId);
+    },
+
+    getBandSongs(bandId) {
+        const songs = this.getAll('songs');
+        return songs.filter(s => s.bandId === bandId);
+    },
+
+    updateSong(songId, updates) {
+        return this.update('songs', songId, updates);
+    },
+
+    deleteSong(songId) {
+        return this.delete('songs', songId);
     },
 
     // Utility functions

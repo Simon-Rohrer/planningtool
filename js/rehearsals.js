@@ -32,7 +32,7 @@ const Rehearsals = {
         ).join('');
 
         // Add vote handlers
-        this.attachVoteHandlers();
+        this.attachVoteHandlers(container);
     },
 
     // Render single rehearsal card
@@ -40,28 +40,25 @@ const Rehearsals = {
         const band = Storage.getBand(rehearsal.bandId);
         const proposer = Storage.getById('users', rehearsal.proposedBy);
         const user = Auth.getCurrentUser();
-        const canManage = Auth.canConfirmRehearsal(rehearsal.bandId);
         const isExpanded = this.expandedRehearsalId === rehearsal.id;
 
         // Get location name if set
-        let locationName = 'Kein Ort angegeben';
-        if (rehearsal.locationId) {
-            const location = Storage.getLocation(rehearsal.locationId);
-            if (location) {
-                locationName = location.name;
-                if (location.address) {
-                    locationName += ` (${location.address})`;
-                }
-            }
-        }
+        const bandName = band ? band.name : 'Unbekannte Band';
+        const bandColor = band ? (band.color || '#6366f1') : '#6366f1';
+        const location = rehearsal.locationId ? Storage.getLocation(rehearsal.locationId) : null;
+        const locationName = location ? location.name : (rehearsal.location || 'Kein Ort');
+
+        const isCreator = rehearsal.createdBy === user.id;
+        const isAdmin = Auth.isAdmin();
+        const canManage = isCreator || isAdmin; // Simplified permission for demo
 
         return `
-            <div class="rehearsal-card accordion-card ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}">
+            <div class="rehearsal-card accordion-card ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}" style="border-left: 4px solid ${bandColor}">
                 <div class="accordion-header" data-rehearsal-id="${rehearsal.id}">
                     <div class="accordion-title">
                         <h3>${Bands.escapeHtml(rehearsal.title)}</h3>
-                        <div class="rehearsal-band">
-                            🎸 ${Bands.escapeHtml(band?.name || 'Unbekannte Band')}
+                        <div class="rehearsal-band" style="color: ${bandColor}">
+                            🎸 ${Bands.escapeHtml(bandName)}
                         </div>
                     </div>
                     <div class="accordion-actions">
@@ -137,6 +134,13 @@ const Rehearsals = {
                     </div>
                 </div>
                 <div class="vote-actions">
+                    <button class="vote-btn vote-none ${!userAvailability ? 'active' : ''}" 
+                            data-rehearsal-id="${rehearsalId}" 
+                            data-date-index="${dateIndex}" 
+                            data-availability="none"
+                            title="Noch nicht abgestimmt / Abstimmung zurückziehen">
+                        ➖
+                    </button>
                     <button class="vote-btn vote-yes ${userAvailability === 'yes' ? 'active' : ''}" 
                             data-rehearsal-id="${rehearsalId}" 
                             data-date-index="${dateIndex}" 
@@ -164,9 +168,9 @@ const Rehearsals = {
     },
 
     // Attach vote and open handlers
-    attachVoteHandlers() {
+    attachVoteHandlers(context = document) {
         // Accordion toggle handlers
-        document.querySelectorAll('.accordion-header').forEach(header => {
+        context.querySelectorAll('.accordion-header').forEach(header => {
             // Remove existing listeners to prevent duplicates
             const newHeader = header.cloneNode(true);
             header.parentNode.replaceChild(newHeader, header);
@@ -182,7 +186,7 @@ const Rehearsals = {
             });
         });
 
-        document.querySelectorAll('.vote-btn').forEach(btn => {
+        context.querySelectorAll('.vote-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
@@ -192,7 +196,7 @@ const Rehearsals = {
             });
         });
 
-        document.querySelectorAll('.open-rehearsal-btn').forEach(btn => {
+        context.querySelectorAll('.open-rehearsal-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
@@ -200,7 +204,7 @@ const Rehearsals = {
             });
         });
 
-        document.querySelectorAll('.edit-rehearsal').forEach(btn => {
+        context.querySelectorAll('.edit-rehearsal').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
@@ -430,14 +434,29 @@ const Rehearsals = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        Storage.createVote({
-            rehearsalId,
-            userId: user.id,
-            dateIndex,
-            availability
-        });
+        const existingVote = Storage.getUserVoteForDate(user.id, rehearsalId, dateIndex);
 
-        UI.showToast('Abstimmung gespeichert!', 'success');
+        if (availability === 'none') {
+            // Explicitly retract vote
+            if (existingVote) {
+                Storage.deleteVote(existingVote.id);
+                UI.showToast('Abstimmung zurückgezogen', 'info');
+            }
+        } else if (existingVote && existingVote.availability === availability) {
+            // Toggle off if clicking the same option (optional, but consistent)
+            Storage.deleteVote(existingVote.id);
+            UI.showToast('Abstimmung zurückgezogen', 'info');
+        } else {
+            // Create or update vote
+            Storage.createVote({
+                rehearsalId,
+                userId: user.id,
+                dateIndex,
+                availability
+            });
+            UI.showToast('Abstimmung gespeichert!', 'success');
+        }
+
         this.renderRehearsals(this.currentFilter);
 
         if (typeof App !== 'undefined' && App.updateDashboard) {
@@ -594,7 +613,7 @@ const Rehearsals = {
             this.renderRehearsalCard(rehearsal)
         ).join('');
 
-        this.attachVoteHandlers();
+        this.attachVoteHandlers(container);
     },
 
     // Populate statistics rehearsal select

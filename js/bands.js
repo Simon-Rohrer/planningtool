@@ -3,6 +3,31 @@
 const Bands = {
     currentBandId: null,
 
+    instrumentIcons: {
+        'drums': '🥁',
+        'bass': '🎸',
+        'acoustic_guitar': '🎸',
+        'electric_guitar': '🎸',
+        'keyboard': '🎹',
+        'synth': '🎹',
+        'violin': '🎻',
+        'vocals': '🎤'
+    },
+
+    getInstrumentName(instrument) {
+        const names = {
+            'drums': 'Schlagzeug',
+            'bass': 'Bass',
+            'acoustic_guitar': 'Akustische Gitarre',
+            'electric_guitar': 'Elektrische Gitarre',
+            'keyboard': 'Keyboard',
+            'synth': 'Synth',
+            'violin': 'Geige',
+            'vocals': 'Gesang'
+        };
+        return names[instrument] || '';
+    },
+
     // Render all user's bands
     renderBands() {
         const container = document.getElementById('bandsList');
@@ -28,7 +53,7 @@ const Bands = {
             const memberCount = members.length;
 
             return `
-                <div class="band-card" data-band-id="${band.id}">
+                <div class="band-card" data-band-id="${band.id}" style="border-left: 4px solid ${band.color || '#6366f1'}">
                     <div class="band-card-header">
                         <div>
                             <h3>${this.escapeHtml(band.name)}</h3>
@@ -119,6 +144,19 @@ const Bands = {
             const existingCode = settingsTab.querySelector('.join-code-section');
             if (existingCode) existingCode.remove();
         }
+
+        // Wire up song button
+        const addBandSongBtn = document.getElementById('addBandSongBtn');
+        if (addBandSongBtn) {
+            const newBtn = addBandSongBtn.cloneNode(true);
+            addBandSongBtn.parentNode.replaceChild(newBtn, addBandSongBtn);
+            newBtn.addEventListener('click', () => {
+                App.openSongModal(null, bandId, null);
+            });
+        }
+
+        // Render band songs
+        App.renderBandSongs(bandId);
     },
 
     // Edit band name
@@ -229,6 +267,9 @@ const Bands = {
                 `;
             }
 
+            // Instrument display
+            const instrumentIcon = user.instrument ? (this.instrumentIcons[user.instrument] || '') : '';
+
             return `
                 <div class="member-item">
                     <div class="member-info">
@@ -238,9 +279,11 @@ const Bands = {
                         <div class="member-details">
                             <h4>${this.escapeHtml(user.name)} ${isCurrentUser ? '(Du)' : ''}</h4>
                             <p>${this.escapeHtml(user.email)}</p>
+                            ${instrumentIcon ? `<p class="member-instrument-label">${instrumentIcon} ${this.getInstrumentName(user.instrument)}</p>` : ''}
                         </div>
                     </div>
                     <div class="member-actions">
+                        ${instrumentDisplay}
                         ${roleDisplay}
                         ${canRemove ? `
                             <button class="btn-icon remove-member" data-user-id="${user.id}" title="Entfernen">
@@ -303,18 +346,14 @@ const Bands = {
             return;
         }
 
-        // Create band
+        // Create band (without automatically adding creator as member)
         const band = Storage.createBand({
             name,
             description,
             createdBy: user.id
         });
 
-        // Automatically add creator as leader
-        Storage.addBandMember(band.id, user.id, 'leader');
-        Auth.updateCurrentUser();
-
-        UI.showToast(`Band "${name}" erstellt!`, 'success');
+        UI.showToast(`Band "${name}" erstellt! Beitrittscode: ${band.joinCode}`, 'success');
         UI.closeModal('createBandModal');
         this.renderBands();
 

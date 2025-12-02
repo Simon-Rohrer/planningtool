@@ -95,8 +95,9 @@
             <div class="header-content">
                 <h1 class="logo">🎵 Band Planning</h1>
                 <div class="header-actions">
+                    <span id="currentUserName" class="user-name">User</span>
+                    <button id="absenceBtn" class="btn btn-secondary" style="display: none;">📅 Abwesenheiten</button>
                     <button id="settingsBtn" class="btn btn-secondary" style="display: none;">⚙️ Settings</button>
-                    <span id="currentUserName" class="user-name"></span>
                     <button id="logoutBtn" class="btn btn-secondary">Abmelden</button>
                 </div>
             </div>
@@ -124,6 +125,10 @@
                 <span class="nav-icon">📊</span>
                 <span class="nav-label">Statistiken</span>
             </button>
+            <button class="nav-item" data-view="news">
+                <span class="nav-icon">📰</span>
+                <span class="nav-label">News & Updates</span>
+            </button>
         </nav>
 
         <!-- Main Content -->
@@ -139,6 +144,13 @@
                         <div class="card-content">
                             <h3>Meine Bands</h3>
                             <p class="card-stat" id="bandCount">0</p>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <div class="card-icon">🎤</div>
+                        <div class="card-content">
+                            <h3>Nächste Auftritte</h3>
+                            <p class="card-stat" id="upcomingEvents">0</p>
                         </div>
                     </div>
                     <div class="dashboard-card">
@@ -219,6 +231,21 @@
                     </div>
                 </div>
             </div>
+
+            <!-- News & Updates View -->
+            <div id="newsView" class="view">
+                <div class="view-header">
+                    <h2>News & Updates</h2>
+                    <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News erstellen</button>
+                </div>
+                <div id="newsContainer" class="news-content">
+                    <div class="empty-state">
+                        <div class="empty-icon">📰</div>
+                        <p>Noch keine News oder Updates vorhanden.</p>
+                        <p>Hier wirst du auf dem laufenden gehalten.</p>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -231,26 +258,65 @@
             </div>
             <div class="modal-body">
                 <div class="settings-tabs">
-                    <button class="settings-tab-btn active" data-tab="locations">Standorte</button>
-                    <button class="settings-tab-btn" data-tab="bands">Bandmanagement</button>
+                    <button id="settingsTabProfile" class="settings-tab-btn active" data-tab="profile">Profil</button>
+                    <button id="settingsTabLocations" class="settings-tab-btn" data-tab="locations">Probeorte</button>
+                    <button id="settingsTabBands" class="settings-tab-btn" data-tab="bands">Bandmanagement</button>
+                </div>
+
+                <!-- Profile Tab -->
+                <div id="profileSettingsTab" class="settings-tab-content active">
+                    <div class="section">
+                        <h3>Mein Profil bearbeiten</h3>
+                        <form id="updateProfileForm">
+                            <div class="form-group">
+                                <label for="profileUsername">Benutzername</label>
+                                <input type="text" id="profileUsername" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profileEmail">E-Mail</label>
+                                <input type="email" id="profileEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profileInstrument">Instrument</label>
+                                <select id="profileInstrument" class="form-select">
+                                    <option value="">Kein Instrument</option>
+                                    <option value="drums">Schlagzeug (🥁)</option>
+                                    <option value="bass">Bass (🎸)</option>
+                                    <option value="acoustic_guitar">Akustische Gitarre (🎸)</option>
+                                    <option value="electric_guitar">Elektrische Gitarre (🎸)</option>
+                                    <option value="keyboard">Keyboard (🎹)</option>
+                                    <option value="synth">Synth (🎹)</option>
+                                    <option value="violin">Geige (🎻)</option>
+                                    <option value="vocals">Gesang (🎤)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="profilePassword">Neues Passwort (leer lassen für keine Änderung)</label>
+                                <input type="password" id="profilePassword" placeholder="Neues Passwort">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Speichern</button>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Locations Tab -->
-                <div id="locationsSettingsTab" class="settings-tab-content active">
+                <div id="locationsSettingsTab" class="settings-tab-content">
                     <div class="section">
-                        <h3>Neuen Standort hinzufügen</h3>
+                        <h3>Neuen Probeort hinzufügen</h3>
                         <form id="createLocationForm" class="inline-form">
                             <div class="form-group">
+                                <label for="newLocationName" class="sr-only">Name</label>
                                 <input type="text" id="newLocationName" placeholder="Name (z.B. Proberaum A)" required>
                             </div>
                             <div class="form-group">
+                                <label for="newLocationAddress" class="sr-only">Adresse</label>
                                 <input type="text" id="newLocationAddress" placeholder="Adresse (Optional)">
                             </div>
                             <button type="submit" class="btn btn-primary">Hinzufügen</button>
                         </form>
                     </div>
                     <div class="section">
-                        <h3>Vorhandene Standorte</h3>
+                        <h3>Vorhandene Probeorte</h3>
                         <div id="locationsList" class="locations-list"></div>
                     </div>
                 </div>
@@ -302,8 +368,9 @@
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="band-details-tabs">
+                <div class="tab-buttons">
                     <button class="tab-btn active" data-tab="members">Mitglieder</button>
+                    <button class="tab-btn" data-tab="setlist">Setlist</button>
                     <button class="tab-btn" data-tab="settings">Einstellungen</button>
                 </div>
 
@@ -315,6 +382,17 @@
                             <button id="addMemberBtn" class="btn btn-primary btn-sm">+ Mitglied hinzufügen</button>
                         </div>
                         <div id="membersList" class="members-list"></div>
+                    </div>
+                </div>
+
+                <!-- Setlist Tab -->
+                <div id="setlistTab" class="tab-content">
+                    <div class="section">
+                        <div class="section-header">
+                            <h3>Songs</h3>
+                            <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song hinzufügen</button>
+                        </div>
+                        <div id="bandSongsList"></div>
                     </div>
                 </div>
 
@@ -510,12 +588,59 @@
                     <div id="eventBandMembers" class="checkbox-list"></div>
                 </div>
                 <div class="form-group">
-                    <label for="eventGuests">Gäste (einer pro Zeile)</label>
-                    <textarea id="eventGuests" rows="3" placeholder="Name des Gastes"></textarea>
+                    <label>Gästeliste (Optional)</label>
+                    <textarea id="eventGuests" rows="2" placeholder="Namen, durch Komma getrennt"></textarea>
+                </div>
+                <div class="form-group">
+                    <div class="section-header">
+                        <label>Setlist</label>
+                        <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">+ Song
+                            hinzufügen</button>
+                    </div>
+                    <div id="eventSongsList"></div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary" id="saveEventBtn">Auftritt erstellen</button>
+                    <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Song Management Modal -->
+    <div id="songModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="song ModalTitle">Song hinzufügen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="songForm">
+                <input type="hidden" id="songId">
+                <input type="hidden" id="songEventId">
+                <input type="hidden" id="songBandId">
+                <div class="form-group">
+                    <label for="songTitle">Titel</label>
+                    <input type="text" id="songTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="songArtist">Interpret</label>
+                    <input type="text" id="songArtist" required>
+                </div>
+                <div class="form-group">
+                    <label for="songBPM">BPM</label>
+                    <input type="number" id="songBPM" min="1" placeholder="z.B. 120">
+                </div>
+                <div class="form-group">
+                    <label for="songKey">Tonart</label>
+                    <input type="text" id="songKey" placeholder="z.B. C-Dur, Am">
+                </div>
+                <div class="form-group">
+                    <label for="songLeadVocal">Lead Vocal</label>
+                    <input type="text" id="songLeadVocal" placeholder="Name des Lead-Sängers">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
                 </div>
             </form>
         </div>
@@ -551,6 +676,68 @@
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary">Beitreten</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Absence Management Modal -->
+    <div id="absenceModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Meine Abwesenheiten</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Create Absence Section -->
+                <div class="section">
+                    <h3>Neue Abwesenheit eintragen</h3>
+                    <form id="createAbsenceForm">
+                        <div class="form-group">
+                            <label for="absenceStart">Von (Datum)</label>
+                            <input type="date" id="absenceStart" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="absenceEnd">Bis (Datum)</label>
+                            <input type="date" id="absenceEnd" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="absenceReason">Grund (optional)</label>
+                            <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Abwesenheit hinzufügen</button>
+                    </form>
+                </div>
+
+                <!-- List Absences Section -->
+                <div class="section">
+                    <h3>Meine eingetragenen Abwesenheiten</h3>
+                    <div id="absencesList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create News Modal -->
+    <div id="createNewsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>News erstellen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="createNewsForm">
+                <div class="form-group">
+                    <label for="newsTitle">Titel</label>
+                    <input type="text" id="newsTitle" required placeholder="z.B. Neue Feature: Abwesenheiten">
+                </div>
+                <div class="form-group">
+                    <label for="newsContent">Inhalt</label>
+                    <textarea id="newsContent" rows="5" required
+                        placeholder="Beschreibe das Update oder Feature..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Veröffentlichen</button>
                 </div>
             </form>
         </div>

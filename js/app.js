@@ -187,6 +187,19 @@ const App = {
             }
         });
 
+        // Add event song button
+        const addEventSongBtn = document.getElementById('addEventSongBtn');
+        if (addEventSongBtn) {
+            addEventSongBtn.addEventListener('click', () => {
+                const eventId = document.getElementById('editEventId').value;
+                if (!eventId) {
+                    UI.showToast('Bitte speichere den Auftritt erst, bevor du Songs hinzufügst', 'warning');
+                    return;
+                }
+                this.openSongModal(eventId, null, null);
+            });
+        }
+
         // Event band filter
         document.getElementById('eventBandFilter').addEventListener('change', (e) => {
             Events.currentFilter = e.target.value;
@@ -256,6 +269,50 @@ const App = {
             });
         }
 
+        // Update profile form
+        const updateProfileForm = document.getElementById('updateProfileForm');
+        if (updateProfileForm) {
+            updateProfileForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleUpdateProfile();
+            });
+        }
+
+        // Create absence form
+        const createAbsenceForm = document.getElementById('createAbsenceForm');
+        if (createAbsenceForm) {
+            createAbsenceForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleCreateAbsence();
+            });
+        }
+
+        // Create news button
+        const createNewsBtn = document.getElementById('createNewsBtn');
+        if (createNewsBtn) {
+            createNewsBtn.addEventListener('click', () => {
+                UI.openModal('createNewsModal');
+            });
+        }
+
+        // Create news form
+        const createNewsForm = document.getElementById('createNewsForm');
+        if (createNewsForm) {
+            createNewsForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleCreateNews();
+            });
+        }
+
+        // Song form
+        const songForm = document.getElementById('songForm');
+        if (songForm) {
+            songForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleSaveSong();
+            });
+        }
+
         // Tab switching in band details
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -288,6 +345,51 @@ const App = {
                 const code = document.getElementById('joinBandCode').value;
                 Bands.joinBand(code);
             });
+        }
+    },
+
+    // Navigate to a specific view
+    navigateTo(view) {
+        const viewMap = {
+            'dashboard': 'dashboardView',
+            'bands': 'bandsView',
+            'events': 'eventsView',
+            'rehearsals': 'rehearsalsView',
+            'statistics': 'statisticsView',
+            'news': 'newsView'
+        };
+
+        const viewId = viewMap[view];
+        if (viewId) {
+            UI.showView(viewId);
+
+            // Update active navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                if (item.dataset.view === view) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            // Render specific views
+            if (view === 'bands') {
+                Bands.renderBands();
+            } else if (view === 'events') {
+                Events.renderEvents();
+            } else if (view === 'rehearsals') {
+                Rehearsals.renderRehearsals();
+            } else if (view === 'statistics') {
+                Rehearsals.populateStatisticsSelect();
+            } else if (view === 'news') {
+                this.renderNewsView();
+
+                // Show/hide create button based on admin status
+                const createNewsBtn = document.getElementById('createNewsBtn');
+                if (createNewsBtn) {
+                    createNewsBtn.style.display = Auth.isAdmin() ? 'inline-flex' : 'none';
+                }
+            }
         }
     },
 
@@ -400,6 +502,392 @@ const App = {
         this.showAuth();
     },
 
+    // News Management
+    renderNewsView() {
+        const container = document.getElementById('newsContainer');
+        const newsItems = Storage.getAllNews();
+        const isAdmin = Auth.isAdmin();
+
+        if (newsItems.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📰</div>
+                    <p>Noch keine News oder Updates vorhanden.</p>
+                    <p>Hier wirst du auf dem laufenden gehalten.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = newsItems.map(news => {
+            const date = new Date(news.createdAt).toLocaleDateString('de-DE', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const deleteBtn = isAdmin ? `
+                <button class="btn-icon delete-news" data-id="${news.id}" title="News löschen">
+                    🗑️
+                </button>
+            ` : '';
+
+            return `
+                <div class="news-card" style="background: var(--color-surface); padding: var(--spacing-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: var(--spacing-lg); border-left: 4px solid var(--color-primary);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md);">
+                        <div style="flex: 1;">
+                            <h3 style="margin-bottom: var(--spacing-xs); color: var(--color-text);">${this.escapeHtml(news.title)}</h3>
+                            <p style="font-size: 0.875rem; color: var(--color-text-light);">📅 ${date}</p>
+                        </div>
+                        ${deleteBtn}
+                    </div>
+                    <p style="color: var(--color-text-secondary); white-space: pre-wrap;">${this.escapeHtml(news.content)}</p>
+                </div>
+            `;
+        }).join('');
+
+        // Add delete handlers
+        container.querySelectorAll('.delete-news').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.deleteNews(btn.dataset.id);
+            });
+        });
+    },
+
+    handleCreateNews() {
+        const title = document.getElementById('newsTitle').value;
+        const content = document.getElementById('newsContent').value;
+        const user = Auth.getCurrentUser();
+
+        if (!user || !Auth.isAdmin()) {
+            UI.showToast('Keine Berechtigung', 'error');
+            return;
+        }
+
+        Storage.createNewsItem(title, content, user.id);
+        UI.showToast('News veröffentlicht!', 'success');
+
+        // Clear form and close modal
+        document.getElementById('newsTitle').value = '';
+        document.getElementById('newsContent').value = '';
+        UI.closeModal('createNewsModal');
+
+        // Refresh news view
+        this.renderNewsView();
+    },
+
+    deleteNews(newsId) {
+        if (!confirm('News wirklich löschen?')) return;
+
+        Storage.deleteNewsItem(newsId);
+        UI.showToast('News gelöscht', 'success');
+        this.renderNewsView();
+    },
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
+    // Song Management
+    openSongModal(eventId = null, bandId = null, songId = null) {
+        document.getElementById('songId').value = songId || '';
+        document.getElementById('songEventId').value = eventId || '';
+        document.getElementById('songBandId').value = bandId || '';
+
+        if (songId) {
+            // Edit existing song
+            const song = Storage.getById('songs', songId);
+            if (song) {
+                document.getElementById('songTitle').value = song.title;
+                document.getElementById('songArtist').value = song.artist;
+                document.getElementById('songBPM').value = song.bpm || '';
+                document.getElementById('songKey').value = song.key || '';
+                document.getElementById('songLeadVocal').value = song.leadVocal || '';
+            }
+        } else {
+            // New song
+            document.getElementById('songTitle').value = '';
+            document.getElementById('songArtist').value = '';
+            document.getElementById('songBPM').value = '';
+            document.getElementById('songKey').value = '';
+            document.getElementById('songLeadVocal').value = '';
+        }
+
+        UI.openModal('songModal');
+    },
+
+    handleSaveSong() {
+        const songId = document.getElementById('songId').value;
+        const eventId = document.getElementById('songEventId').value;
+        const bandId = document.getElementById('songBandId').value;
+        const title = document.getElementById('songTitle').value;
+        const artist = document.getElementById('songArtist').value;
+        const bpm = document.getElementById('songBPM').value;
+        const key = document.getElementById('songKey').value;
+        const leadVocal = document.getElementById('songLeadVocal').value;
+        const user = Auth.getCurrentUser();
+
+        const songData = {
+            title,
+            artist,
+            bpm: bpm ? parseInt(bpm) : null,
+            key: key || null,
+            leadVocal: leadVocal || null,
+            createdBy: user.id
+        };
+
+        if (eventId) songData.eventId = eventId;
+        if (bandId) songData.bandId = bandId;
+
+        if (songId) {
+            // Update existing song
+            Storage.updateSong(songId, songData);
+            UI.showToast('Song aktualisiert', 'success');
+        } else {
+            // Create new song
+            Storage.createSong(songData);
+            UI.showToast('Song hinzugefügt', 'success');
+        }
+
+        UI.closeModal('songModal');
+
+        // Refresh the appropriate list
+        if (eventId) {
+            this.renderEventSongs(eventId);
+        } else if (bandId) {
+            this.renderBandSongs(bandId);
+        }
+    },
+
+    renderEventSongs(eventId) {
+        const container = document.getElementById('eventSongsList');
+        if (!container) return;
+
+        const songs = Storage.getEventSongs(eventId);
+
+        // Get band ID from event to show band songs
+        const event = Storage.getById('events', eventId);
+        const bandSongs = event && event.bandId ? Storage.getBandSongs(event.bandId) : [];
+
+        if (songs.length === 0 && bandSongs.length === 0) {
+            container.innerHTML = '<p class="text-muted">Noch keine Songs hinzugefügt.</p>';
+            return;
+        }
+
+        let html = '';
+
+        // Show button to copy from band if there are band songs
+        if (bandSongs.length > 0) {
+            html += `
+                <div style="margin-bottom: var(--spacing-md);">
+                    <button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm">
+                        📋 Songs aus Band-Pool übernehmen
+                    </button>
+                </div>
+            `;
+        }
+
+        if (songs.length > 0) {
+            html += `
+                <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--color-border);">
+                            <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Lead Vocal</th>
+                            <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${songs.map(song => `
+                            <tr style="border-bottom: 1px solid var(--color-border);">
+                                <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
+                                <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.artist)}</td>
+                                <td style="padding: var(--spacing-sm);">${song.bpm || '-'}</td>
+                                <td style="padding: var(--spacing-sm);">${song.key || '-'}</td>
+                                <td style="padding: var(--spacing-sm);">${song.leadVocal || '-'}</td>
+                                <td style="padding: var(--spacing-sm); text-align: center;">
+                                    <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
+                                    <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        container.innerHTML = html;
+
+        // Add copy band songs handler
+        const copyBtn = container.querySelector('#copyBandSongsBtn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                this.showBandSongSelector(eventId, bandSongs);
+            });
+        }
+
+        // Add event listeners for edit/delete
+        container.querySelectorAll('.edit-song').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.openSongModal(eventId, null, btn.dataset.id);
+            });
+        });
+
+        container.querySelectorAll('.delete-song').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (confirm('Song wirklich löschen?')) {
+                    Storage.deleteSong(btn.dataset.id);
+                    UI.showToast('Song gelöscht', 'success');
+                    this.renderEventSongs(eventId);
+                }
+            });
+        });
+    },
+
+    showBandSongSelector(eventId, bandSongs) {
+        // Create a simple selection UI
+        const songList = bandSongs.map(song => `
+            <label style="display: block; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border);">
+                <input type="checkbox" value="${song.id}" class="band-song-checkbox">
+                <strong>${this.escapeHtml(song.title)}</strong> - ${this.escapeHtml(song.artist)}
+                ${song.bpm ? `| ${song.bpm} BPM` : ''}
+                ${song.key ? `| ${song.key}` : ''}
+            </label>
+        `).join('');
+
+        const modalContent = `
+            <div style="max-height: 400px; overflow-y: auto;">
+                ${songList}
+            </div>
+            <div style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
+                <button type="button" id="cancelCopySongs" class="btn">Abbrechen</button>
+                <button type="button" id="confirmCopySongs" class="btn btn-primary">Ausgewählte kopieren</button>
+            </div>
+        `;
+
+        // Use a temp container or toast-like modal
+        const tempModal = document.createElement('div');
+        tempModal.className = 'modal active';
+        tempModal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Songs aus Band-Pool wählen</h2>
+                </div>
+                <div class="modal-body">
+                    ${modalContent}
+                </div>
+            </div>
+        `;
+        document.body.appendChild(tempModal);
+
+        // Add handlers
+        tempModal.querySelector('#cancelCopySongs').addEventListener('click', () => {
+            tempModal.remove();
+        });
+
+        tempModal.querySelector('#confirmCopySongs').addEventListener('click', () => {
+            const selectedIds = Array.from(tempModal.querySelectorAll('.band-song-checkbox:checked')).map(cb => cb.value);
+            this.copyBandSongsToEvent(eventId, selectedIds);
+            tempModal.remove();
+        });
+
+        // Close on overlay click
+        tempModal.addEventListener('click', (e) => {
+            if (e.target === tempModal) {
+                tempModal.remove();
+            }
+        });
+    },
+
+    copyBandSongsToEvent(eventId, songIds) {
+        const user = Auth.getCurrentUser();
+        let count = 0;
+
+        songIds.forEach(songId => {
+            const bandSong = Storage.getById('songs', songId);
+            if (bandSong) {
+                // Create a copy for the event
+                const eventSong = {
+                    title: bandSong.title,
+                    artist: bandSong.artist,
+                    bpm: bandSong.bpm,
+                    key: bandSong.key,
+                    leadVocal: bandSong.leadVocal,
+                    eventId: eventId,
+                    createdBy: user.id
+                };
+                Storage.createSong(eventSong);
+                count++;
+            }
+        });
+
+        UI.showToast(`${count} Song${count !== 1 ? 's' : ''} kopiert`, 'success');
+        this.renderEventSongs(eventId);
+    },
+
+    renderBandSongs(bandId) {
+        const container = document.getElementById('bandSongsList');
+        if (!container) return;
+
+        const songs = Storage.getBandSongs(bandId);
+
+        if (songs.length === 0) {
+            container.innerHTML = '<p class="text-muted">Noch keine Songs hinzugefügt.</p>';
+            return;
+        }
+
+        container.innerHTML = `
+            <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--color-border);">
+                        <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
+                        <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
+                        <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
+                        <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
+                        <th style="padding: var(--spacing-sm); text-align: left;">Lead Vocal</th>
+                        <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${songs.map(song => `
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                            <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
+                            <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.artist)}</td>
+                            <td style="padding: var(--spacing-sm);">${song.bpm || '-'}</td>
+                            <td style="padding: var(--spacing-sm);">${song.key || '-'}</td>
+                            <td style="padding: var(--spacing-sm);">${song.leadVocal || '-'}</td>
+                            <td style="padding: var(--spacing-sm); text-align: center;">
+                                <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
+                                <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        // Add event listeners
+        container.querySelectorAll('.edit-song').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.openSongModal(null, bandId, btn.dataset.id);
+            });
+        });
+
+        container.querySelectorAll('.delete-song').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (confirm('Song wirklich löschen?')) {
+                    Storage.deleteSong(btn.dataset.id);
+                    UI.showToast('Song gelöscht', 'success');
+                    this.renderBandSongs(bandId);
+                }
+            });
+        });
+    },
+
     // Show authentication screen
     showAuth() {
         document.getElementById('authModal').classList.add('active');
@@ -416,10 +904,22 @@ const App = {
 
         const isAdmin = Auth.isAdmin();
 
-        // Settings Button (renamed from Admin)
+        // Absence Button (visible for all users)
+        const absenceBtn = document.getElementById('absenceBtn');
+        if (absenceBtn) {
+            absenceBtn.style.display = 'inline-block';
+            const newAbsenceBtn = absenceBtn.cloneNode(true);
+            absenceBtn.parentNode.replaceChild(newAbsenceBtn, absenceBtn);
+
+            newAbsenceBtn.addEventListener('click', () => {
+                this.openAbsenceModal();
+            });
+        }
+
+        // Settings Button (visible to all now)
         const settingsBtn = document.getElementById('settingsBtn');
         if (settingsBtn) {
-            settingsBtn.style.display = isAdmin ? 'inline-block' : 'none';
+            settingsBtn.style.display = 'inline-block';
             const newBtn = settingsBtn.cloneNode(true);
             settingsBtn.parentNode.replaceChild(newBtn, settingsBtn);
 
@@ -434,9 +934,31 @@ const App = {
 
     // Open settings modal
     openSettingsModal() {
+        const user = Auth.getCurrentUser();
+        const isAdmin = Auth.isAdmin();
+
+        // Show/Hide tabs based on role
+        const locationsTab = document.getElementById('settingsTabLocations');
+        const bandsTab = document.getElementById('settingsTabBands');
+
+        if (locationsTab) locationsTab.style.display = isAdmin ? 'block' : 'none';
+        if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
+
+        // Pre-fill profile form
+        document.getElementById('profileUsername').value = user.username;
+        document.getElementById('profileEmail').value = user.email;
+        document.getElementById('profileInstrument').value = user.instrument || '';
+        document.getElementById('profilePassword').value = '';
+
         UI.openModal('settingsModal');
-        this.renderLocationsList();
-        this.renderAllBandsList();
+
+        // Default to profile tab for everyone initially
+        this.switchSettingsTab('profile');
+
+        if (isAdmin) {
+            this.renderLocationsList();
+            this.renderAllBandsList();
+        }
     },
 
     // Render locations list
@@ -445,7 +967,7 @@ const App = {
         const locations = Storage.getLocations();
 
         if (locations.length === 0) {
-            container.innerHTML = '<p class="text-muted">Keine Standorte vorhanden.</p>';
+            container.innerHTML = '<p class="text-muted">Keine Probeorte vorhanden.</p>';
             return;
         }
 
@@ -461,7 +983,7 @@ const App = {
 
         container.querySelectorAll('.delete-location').forEach(btn => {
             btn.addEventListener('click', () => {
-                if (confirm('Standort wirklich löschen?')) {
+                if (confirm('Probeort wirklich löschen?')) {
                     Storage.deleteLocation(btn.dataset.id);
                     this.renderLocationsList();
                 }
@@ -597,6 +1119,36 @@ const App = {
         }
     },
 
+    // Handle profile update
+    handleUpdateProfile() {
+        const username = document.getElementById('profileUsername').value;
+        const email = document.getElementById('profileEmail').value;
+        const instrument = document.getElementById('profileInstrument').value;
+        const password = document.getElementById('profilePassword').value;
+
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const updates = {
+            username,
+            email,
+            instrument
+        };
+
+        if (password && password.trim() !== '') {
+            updates.password = password;
+        }
+
+        Storage.updateUser(user.id, updates);
+
+        // Update current session user data
+        const updatedUser = Storage.getById('users', user.id);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+        document.getElementById('currentUserName').textContent = updatedUser.name;
+        UI.showToast('Profil erfolgreich aktualisiert', 'success');
+    },
+
     // Handle create location
     handleCreateLocation() {
         const nameInput = document.getElementById('newLocationName');
@@ -610,7 +1162,7 @@ const App = {
             nameInput.value = '';
             addressInput.value = '';
             this.renderLocationsList();
-            UI.showToast('Standort erstellt', 'success');
+            UI.showToast('Probeort erstellt', 'success');
         }
     },
 
