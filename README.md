@@ -5,7 +5,7 @@ Ein umfassendes web-basiertes Tool zur Organisation von Bands, Probenterminen un
 ## Features
 
 ### Benutzerverwaltung
-- **Registrierung** mit Zugangscode (`c2j5Dps!`)
+- **Registrierung** mit Zugangscode
 - **Login/Logout** System
 - **Admin-Rolle** mit erweiterten Berechtigungen
 - **E-Mail-Integration** für Benachrichtigungen
@@ -63,14 +63,7 @@ Ein umfassendes web-basiertes Tool zur Organisation von Bands, Probenterminen un
 - **JavaScript** (ES6+, modular)
 - **LocalStorage** für Datenpersistenz
 
-### E-Mail-Integration
-- **EmailJS** für Benachrichtigungen
-- Konfiguration in `js/email-service.js`:
-  ```javascript
-  serviceId: 'service_cadjeiq'
-  templateId: 'template_l9a8mdf'
-  publicKey: '5upXiXp5loj1iOMv7'
-  ```
+
 
 ### Dateistruktur
 ```
@@ -105,13 +98,8 @@ Dann öffne: `http://localhost:8000`
 ### Erste Schritte
 
 1. **Registrierung**:
-   - Code: `c2j5Dps!`
+   - Code
    - Name, E-Mail, Benutzername, Passwort eingeben
-
-2. **Admin-Login**:
-   - Benutzername: `admin`
-   - Passwort: `bandprobe`
-   - E-Mail: `Simon.rohrer04@web.de`
 
 3. **Band erstellen** (nur Admin):
    - Settings → Bandmanagement → "Neue Band erstellen"
