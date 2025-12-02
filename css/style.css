@@ -99,7 +99,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-xl);
+    padding: 10px;
     border-bottom: 1px solid var(--color-border);
 }
 
@@ -283,6 +283,7 @@ body {
 
 .btn-danger {
     background: var(--color-danger);
+    width: 150px;
     color: white;
 }
 
@@ -336,6 +337,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    padding: 20px;
 }
 
 /* ===== Header ===== */
@@ -399,6 +401,7 @@ body {
     gap: var(--spacing-sm);
     color: var(--color-text-secondary);
     font-weight: 600;
+    font-size: small;
     cursor: pointer;
     border-bottom: 3px solid transparent;
     transition: all var(--transition-base);
@@ -1018,10 +1021,11 @@ body {
 }
 
 .tab-btn {
+    font-size: 1rem;
     background: none;
     border: none;
     padding: var(--spacing-md) var(--spacing-lg);
-    font-weight: 600;
+    font-weight: 800;
     color: var(--color-text-secondary);
     cursor: pointer;
     border-bottom: 3px solid transparent;
@@ -1040,6 +1044,7 @@ body {
 
 .tab-content {
     display: none;
+    padding-top: 10px;
 }
 
 .tab-content.active {
@@ -1077,8 +1082,9 @@ body {
 
 #logoutBtn {
     padding: 8px;
-    
-} 
+
+}
+
 #logoutBtn .icon-img {
     width: 30px;
     height: 30px;
@@ -1090,6 +1096,15 @@ body {
     flex-direction: column;
     gap: var(--spacing-md);
     max-width: 400px;
+}
+
+#createBandForm {
+    padding: 20px;
+}
+
+#createBandBtn {
+    position: right;
+    margin: 5px;
 }
 
 /* ===== Animations ===== */
@@ -1209,10 +1224,11 @@ body {
 }
 
 .settings-tab-btn {
+    font-size: medium;
     background: none;
     border: none;
     padding: var(--spacing-md) var(--spacing-lg);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-text-secondary);
     cursor: pointer;
     border-bottom: 3px solid transparent;
@@ -1869,6 +1885,42 @@ body {
     .accordion-title h3 {
         font-size: 1.125rem;
     }
+
+    .app-header .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+
+    /* NEU: Buttons nebeneinander (flex-direction: row) und nach rechts */
+    .header-actions {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--spacing-sm);
+        width: 100%;
+        justify-content: flex-end;
+        /* Schiebt alles nach rechts */
+    }
+
+    /* NEU: Benutzername nach links verschieben */
+    .header-actions .user-name {
+        margin-right: auto;
+        order: -1;
+    }
+
+    /* NEU: Text-Label ausblenden */
+    .header-actions .btn-text {
+        display: none;
+    }
+
+    /* NEU: Buttons zu Icon-Größe verkleinern (quadratisch) */
+    .header-actions #absenceBtn,
+    .header-actions #settingsBtn {
+        padding: var(--spacing-sm);
+    }
+
+
+
 }
 
 @media (max-width: 480px) {

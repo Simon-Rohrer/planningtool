@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Band Planning Tool</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/responsive.css">
 </head>
 
 <body>
@@ -181,10 +180,10 @@
             <div id="bandsView" class="view">
                 <div class="view-header">
                     <h2>Meine Bands</h2>
-                    <div class="header-buttons">
-                        <button id="joinBandBtn" class="btn btn-secondary"
-                            style="margin-right: 10px; margin-top: 20px;">Band
-                            beitreten</button>
+                    <div class="view-controls">
+                        <button id="joinBandBtn" class="btn btn-primary btn-bands-join-modal">
+                            Band beitreten
+                        </button>
                     </div>
                 </div>
                 <div id="bandsList" class="bands-grid"></div>
@@ -378,9 +377,10 @@
                 <div class="tab-buttons">
                     <button class="tab-btn active" data-tab="members">Mitglieder</button>
                     <button class="tab-btn" data-tab="setlist">Setlist</button>
-                    <button class="tab-btn" data-tab="settings">Einstellungen</button>
                     <!-- Abwesenheiten-Tab (sichtbar für Leiter/Co-Leiter) -->
-                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn" style="display: none;">Abwesenheiten</button>
+                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn"
+                        style="display: none;">Abwesenheiten</button>
+                    <button class="tab-btn" data-tab="settings">Settings</button>
                 </div>
 
                 <!-- Members Tab -->
@@ -619,8 +619,10 @@
                 <div class="form-group">
                     <div class="section-header">
                         <label>Setlist</label>
-                        <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">Neuen Song erstellen</button>
-                        <button type="button" id="addExistingEventSongBtn" class="btn btn-secondary btn-sm">Song aus Pool hinzufügen</button>
+                        <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">Neuen Song
+                            erstellen</button>
+                        <button type="button" id="addExistingEventSongBtn" class="btn btn-secondary btn-sm">Song aus
+                            Pool hinzufügen</button>
                     </div>
                     <div id="eventSongsList"></div>
                 </div>
@@ -731,7 +733,7 @@
                     <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem Code</small>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel">Abbrechen</button>
+                    <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary">Beitreten</button>
                 </div>
             </form>
@@ -764,8 +766,10 @@
                             <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
                         </div>
                         <div style="display:flex; gap:0.5rem; align-items:center;">
-                            <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit hinzufügen</button>
-                            <button type="button" id="cancelEditAbsenceBtn" class="btn cancel" style="display:none;">Abbrechen</button>
+                            <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit
+                                hinzufügen</button>
+                            <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
+                                style="display:none;">Abbrechen</button>
                         </div>
                     </form>
                 </div>
@@ -800,10 +804,11 @@
                 <div class="form-group">
                     <label for="newsImages">Bilder (optional)</label>
                     <input type="file" id="newsImages" accept="image/*" multiple>
-                    <div id="newsImagesPreview" style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;"></div>
+                    <div id="newsImagesPreview" style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
+                    </div>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="cancel">Abbrechen</button>
+                    <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary">Veröffentlichen</button>
                 </div>
             </form>
