@@ -1,23 +1,108 @@
 // ChurchTools API Integration Module
-// Prepared for future ChurchTools calendar integration
 
 const ChurchToolsAPI = {
     // Configuration
     config: {
-        apiUrl: '',
-        apiToken: '',
-        calendarId: null
+        apiUrl: 'https://jms-altensteig.church.tools/api',
+        apiToken: '', // Will be set in settings
+        calendarId: null,
+        groupId: 2445 // Musikpool group ID
     },
 
     // Initialize API connection
     init(apiUrl, apiToken) {
-        this.config.apiUrl = apiUrl;
+        this.config.apiUrl = apiUrl || 'https://jms-altensteig.church.tools/api';
         this.config.apiToken = apiToken;
     },
 
     // Set calendar ID for syncing
     setCalendar(calendarId) {
         this.config.calendarId = calendarId;
+    },
+
+    // Fetch group members from ChurchTools
+    async fetchGroupMembers(groupId = null) {
+        const targetGroupId = groupId || this.config.groupId;
+        
+        try {
+            const url = `${this.config.apiUrl}/groups/${targetGroupId}/members`;
+            
+            const headers = {
+                'Accept': 'application/json'
+            };
+            
+            // Add auth token if available
+            if (this.config.apiToken) {
+                headers['Authorization'] = `Login ${this.config.apiToken}`;
+            }
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: headers
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            
+            // ChurchTools API returns data in result.data
+            return {
+                success: true,
+                members: result.data || [],
+                meta: result.meta || {}
+            };
+            
+        } catch (error) {
+            console.error('Error fetching group members:', error);
+            return {
+                success: false,
+                error: error.message,
+                members: []
+            };
+        }
+    },
+
+    // Fetch group details
+    async fetchGroupDetails(groupId = null) {
+        const targetGroupId = groupId || this.config.groupId;
+        
+        try {
+            const url = `${this.config.apiUrl}/groups/${targetGroupId}`;
+            
+            const headers = {
+                'Accept': 'application/json'
+            };
+            
+            if (this.config.apiToken) {
+                headers['Authorization'] = `Login ${this.config.apiToken}`;
+            }
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: headers
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            
+            return {
+                success: true,
+                group: result.data || {}
+            };
+            
+        } catch (error) {
+            console.error('Error fetching group details:', error);
+            return {
+                success: false,
+                error: error.message,
+                group: null
+            };
+        }
     },
 
     // Sync rehearsal to ChurchTools calendar

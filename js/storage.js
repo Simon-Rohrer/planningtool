@@ -312,6 +312,10 @@ const Storage = {
         return await this.getById('locations', locationId);
     },
 
+    async updateLocation(locationId, updates) {
+        return await this.update('locations', locationId, updates);
+    },
+
     async deleteLocation(locationId) {
         return await this.delete('locations', locationId);
     },

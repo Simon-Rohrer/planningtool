@@ -60,10 +60,16 @@ const App = {
         // Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => {
-                const view = item.dataset.view;
-                this.navigateTo(view);
+                try {
+                    const view = item.dataset.view;
+                    console.log(`[NAV CLICK] Clicked on nav item with view: "${view}"`);
+                    this.navigateTo(view);
+                } catch (error) {
+                    console.error('[NAV CLICK] Error:', error);
+                }
             });
         });
+        console.log(`[INIT] Attached click handlers to ${document.querySelectorAll('.nav-item').length} nav items`);
 
         // Modal close buttons
         document.querySelectorAll('.modal-close').forEach(btn => {
@@ -100,9 +106,9 @@ const App = {
         });
 
         // Delete band button
-        document.getElementById('deleteBandBtn').addEventListener('click', () => {
+        document.getElementById('deleteBandBtn').addEventListener('click', async () => {
             if (Bands.currentBandId) {
-                Bands.deleteBand(Bands.currentBandId);
+                await Bands.deleteBand(Bands.currentBandId);
             }
         });
 
@@ -339,6 +345,15 @@ const App = {
             });
         }
 
+        // Edit location form
+        const editLocationForm = document.getElementById('editLocationForm');
+        if (editLocationForm) {
+            editLocationForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleEditLocation();
+            });
+        }
+
         // Update profile form
         const updateProfileForm = document.getElementById('updateProfileForm');
         if (updateProfileForm) {
@@ -453,7 +468,42 @@ const App = {
         if (refreshCalendarBtn) {
             refreshCalendarBtn.addEventListener('click', () => {
                 if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
-                    Calendar.loadCalendar();
+                    const activeTab = document.querySelector('.calendar-tab.active');
+                    const activeCalendar = activeTab ? activeTab.dataset.calendar : 'tonstudio';
+                    Calendar.loadCalendar(activeCalendar);
+                }
+            });
+        }
+
+        // Calendar tabs switching
+        document.querySelectorAll('.calendar-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const calendarType = tab.dataset.calendar;
+                
+                // Update active tab
+                document.querySelectorAll('.calendar-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Show/hide calendar containers
+                document.querySelectorAll('.calendar-container').forEach(c => c.classList.remove('active'));
+                const container = document.getElementById(`${calendarType}Calendar`);
+                if (container) {
+                    container.classList.add('active');
+                }
+                
+                // Load calendar data
+                if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+                    Calendar.loadCalendar(calendarType);
+                }
+            });
+        });
+
+        // Musikpool refresh button
+        const refreshMusikpoolBtn = document.getElementById('refreshMusikpoolBtn');
+        if (refreshMusikpoolBtn) {
+            refreshMusikpoolBtn.addEventListener('click', () => {
+                if (typeof Musikpool !== 'undefined' && Musikpool.loadGroupData) {
+                    Musikpool.loadGroupData();
                 }
             });
         }
@@ -495,6 +545,8 @@ const App = {
 
     // Navigate to a specific view
     async navigateTo(view) {
+        console.log(`[navigateTo] Called with view: "${view}"`);
+        
         const viewMap = {
             'dashboard': 'dashboardView',
             'bands': 'bandsView',
@@ -502,16 +554,20 @@ const App = {
             'rehearsals': 'rehearsalsView',
             'statistics': 'statisticsView',
             'news': 'newsView',
-            'tonstudio': 'tonstudioView'
+            'probeorte': 'probeorteView',
+            'tonstudio': 'probeorteView', // Redirect old tonstudio to probeorte
+            'musikpool': 'musikpoolView'
         };
 
         const viewId = viewMap[view];
+        console.log(`[navigateTo] Mapped to viewId: "${viewId}"`);
+        
         if (viewId) {
             UI.showView(viewId);
 
             // Update active navigation
             document.querySelectorAll('.nav-item').forEach(item => {
-                if (item.dataset.view === view) {
+                if (item.dataset.view === view || (view === 'tonstudio' && item.dataset.view === 'probeorte')) {
                     item.classList.add('active');
                 } else {
                     item.classList.remove('active');
@@ -541,13 +597,38 @@ const App = {
                     }
                     createNewsBtn.style.display = canCreate ? 'inline-flex' : 'none';
                 }
-            } else if (view === 'tonstudio') {
-                // Load calendar when navigating to tonstudio view
-                console.log('Navigating to tonstudio, loading calendar...');
-                if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
-                    Calendar.loadCalendar();
+            } else if (view === 'probeorte' || view === 'tonstudio') {
+                // Ensure tonstudio tab and container are active first
+                setTimeout(() => {
+                    const tonstudioTab = document.querySelector('.calendar-tab[data-calendar="tonstudio"]');
+                    const tonstudioContainer = document.getElementById('tonstudioCalendar');
+                    
+                    if (tonstudioTab) {
+                        document.querySelectorAll('.calendar-tab').forEach(t => t.classList.remove('active'));
+                        tonstudioTab.classList.add('active');
+                    }
+                    
+                    if (tonstudioContainer) {
+                        document.querySelectorAll('.calendar-container').forEach(c => c.classList.remove('active'));
+                        tonstudioContainer.classList.add('active');
+                    }
+                    
+                    // Load calendar when navigating to probeorte view
+                    console.log('Navigating to probeorte, loading tonstudio calendar...');
+                    if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+                        console.log('Loading tonstudio calendar now...');
+                        Calendar.loadCalendar('tonstudio');
+                    } else {
+                        console.error('Calendar object not found!');
+                    }
+                }, 50);
+            } else if (view === 'musikpool') {
+                // Load Musikpool members when navigating to view
+                console.log('Navigating to musikpool, loading members...');
+                if (typeof Musikpool !== 'undefined' && Musikpool.loadGroupData) {
+                    Musikpool.loadGroupData();
                 } else {
-                    console.error('Calendar object not found!');
+                    console.error('Musikpool object not found!');
                 }
             }
         }
@@ -672,12 +753,15 @@ const App = {
 
     // News Management
     async renderNewsView() {
+        console.log('[renderNewsView] Starting to render news...');
         const container = document.getElementById('newsContainer');
         const newsItems = await Storage.getAllNews();
+        console.log('[renderNewsView] Fetched news items:', newsItems.length, newsItems);
         const isAdmin = Auth.isAdmin();
         const currentUser = Auth.getCurrentUser();
 
         if (newsItems.length === 0) {
+            console.log('[renderNewsView] No news items found, showing empty state');
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">📰</div>
@@ -688,6 +772,7 @@ const App = {
             return;
         }
 
+        console.log('[renderNewsView] Rendering', newsItems.length, 'news items');
         container.innerHTML = newsItems.map(news => {
             const date = new Date(news.createdAt).toLocaleDateString('de-DE', {
                 year: 'numeric',
@@ -744,17 +829,17 @@ const App = {
 
         // Add delete handlers
         container.querySelectorAll('.delete-news').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                this.deleteNews(btn.dataset.id);
+                await this.deleteNews(btn.dataset.id);
             });
         });
 
         // Add edit handlers
         container.querySelectorAll('.edit-news').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                this.openEditNews(btn.dataset.id);
+                await this.openEditNews(btn.dataset.id);
             });
         });
 
@@ -862,29 +947,37 @@ const App = {
         }
         const preview = document.getElementById('newsImagesPreview');
         if (preview) preview.innerHTML = '';
-        UI.closeModal('createNewsModal');
-
-        // Refresh news view
-        await this.renderNewsView();
-        await this.updateNewsNavBadge();
-
+        
         // reset edit id if any
         if (editIdInput) editIdInput.value = '';
+        
+        UI.closeModal('createNewsModal');
+
+        // Navigate to news view (this will automatically call renderNewsView)
+        await this.navigateTo('news');
+        
+        // Update badge
+        await this.updateNewsNavBadge();
     },
 
     async deleteNews(newsId) {
-        UI.showConfirm('News wirklich löschen?', async () => {
+        const confirmed = await UI.confirmDelete('Möchtest du diese News wirklich löschen?');
+        if (confirmed) {
             await Storage.deleteNewsItem(newsId);
             UI.showToast('News gelöscht', 'success');
             await this.renderNewsView();
             await this.updateNewsNavBadge();
-        });
+        }
     },
 
     // Open the create/edit news modal populated for editing
-    openEditNews(newsId) {
-        const news = Storage.getById('news', newsId);
-        if (!news) return;
+    async openEditNews(newsId) {
+        const news = await Storage.getById('news', newsId);
+        if (!news) {
+            console.error('News not found:', newsId);
+            UI.showToast('News nicht gefunden', 'error');
+            return;
+        }
         const user = Auth.getCurrentUser();
         if (!user) return;
 
@@ -894,17 +987,28 @@ const App = {
             return;
         }
 
+        console.log('Opening edit for news:', news);
+
+        // Reset file input first
+        const imagesInput = document.getElementById('newsImages');
+        if (imagesInput) imagesInput.value = '';
+
         // Populate form
-        document.getElementById('newsTitle').value = news.title || '';
-        document.getElementById('newsContent').value = news.content || '';
+        const titleInput = document.getElementById('newsTitle');
+        const contentInput = document.getElementById('newsContent');
         const editInput = document.getElementById('editNewsId');
+        
+        if (titleInput) titleInput.value = news.title || '';
+        if (contentInput) contentInput.value = news.content || '';
         if (editInput) editInput.value = news.id;
+
+        console.log('Populated fields - Title:', news.title, 'Content:', news.content);
 
         // Render previews from existing images
         const preview = document.getElementById('newsImagesPreview');
         if (preview) {
             preview.innerHTML = '';
-            if (news.images && Array.isArray(news.images)) {
+            if (news.images && Array.isArray(news.images) && news.images.length > 0) {
                 news.images.forEach(src => {
                     const img = document.createElement('img');
                     img.src = src;
@@ -917,7 +1021,7 @@ const App = {
             }
         }
 
-        // Update modal title
+        // Update modal title and button text
         const modalTitle = document.querySelector('#createNewsModal .modal-header h2');
         if (modalTitle) modalTitle.textContent = 'News bearbeiten';
         const submitBtn = document.querySelector('#createNewsModal .modal-actions .btn-primary');
@@ -1192,7 +1296,8 @@ const App = {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                UI.showConfirm('Song wirklich löschen?', async () => {
+                const confirmed = await UI.confirmDelete('Möchtest du diesen Song wirklich löschen?');
+                if (confirmed) {
                     const songId = btn.dataset.id;
                     console.log('Deleting song:', songId, 'for event:', eventId);
                     
@@ -1207,7 +1312,7 @@ const App = {
                     console.log('Re-rendering event songs only');
                     await this.renderEventSongs(eventId);
                     console.log('Finished re-rendering event songs');
-                });
+                }
             });
         });
     },
@@ -1397,7 +1502,8 @@ const App = {
 
         container.querySelectorAll('.delete-song').forEach(btn => {
             btn.addEventListener('click', async () => {
-                if (confirm('Song wirklich löschen?')) {
+                const confirmed = await UI.confirmDelete('Möchtest du diesen Song wirklich löschen?');
+                if (confirmed) {
                     await Storage.deleteSong(btn.dataset.id);
                     UI.showToast('Song gelöscht', 'success');
                     await this.renderBandSongs(bandId);
@@ -1563,26 +1669,71 @@ const App = {
         const container = document.getElementById('locationsList');
         const locations = await Storage.getLocations();
 
+        console.log('[renderLocationsList] Locations:', locations);
+
         if (locations.length === 0) {
             container.innerHTML = '<p class="text-muted">Keine Probeorte vorhanden.</p>';
             return;
         }
 
-        container.innerHTML = locations.map(loc => `
-            <div class="location-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);">
-                <div>
-                    <strong>${Bands.escapeHtml(loc.name)}</strong>
-                    ${loc.address ? `<br><small>${Bands.escapeHtml(loc.address)}</small>` : ''}
+        container.innerHTML = locations.map(loc => {
+            console.log('[renderLocationsList] Processing location:', loc);
+            
+            // Support new format (linkedCalendar string) and old formats
+            let linkedCalendar = loc.linkedCalendar || '';
+            
+            // Migration from old linkedCalendars object
+            if (!linkedCalendar && loc.linkedCalendars) {
+                if (loc.linkedCalendars.tonstudio) linkedCalendar = 'tonstudio';
+                else if (loc.linkedCalendars.festhalle) linkedCalendar = 'festhalle';
+                else if (loc.linkedCalendars.ankersaal) linkedCalendar = 'ankersaal';
+            } else if (!linkedCalendar && loc.linkedToCalendar) {
+                linkedCalendar = 'tonstudio';
+            }
+            
+            console.log('[renderLocationsList] linkedCalendar for', loc.name, ':', linkedCalendar);
+            
+            const calendarNames = {
+                'tonstudio': '🎙️ Tonstudio',
+                'festhalle': '🏛️ JMS Festhalle',
+                'ankersaal': '⚓ Ankersaal'
+            };
+            
+            const linkedBadge = linkedCalendar ? `<br><span style="color: var(--color-primary); font-size: 0.875rem;">🔗 ${calendarNames[linkedCalendar]}</span>` : '';
+            
+            console.log('[renderLocationsList] linkedBadge:', linkedBadge);
+            
+            return `
+                <div class="location-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);">
+                    <div>
+                        <strong>${Bands.escapeHtml(loc.name)}</strong>
+                        ${loc.address ? `<br><small>${Bands.escapeHtml(loc.address)}</small>` : ''}
+                        ${linkedBadge}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn-icon edit-location" data-id="${loc.id}" title="Bearbeiten">✏️</button>
+                        <button class="btn-icon delete-location" data-id="${loc.id}" title="Löschen">🗑️</button>
+                    </div>
                 </div>
-                <button class="btn-icon delete-location" data-id="${loc.id}" title="Löschen">🗑️</button>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
+        // Edit handlers
+        container.querySelectorAll('.edit-location').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const locationId = btn.dataset.id;
+                await this.openEditLocationModal(locationId);
+            });
+        });
+
+        // Delete handlers
         container.querySelectorAll('.delete-location').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (confirm('Probeort wirklich löschen?')) {
-                    Storage.deleteLocation(btn.dataset.id);
-                    this.renderLocationsList();
+            btn.addEventListener('click', async () => {
+                const confirmed = await UI.confirmDelete('Möchtest du diesen Probeort wirklich löschen?');
+                if (confirmed) {
+                    await Storage.deleteLocation(btn.dataset.id);
+                    await this.renderLocationsList();
+                    UI.showToast('Probeort gelöscht', 'success');
                 }
             });
         });
@@ -1678,7 +1829,8 @@ const App = {
                 e.stopPropagation();
                 const bandId = btn.dataset.id;
                 const band = await Storage.getBand(bandId);
-                if (confirm(`Band "${band.name}" wirklich löschen?`)) {
+                const confirmed = await UI.confirmDelete(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`);
+                if (confirmed) {
                     await Storage.deleteBand(bandId);
                     await this.renderAllBandsList();
                     UI.showToast('Band gelöscht', 'success');
@@ -1836,30 +1988,81 @@ const App = {
         // Add event listeners
         container.querySelectorAll('.make-admin-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const userId = btn.dataset.userId;
-                const user = await Storage.getById('users', userId);
-                if (confirm(`${user.name || user.username} zum Admin machen?`)) {
-                    await this.toggleUserAdmin(userId, true);
+                try {
+                    const userId = btn.dataset.userId;
+                    const user = await Storage.getById('users', userId);
+                    if (!user) {
+                        UI.showToast('Benutzer nicht gefunden', 'error');
+                        return;
+                    }
+                    
+                    const confirmed = await UI.confirmAction(
+                        `Möchtest du ${user.name || user.username} wirklich zum Admin machen? Als Admin hat dieser Benutzer vollen Zugriff auf alle Funktionen.`,
+                        'Admin-Rechte erteilen?',
+                        'Zum Admin machen',
+                        'btn-primary'
+                    );
+                    
+                    if (confirmed) {
+                        await this.toggleUserAdmin(userId, true);
+                    }
+                } catch (error) {
+                    console.error('Error in make-admin-btn handler:', error);
+                    UI.showToast('Fehler: ' + error.message, 'error');
                 }
             });
         });
 
         container.querySelectorAll('.remove-admin-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const userId = btn.dataset.userId;
-                const user = await Storage.getById('users', userId);
-                if (confirm(`Admin-Rechte von ${user.name || user.username} entfernen?`)) {
-                    await this.toggleUserAdmin(userId, false);
+                try {
+                    const userId = btn.dataset.userId;
+                    const user = await Storage.getById('users', userId);
+                    if (!user) {
+                        UI.showToast('Benutzer nicht gefunden', 'error');
+                        return;
+                    }
+                    
+                    const confirmed = await UI.confirmAction(
+                        `Möchtest du die Admin-Rechte von ${user.name || user.username} wirklich entfernen?`,
+                        'Admin-Rechte entfernen?',
+                        'Admin entfernen',
+                        'btn-secondary'
+                    );
+                    
+                    if (confirmed) {
+                        await this.toggleUserAdmin(userId, false);
+                    }
+                } catch (error) {
+                    console.error('Error in remove-admin-btn handler:', error);
+                    UI.showToast('Fehler: ' + error.message, 'error');
                 }
             });
         });
 
         container.querySelectorAll('.delete-user-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const userId = btn.dataset.userId;
-                const user = await Storage.getById('users', userId);
-                if (confirm(`Benutzer ${user.name || user.username} wirklich löschen? Dies kann nicht rückgängig gemacht werden!`)) {
-                    await this.deleteUser(userId);
+                try {
+                    const userId = btn.dataset.userId;
+                    console.log('Delete user button clicked for:', userId);
+                    
+                    const user = await Storage.getById('users', userId);
+                    console.log('User found:', user);
+                    
+                    if (!user) {
+                        UI.showToast('Benutzer nicht gefunden', 'error');
+                        return;
+                    }
+                    
+                    const confirmed = await UI.confirmDelete(`Möchtest du den Benutzer ${user.name || user.username} wirklich löschen? Dies kann nicht rückgängig gemacht werden!`);
+                    console.log('User confirmed deletion:', confirmed);
+                    
+                    if (confirmed) {
+                        await this.deleteUser(userId);
+                    }
+                } catch (error) {
+                    console.error('Error in delete-user-btn handler:', error);
+                    UI.showToast('Fehler beim Löschen: ' + error.message, 'error');
                 }
             });
         });
@@ -1868,22 +2071,60 @@ const App = {
     // Toggle user admin status
     async toggleUserAdmin(userId, makeAdmin) {
         try {
-            await Storage.update('users', userId, { isAdmin: makeAdmin });
+            console.log('Toggling admin status:', { userId, makeAdmin });
+            
+            const sb = SupabaseClient.getClient();
+            if (!sb) {
+                throw new Error('Supabase Client nicht verfügbar');
+            }
+            
+            // First verify the user exists
+            const { data: existingUser, error: fetchError } = await sb
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle();
+            
+            if (fetchError) {
+                console.error('Error fetching user:', fetchError);
+                throw new Error('Benutzer konnte nicht gefunden werden');
+            }
+            
+            if (!existingUser) {
+                throw new Error('Benutzer existiert nicht');
+            }
+            
+            console.log('Current user state:', existingUser);
+            
+            // Update admin status without expecting a return value
+            const { error: updateError } = await sb
+                .from('users')
+                .update({ isAdmin: makeAdmin })
+                .eq('id', userId);
+            
+            if (updateError) {
+                console.error('Supabase error toggling admin:', updateError);
+                throw new Error(updateError.message || 'Fehler beim Aktualisieren');
+            }
+            
+            console.log('Admin status updated successfully');
             UI.showToast(makeAdmin ? 'Benutzer ist jetzt Admin' : 'Admin-Rechte entfernt', 'success');
             await this.renderUsersList();
         } catch (error) {
             console.error('Error toggling admin:', error);
-            UI.showToast('Fehler beim Ändern der Admin-Rechte', 'error');
+            UI.showToast('Fehler beim Ändern der Admin-Rechte: ' + error.message, 'error');
         }
     },
 
     // Delete user
     async deleteUser(userId) {
         try {
+            console.log('Deleting user:', userId);
             UI.showLoading('Lösche Benutzer...');
             
             // Remove user from all bands
             const userBands = await Storage.getUserBands(userId);
+            console.log('User bands:', userBands);
             for (const ub of userBands) {
                 await Storage.removeBandMember(ub.bandId, userId);
             }
@@ -1891,12 +2132,19 @@ const App = {
             // Delete all user's votes
             const sb = SupabaseClient.getClient();
             if (sb) {
-                await sb.from('votes').delete().eq('userId', userId);
+                const { error } = await sb.from('votes').delete().eq('userId', userId);
+                if (error) {
+                    console.error('Error deleting votes:', error);
+                }
             }
             
             // Delete user
-            await Storage.delete('users', userId);
+            const deleted = await Storage.delete('users', userId);
+            if (!deleted) {
+                throw new Error('Benutzer konnte nicht gelöscht werden (RLS/Policy?)');
+            }
             
+            console.log('User deleted successfully');
             UI.hideLoading();
             UI.showToast('Benutzer gelöscht', 'success');
             await this.renderUsersList();
@@ -1952,17 +2200,121 @@ const App = {
     async handleCreateLocation() {
         const nameInput = document.getElementById('newLocationName');
         const addressInput = document.getElementById('newLocationAddress');
+        const linkedCalendarSelect = document.getElementById('newLocationLinkedCalendar');
 
         const name = nameInput.value;
         const address = addressInput.value;
+        const linkedCalendar = linkedCalendarSelect.value; // '' | 'tonstudio' | 'festhalle' | 'ankersaal'
 
         if (name) {
-            await Storage.createLocation({ name, address });
+            await Storage.createLocation({ name, address, linkedCalendar });
             nameInput.value = '';
             addressInput.value = '';
+            linkedCalendarSelect.value = '';
             await this.renderLocationsList();
             UI.showToast('Probeort erstellt', 'success');
         }
+    },
+
+    // Open edit location modal
+    async openEditLocationModal(locationId) {
+        const location = await Storage.getLocation(locationId);
+        if (!location) return;
+
+        document.getElementById('editLocationId').value = location.id;
+        document.getElementById('editLocationName').value = location.name;
+        document.getElementById('editLocationAddress').value = location.address || '';
+        
+        // Support both old formats (linkedToCalendar, linkedCalendars) and new (linkedCalendar)
+        let linkedCalendar = location.linkedCalendar || '';
+        
+        // Migration from old format
+        if (!linkedCalendar && location.linkedCalendars) {
+            if (location.linkedCalendars.tonstudio) linkedCalendar = 'tonstudio';
+            else if (location.linkedCalendars.festhalle) linkedCalendar = 'festhalle';
+            else if (location.linkedCalendars.ankersaal) linkedCalendar = 'ankersaal';
+        } else if (!linkedCalendar && location.linkedToCalendar) {
+            linkedCalendar = 'tonstudio'; // Old single calendar was always tonstudio
+        }
+        
+        document.getElementById('editLocationLinkedCalendar').value = linkedCalendar;
+
+        UI.openModal('editLocationModal');
+    },
+
+    // Handle edit location
+    async handleEditLocation() {
+        const locationId = document.getElementById('editLocationId').value;
+        const name = document.getElementById('editLocationName').value;
+        const address = document.getElementById('editLocationAddress').value;
+        const linkedCalendar = document.getElementById('editLocationLinkedCalendar').value;
+
+        if (name) {
+            await Storage.updateLocation(locationId, { name, address, linkedCalendar });
+            UI.closeModal('editLocationModal');
+            await this.renderLocationsList();
+            UI.showToast('Probeort aktualisiert', 'success');
+        }
+    },
+
+    // Check if location is available (for calendar-linked locations)
+    async checkLocationAvailability(locationId, startDate, endDate) {
+        const location = await Storage.getLocation(locationId);
+        
+        // Support new format (linkedCalendar string) and old formats
+        let linkedCalendar = location.linkedCalendar || '';
+        
+        // Migration from old formats
+        if (!linkedCalendar && location.linkedCalendars) {
+            if (location.linkedCalendars.tonstudio) linkedCalendar = 'tonstudio';
+            else if (location.linkedCalendars.festhalle) linkedCalendar = 'festhalle';
+            else if (location.linkedCalendars.ankersaal) linkedCalendar = 'ankersaal';
+        } else if (!linkedCalendar && location.linkedToCalendar) {
+            linkedCalendar = 'tonstudio';
+        }
+        
+        if (!location || !linkedCalendar) {
+            // Location not linked to any calendar, always available
+            return { available: true };
+        }
+
+        // Check calendar for conflicts
+        if (typeof Calendar === 'undefined' || !Calendar.calendars) {
+            console.warn('Calendar not loaded, skipping availability check');
+            return { available: true };
+        }
+
+        const startTime = new Date(startDate);
+        const endTime = new Date(endDate);
+        
+        // Check the linked calendar
+        const calendar = Calendar.calendars[linkedCalendar];
+        if (!calendar || !calendar.events || calendar.events.length === 0) {
+            return { available: true };
+        }
+        
+        // Find overlapping events
+        const conflicts = calendar.events.filter(event => {
+            const eventStart = new Date(event.startDate);
+            const eventEnd = new Date(event.endDate);
+
+            // Check if times overlap
+            return (startTime < eventEnd && endTime > eventStart);
+        });
+        
+        if (conflicts.length > 0) {
+            return {
+                available: false,
+                conflicts: conflicts.map(e => ({
+                    summary: e.summary,
+                    startDate: e.startDate,
+                    endDate: e.endDate,
+                    calendar: linkedCalendar
+                }))
+            };
+        }
+
+        return { available: true };
     },
 
     // Populate location select
@@ -2265,14 +2617,15 @@ const App = {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const id = btn.dataset.id;
-                UI.showConfirm('Möchtest du diese Abwesenheit wirklich löschen?', async () => {
+                const confirmed = await UI.confirmDelete('Möchtest du diese Abwesenheit wirklich löschen?');
+                if (confirmed) {
                     await Storage.deleteAbsence(id);
                     UI.showToast('Abwesenheit gelöscht', 'success');
                     await this.renderUserAbsences();
                     if (typeof Bands !== 'undefined' && Bands.currentBandId) {
                         Bands.renderBandAbsences(Bands.currentBandId);
                     }
-                });
+                }
             });
         });
     },

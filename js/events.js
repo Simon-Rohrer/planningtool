@@ -189,10 +189,10 @@ const Events = {
         });
 
         document.querySelectorAll('.delete-event').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const eventId = btn.dataset.eventId;
-                this.deleteEvent(eventId);
+                await this.deleteEvent(eventId);
             });
         });
     },
@@ -329,12 +329,13 @@ const Events = {
     },
 
     // Delete event
-    deleteEvent(eventId) {
-        UI.showConfirm('Möchtest du diesen Auftritt wirklich löschen?', () => {
+    async deleteEvent(eventId) {
+        const confirmed = await UI.confirmDelete('Möchtest du diesen Auftritt wirklich löschen?');
+        if (confirmed) {
             Storage.deleteEvent(eventId);
             UI.showToast('Auftritt gelöscht', 'success');
             this.renderEvents(this.currentFilter);
-        });
+        }
     },
 
     // Load band members for selection

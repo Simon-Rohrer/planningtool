@@ -1970,6 +1970,107 @@ body {
     transform: scale(1.1);
 }
 
+/* ===== Musikpool Styles ===== */
+.musikpool-header {
+    text-align: center;
+    padding: var(--spacing-xl);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    border-radius: var(--radius-lg);
+    color: white;
+    margin-bottom: var(--spacing-xl);
+}
+
+.musikpool-header h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.musikpool-members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.musikpool-member-card {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+    transition: all var(--transition-base);
+}
+
+.musikpool-member-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.member-avatar {
+    flex-shrink: 0;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.member-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.member-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.member-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.member-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--spacing-xs) 0;
+}
+
+.member-role {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--spacing-sm) 0;
+}
+
+.member-email {
+    font-size: 0.875rem;
+    color: var(--color-primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    transition: color var(--transition-fast);
+}
+
+.member-email:hover {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+}
+
 /* ===== Animation ===== */
 @keyframes slideDown {
     from {
@@ -1981,6 +2082,50 @@ body {
         opacity: 1;
         max-height: 2000px;
     }
+}
+
+/* ===== Calendar Submenu ===== */
+.calendar-submenu {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-sm);
+    background: var(--color-bg-secondary);
+    border-radius: var(--border-radius);
+    flex-wrap: wrap;
+}
+
+.calendar-tab {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: var(--border-radius);
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.calendar-tab:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.calendar-tab.active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+.calendar-container {
+    display: none;
+}
+
+.calendar-container.active {
+    display: block;
 }
 
 /* ===== Responsive Adjustments ===== */

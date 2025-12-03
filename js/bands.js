@@ -682,7 +682,8 @@ const Bands = {
             return;
         }
 
-        UI.showConfirm(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`, async () => {
+        const confirmed = await UI.confirmDelete(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`);
+        if (confirmed) {
             await Storage.deleteBand(bandId);
             UI.showToast('Band gelöscht', 'success');
             UI.closeModal('bandDetailsModal');
@@ -699,7 +700,7 @@ const Bands = {
             }
             // Update nav visibility after deleting a band
             await this.updateNavVisibility();
-        });
+        }
     },
 
     // Leave band (current user)

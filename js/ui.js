@@ -55,6 +55,72 @@ const UI = {
         });
     },
 
+    // Confirm delete dialog
+    confirmDelete(message = 'Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.') {
+        return this.confirmAction(message, 'Wirklich löschen?', 'Löschen', 'btn-danger');
+    },
+
+    // Generic confirm action dialog
+    confirmAction(message, title = 'Bestätigung', confirmText = 'OK', confirmClass = 'btn-primary') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirmDeleteModal');
+            const titleEl = document.getElementById('confirmDeleteTitle');
+            const messageEl = document.getElementById('confirmDeleteMessage');
+            const confirmBtn = document.getElementById('confirmDeleteConfirm');
+            const cancelBtn = document.getElementById('confirmDeleteCancel');
+            const closeBtn = modal.querySelector('.modal-close');
+
+            if (!modal || !confirmBtn || !cancelBtn || !closeBtn) {
+                console.error('confirmAction: Required modal elements not found');
+                resolve(false);
+                return;
+            }
+
+            if (titleEl) {
+                titleEl.textContent = title;
+            }
+            
+            if (messageEl) {
+                messageEl.textContent = message;
+            }
+
+            // Remove old event listeners by cloning
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            const newCloseBtn = closeBtn.cloneNode(true);
+            
+            // Update button text and class
+            newConfirmBtn.textContent = confirmText;
+            newConfirmBtn.className = 'btn ' + confirmClass;
+            
+            confirmBtn.replaceWith(newConfirmBtn);
+            cancelBtn.replaceWith(newCancelBtn);
+            closeBtn.replaceWith(newCloseBtn);
+
+            const cleanup = () => {
+                this.closeModal('confirmDeleteModal');
+            };
+
+            // Add event listeners to the new buttons
+            newConfirmBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(true);
+            });
+
+            newCancelBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+
+            newCloseBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+
+            this.openModal('confirmDeleteModal');
+        });
+    },
+
     // Toast notifications
     showToast(message, type = 'info') {
         const toast = document.getElementById('toast');
@@ -234,29 +300,49 @@ const UI = {
         });
     },
 
-    // Loading spinner
-    showLoading(message = 'Lädt...') {
+    // Loading spinner: delayed appearance if operation exceeds delayMs (default 1s)
+    _loaderTimer: null,
+    showLoading(message = 'Lädt...', delayMs = 1000) {
+        // Clear previous timer
+        if (this._loaderTimer) {
+            clearTimeout(this._loaderTimer);
+            this._loaderTimer = null;
+        }
         let loader = document.getElementById('globalLoader');
         if (!loader) {
             loader = document.createElement('div');
             loader.id = 'globalLoader';
-            loader.style.display = 'block';
+            loader.style.display = 'none';
+            loader.style.position = 'fixed';
+            loader.style.inset = '0';
+            loader.style.zIndex = '9999';
             loader.innerHTML = `
-                <div class="loader-overlay">
-                    <div class="loader-content">
-                        <div class="spinner"></div>
-                        <p class="loader-message">${message}</p>
+                <div class="loader-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
+                    <div class="loader-content" style="background:#fff;padding:16px 20px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.15);display:flex;align-items:center;gap:12px;">
+                        <div class="spinner" style="width:22px;height:22px;border:3px solid #ddd;border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                        <p class="loader-message" style="margin:0;font-weight:600;color:#111;">${message}</p>
                     </div>
                 </div>
             `;
             document.body.appendChild(loader);
+            // Spinner keyframes
+            const style = document.createElement('style');
+            style.textContent = '@keyframes spin {from{transform:rotate(0)} to{transform:rotate(360deg)}}';
+            document.head.appendChild(style);
         } else {
             loader.querySelector('.loader-message').textContent = message;
-            loader.style.display = 'block';
         }
+        // Show after delay
+        this._loaderTimer = setTimeout(() => {
+            loader.style.display = 'block';
+        }, delayMs);
     },
 
     hideLoading() {
+        if (this._loaderTimer) {
+            clearTimeout(this._loaderTimer);
+            this._loaderTimer = null;
+        }
         const loader = document.getElementById('globalLoader');
         if (loader) {
             loader.style.display = 'none';

@@ -493,6 +493,35 @@ const Rehearsals = {
             return;
         }
 
+        // Check location availability if location is calendar-linked
+        if (locationId && typeof App !== 'undefined' && App.checkLocationAvailability) {
+            for (const date of dates) {
+                const startDate = new Date(`${date.date}T${date.startTime}`);
+                const endDate = new Date(`${date.date}T${date.endTime}`);
+                
+                const availability = await App.checkLocationAvailability(locationId, startDate, endDate);
+                
+                if (!availability.available) {
+                    const location = await Storage.getLocation(locationId);
+                    const conflictList = availability.conflicts.map(c => {
+                        const start = new Date(c.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        const end = new Date(c.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        return `• ${c.summary} (${start} - ${end})`;
+                    }).join('\n');
+                    
+                    const proceed = confirm(
+                        `⚠️ Achtung: ${location.name} ist zu dieser Zeit bereits belegt!\n\n` +
+                        `Konflikte am ${date.date}:\n${conflictList}\n\n` +
+                        `Möchtest du trotzdem fortfahren?`
+                    );
+                    
+                    if (!proceed) {
+                        return;
+                    }
+                }
+            }
+        }
+
         const rehearsal = {
             bandId,
             proposedBy: user.id,
@@ -551,6 +580,7 @@ const Rehearsals = {
         container.innerHTML = proposedDates.map(date => `
             <div class="date-proposal-item">
                 <input type="datetime-local" class="date-input" value="${date.slice(0, 16)}" required>
+                <span class="date-availability" style="margin-left:8px"></span>
                 <button type="button" class="btn-icon remove-date">🗑️</button>
             </div>
         `).join('');
@@ -564,6 +594,20 @@ const Rehearsals = {
         });
 
         this.updateRemoveButtons();
+
+        // Attach availability listeners and trigger initial check
+        if (typeof App !== 'undefined') {
+            this.attachAvailabilityListeners();
+            // Initial check to show status immediately, with loader if slow
+            UI.showLoading('Kalender wird geladen…');
+            Promise.resolve(this.updateAvailabilityIndicators())
+                .finally(() => UI.hideLoading());
+            const locSelect = document.getElementById('rehearsalLocation');
+            if (locSelect) {
+                const evt = new Event('change', { bubbles: true });
+                locSelect.dispatchEvent(evt);
+            }
+        }
 
         // Show notification checkbox for editing
         const notifyGroup = document.getElementById('notifyMembersGroup');
@@ -602,11 +646,72 @@ const Rehearsals = {
     },
 
     // Delete rehearsal
-    deleteRehearsal(rehearsalId) {
-        UI.showConfirm('Möchtest du diesen Probetermin wirklich löschen?', () => {
+    async deleteRehearsal(rehearsalId) {
+        const confirmed = await UI.confirmDelete('Möchtest du diesen Probentermin wirklich löschen?');
+        if (confirmed) {
             Storage.deleteRehearsal(rehearsalId);
-            UI.showToast('Probetermin gelöscht', 'success');
+            UI.showToast('Probentermin gelöscht', 'success');
             this.renderRehearsals(this.currentFilter);
+        }
+    },
+
+    // Availability helpers
+    async checkSingleDateAvailability(locationId, isoString) {
+        try {
+            if (!locationId || !isoString || typeof App === 'undefined' || !App.checkLocationAvailability) {
+                return { available: true, conflicts: [] };
+            }
+            // Ensure calendar data is available even if calendar page wasn't visited
+            if (App.ensureLocationCalendar && typeof App.ensureLocationCalendar === 'function') {
+                try { await App.ensureLocationCalendar(locationId); } catch (_) {}
+            }
+            const startDate = new Date(isoString);
+            const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+            return await App.checkLocationAvailability(locationId, startDate, endDate);
+        } catch (e) {
+            console.error('Availability check failed', e);
+            return { available: true, conflicts: [] };
+        }
+    },
+
+    async updateAvailabilityIndicators() {
+        const locationId = document.getElementById('rehearsalLocation')?.value || '';
+        const items = document.querySelectorAll('#dateProposals .date-proposal-item');
+        for (const item of items) {
+            const input = item.querySelector('.date-input');
+            const indicator = item.querySelector('.date-availability');
+            if (!indicator) continue;
+            if (!input.value || !locationId) {
+                indicator.textContent = '';
+                indicator.style.color = '';
+                indicator.style.fontWeight = '';
+                continue;
+            }
+            const availability = await this.checkSingleDateAvailability(locationId, new Date(input.value).toISOString());
+            if (availability.available) {
+                indicator.textContent = 'Ort ist frei';
+                indicator.style.color = 'green';
+                indicator.style.fontWeight = '600';
+            } else {
+                indicator.textContent = '⚠️ Ort belegt';
+                indicator.style.color = 'red';
+                indicator.style.fontWeight = '600';
+            }
+        }
+    },
+
+    attachAvailabilityListeners() {
+        const locSelect = document.getElementById('rehearsalLocation');
+        if (locSelect && !locSelect._availabilityBound) {
+            locSelect.addEventListener('change', () => this.updateAvailabilityIndicators());
+            locSelect._availabilityBound = true;
+        }
+        const inputs = document.querySelectorAll('#dateProposals .date-input');
+        inputs.forEach(input => {
+            if (!input._availabilityBound) {
+                input.addEventListener('change', () => this.updateAvailabilityIndicators());
+                input._availabilityBound = true;
+            }
         });
     },
 
@@ -680,6 +785,7 @@ const Rehearsals = {
         newItem.className = 'date-proposal-item';
         newItem.innerHTML = `
             <input type="datetime-local" class="date-input" required>
+            <span class="date-availability" style="margin-left:8px"></span>
             <button type="button" class="btn-icon remove-date">🗑️</button>
         `;
 
@@ -691,6 +797,12 @@ const Rehearsals = {
         });
 
         this.updateRemoveButtons();
+        // Bind availability checks for new input
+        this.attachAvailabilityListeners();
+        // Run an immediate check to render status, with loader if slow
+        UI.showLoading('Kalender wird geladen…');
+        Promise.resolve(this.updateAvailabilityIndicators())
+            .finally(() => UI.hideLoading());
     },
 
     // Update remove button states

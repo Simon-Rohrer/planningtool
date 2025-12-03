@@ -133,9 +133,13 @@
                 <span class="nav-icon">📰</span>
                 <span class="nav-label">News & Updates</span>
             </button>
-            <button class="nav-item" data-view="tonstudio">
+            <button class="nav-item" data-view="probeorte">
                 <span class="nav-icon">🎙️</span>
-                <span class="nav-label">Tonstudio</span>
+                <span class="nav-label">Probeorte</span>
+            </button>
+            <button class="nav-item" data-view="musikpool">
+                <span class="nav-icon">🎵</span>
+                <span class="nav-label">Musikpool</span>
             </button>
         </nav>
 
@@ -259,18 +263,64 @@
                     </div>
                 </div>
             </div>
-            <!-- Tonstudio View -->
-            <div id="tonstudioView" class="view">
+            <!-- Probeorte View -->
+            <div id="probeorteView" class="view">
                 <div class="view-header">
-                    <h2>Tonstudio Kalender</h2>
-                    <button id="refreshCalendarBtn" class="btn btn-secondary"
+                    <h2>Probeorte Kalender</h2>
+                </div>
+                
+                <!-- Submenu for calendar selection -->
+                <div class="calendar-submenu">
+                    <button class="calendar-tab active" data-calendar="tonstudio">
+                        🎙️ Tonstudio
+                    </button>
+                    <button class="calendar-tab" data-calendar="festhalle">
+                        🏛️ JMS Festhalle
+                    </button>
+                    <button class="calendar-tab" data-calendar="ankersaal">
+                        ⚓ Ankersaal
+                    </button>
+                    <button id="refreshCalendarBtn" class="btn btn-secondary" style="margin-left: auto;">
+                        🔄 Aktualisieren
+                    </button>
+                </div>
+                
+                <div class="section">
+                    <!-- Tonstudio Calendar -->
+                    <div id="tonstudioCalendar" class="calendar-container active">
+                        <div id="tonstudioEventsContainer" style="min-height: 400px;">
+                            <!-- Events will be rendered here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Festhalle Calendar -->
+                    <div id="festhalleCalendar" class="calendar-container">
+                        <div id="festhalleEventsContainer" style="min-height: 400px;">
+                            <!-- Events will be rendered here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Ankersaal Calendar -->
+                    <div id="ankersaalCalendar" class="calendar-container">
+                        <div id="ankersaalEventsContainer" style="min-height: 400px;">
+                            <!-- Events will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Musikpool View -->
+            <div id="musikpoolView" class="view">
+                <div class="view-header">
+                    <h2>Musikpool</h2>
+                    <button id="refreshMusikpoolBtn" class="btn btn-secondary"
                         style="display: inline-flex; align-items: center; gap: 0.5rem;">
                         🔄 Aktualisieren
                     </button>
                 </div>
                 <div class="section">
-                    <div id="calendarEventsContainer" style="min-height: 400px;">
-                        <!-- Events will be rendered here -->
+                    <div id="musikpoolContainer">
+                        <!-- Members will be rendered here -->
                     </div>
                 </div>
             </div>
@@ -340,6 +390,16 @@
                             <div class="form-group">
                                 <label for="newLocationAddress" class="sr-only">Adresse</label>
                                 <input type="text" id="newLocationAddress" placeholder="Adresse (Optional)">
+                            </div>
+                            <div class="form-group">
+                                <label for="newLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
+                                <select id="newLocationLinkedCalendar" class="form-select">
+                                    <option value="">Nicht verknüpft</option>
+                                    <option value="tonstudio">🎙️ Tonstudio</option>
+                                    <option value="festhalle">🏛️ JMS Festhalle</option>
+                                    <option value="ankersaal">⚓ Ankersaal</option>
+                                </select>
+                                <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu prüfen.</p>
                             </div>
                             <button type="submit" class="btn btn-primary">Hinzufügen</button>
                         </form>
@@ -414,6 +474,41 @@
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary">Band erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Location Modal -->
+    <div id="editLocationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Probeort bearbeiten</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="editLocationForm">
+                <input type="hidden" id="editLocationId">
+                <div class="form-group">
+                    <label for="editLocationName">Name</label>
+                    <input type="text" id="editLocationName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editLocationAddress">Adresse</label>
+                    <input type="text" id="editLocationAddress">
+                </div>
+                <div class="form-group">
+                    <label for="editLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
+                    <select id="editLocationLinkedCalendar" class="form-select">
+                        <option value="">Nicht verknüpft</option>
+                        <option value="tonstudio">🎙️ Tonstudio</option>
+                        <option value="festhalle">🏛️ JMS Festhalle</option>
+                        <option value="ankersaal">⚓ Ankersaal</option>
+                    </select>
+                    <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu prüfen.</p>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
                 </div>
             </form>
         </div>
@@ -869,6 +964,55 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
 
+    <!-- Confirm Delete Modal -->
+    <div id="confirmDeleteModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="confirmDeleteTitle">Wirklich löschen?</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmDeleteMessage" style="margin: 0; color: var(--color-text-secondary);">
+                    Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn cancel" id="confirmDeleteCancel">Abbrechen</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteConfirm">Löschen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Event Detail Modal -->
+    <div id="calendarEventModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="eventModalTitle">Event Details</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <strong style="color: var(--color-text-secondary);">Titel:</strong>
+                        <p id="eventModalSummary" style="margin: 0.25rem 0 0 0;"></p>
+                    </div>
+                    <div>
+                        <strong style="color: var(--color-text-secondary);">Zeit:</strong>
+                        <p id="eventModalTime" style="margin: 0.25rem 0 0 0;"></p>
+                    </div>
+                    <div id="eventModalLocationContainer" style="display: none;">
+                        <strong style="color: var(--color-text-secondary);">Ort:</strong>
+                        <p id="eventModalLocation" style="margin: 0.25rem 0 0 0;"></p>
+                    </div>
+                    <div id="eventModalDescriptionContainer" style="display: none;">
+                        <strong style="color: var(--color-text-secondary);">Beschreibung:</strong>
+                        <p id="eventModalDescription" style="margin: 0.25rem 0 0 0; white-space: pre-wrap;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <!-- iCal.js library for parsing calendar data -->
     <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
@@ -883,6 +1027,8 @@
     <script src="js/rehearsals.js"></script>
     <script src="js/statistics.js"></script>
     <script src="js/calendar.js"></script>
+    <script src="js/churchtools-api.js"></script>
+    <script src="js/musikpool.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>
 </body>

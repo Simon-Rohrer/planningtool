@@ -1,34 +1,102 @@
-// Calendar Module - Fetch and display iCal events
+// Calendar Module - Fetch and display iCal events for multiple locations
 
 const Calendar = {
-    calendarUrl: 'https://jms-altensteig.church.tools/?q=public/cr_ical&security=NfxmtRVaX40wkMxvfbpH9PRMKdJu9VDI&id=19',
-    events: [],
-    currentMonth: new Date(),
+    calendars: {
+        tonstudio: {
+            url: 'https://jms-altensteig.church.tools/?q=public/cr_ical&security=NfxmtRVaX40wkMxvfbpH9PRMKdJu9VDI&id=19',
+            events: [],
+            currentMonth: new Date(),
+            containerId: 'tonstudioEventsContainer'
+        },
+        festhalle: {
+            url: 'https://jms-altensteig.church.tools/?q=public/cr_ical&security=bOv5OpXv4gXaRK4K9An9&id=3',
+            events: [],
+            currentMonth: new Date(),
+            containerId: 'festhalleEventsContainer'
+        },
+        ankersaal: {
+            url: 'https://jms-altensteig.church.tools/?q=public/cr_ical&security=x135fXCcu1pJAo1xQfwfmeLuemeBfqUV&id=9',
+            events: [],
+            currentMonth: new Date(),
+            containerId: 'ankersaalEventsContainer'
+        }
+    },
+    currentCalendar: 'tonstudio',
 
-    async loadCalendar() {
-        const container = document.getElementById('calendarEventsContainer');
-        if (!container) return;
+    // Getter for backwards compatibility
+    get calendarUrl() {
+        return this.calendars[this.currentCalendar].url;
+    },
+    get events() {
+        return this.calendars[this.currentCalendar].events;
+    },
+    set events(value) {
+        this.calendars[this.currentCalendar].events = value;
+    },
+    get currentMonth() {
+        return this.calendars[this.currentCalendar].currentMonth;
+    },
+    set currentMonth(value) {
+        this.calendars[this.currentCalendar].currentMonth = value;
+    },
+
+    async loadCalendar(calendarType = 'tonstudio') {
+        const calendar = this.calendars[calendarType];
+        if (!calendar) {
+            console.error(`Calendar type "${calendarType}" not found`);
+            return;
+        }
+
+        const container = document.getElementById(calendar.containerId);
+        if (!container) {
+            console.error(`Container "${calendar.containerId}" not found`);
+            return;
+        }
+
+        // Check if URL is configured
+        if (!calendar.url) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📅</div>
+                    <p>Kalender noch nicht konfiguriert</p>
+                    <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                        Die iCal-URL für diesen Kalender wurde noch nicht hinzugefügt.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        this.currentCalendar = calendarType;
 
         try {
+            if (typeof UI !== 'undefined' && UI.showLoading) {
+                UI.showLoading('Kalender wird geladen…');
+            }
+            console.log(`Loading ${calendarType} calendar from:`, calendar.url);
             container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Kalender-Termine...</p></div>';
 
             // Use CORS proxy to fetch iCal data
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(this.calendarUrl)}`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(calendar.url)}`;
+            console.log('Fetching via proxy:', proxyUrl);
+            
             const response = await fetch(proxyUrl);
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const icalData = await response.text();
+            console.log(`Received ${icalData.length} characters of iCal data`);
 
             // Parse iCal data using ical.js
             const jcalData = ICAL.parse(icalData);
             const comp = new ICAL.Component(jcalData);
             const vevents = comp.getAllSubcomponents('vevent');
+            console.log(`Found ${vevents.length} events`);
 
             // Extract events
-            this.events = vevents.map(vevent => {
+            calendar.events = vevents.map(vevent => {
                 const event = new ICAL.Event(vevent);
                 return {
                     summary: event.summary || 'Kein Titel',
@@ -41,11 +109,12 @@ const Calendar = {
             }).filter(event => event.startDate);
 
             // Sort by start date
-            this.events.sort((a, b) => a.startDate - b.startDate);
+            calendar.events.sort((a, b) => a.startDate - b.startDate);
+            console.log(`${calendarType} calendar loaded successfully with ${calendar.events.length} events`);
 
             this.renderMonthView();
         } catch (error) {
-            console.error('Fehler beim Laden des Kalenders:', error);
+            console.error(`Fehler beim Laden des ${calendarType} Kalenders:`, error);
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">⚠️</div>
@@ -56,22 +125,33 @@ const Calendar = {
                     <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 1rem;">
                         Dies liegt möglicherweise an Sicherheitseinstellungen des Kalender-Servers.
                     </p>
-                    <a href="${this.calendarUrl}" target="_blank" class="btn btn-secondary" style="margin-top: 1rem;">
+                    <a href="${calendar.url}" target="_blank" class="btn btn-secondary" style="margin-top: 1rem;">
                         📅 Kalender direkt öffnen
                     </a>
                 </div>
             `;
+        } finally {
+            if (typeof UI !== 'undefined' && UI.hideLoading) {
+                UI.hideLoading();
+            }
         }
     },
 
     renderMonthView() {
-        const container = document.getElementById('calendarEventsContainer');
-        if (!container) return;
+        const calendar = this.calendars[this.currentCalendar];
+        const container = document.getElementById(calendar.containerId);
+        
+        console.log(`renderMonthView called for ${this.currentCalendar}, container:`, container);
+        
+        if (!container) {
+            console.error(`Container "${calendar.containerId}" not found in DOM!`);
+            return;
+        }
 
-        const year = this.currentMonth.getFullYear();
-        const month = this.currentMonth.getMonth();
+        const year = calendar.currentMonth.getFullYear();
+        const month = calendar.currentMonth.getMonth();
 
-        const monthName = this.currentMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+        const monthName = calendar.currentMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
 
         // Get first day of month and last day
         const firstDay = new Date(year, month, 1);
@@ -87,7 +167,10 @@ const Calendar = {
         let html = `
             <div class="calendar-header">
                 <button onclick="Calendar.previousMonth()" class="btn btn-icon" style="font-size: 1.5rem;">‹</button>
-                <h3 style="color: var(--color-text); margin: 0; font-size: 1.5rem; font-weight: 700;">${monthName}</h3>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <h3 style="color: var(--color-text); margin: 0; font-size: 1.5rem; font-weight: 700;">${monthName}</h3>
+                    <button onclick="Calendar.goToToday()" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">📅 Heute</button>
+                </div>
                 <button onclick="Calendar.nextMonth()" class="btn btn-icon" style="font-size: 1.5rem;">›</button>
             </div>
             
@@ -133,11 +216,23 @@ const Calendar = {
 
         html += '</div>';
 
+        console.log(`Setting innerHTML for ${this.currentCalendar}, HTML length: ${html.length}`);
         container.innerHTML = html;
+        console.log(`Container updated, new innerHTML length: ${container.innerHTML.length}`);
+        
+        // Add click listeners to all calendar events
+        container.querySelectorAll('.calendar-event').forEach(eventElement => {
+            eventElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showEventDetails(eventElement);
+            });
+        });
+        console.log(`Added click listeners to ${container.querySelectorAll('.calendar-event').length} events`);
     },
 
     getEventsForDate(date) {
-        return this.events.filter(event => {
+        const calendar = this.calendars[this.currentCalendar];
+        return calendar.events.filter(event => {
             const eventDate = new Date(event.startDate);
             eventDate.setHours(0, 0, 0, 0);
             return eventDate.getTime() === date.getTime();
@@ -145,26 +240,92 @@ const Calendar = {
     },
 
     renderCalendarEvent(event) {
-        const time = event.startDate.toLocaleTimeString('de-DE', {
+        const startTime = event.startDate.toLocaleTimeString('de-DE', {
             hour: '2-digit',
             minute: '2-digit'
         });
+        
+        const endTime = event.endDate ? event.endDate.toLocaleTimeString('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : null;
+        
+        const timeDisplay = endTime ? `${startTime} - ${endTime}` : startTime;
+        
+        // Truncate title at 15 characters
+        const truncateTitle = (text, maxLength = 15) => {
+            const escaped = this.escapeHtml(text);
+            if (text.length <= maxLength) return escaped;
+            return escaped.substring(0, maxLength) + '...';
+        };
+
+        // Create unique event ID for click handler
+        const eventId = `event_${event.uid}_${event.startDate.getTime()}`;
 
         return `
-            <div class="calendar-event" title="${this.escapeHtml(event.summary)}${event.location ? ' - ' + this.escapeHtml(event.location) : ''}">
-                <span class="event-time">${time}</span>
-                <span class="event-title">${this.escapeHtml(event.summary)}</span>
+            <div class="calendar-event" 
+                 id="${eventId}"
+                 data-event-summary="${this.escapeHtml(event.summary)}"
+                 data-event-time="${timeDisplay}"
+                 data-event-location="${this.escapeHtml(event.location || '')}"
+                 data-event-description="${this.escapeHtml(event.description || '')}"
+                 title="Klicken für Details">
+                <span class="event-time">${timeDisplay}</span>
+                <span class="event-title">${truncateTitle(event.summary)}</span>
             </div>
         `;
     },
 
+    // Show event details in modal
+    showEventDetails(eventElement) {
+        const summary = eventElement.dataset.eventSummary;
+        const time = eventElement.dataset.eventTime;
+        const location = eventElement.dataset.eventLocation;
+        const description = eventElement.dataset.eventDescription;
+
+        document.getElementById('eventModalTitle').textContent = 'Event Details';
+        document.getElementById('eventModalSummary').textContent = summary;
+        document.getElementById('eventModalTime').textContent = time;
+
+        // Show/hide location
+        const locationContainer = document.getElementById('eventModalLocationContainer');
+        if (location) {
+            document.getElementById('eventModalLocation').textContent = location;
+            locationContainer.style.display = 'block';
+        } else {
+            locationContainer.style.display = 'none';
+        }
+
+        // Show/hide description
+        const descriptionContainer = document.getElementById('eventModalDescriptionContainer');
+        if (description) {
+            document.getElementById('eventModalDescription').textContent = description;
+            descriptionContainer.style.display = 'block';
+        } else {
+            descriptionContainer.style.display = 'none';
+        }
+
+        // Open modal using UI helper
+        if (typeof UI !== 'undefined' && UI.openModal) {
+            UI.openModal('calendarEventModal');
+        }
+    },
+
     previousMonth() {
-        this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() - 1, 1);
+        const calendar = this.calendars[this.currentCalendar];
+        calendar.currentMonth = new Date(calendar.currentMonth.getFullYear(), calendar.currentMonth.getMonth() - 1, 1);
         this.renderMonthView();
     },
 
     nextMonth() {
-        this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 1);
+        const calendar = this.calendars[this.currentCalendar];
+        calendar.currentMonth = new Date(calendar.currentMonth.getFullYear(), calendar.currentMonth.getMonth() + 1, 1);
+        this.renderMonthView();
+    },
+
+    goToToday() {
+        const calendar = this.calendars[this.currentCalendar];
+        calendar.currentMonth = new Date();
         this.renderMonthView();
     },
 
