@@ -167,3 +167,11 @@
         display: none;
     }
 }
+
+@media (max-width: 480px) {
+    .calendar-header { flex-direction: column; gap: var(--spacing-sm); }
+    .calendar-grid { grid-template-columns: repeat(7, minmax(40px, 1fr)); }
+    .calendar-day { min-height: 60px; padding: 2px; }
+    .calendar-day-number { font-size: 0.6rem; }
+    .calendar-event { font-size: 0.5rem; }
+}

@@ -182,8 +182,8 @@
                 </div>
 
                 <div class="section">
-                    <h3>Aktuelle Abstimmungen</h3>
-                    <div id="recentVotes" class="rehearsal-list"></div>
+                    <h3>Nächste Termine</h3>
+                    <div id="upcomingList" class="rehearsal-list"></div>
                 </div>
             </div>
 
@@ -375,6 +375,17 @@
                             </div>
                             <button type="submit" class="btn btn-primary">Speichern</button>
                         </form>
+                        <div class="section" style="margin-top: 1rem;">
+                            <h3>Darstellung</h3>
+                            <div class="form-group" style="display:flex;align-items:center;gap:12px;">
+                                <label for="themeToggle" style="margin:0;">Dark Mode</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="themeToggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <small style="color: var(--color-text-secondary);">Der Dark Mode wird lokal gespeichert.</small>
+                        </div>
                     </div>
                 </div>
 

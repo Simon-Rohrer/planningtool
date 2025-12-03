@@ -8,6 +8,12 @@ const App = {
         // Initialize Supabase Auth first
         await Auth.init();
         
+        // Apply saved theme on app start
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.documentElement.classList.toggle('theme-dark', savedTheme === 'dark');
+        }
+
         // Check authentication
         if (Auth.isAuthenticated()) {
             await this.showApp();
@@ -563,6 +569,20 @@ const App = {
         console.log(`[navigateTo] Mapped to viewId: "${viewId}"`);
         
         if (viewId) {
+            // Set nav active color per view for sticky bottom bar indicator
+            const navActiveColorMap = {
+                dashboard: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
+                bands: '#10b981', // success green
+                events: '#ec4899', // secondary pink
+                rehearsals: '#6366f1', // primary
+                statistics: '#2563eb', // blue
+                news: '#f59e0b', // warning
+                probeorte: '#9333ea', // purple
+                musikpool: '#0ea5e9' // cyan
+            };
+            const navColor = navActiveColorMap[view] || getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+            document.documentElement.style.setProperty('--nav-active-color', navColor);
+
             UI.showView(viewId);
 
             // Update active navigation
@@ -1658,6 +1678,24 @@ const App = {
         // Default to profile tab for everyone initially
         this.switchSettingsTab('profile');
 
+        // Theme toggle setup
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            const savedTheme = localStorage.getItem('theme');
+            const isDark = savedTheme === 'dark' || (savedTheme === null && document.documentElement.classList.contains('theme-dark'));
+            themeToggle.checked = isDark;
+            const applyTheme = (dark) => {
+                document.documentElement.classList.toggle('theme-dark', dark);
+                localStorage.setItem('theme', dark ? 'dark' : 'light');
+            };
+            // Ensure current theme reflects toggle
+            applyTheme(isDark);
+            // Bind change
+            const newToggle = themeToggle.cloneNode(true);
+            themeToggle.parentNode.replaceChild(newToggle, themeToggle);
+            newToggle.addEventListener('change', (e) => applyTheme(e.target.checked));
+        }
+
         if (isAdmin) {
             await this.renderLocationsList();
             await this.renderAllBandsList();
@@ -2396,7 +2434,85 @@ const App = {
         const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
         document.getElementById('confirmedRehearsals').textContent = confirmedRehearsals.length;
 
-        await Rehearsals.renderRecentVotes();
+        await this.renderUpcomingList();
+    },
+
+    // Render upcoming events and rehearsals sorted by date
+    async renderUpcomingList() {
+        const container = document.getElementById('upcomingList');
+        const user = Auth.getCurrentUser();
+        if (!container || !user) return;
+
+        const now = new Date();
+        const events = (await Storage.getUserEvents(user.id)) || [];
+        const rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
+
+        const upcomingEvents = events
+            .filter(e => new Date(e.date) >= now)
+            .map(e => ({
+                type: 'event',
+                date: new Date(e.date).toISOString(),
+                title: e.title,
+                bandId: e.bandId,
+                location: e.location || null,
+                id: e.id
+            }));
+
+        const upcomingRehearsals = rehearsals
+            .filter(r => r.status === 'confirmed' && r.confirmedDateIndex !== undefined)
+            .map(r => {
+                const iso = r.proposedDates[r.confirmedDateIndex];
+                return {
+                    type: 'rehearsal',
+                    date: iso,
+                    title: r.title,
+                    bandId: r.bandId,
+                    locationId: r.locationId || null,
+                    id: r.id
+                };
+            })
+            .filter(item => new Date(item.date) >= now);
+
+        const combined = [...upcomingEvents, ...upcomingRehearsals]
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+            .slice(0, 5);
+
+        if (combined.length === 0) {
+            UI.showEmptyState(container, '📅', 'Keine anstehenden Termine');
+            return;
+        }
+
+        const rows = await Promise.all(combined.map(async item => {
+            const band = await Storage.getBand(item.bandId);
+            const bandName = band?.name || 'Band';
+            const dateText = UI.formatDateShort(item.date);
+            const typeIcon = item.type === 'event' ? '🎤' : '📅';
+
+            let locationText = '-';
+            if (item.type === 'event') {
+                locationText = item.location ? Bands.escapeHtml(item.location) : '-';
+            } else if (item.type === 'rehearsal' && item.locationId) {
+                const loc = await Storage.getLocation(item.locationId);
+                locationText = loc ? Bands.escapeHtml(loc.name) : '-';
+            }
+
+            return `
+                <div class="date-option">
+                    <div class="date-info">
+                        <div class="date-time">${typeIcon} ${UI.formatDate(item.date)}</div>
+                        <div class="vote-summary">
+                            <span class="vote-count">🎸 ${Bands.escapeHtml(bandName)}</span>
+                            <span class="vote-count">📍 ${locationText}</span>
+                        </div>
+                    </div>
+                    <div class="vote-actions">
+                        ${item.type === 'event' ? `<button class="btn btn-secondary" onclick="App.navigateTo('events')">Öffnen</button>` : `<button class="btn btn-secondary" onclick="App.navigateTo('rehearsals')">Öffnen</button>`}
+                    </div>
+                </div>
+            `;
+        }));
+
+        container.innerHTML = rows.join('');
     },
 
     // Handle create band
