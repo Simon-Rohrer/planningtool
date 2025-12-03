@@ -1,10 +1,16 @@
 // Main Application Controller
 
 const App = {
-    init() {
+    // Track deleted songs for potential rollback
+    deletedEventSongs: [],
+    
+    async init() {
+        // Initialize Supabase Auth first
+        await Auth.init();
+        
         // Check authentication
         if (Auth.isAuthenticated()) {
-            this.showApp();
+            await this.showApp();
         } else {
             this.showAuth();
         }
@@ -14,6 +20,15 @@ const App = {
         // init draft song list for new events
         this.draftEventSongIds = [];
         this.lastSongModalContext = null; // { eventId, bandId, origin }
+
+        // Load calendar immediately if Tonstudio view is present
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.getElementById('tonstudioView')) {
+                if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+                    Calendar.loadCalendar();
+                }
+            }
+        });
     },
 
     setupEventListeners() {
@@ -26,15 +41,15 @@ const App = {
         });
 
         // Login form
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            this.handleLogin();
+            await this.handleLogin();
         });
 
         // Register form
-        document.getElementById('registerForm').addEventListener('submit', (e) => {
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            this.handleRegister();
+            await this.handleRegister();
         });
 
         // Logout button
@@ -52,7 +67,9 @@ const App = {
 
         // Modal close buttons
         document.querySelectorAll('.modal-close').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const modal = btn.closest('.modal');
                 if (modal) {
                     UI.closeModal(modal.id);
@@ -91,7 +108,7 @@ const App = {
 
 
         // Create rehearsal button
-        document.getElementById('createRehearsalBtn').addEventListener('click', () => {
+        document.getElementById('createRehearsalBtn').addEventListener('click', async () => {
             // Reset form for new rehearsal
             document.getElementById('rehearsalModalTitle').textContent = 'Neuen Probetermin vorschlagen';
             document.getElementById('saveRehearsalBtn').textContent = 'Vorschlag erstellen';
@@ -107,8 +124,8 @@ const App = {
                 </div>
             `;
 
-            Bands.populateBandSelects();
-            this.populateLocationSelect();
+            await Bands.populateBandSelects();
+            await this.populateLocationSelect();
 
             // Clear event select initially
             const eventSelect = document.getElementById('rehearsalEvent');
@@ -129,10 +146,10 @@ const App = {
         // Listen for band selection changes in rehearsal form
         const rehearsalBandSelect = document.getElementById('rehearsalBand');
         if (rehearsalBandSelect) {
-            rehearsalBandSelect.addEventListener('change', (e) => {
+            rehearsalBandSelect.addEventListener('change', async (e) => {
                 const bandId = e.target.value;
                 if (bandId) {
-                    this.populateEventSelect(bandId);
+                    await this.populateEventSelect(bandId);
                 } else {
                     const eventSelect = document.getElementById('rehearsalEvent');
                     if (eventSelect) {
@@ -173,8 +190,9 @@ const App = {
             UI.clearForm('createEventForm');
 
             Events.populateBandSelect();
-            // Clear draft song selection for new event
+            // Clear draft song selection and deleted songs for new event
             this.draftEventSongIds = [];
+            this.deletedEventSongs = [];
             this.renderDraftEventSongs();
             UI.openModal('createEventModal');
         });
@@ -186,10 +204,10 @@ const App = {
         });
 
         // Event band change
-        document.getElementById('eventBand').addEventListener('change', (e) => {
+        document.getElementById('eventBand').addEventListener('change', async (e) => {
             const bandId = e.target.value;
             if (bandId) {
-                Events.loadBandMembers(bandId, null); // null = pre-select all
+                await Events.loadBandMembers(bandId, null); // null = pre-select all
             }
         });
 
@@ -219,7 +237,7 @@ const App = {
         // Add existing event song button (pick from band's songs)
         const addExistingEventSongBtn = document.getElementById('addExistingEventSongBtn');
         if (addExistingEventSongBtn) {
-            addExistingEventSongBtn.addEventListener('click', () => {
+            addExistingEventSongBtn.addEventListener('click', async () => {
                 const eventId = document.getElementById('editEventId').value;
                 const bandId = document.getElementById('eventBand').value;
                 if (!bandId) {
@@ -227,8 +245,8 @@ const App = {
                     return;
                 }
 
-                const bandSongs = Storage.getBandSongs(bandId);
-                if (!bandSongs || bandSongs.length === 0) {
+                const bandSongs = await Storage.getBandSongs(bandId);
+                if (!Array.isArray(bandSongs) || bandSongs.length === 0) {
                     UI.showToast('Für diese Band sind noch keine Songs vorhanden', 'info');
                     return;
                 }
@@ -250,10 +268,10 @@ const App = {
         });
 
         // Rehearsal band change - load events for selection
-        document.getElementById('rehearsalBand').addEventListener('change', (e) => {
+        document.getElementById('rehearsalBand').addEventListener('change', async (e) => {
             const bandId = e.target.value;
             if (bandId) {
-                this.populateEventSelect(bandId);
+                await this.populateEventSelect(bandId);
             }
         });
 
@@ -282,9 +300,18 @@ const App = {
 
         // Modal close buttons
         document.querySelectorAll('.cancel').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const modal = btn.closest('.modal');
                 if (modal) {
+                    // If closing event modal, restore deleted songs
+                    if (modal.id === 'createEventModal' && this.deletedEventSongs.length > 0) {
+                        console.log('Restoring', this.deletedEventSongs.length, 'deleted songs');
+                        for (const song of this.deletedEventSongs) {
+                            await Storage.createSong(song);
+                        }
+                        this.deletedEventSongs = [];
+                        UI.showToast('Änderungen verworfen', 'info');
+                    }
                     UI.closeModal(modal.id);
                 }
             });
@@ -315,19 +342,38 @@ const App = {
         // Update profile form
         const updateProfileForm = document.getElementById('updateProfileForm');
         if (updateProfileForm) {
-            updateProfileForm.addEventListener('submit', (e) => {
+            updateProfileForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                this.handleUpdateProfile();
+                await this.handleUpdateProfile();
             });
         }
 
         // Create absence form
         const createAbsenceForm = document.getElementById('createAbsenceForm');
         if (createAbsenceForm) {
-            createAbsenceForm.addEventListener('submit', (e) => {
+            createAbsenceForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                this.handleCreateAbsence();
+                await this.handleCreateAbsence();
             });
+        }
+
+        // Add date validation for absence dates
+        const absenceStartInput = document.getElementById('absenceStart');
+        const absenceEndInput = document.getElementById('absenceEnd');
+        if (absenceStartInput && absenceEndInput) {
+            const validateDates = () => {
+                if (absenceStartInput.value && absenceEndInput.value) {
+                    const start = new Date(absenceStartInput.value);
+                    const end = new Date(absenceEndInput.value);
+                    if (start > end) {
+                        absenceEndInput.setCustomValidity('Das "Bis"-Datum muss nach dem "Von"-Datum liegen');
+                    } else {
+                        absenceEndInput.setCustomValidity('');
+                    }
+                }
+            };
+            absenceStartInput.addEventListener('change', validateDates);
+            absenceEndInput.addEventListener('change', validateDates);
         }
 
         // Cancel edit absence button
@@ -402,6 +448,16 @@ const App = {
             });
         }
 
+        // Calendar refresh button
+        const refreshCalendarBtn = document.getElementById('refreshCalendarBtn');
+        if (refreshCalendarBtn) {
+            refreshCalendarBtn.addEventListener('click', () => {
+                if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+                    Calendar.loadCalendar();
+                }
+            });
+        }
+
         // Tab switching in band details
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -438,14 +494,15 @@ const App = {
     },
 
     // Navigate to a specific view
-    navigateTo(view) {
+    async navigateTo(view) {
         const viewMap = {
             'dashboard': 'dashboardView',
             'bands': 'bandsView',
             'events': 'eventsView',
             'rehearsals': 'rehearsalsView',
             'statistics': 'statisticsView',
-            'news': 'newsView'
+            'news': 'newsView',
+            'tonstudio': 'tonstudioView'
         };
 
         const viewId = viewMap[view];
@@ -463,15 +520,15 @@ const App = {
 
             // Render specific views
             if (view === 'bands') {
-                Bands.renderBands();
+                await Bands.renderBands();
             } else if (view === 'events') {
-                Events.renderEvents();
+                await Events.renderEvents();
             } else if (view === 'rehearsals') {
-                Rehearsals.renderRehearsals();
+                await Rehearsals.renderRehearsals();
             } else if (view === 'statistics') {
-                Rehearsals.populateStatisticsSelect();
+                await Rehearsals.populateStatisticsSelect();
             } else if (view === 'news') {
-                this.renderNewsView();
+                await this.renderNewsView();
 
                 // Show/hide create button based on admin or band leader/co-leader status
                 const createNewsBtn = document.getElementById('createNewsBtn');
@@ -483,6 +540,14 @@ const App = {
                         canCreate = userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
                     }
                     createNewsBtn.style.display = canCreate ? 'inline-flex' : 'none';
+                }
+            } else if (view === 'tonstudio') {
+                // Load calendar when navigating to tonstudio view
+                console.log('Navigating to tonstudio, loading calendar...');
+                if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+                    Calendar.loadCalendar();
+                } else {
+                    console.error('Calendar object not found!');
                 }
             }
         }
@@ -543,24 +608,29 @@ const App = {
                 content.classList.remove('active');
             }
         });
+
+        // Load users list when switching to users tab
+        if (tabName === 'users' && Auth.isAdmin()) {
+            this.renderUsersList();
+        }
     },
 
     // Handle login
-    handleLogin() {
+    async handleLogin() {
         const username = document.getElementById('loginUsername').value;
         const password = document.getElementById('loginPassword').value;
 
         try {
-            Auth.login(username, password);
+            await Auth.login(username, password);
             UI.showToast('Erfolgreich angemeldet!', 'success');
-            this.showApp();
+            await this.showApp();
         } catch (error) {
             UI.showToast(error.message, 'error');
         }
     },
 
     // Handle registration
-    handleRegister() {
+    async handleRegister() {
         const registrationCode = document.getElementById('registerCode').value;
         const name = document.getElementById('registerName').value;
         const email = document.getElementById('registerEmail').value;
@@ -574,18 +644,21 @@ const App = {
         }
 
         try {
-            Auth.register(registrationCode, name, email, username, password);
-            Auth.login(username, password); // Auto-login after registration
-
+            UI.showLoading('Registriere Benutzer...');
+            await Auth.register(registrationCode, name, email, username, password);
+            // Supabase Auth automatically signs in after registration
+            
+            UI.hideLoading();
             UI.showToast('Registrierung erfolgreich!', 'success');
             UI.clearForm('registerForm');
 
             // Show app first (behind modal)
-            this.showApp();
+            await this.showApp();
 
             // Then show onboarding modal
             UI.openModal('onboardingModal');
         } catch (error) {
+            UI.hideLoading();
             UI.showToast(error.message, 'error');
         }
     },
@@ -598,9 +671,9 @@ const App = {
     },
 
     // News Management
-    renderNewsView() {
+    async renderNewsView() {
         const container = document.getElementById('newsContainer');
-        const newsItems = Storage.getAllNews();
+        const newsItems = await Storage.getAllNews();
         const isAdmin = Auth.isAdmin();
         const currentUser = Auth.getCurrentUser();
 
@@ -687,13 +760,13 @@ const App = {
 
         // Mark news read on card click (when user explicitly clicks a news card)
         container.querySelectorAll('.news-card').forEach(card => {
-            card.addEventListener('click', (e) => {
+            card.addEventListener('click', async (e) => {
                 // Ignore clicks on interactive buttons (they stopPropagation above)
                 const id = card.dataset.id;
                 const user = Auth.getCurrentUser();
                 if (user) {
-                    Storage.markNewsRead(id, user.id);
-                    this.updateNewsNavBadge();
+                    await Storage.markNewsRead(id, user.id);
+                    await this.updateNewsNavBadge();
                 }
             });
         });
@@ -735,7 +808,7 @@ const App = {
         const editId = editIdInput ? editIdInput.value : '';
         if (editId) {
             // fetch existing
-            const existing = Storage.getById('news', editId);
+            const existing = await Storage.getById('news', editId);
             if (!existing) {
                 UI.showToast('News nicht gefunden', 'error');
                 return;
@@ -766,7 +839,7 @@ const App = {
                 }
             }
 
-            Storage.updateNewsItem(editId, {
+            await Storage.updateNewsItem(editId, {
                 title,
                 content,
                 images: finalImages,
@@ -777,7 +850,7 @@ const App = {
             });
             UI.showToast('News aktualisiert!', 'success');
         } else {
-            Storage.createNewsItem(title, content, user.id, images);
+            await Storage.createNewsItem(title, content, user.id, images);
             UI.showToast('News veröffentlicht!', 'success');
         }
 
@@ -792,19 +865,19 @@ const App = {
         UI.closeModal('createNewsModal');
 
         // Refresh news view
-        this.renderNewsView();
-        this.updateNewsNavBadge();
+        await this.renderNewsView();
+        await this.updateNewsNavBadge();
 
         // reset edit id if any
         if (editIdInput) editIdInput.value = '';
     },
 
-    deleteNews(newsId) {
-        UI.showConfirm('News wirklich löschen?', () => {
-            Storage.deleteNewsItem(newsId);
+    async deleteNews(newsId) {
+        UI.showConfirm('News wirklich löschen?', async () => {
+            await Storage.deleteNewsItem(newsId);
             UI.showToast('News gelöscht', 'success');
-            this.renderNewsView();
-            this.updateNewsNavBadge();
+            await this.renderNewsView();
+            await this.updateNewsNavBadge();
         });
     },
 
@@ -854,12 +927,12 @@ const App = {
     },
 
     // Update the news nav item with an unread indicator for the current user
-    updateNewsNavBadge() {
+    async updateNewsNavBadge() {
         const user = Auth.getCurrentUser();
         const navLabel = document.querySelector('.nav-item[data-view="news"] .nav-label');
         if (!navLabel) return;
         const existing = document.getElementById('newsUnreadBadge');
-        const count = user ? Storage.getUnreadNewsCountForUser(user.id) : 0;
+        const count = user ? await Storage.getUnreadNewsCountForUser(user.id) : 0;
         if (count > 0) {
             if (!existing) {
                 const span = document.createElement('span');
@@ -877,30 +950,32 @@ const App = {
     },
 
     // Return array of conflicts for given band and dates (dates = array of ISO strings)
-    getAbsenceConflicts(bandId, dates) {
+    async getAbsenceConflicts(bandId, dates) {
         if (!bandId || !dates || dates.length === 0) return [];
-        const members = Storage.getBandMembers(bandId) || [];
+        const members = await Storage.getBandMembers(bandId);
+        if (!Array.isArray(members)) return [];
+        
         const conflicts = [];
 
-        members.forEach(m => {
-            const user = Storage.getById('users', m.userId);
-            if (!user) return;
+        for (const m of members) {
+            const user = await Storage.getById('users', m.userId);
+            if (!user) continue;
             const badDates = [];
-            dates.forEach(d => {
-                if (!d) return;
+            for (const d of dates) {
+                if (!d) continue;
                 try {
-                    if (Storage.isUserAbsentOnDate(user.id, d)) {
+                    if (await Storage.isUserAbsentOnDate(user.id, d)) {
                         // Format date nicely
                         badDates.push(UI.formatDateOnly(new Date(d).toISOString()));
                     }
                 } catch (e) {
                     // ignore parse errors
                 }
-            });
+            }
             if (badDates.length > 0) {
                 conflicts.push({ name: user.name, userId: user.id, dates: badDates });
             }
-        });
+        }
 
         return conflicts;
     },
@@ -912,14 +987,14 @@ const App = {
     },
 
     // Song Management
-    openSongModal(eventId = null, bandId = null, songId = null) {
+    async openSongModal(eventId = null, bandId = null, songId = null) {
         document.getElementById('songId').value = songId || '';
         document.getElementById('songEventId').value = eventId || '';
         document.getElementById('songBandId').value = bandId || '';
 
         if (songId) {
             // Edit existing song
-            const song = Storage.getById('songs', songId);
+            const song = await Storage.getById('songs', songId);
             if (song) {
                 document.getElementById('songTitle').value = song.title;
                 document.getElementById('songArtist').value = song.artist;
@@ -941,7 +1016,7 @@ const App = {
         UI.openModal('songModal');
     },
 
-    handleSaveSong() {
+    async handleSaveSong() {
         const songId = document.getElementById('songId').value;
         const eventId = document.getElementById('songEventId').value;
         const bandId = document.getElementById('songBandId').value;
@@ -963,17 +1038,47 @@ const App = {
             createdBy: user.id
         };
 
-        if (eventId) songData.eventId = eventId;
-        if (bandId) songData.bandId = bandId;
+        // Only set one of eventId or bandId, not both
+        if (eventId) {
+            songData.eventId = eventId;
+        } else if (bandId) {
+            songData.bandId = bandId;
+        }
 
         if (songId) {
             // Update existing song
-            Storage.updateSong(songId, songData);
+            await Storage.updateSong(songId, songData);
             UI.showToast('Song aktualisiert', 'success');
         } else {
             // Create new song
-            const created = Storage.createSong(songData);
-            UI.showToast('Song hinzugefügt', 'success');
+            const created = await Storage.createSong(songData);
+            
+            // If song was created for an event, also add to band's general setlist
+            if (created.eventId) {
+                const event = await Storage.getEvent(created.eventId);
+                if (event && event.bandId) {
+                    // Create a band version of the song (without eventId)
+                    await Storage.createSong({
+                        title: created.title,
+                        artist: created.artist,
+                        bpm: created.bpm,
+                        key: created.key,
+                        ccli: created.ccli,
+                        leadVocal: created.leadVocal,
+                        bandId: event.bandId,
+                        createdBy: user.id
+                    });
+                    UI.showToast('Song zu Auftritt und Band-Setlist hinzugefügt', 'success');
+                    
+                    // Update both event songs and band songs lists
+                    await this.renderEventSongs(created.eventId);
+                    await this.renderBandSongs(event.bandId);
+                } else {
+                    UI.showToast('Song hinzugefügt', 'success');
+                }
+            } else {
+                UI.showToast('Song hinzugefügt', 'success');
+            }
 
             // If this song was created from the create-event modal, add to draft list
             if (this.lastSongModalContext && this.lastSongModalContext.origin === 'createEvent') {
@@ -984,29 +1089,36 @@ const App = {
             }
         }
 
-    UI.closeModal('songModal');
-    // reset last song modal context
-    this.lastSongModalContext = null;
+        UI.closeModal('songModal');
+        // reset last song modal context
+        this.lastSongModalContext = null;
 
-        // Refresh the appropriate list
-        if (eventId) {
-            this.renderEventSongs(eventId);
-        } else if (bandId) {
-            this.renderBandSongs(bandId);
+        // Refresh the appropriate list (if not already refreshed above)
+        if (songId) {
+            // For updates, refresh the current list
+            if (eventId) {
+                await this.renderEventSongs(eventId);
+            } else if (bandId) {
+                await this.renderBandSongs(bandId);
+            }
         }
     },
 
-    renderEventSongs(eventId) {
+    async renderEventSongs(eventId) {
         const container = document.getElementById('eventSongsList');
-        if (!container) return;
+        if (!container) {
+            console.warn('eventSongsList container not found');
+            return;
+        }
 
-        const songs = Storage.getEventSongs(eventId);
+        const songs = await Storage.getEventSongs(eventId);
+        console.log('renderEventSongs - eventId:', eventId, 'songs:', songs);
 
         // Get band ID from event to show band songs
-        const event = Storage.getById('events', eventId);
-        const bandSongs = event && event.bandId ? Storage.getBandSongs(event.bandId) : [];
+        const event = await Storage.getById('events', eventId);
+        const bandSongs = event && event.bandId ? await Storage.getBandSongs(event.bandId) : [];
 
-        if (songs.length === 0 && bandSongs.length === 0) {
+        if ((!Array.isArray(songs) || songs.length === 0) && (!Array.isArray(bandSongs) || bandSongs.length === 0)) {
             container.innerHTML = '<p class="text-muted">Noch keine Songs hinzugefügt.</p>';
             return;
         }
@@ -1014,7 +1126,7 @@ const App = {
         let html = '';
 
         // Show button to copy from band if there are band songs
-        if (bandSongs.length > 0) {
+        if (Array.isArray(bandSongs) && bandSongs.length > 0) {
             html += `
                 <div style="margin-bottom: var(--spacing-md);">
                     <button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm">
@@ -1024,7 +1136,7 @@ const App = {
             `;
         }
 
-        if (songs.length > 0) {
+        if (Array.isArray(songs) && songs.length > 0) {
             html += `
                 <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
                     <thead>
@@ -1046,8 +1158,8 @@ const App = {
                                 <td style="padding: var(--spacing-sm);">${song.key || '-'}</td>
                                 <td style="padding: var(--spacing-sm);">${song.leadVocal || '-'}</td>
                                 <td style="padding: var(--spacing-sm); text-align: center;">
-                                    <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
-                                    <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                                    <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
+                                    <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1068,18 +1180,34 @@ const App = {
 
         // Add event listeners for edit/delete
         container.querySelectorAll('.edit-song').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.openSongModal(eventId, null, btn.dataset.id);
             });
         });
 
         container.querySelectorAll('.delete-song').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (confirm('Song wirklich löschen?')) {
-                    Storage.deleteSong(btn.dataset.id);
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                UI.showConfirm('Song wirklich löschen?', async () => {
+                    const songId = btn.dataset.id;
+                    console.log('Deleting song:', songId, 'for event:', eventId);
+                    
+                    // Save song data before deleting for potential rollback
+                    const song = await Storage.getById('songs', songId);
+                    if (song) {
+                        this.deletedEventSongs.push(song);
+                    }
+                    
+                    await Storage.deleteSong(songId);
                     UI.showToast('Song gelöscht', 'success');
-                    this.renderEventSongs(eventId);
-                }
+                    console.log('Re-rendering event songs only');
+                    await this.renderEventSongs(eventId);
+                    console.log('Finished re-rendering event songs');
+                });
             });
         });
     },
@@ -1193,12 +1321,12 @@ const App = {
         });
     },
 
-    copyBandSongsToEvent(eventId, songIds) {
+    async copyBandSongsToEvent(eventId, songIds) {
         const user = Auth.getCurrentUser();
         let count = 0;
 
-        songIds.forEach(songId => {
-            const bandSong = Storage.getById('songs', songId);
+        for (const songId of songIds) {
+            const bandSong = await Storage.getById('songs', songId);
             if (bandSong) {
                 // Create a copy for the event
                 const eventSong = {
@@ -1210,22 +1338,22 @@ const App = {
                     eventId: eventId,
                     createdBy: user.id
                 };
-                Storage.createSong(eventSong);
+                await Storage.createSong(eventSong);
                 count++;
             }
-        });
+        }
 
         UI.showToast(`${count} Song${count !== 1 ? 's' : ''} kopiert`, 'success');
-        this.renderEventSongs(eventId);
+        await this.renderEventSongs(eventId);
     },
 
-    renderBandSongs(bandId) {
+    async renderBandSongs(bandId) {
         const container = document.getElementById('bandSongsList');
         if (!container) return;
 
-        const songs = Storage.getBandSongs(bandId);
+        const songs = await Storage.getBandSongs(bandId);
 
-        if (songs.length === 0) {
+        if (!Array.isArray(songs) || songs.length === 0) {
             container.innerHTML = '<p class="text-muted">Noch keine Songs hinzugefügt.</p>';
             return;
         }
@@ -1268,11 +1396,11 @@ const App = {
         });
 
         container.querySelectorAll('.delete-song').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 if (confirm('Song wirklich löschen?')) {
-                    Storage.deleteSong(btn.dataset.id);
+                    await Storage.deleteSong(btn.dataset.id);
                     UI.showToast('Song gelöscht', 'success');
-                    this.renderBandSongs(bandId);
+                    await this.renderBandSongs(bandId);
                 }
             });
         });
@@ -1318,7 +1446,7 @@ const App = {
     },
 
     // Show main application
-    showApp() {
+    async showApp() {
         document.getElementById('authModal').classList.remove('active');
         document.getElementById('app').style.display = 'flex';
 
@@ -1334,8 +1462,8 @@ const App = {
             const newAbsenceBtn = absenceBtn.cloneNode(true);
             absenceBtn.parentNode.replaceChild(newAbsenceBtn, absenceBtn);
 
-            newAbsenceBtn.addEventListener('click', () => {
-                this.openAbsenceModal();
+            newAbsenceBtn.addEventListener('click', async () => {
+                await this.openAbsenceModal();
             });
         }
 
@@ -1346,13 +1474,13 @@ const App = {
             const newBtn = settingsBtn.cloneNode(true);
             settingsBtn.parentNode.replaceChild(newBtn, settingsBtn);
 
-            newBtn.addEventListener('click', () => {
-                this.openSettingsModal();
+            newBtn.addEventListener('click', async () => {
+                await this.openSettingsModal();
             });
         }
 
-        this.updateDashboard();
-        this.updateNavigationVisibility();
+        await this.updateDashboard();
+        await this.updateNavigationVisibility();
         this.navigateTo('dashboard');
         // Ensure create news button visibility immediately after login (so admins/leaders see it without navigating)
         const createNewsBtnGlobal = document.getElementById('createNewsBtn');
@@ -1360,22 +1488,29 @@ const App = {
             const user = Auth.getCurrentUser();
             let canCreate = Auth.isAdmin();
             if (!canCreate && user) {
-                const userBands = Storage.getUserBands(user.id) || [];
+                const userBands = await Storage.getUserBands(user.id) || [];
                 canCreate = userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
             }
             createNewsBtnGlobal.style.display = canCreate ? 'inline-flex' : 'none';
         }
         // Update unread news badge
-        this.updateNewsNavBadge();
+        await this.updateNewsNavBadge();
+
+        // Load calendar right after login so it is ready without manual refresh
+        if (document.getElementById('tonstudioView')) {
+            if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+                Calendar.loadCalendar();
+            }
+        }
     },
 
     // Update navigation visibility based on band membership
-    updateNavigationVisibility() {
+    async updateNavigationVisibility() {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const bands = Storage.getUserBands(user.id);
-        const hasBands = bands.length > 0;
+        const bands = await Storage.getUserBands(user.id);
+        const hasBands = Array.isArray(bands) && bands.length > 0;
 
         // Hide/Show Events and Rehearsals nav items
         const eventsNav = document.querySelector('.nav-item[data-view="events"]');
@@ -1386,23 +1521,25 @@ const App = {
     },
 
     // Open absence modal and render current user's absences
-    openAbsenceModal() {
+    async openAbsenceModal() {
         // Render existing absences
-        this.renderUserAbsences();
+        await this.renderUserAbsences();
         UI.openModal('absenceModal');
     },
 
     // Open settings modal
-    openSettingsModal() {
+    async openSettingsModal() {
         const user = Auth.getCurrentUser();
         const isAdmin = Auth.isAdmin();
 
         // Show/Hide tabs based on role
         const locationsTab = document.getElementById('settingsTabLocations');
         const bandsTab = document.getElementById('settingsTabBands');
+        const usersTab = document.getElementById('settingsTabUsers');
 
         if (locationsTab) locationsTab.style.display = isAdmin ? 'block' : 'none';
         if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
+        if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
 
         // Pre-fill profile form
         document.getElementById('profileUsername').value = user.username;
@@ -1416,15 +1553,15 @@ const App = {
         this.switchSettingsTab('profile');
 
         if (isAdmin) {
-            this.renderLocationsList();
-            this.renderAllBandsList();
+            await this.renderLocationsList();
+            await this.renderAllBandsList();
         }
     },
 
     // Render locations list
-    renderLocationsList() {
+    async renderLocationsList() {
         const container = document.getElementById('locationsList');
-        const locations = Storage.getLocations();
+        const locations = await Storage.getLocations();
 
         if (locations.length === 0) {
             container.innerHTML = '<p class="text-muted">Keine Probeorte vorhanden.</p>';
@@ -1452,17 +1589,17 @@ const App = {
     },
 
     // Render all bands list for management
-    renderAllBandsList() {
+    async renderAllBandsList() {
         const container = document.getElementById('allBandsList');
-        const bands = Storage.getAllBands();
+        const bands = await Storage.getAllBands();
 
         if (bands.length === 0) {
             container.innerHTML = '<p class="text-muted">Keine Bands vorhanden.</p>';
             return;
         }
 
-        container.innerHTML = bands.map(band => {
-            const members = Storage.getBandMembers(band.id);
+        container.innerHTML = await Promise.all(bands.map(async band => {
+            const members = await Storage.getBandMembers(band.id);
             const isExpanded = this.expandedBandId === band.id;
 
             return `
@@ -1494,8 +1631,8 @@ const App = {
                                 <div class="detail-row">
                                     <div class="detail-label">👥 Mitglieder (${members.length}):</div>
                                     <div class="detail-value">
-                                        ${members.length > 0 ? members.map(member => {
-                const user = Storage.getById('users', member.userId);
+                                        ${members.length > 0 ? (await Promise.all(members.map(async member => {
+                const user = await Storage.getById('users', member.userId);
                 if (!user) return '';
 
                 const roleClass = `role-${member.role}`;
@@ -1508,7 +1645,7 @@ const App = {
                                                     <span class="role-badge ${roleClass}">${roleText}</span>
                                                 </div>
                                             `;
-            }).join('') : '<p class="text-muted">Keine Mitglieder</p>'}
+            }))).join('') : '<p class="text-muted">Keine Mitglieder</p>'}
                                     </div>
                                 </div>
                                 
@@ -1521,7 +1658,7 @@ const App = {
                     </div>
                 </div>
             `;
-        }).join('');
+        })).then(results => results.join(''));
 
         // Add accordion toggle handlers
         container.querySelectorAll('.band-management-card .accordion-header').forEach(header => {
@@ -1537,13 +1674,13 @@ const App = {
 
         // Add delete handlers
         container.querySelectorAll('.delete-band-admin').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const bandId = btn.dataset.id;
-                const band = Storage.getBand(bandId);
+                const band = await Storage.getBand(bandId);
                 if (confirm(`Band "${band.name}" wirklich löschen?`)) {
-                    Storage.deleteBand(bandId);
-                    this.renderAllBandsList();
+                    await Storage.deleteBand(bandId);
+                    await this.renderAllBandsList();
                     UI.showToast('Band gelöscht', 'success');
                 }
             });
@@ -1612,8 +1749,166 @@ const App = {
         }
     },
 
+    // Render users list (Admin only)
+    async renderUsersList() {
+        if (!Auth.isAdmin()) return;
+
+        const container = document.getElementById('usersList');
+        const users = await Storage.getAll('users');
+
+        if (!users || users.length === 0) {
+            container.innerHTML = '<p class="text-muted">Keine Benutzer vorhanden.</p>';
+            return;
+        }
+
+        // Sort users: admins first, then by name
+        users.sort((a, b) => {
+            if (a.isAdmin && !b.isAdmin) return -1;
+            if (!a.isAdmin && b.isAdmin) return 1;
+            return (a.name || a.username).localeCompare(b.name || b.username);
+        });
+
+        container.innerHTML = await Promise.all(users.map(async user => {
+            // Get user's bands
+            const userBands = await Storage.getUserBands(user.id);
+            const bandDetails = (await Promise.all(
+                userBands.map(async ub => {
+                    const band = await Storage.getBand(ub.bandId);
+                    if (!band) return null; // Band existiert nicht mehr
+                    return { 
+                        name: band.name, 
+                        role: ub.role,
+                        color: band.color || '#6366f1'
+                    };
+                })
+            )).filter(bd => bd !== null); // Filtere gelöschte Bands heraus
+
+            const isCurrentUser = Auth.getCurrentUser().id === user.id;
+
+            return `
+                <div class="user-management-card">
+                    <div class="user-card-header">
+                        <div class="user-card-info">
+                            <h4>
+                                ${Bands.escapeHtml(user.name || user.username)}
+                                ${user.isAdmin ? '<span class="admin-badge">👑 ADMIN</span>' : ''}
+                            </h4>
+                            <div class="user-meta">
+                                <span>👤 @${Bands.escapeHtml(user.username)}</span>
+                                <span>📧 ${Bands.escapeHtml(user.email)}</span>
+                                ${user.instrument ? `<span>🎵 ${Bands.getInstrumentName(user.instrument)}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="user-card-actions">
+                            ${!user.isAdmin ? `
+                                <button class="btn btn-sm btn-primary make-admin-btn" data-user-id="${user.id}" title="Zum Admin machen">
+                                    👑 Admin machen
+                                </button>
+                            ` : (isCurrentUser ? '' : `
+                                <button class="btn btn-sm btn-secondary remove-admin-btn" data-user-id="${user.id}" title="Admin entfernen">
+                                    Admin entfernen
+                                </button>
+                            `)}
+                            ${!isCurrentUser ? `
+                                <button class="btn btn-sm btn-danger delete-user-btn" data-user-id="${user.id}" title="Benutzer löschen">
+                                    🗑️ Löschen
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ${bandDetails.length > 0 ? `
+                        <div class="user-bands-list">
+                            <h5>Bands (${bandDetails.length})</h5>
+                            <div class="user-band-tags">
+                                ${bandDetails.map(bd => `
+                                    <span class="user-band-tag" style="border-left: 3px solid ${bd.color}">
+                                        ${Bands.escapeHtml(bd.name)}
+                                        <span class="role-badge role-${bd.role}">${UI.getRoleDisplayName(bd.role)}</span>
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : '<p class="text-muted" style="margin-top: var(--spacing-sm); font-size: 0.875rem;">Nicht in einer Band</p>'}
+                </div>
+            `;
+        })).then(results => results.join(''));
+
+        // Add event listeners
+        container.querySelectorAll('.make-admin-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const userId = btn.dataset.userId;
+                const user = await Storage.getById('users', userId);
+                if (confirm(`${user.name || user.username} zum Admin machen?`)) {
+                    await this.toggleUserAdmin(userId, true);
+                }
+            });
+        });
+
+        container.querySelectorAll('.remove-admin-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const userId = btn.dataset.userId;
+                const user = await Storage.getById('users', userId);
+                if (confirm(`Admin-Rechte von ${user.name || user.username} entfernen?`)) {
+                    await this.toggleUserAdmin(userId, false);
+                }
+            });
+        });
+
+        container.querySelectorAll('.delete-user-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const userId = btn.dataset.userId;
+                const user = await Storage.getById('users', userId);
+                if (confirm(`Benutzer ${user.name || user.username} wirklich löschen? Dies kann nicht rückgängig gemacht werden!`)) {
+                    await this.deleteUser(userId);
+                }
+            });
+        });
+    },
+
+    // Toggle user admin status
+    async toggleUserAdmin(userId, makeAdmin) {
+        try {
+            await Storage.update('users', userId, { isAdmin: makeAdmin });
+            UI.showToast(makeAdmin ? 'Benutzer ist jetzt Admin' : 'Admin-Rechte entfernt', 'success');
+            await this.renderUsersList();
+        } catch (error) {
+            console.error('Error toggling admin:', error);
+            UI.showToast('Fehler beim Ändern der Admin-Rechte', 'error');
+        }
+    },
+
+    // Delete user
+    async deleteUser(userId) {
+        try {
+            UI.showLoading('Lösche Benutzer...');
+            
+            // Remove user from all bands
+            const userBands = await Storage.getUserBands(userId);
+            for (const ub of userBands) {
+                await Storage.removeBandMember(ub.bandId, userId);
+            }
+            
+            // Delete all user's votes
+            const sb = SupabaseClient.getClient();
+            if (sb) {
+                await sb.from('votes').delete().eq('userId', userId);
+            }
+            
+            // Delete user
+            await Storage.delete('users', userId);
+            
+            UI.hideLoading();
+            UI.showToast('Benutzer gelöscht', 'success');
+            await this.renderUsersList();
+        } catch (error) {
+            UI.hideLoading();
+            console.error('Error deleting user:', error);
+            UI.showToast('Fehler beim Löschen des Benutzers: ' + error.message, 'error');
+        }
+    },
+
     // Handle profile update
-    handleUpdateProfile() {
+    async handleUpdateProfile() {
         const username = document.getElementById('profileUsername').value;
         const email = document.getElementById('profileEmail').value;
         const instrument = document.getElementById('profileInstrument').value;
@@ -1632,18 +1927,29 @@ const App = {
             updates.password = password;
         }
 
-        Storage.updateUser(user.id, updates);
+        await Storage.updateUser(user.id, updates);
 
         // Update current session user data
-        const updatedUser = Storage.getById('users', user.id);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        await Auth.updateCurrentUser();
+        const updatedUser = Auth.getCurrentUser();
 
+        // Update header
         document.getElementById('currentUserName').textContent = updatedUser.name;
+        
+        // Clear password field after successful update
+        document.getElementById('profilePassword').value = '';
+        
+        // Reload profile form with updated values
+        document.getElementById('profileUsername').value = updatedUser.username;
+        document.getElementById('profileEmail').value = updatedUser.email;
+        document.getElementById('profileInstrument').value = updatedUser.instrument || '';
+        
         UI.showToast('Profil erfolgreich aktualisiert', 'success');
+        UI.closeModal('settingsModal');
     },
 
     // Handle create location
-    handleCreateLocation() {
+    async handleCreateLocation() {
         const nameInput = document.getElementById('newLocationName');
         const addressInput = document.getElementById('newLocationAddress');
 
@@ -1651,20 +1957,20 @@ const App = {
         const address = addressInput.value;
 
         if (name) {
-            Storage.createLocation(name, address);
+            await Storage.createLocation({ name, address });
             nameInput.value = '';
             addressInput.value = '';
-            this.renderLocationsList();
+            await this.renderLocationsList();
             UI.showToast('Probeort erstellt', 'success');
         }
     },
 
     // Populate location select
-    populateLocationSelect() {
+    async populateLocationSelect() {
         const select = document.getElementById('rehearsalLocation');
         if (!select) return;
 
-        const locations = Storage.getLocations();
+        const locations = (await Storage.getLocations()) || [];
 
         select.innerHTML = '<option value="">Kein Ort ausgewählt</option>' +
             locations.map(loc =>
@@ -1673,35 +1979,35 @@ const App = {
     },
 
     // Navigate to view
-    navigateTo(viewName) {
+    async navigateTo(viewName) {
         UI.showView(`${viewName}View`);
 
         switch (viewName) {
             case 'dashboard':
-                this.updateDashboard();
+                await this.updateDashboard();
                 break;
             case 'bands':
-                Bands.renderBands();
+                await Bands.renderBands();
                 break;
             case 'events':
-                Events.populateBandSelect();
-                Events.renderEvents();
+                await Events.populateBandSelect();
+                await Events.renderEvents();
                 break;
             case 'rehearsals':
-                Bands.populateBandSelects();
-                this.populateLocationSelect();
-                Rehearsals.renderRehearsals();
+                await Bands.populateBandSelects();
+                await this.populateLocationSelect();
+                await Rehearsals.renderRehearsals();
                 break;
             case 'statistics':
-                Rehearsals.populateStatsSelect();
-                Rehearsals.populateStatsBandSelect();
+                await Rehearsals.populateStatsSelect();
+                await Rehearsals.populateStatsBandSelect();
                 // Wire up band select change to render band stats
                 const statsBandSelect = document.getElementById('statsBandSelect');
                 if (statsBandSelect) {
-                    statsBandSelect.addEventListener('change', (e) => {
+                    statsBandSelect.addEventListener('change', async (e) => {
                         const bandId = e.target.value;
                         if (bandId) {
-                            Statistics.renderBandStatistics(bandId);
+                            await Statistics.renderBandStatistics(bandId);
                         } else {
                             // Clear or show rehearsal selection
                             document.getElementById('statisticsContent').innerHTML = '';
@@ -1713,32 +2019,32 @@ const App = {
     },
 
     // Update dashboard
-    updateDashboard() {
+    async updateDashboard() {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const bands = Storage.getUserBands(user.id);
+        const bands = await Storage.getUserBands(user.id);
         document.getElementById('bandCount').textContent = bands.length;
 
-        const rehearsals = Storage.getUserRehearsals(user.id);
+        const rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
         const pendingRehearsals = rehearsals.filter(r => r.status === 'pending');
 
         let pendingVotesCount = 0;
-        pendingRehearsals.forEach(rehearsal => {
-            rehearsal.proposedDates.forEach((date, index) => {
-                const vote = Storage.getUserVoteForDate(user.id, rehearsal.id, index);
+        for (const rehearsal of pendingRehearsals) {
+            for (let index = 0; index < rehearsal.proposedDates.length; index++) {
+                const vote = await Storage.getUserVoteForDate(user.id, rehearsal.id, index);
                 if (!vote) {
                     pendingVotesCount++;
                 }
-            });
-        });
+            }
+        }
 
         document.getElementById('pendingVotes').textContent = pendingVotesCount;
 
         const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
         document.getElementById('confirmedRehearsals').textContent = confirmedRehearsals.length;
 
-        Rehearsals.renderRecentVotes();
+        await Rehearsals.renderRecentVotes();
     },
 
     // Handle create band
@@ -1767,7 +2073,7 @@ const App = {
     },
 
     // Handle create rehearsal
-    handleCreateRehearsal() {
+    async handleCreateRehearsal() {
         const editId = document.getElementById('editRehearsalId').value;
         const bandId = document.getElementById('rehearsalBand').value;
         const title = document.getElementById('rehearsalTitle').value;
@@ -1793,7 +2099,7 @@ const App = {
         };
 
         // Check for absence conflicts
-        const conflicts = this.getAbsenceConflicts(bandId, dates);
+        const conflicts = await this.getAbsenceConflicts(bandId, dates);
         if (conflicts && conflicts.length > 0) {
             // Build message
             const lines = conflicts.map(c => `${c.name}: ${c.dates.join(', ')}`);
@@ -1807,7 +2113,7 @@ const App = {
     },
 
     // Handle create event
-    handleCreateEvent() {
+    async handleCreateEvent() {
         const editId = document.getElementById('editEventId').value;
         const bandId = document.getElementById('eventBand').value;
         const title = document.getElementById('eventTitle').value;
@@ -1822,6 +2128,9 @@ const App = {
         const guests = Events.getGuests();
 
         const proceed = () => {
+            // Clear deleted songs list - changes are being saved
+            this.deletedEventSongs = [];
+            
             if (editId) {
                 // Update existing
                 Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
@@ -1844,7 +2153,7 @@ const App = {
         const datesToCheck = [date];
         if (soundcheckDate) datesToCheck.push(soundcheckDate);
 
-        const conflicts = this.getAbsenceConflicts(bandId, datesToCheck);
+        const conflicts = await this.getAbsenceConflicts(bandId, datesToCheck);
         if (conflicts && conflicts.length > 0) {
             const lines = conflicts.map(c => `${c.name}: ${c.dates.join(', ')}`);
             const msg = `Achtung — Folgende Mitglieder sind an den gewählten Terminen abwesend:<br><b>\n\n${lines.join('\n')}\n\n </b><br>Trotzdem fortfahren?`;
@@ -1857,7 +2166,7 @@ const App = {
     },
 
     // Handle create absence
-    handleCreateAbsence() {
+    async handleCreateAbsence() {
         const start = document.getElementById('absenceStart').value;
         const end = document.getElementById('absenceEnd').value;
         const reason = document.getElementById('absenceReason').value || '';
@@ -1872,16 +2181,25 @@ const App = {
             return;
         }
 
+        // Validate that start date is not after end date
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        
+        if (startDate > endDate) {
+            UI.showToast('Das "Von"-Datum darf nicht nach dem "Bis"-Datum liegen', 'error');
+            return;
+        }
+
         // Ensure ISO strings
-        const startIso = new Date(start).toISOString();
-        const endIso = new Date(end).toISOString();
+        const startIso = startDate.toISOString();
+        const endIso = endDate.toISOString();
 
         if (editId && editId.trim() !== '') {
             // update existing absence
-            Storage.update('absences', editId, { startDate: startIso, endDate: endIso, reason });
+            await Storage.update('absences', editId, { startDate: startIso, endDate: endIso, reason });
             UI.showToast('Abwesenheit aktualisiert', 'success');
         } else {
-            Storage.createAbsence(user.id, startIso, endIso, reason);
+            await Storage.createAbsence(user.id, startIso, endIso, reason);
             UI.showToast('Abwesenheit eingetragen', 'success');
         }
 
@@ -1899,7 +2217,7 @@ const App = {
         if (cancelBtn) cancelBtn.style.display = 'none';
 
         // Re-render lists
-        this.renderUserAbsences();
+        await this.renderUserAbsences();
         // If band details modal open and has absences tab, re-render band absences
         if (typeof Bands !== 'undefined' && Bands.currentBandId) {
             Bands.renderBandAbsences(Bands.currentBandId);
@@ -1907,19 +2225,19 @@ const App = {
     },
 
     // Render the current user's absences into the Absence modal
-    renderUserAbsences() {
+    async renderUserAbsences() {
         const container = document.getElementById('absencesList');
         const user = Auth.getCurrentUser();
         if (!container || !user) return;
 
-        const absences = Storage.getUserAbsences(user.id);
+        const absences = await Storage.getUserAbsences(user.id);
         if (!absences || absences.length === 0) {
             container.innerHTML = '<p class="text-muted">Du hast keine eingetragenen Abwesenheiten.</p>';
             return;
         }
 
         // sort by start date desc
-        absences.sort((a,b)=> new Date(b.startDate) - new Date(a.startDate));
+        absences.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 
         container.innerHTML = absences.map(a => `
             <div class="absence-item" data-id="${a.id}" style="padding:8px; border-bottom:1px solid var(--color-border); display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
@@ -1944,13 +2262,13 @@ const App = {
         });
 
         container.querySelectorAll('.delete-absence').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const id = btn.dataset.id;
-                UI.showConfirm('Möchtest du diese Abwesenheit wirklich löschen?', () => {
-                    Storage.deleteAbsence(id);
+                UI.showConfirm('Möchtest du diese Abwesenheit wirklich löschen?', async () => {
+                    await Storage.deleteAbsence(id);
                     UI.showToast('Abwesenheit gelöscht', 'success');
-                    this.renderUserAbsences();
+                    await this.renderUserAbsences();
                     if (typeof Bands !== 'undefined' && Bands.currentBandId) {
                         Bands.renderBandAbsences(Bands.currentBandId);
                     }
@@ -1960,17 +2278,17 @@ const App = {
     },
 
     // Start editing an absence: populate form and switch to edit-mode
-    startEditAbsence(absenceId) {
+    async startEditAbsence(absenceId) {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const absences = Storage.getUserAbsences(user.id) || [];
-        const a = absences.find(x => x.id === absenceId);
+        const absences = await Storage.getUserAbsences(user.id) || [];
+        const a = Array.isArray(absences) ? absences.find(x => x.id === absenceId) : null;
         if (!a) return;
 
         // populate form
-        document.getElementById('absenceStart').value = a.startDate.slice(0,10);
-        document.getElementById('absenceEnd').value = a.endDate.slice(0,10);
+        document.getElementById('absenceStart').value = a.startDate.slice(0, 10);
+        document.getElementById('absenceEnd').value = a.endDate.slice(0, 10);
         document.getElementById('absenceReason').value = a.reason || '';
         document.getElementById('editAbsenceId').value = a.id;
 
@@ -1999,18 +2317,21 @@ const App = {
     },
 
     // Populate event select for rehearsal form
-    populateEventSelect(bandId) {
+    async populateEventSelect(bandId) {
         const select = document.getElementById('rehearsalEvent');
         if (!select) return;
 
-        const events = Storage.getBandEvents(bandId);
+        const events = await Storage.getBandEvents(bandId);
 
         select.innerHTML = '<option value="">Kein Auftritt ausgewählt</option>' +
-            events.map(event =>
+            (Array.isArray(events) ? events.map(event =>
                 `<option value="${event.id}">${Bands.escapeHtml(event.title)} - ${UI.formatDateShort(event.date)}</option>`
-            ).join('');
+            ).join('') : '');
     }
 };
+
+// Make App globally accessible
+window.App = App;
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

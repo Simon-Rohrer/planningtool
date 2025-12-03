@@ -6,6 +6,29 @@ const UI = {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.add('active');
+            
+            // Add click outside to close (only if not already added)
+            if (!modal.dataset.hasClickOutside) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        this.closeModal(modalId);
+                    }
+                });
+                modal.dataset.hasClickOutside = 'true';
+            }
+            
+            // Add ESC key listener
+            if (!modal.dataset.hasEscListener) {
+                const escHandler = (e) => {
+                    if (e.key === 'Escape' && modal.classList.contains('active')) {
+                        this.closeModal(modalId);
+                    }
+                };
+                document.addEventListener('keydown', escHandler);
+                // Store handler to remove later
+                modal._escHandler = escHandler;
+                modal.dataset.hasEscListener = 'true';
+            }
         }
     },
 
@@ -13,6 +36,13 @@ const UI = {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('active');
+            
+            // Remove ESC listener if exists
+            if (modal._escHandler) {
+                document.removeEventListener('keydown', modal._escHandler);
+                delete modal._escHandler;
+                delete modal.dataset.hasEscListener;
+            }
         }
     },
 
@@ -202,6 +232,35 @@ const UI = {
             modal.remove();
             if (typeof onConfirm === 'function') onConfirm();
         });
+    },
+
+    // Loading spinner
+    showLoading(message = 'Lädt...') {
+        let loader = document.getElementById('globalLoader');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'globalLoader';
+            loader.style.display = 'block';
+            loader.innerHTML = `
+                <div class="loader-overlay">
+                    <div class="loader-content">
+                        <div class="spinner"></div>
+                        <p class="loader-message">${message}</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(loader);
+        } else {
+            loader.querySelector('.loader-message').textContent = message;
+            loader.style.display = 'block';
+        }
+    },
+
+    hideLoading() {
+        const loader = document.getElementById('globalLoader');
+        if (loader) {
+            loader.style.display = 'none';
+        }
     },
 
     // Clear form

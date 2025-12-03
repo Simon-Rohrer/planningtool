@@ -2,7 +2,7 @@
 
 const Statistics = {
     // Render statistics for a rehearsal
-    renderStatistics(rehearsalId) {
+    async renderStatistics(rehearsalId) {
         const container = document.getElementById('statisticsContent');
 
         if (!rehearsalId) {
@@ -10,12 +10,12 @@ const Statistics = {
             return;
         }
 
-        const rehearsal = Storage.getRehearsal(rehearsalId);
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
         if (!rehearsal) return;
 
-        const band = Storage.getBand(rehearsal.bandId);
-        const members = Storage.getBandMembers(rehearsal.bandId);
-        const votes = Storage.getRehearsalVotes(rehearsalId);
+        const band = await Storage.getBand(rehearsal.bandId);
+        const members = await Storage.getBandMembers(rehearsal.bandId);
+        const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
 
         // Calculate statistics for each date
         const dateStats = rehearsal.proposedDates.map((date, index) => {
@@ -88,19 +88,19 @@ const Statistics = {
     },
 
     // Render statistics for a band (overview)
-    renderBandStatistics(bandId) {
+    async renderBandStatistics(bandId) {
         const container = document.getElementById('statisticsContent');
         if (!bandId) {
             UI.showEmptyState(container, '📊', 'Wähle eine Band aus, um die Statistiken zu sehen');
             return;
         }
 
-        const band = Storage.getBand(bandId);
+        const band = await Storage.getBand(bandId);
         if (!band) return;
 
-        const members = Storage.getBandMembers(bandId);
-        const events = Storage.getBandEvents(bandId);
-        const rehearsals = Storage.getBandRehearsals(bandId);
+        const members = await Storage.getBandMembers(bandId);
+        const events = await Storage.getBandEvents(bandId);
+        const rehearsals = await Storage.getBandRehearsals(bandId);
 
         container.innerHTML = `
             <div class="stats-header">
@@ -215,12 +215,12 @@ const Statistics = {
     },
 
     // Calculate best dates (used by other modules)
-    getBestDates(rehearsalId, limit = 3) {
-        const rehearsal = Storage.getRehearsal(rehearsalId);
+    async getBestDates(rehearsalId, limit = 3) {
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
         if (!rehearsal) return [];
 
-        const members = Storage.getBandMembers(rehearsal.bandId);
-        const votes = Storage.getRehearsalVotes(rehearsalId);
+        const members = await Storage.getBandMembers(rehearsal.bandId);
+        const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
 
         const dateStats = rehearsal.proposedDates.map((date, index) => {
             const dateVotes = votes.filter(v => v.dateIndex === index);

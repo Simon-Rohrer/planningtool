@@ -6,13 +6,13 @@ const Events = {
     expandedEventId: null,
 
     // Render all events
-    renderEvents(filterBandId = '') {
+    async renderEvents(filterBandId = '') {
         const container = document.getElementById('eventsList');
         const user = Auth.getCurrentUser();
 
         if (!user) return;
 
-        let events = Storage.getUserEvents(user.id);
+        let events = (await Storage.getUserEvents(user.id)) || [];
 
         // Apply filter
         if (filterBandId) {
@@ -27,30 +27,31 @@ const Events = {
             return;
         }
 
-        container.innerHTML = events.map(event =>
+        container.innerHTML = await Promise.all(events.map(event =>
             this.renderEventCard(event)
-        ).join('');
+        )).then(cards => cards.join(''));
 
         // Add click handlers
         this.attachEventHandlers();
     },
 
     // Render single event card
-    renderEventCard(event) {
-        const band = Storage.getBand(event.bandId);
+    async renderEventCard(event) {
+        const band = await Storage.getBand(event.bandId);
         const isPast = new Date(event.date) < new Date();
         const isExpanded = this.expandedEventId === event.id;
+        const canManage = await Auth.canManageEvents(event.bandId);
 
         // Get member names
-        const members = event.members.map(memberId => {
-            const member = Storage.getById('users', memberId);
+        const members = await Promise.all(event.members.map(async memberId => {
+            const member = await Storage.getById('users', memberId);
             return member ? member.name : 'Unbekannt';
-        });
+        }));
 
         const guests = event.guests || [];
 
         // get event songs to show inside expanded card
-        const eventSongs = Storage.getEventSongs(event.id || event.id);
+        const eventSongs = await Storage.getEventSongs(event.id);
 
         return `
             <div class="event-card accordion-card ${isPast ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}">
@@ -66,7 +67,7 @@ const Events = {
                             <span class="quick-info-item">📅 ${UI.formatDateShort(event.date)}</span>
                             <span class="quick-info-item">📍 ${event.location ? Bands.escapeHtml(event.location) : '-'}</span>
                         </div>
-                        ${Auth.canManageEvents(event.bandId) ? `
+                        ${canManage ? `
                             <button class="btn-icon edit-event-icon" data-event-id="${event.id}" title="Bearbeiten">✏️</button>
                         ` : ''}
                         <button class="accordion-toggle" aria-label="Ausklappen">
@@ -127,7 +128,7 @@ const Events = {
                                 <div class="detail-value">${event.soundcheckLocation ? Bands.escapeHtml(event.soundcheckLocation) : '-'}</div>
                             </div>
 
-                            ${eventSongs && eventSongs.length > 0 ? `
+                            ${Array.isArray(eventSongs) && eventSongs.length > 0 ? `
                                 <div class="detail-row">
                                     <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
                                     <div class="detail-value">
@@ -139,7 +140,7 @@ const Events = {
                             ` : ''}
                         </div>
 
-                        ${Auth.canManageEvents(event.bandId) ? `
+                        ${canManage ? `
                             <div class="event-action-buttons">
                                 <button class="btn btn-secondary edit-event" data-event-id="${event.id}">
                                     ✏️ Bearbeiten
@@ -180,10 +181,10 @@ const Events = {
         });
 
         document.querySelectorAll('.edit-event').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const eventId = btn.dataset.eventId;
-                this.editEvent(eventId);
+                await this.editEvent(eventId);
             });
         });
 
@@ -253,11 +254,16 @@ const Events = {
     },
 
     // Edit event
-    editEvent(eventId) {
-        const event = Storage.getEvent(eventId);
+    async editEvent(eventId) {
+        const event = await Storage.getEvent(eventId);
         if (!event) return;
 
         this.currentEventId = eventId;
+        
+        // Clear deleted songs list when opening edit modal
+        if (window.App) {
+            window.App.deletedEventSongs = [];
+        }
 
         // Set modal title
         document.getElementById('eventModalTitle').textContent = 'Auftritt bearbeiten';
@@ -275,15 +281,19 @@ const Events = {
     document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
         document.getElementById('eventGuests').value = (event.guests || []).join('\n');
 
-        // Load band members with existing selection
-        this.loadBandMembers(event.bandId, event.members);
-
-        // Render setlist
-        if (window.App && window.App.renderEventSongs) {
-            window.App.renderEventSongs(eventId);
-        }
-
+        // Open modal first so the container exists
         UI.openModal('createEventModal');
+
+        // Then load band members and songs (in parallel)
+        console.log('editEvent - loading songs and members for eventId:', eventId);
+        console.log('window.App exists:', !!window.App, 'renderEventSongs exists:', !!(window.App && window.App.renderEventSongs));
+        
+        await Promise.all([
+            this.loadBandMembers(event.bandId, event.members),
+            window.App && window.App.renderEventSongs ? window.App.renderEventSongs(eventId) : Promise.resolve()
+        ]);
+        
+        console.log('editEvent - finished loading');
     },
 
     // Update event
@@ -303,7 +313,19 @@ const Events = {
 
         UI.showToast('Auftritt aktualisiert', 'success');
         UI.closeModal('createEventModal');
+        
+        // Remember which event was expanded
+        const wasExpanded = this.expandedEventId;
         this.renderEvents(this.currentFilter);
+        
+        // Re-expand the event after rendering
+        if (wasExpanded === eventId) {
+            // Use setTimeout to ensure DOM is updated
+            setTimeout(() => {
+                this.expandedEventId = null; // Reset so toggle works
+                this.toggleAccordion(eventId);
+            }, 100);
+        }
     },
 
     // Delete event
@@ -316,17 +338,27 @@ const Events = {
     },
 
     // Load band members for selection
-    loadBandMembers(bandId, selectedMembers = null) {
+    async loadBandMembers(bandId, selectedMembers = null) {
         const container = document.getElementById('eventBandMembers');
         if (!container || !bandId) return;
 
-        const members = Storage.getBandMembers(bandId);
+        const members = await Storage.getBandMembers(bandId);
+        
+        // Defensive check
+        if (!Array.isArray(members)) {
+            container.innerHTML = '<p class="text-muted">Keine Mitglieder gefunden</p>';
+            return;
+        }
 
         // Pre-select all members if selectedMembers is null (new event)
         const membersToSelect = selectedMembers !== null ? selectedMembers : members.map(m => m.userId);
 
-        container.innerHTML = members.map(member => {
-            const user = Storage.getById('users', member.userId);
+        // Fetch all users in parallel
+        const userPromises = members.map(m => Storage.getById('users', m.userId));
+        const users = await Promise.all(userPromises);
+        
+        container.innerHTML = members.map((member, idx) => {
+            const user = users[idx];
             if (!user) return '';
 
             const isChecked = membersToSelect.includes(user.id);
@@ -355,14 +387,13 @@ const Events = {
     },
 
     // Populate band select
-    populateBandSelect() {
+    async populateBandSelect() {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const bands = Storage.getUserBands(user.id);
-        const eligibleBands = bands.filter(b =>
-            b.role === 'leader' || b.role === 'co-leader'
-        );
+        const bands = (await Storage.getUserBands(user.id)) || [];
+        // Rolle egal: alle Bands, in denen der Nutzer Mitglied ist
+        const eligibleBands = bands;
 
         const select = document.getElementById('eventBand');
         if (select) {
@@ -370,6 +401,13 @@ const Events = {
                 eligibleBands.map(band =>
                     `<option value="${band.id}">${Bands.escapeHtml(band.name)}</option>`
                 ).join('');
+
+            // Vorauswahl: wenn genau eine Band vorhanden ist
+            if (eligibleBands.length === 1) {
+                select.value = eligibleBands[0].id;
+                // Trigger change to load members
+                select.dispatchEvent(new Event('change'));
+            }
         }
 
         // Filter select
@@ -379,6 +417,12 @@ const Events = {
                 bands.map(band =>
                     `<option value="${band.id}">${Bands.escapeHtml(band.name)}</option>`
                 ).join('');
+
+            // Preselect filter if user is only in one band
+            if (bands.length === 1) {
+                filterSelect.value = bands[0].id;
+                filterSelect.dispatchEvent(new Event('change'));
+            }
         }
     }
 };

@@ -6,13 +6,13 @@ const Rehearsals = {
     expandedRehearsalId: null,
 
     // Render all rehearsals
-    renderRehearsals(filterBandId = '') {
+    async renderRehearsals(filterBandId = '') {
         const container = document.getElementById('rehearsalsList');
         const user = Auth.getCurrentUser();
 
         if (!user) return;
 
-        let rehearsals = Storage.getUserRehearsals(user.id);
+        let rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
 
         // Apply filter
         if (filterBandId) {
@@ -27,25 +27,25 @@ const Rehearsals = {
             return;
         }
 
-        container.innerHTML = rehearsals.map(rehearsal =>
+        container.innerHTML = await Promise.all(rehearsals.map(rehearsal =>
             this.renderRehearsalCard(rehearsal)
-        ).join('');
+        )).then(cards => cards.join(''));
 
         // Add vote handlers
         this.attachVoteHandlers(container);
     },
 
     // Render single rehearsal card
-    renderRehearsalCard(rehearsal) {
-        const band = Storage.getBand(rehearsal.bandId);
-        const proposer = Storage.getById('users', rehearsal.proposedBy);
+    async renderRehearsalCard(rehearsal) {
+        const band = await Storage.getBand(rehearsal.bandId);
+        const proposer = await Storage.getById('users', rehearsal.proposedBy);
         const user = Auth.getCurrentUser();
         const isExpanded = this.expandedRehearsalId === rehearsal.id;
 
         // Get location name if set
         const bandName = band ? band.name : 'Unbekannte Band';
         const bandColor = band ? (band.color || '#6366f1') : '#6366f1';
-        const location = rehearsal.locationId ? Storage.getLocation(rehearsal.locationId) : null;
+        const location = rehearsal.locationId ? await Storage.getLocation(rehearsal.locationId) : null;
         const locationName = location ? location.name : (rehearsal.location || 'Kein Ort');
 
         const isCreator = rehearsal.createdBy === user.id;
@@ -86,9 +86,9 @@ const Rehearsals = {
 
                         ${rehearsal.status === 'pending' ? `
                             <div class="date-options">
-                                ${rehearsal.proposedDates.map((date, index) =>
+                                ${(await Promise.all(rehearsal.proposedDates.map((date, index) =>
             this.renderDateOption(rehearsal.id, date, index, user.id)
-        ).join('')}
+        ))).join('')}
                             </div>
                         ` : ''}
 
@@ -112,15 +112,15 @@ const Rehearsals = {
     },
 
     // Render single date option with voting
-    renderDateOption(rehearsalId, date, dateIndex, userId) {
-        const votes = Storage.getRehearsalVotes(rehearsalId);
+    async renderDateOption(rehearsalId, date, dateIndex, userId) {
+        const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
         const dateVotes = votes.filter(v => v.dateIndex === dateIndex);
 
         const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
         const maybeCount = dateVotes.filter(v => v.availability === 'maybe').length;
         const noCount = dateVotes.filter(v => v.availability === 'no').length;
 
-        const userVote = Storage.getUserVoteForDate(userId, rehearsalId, dateIndex);
+        const userVote = await Storage.getUserVoteForDate(userId, rehearsalId, dateIndex);
         const userAvailability = userVote ? userVote.availability : null;
 
         return `
@@ -187,12 +187,12 @@ const Rehearsals = {
         });
 
         context.querySelectorAll('.vote-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
                 const dateIndex = parseInt(btn.dataset.dateIndex);
                 const availability = btn.dataset.availability;
-                this.vote(rehearsalId, dateIndex, availability);
+                await this.vote(rehearsalId, dateIndex, availability);
             });
         });
 
@@ -394,11 +394,6 @@ const Rehearsals = {
         const checkboxes = document.querySelectorAll('#confirmMembersList input[type="checkbox"]:checked');
         const selectedMemberIds = Array.from(checkboxes).map(cb => cb.value);
 
-        if (selectedMemberIds.length === 0) {
-            UI.showToast('Bitte wähle mindestens ein Bandmitglied aus', 'error');
-            return;
-        }
-
         // Update rehearsal with location
         Storage.updateRehearsal(rehearsalId, {
             status: 'confirmed',
@@ -407,18 +402,24 @@ const Rehearsals = {
         });
 
         const selectedDate = rehearsal.proposedDates[dateIndex];
-        const members = Storage.getBandMembers(rehearsal.bandId);
-        const selectedMembers = members.filter(m => selectedMemberIds.includes(m.userId));
 
-        UI.showToast('Termin bestätigt. Sende E-Mails...', 'info');
+        // Only send emails if members are selected
+        if (selectedMemberIds.length > 0) {
+            const members = Storage.getBandMembers(rehearsal.bandId);
+            const selectedMembers = members.filter(m => selectedMemberIds.includes(m.userId));
 
-        // Send emails
-        const result = await EmailService.sendRehearsalConfirmation(rehearsal, selectedDate, selectedMembers);
+            UI.showToast('Termin bestätigt. Sende E-Mails...', 'info');
 
-        if (result.success) {
-            UI.showToast(result.message, 'success');
+            // Send emails
+            const result = await EmailService.sendRehearsalConfirmation(rehearsal, selectedDate, selectedMembers);
+
+            if (result.success) {
+                UI.showToast(result.message, 'success');
+            } else {
+                UI.showToast(result.message, 'warning');
+            }
         } else {
-            UI.showToast(result.message, 'warning');
+            UI.showToast('Termin bestätigt (keine E-Mails versendet)', 'success');
         }
 
         UI.closeModal('confirmRehearsalModal');
@@ -430,25 +431,29 @@ const Rehearsals = {
     },
 
     // Vote on a date
-    vote(rehearsalId, dateIndex, availability) {
+    async vote(rehearsalId, dateIndex, availability) {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const existingVote = Storage.getUserVoteForDate(user.id, rehearsalId, dateIndex);
+        const existingVote = await Storage.getUserVoteForDate(user.id, rehearsalId, dateIndex);
 
         if (availability === 'none') {
             // Explicitly retract vote
             if (existingVote) {
-                Storage.deleteVote(existingVote.id);
+                await Storage.deleteVote(existingVote.id);
                 UI.showToast('Abstimmung zurückgezogen', 'info');
             }
         } else if (existingVote && existingVote.availability === availability) {
             // Toggle off if clicking the same option (optional, but consistent)
-            Storage.deleteVote(existingVote.id);
+            await Storage.deleteVote(existingVote.id);
             UI.showToast('Abstimmung zurückgezogen', 'info');
         } else {
-            // Create or update vote
-            Storage.createVote({
+            // Delete existing vote if changing from one option to another
+            if (existingVote) {
+                await Storage.deleteVote(existingVote.id);
+            }
+            // Create new vote
+            await Storage.createVote({
                 rehearsalId,
                 userId: user.id,
                 dateIndex,
@@ -458,13 +463,13 @@ const Rehearsals = {
         }
 
         // Update only this rehearsal card instead of re-rendering entire list (preserves scroll position)
-        const rehearsal = Storage.getRehearsal(rehearsalId);
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
         if (rehearsal) {
             const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
             if (card) {
-                const newCardHtml = this.renderRehearsalCard(rehearsal);
+                const newCardHtml = await this.renderRehearsalCard(rehearsal);
                 card.outerHTML = newCardHtml;
-                
+
                 // Re-attach handlers to the updated card
                 const updatedCard = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
                 if (updatedCard) {
@@ -479,11 +484,11 @@ const Rehearsals = {
     },
 
     // Create new rehearsal
-    createRehearsal(bandId, title, description, dates, locationId = null, eventId = null) {
+    async createRehearsal(bandId, title, description, dates, locationId = null, eventId = null) {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        if (!Auth.canProposeRehearsal(bandId)) {
+        if (!(await Auth.canProposeRehearsal(bandId))) {
             UI.showToast('Du hast keine Berechtigung, Proben vorzuschlagen', 'error');
             return;
         }
@@ -499,7 +504,7 @@ const Rehearsals = {
             status: 'pending'
         };
 
-        const savedRehearsal = Storage.createRehearsal(rehearsal);
+        const savedRehearsal = await Storage.createRehearsal(rehearsal);
 
         // No auto-vote for proposer anymore - they start with 'maybe' (no vote)
         // Votes will be created when they interact with the buttons
@@ -517,8 +522,8 @@ const Rehearsals = {
     },
 
     // Edit rehearsal
-    editRehearsal(rehearsalId) {
-        const rehearsal = Storage.getRehearsal(rehearsalId);
+    async editRehearsal(rehearsalId) {
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
         if (!rehearsal) return;
 
         this.currentRehearsalId = rehearsalId;
@@ -536,13 +541,14 @@ const Rehearsals = {
 
         // Populate event select
         if (typeof App !== 'undefined' && App.populateEventSelect) {
-            App.populateEventSelect(rehearsal.bandId);
+            await App.populateEventSelect(rehearsal.bandId);
             document.getElementById('rehearsalEvent').value = rehearsal.eventId || '';
         }
 
         // Populate dates
         const container = document.getElementById('dateProposals');
-        container.innerHTML = rehearsal.proposedDates.map(date => `
+        const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
+        container.innerHTML = proposedDates.map(date => `
             <div class="date-proposal-item">
                 <input type="datetime-local" class="date-input" value="${date.slice(0, 16)}" required>
                 <button type="button" class="btn-icon remove-date">🗑️</button>
@@ -605,13 +611,13 @@ const Rehearsals = {
     },
 
     // Render recent votes for dashboard
-    renderRecentVotes() {
+    async renderRecentVotes() {
         const container = document.getElementById('recentVotes');
         const user = Auth.getCurrentUser();
 
         if (!user) return;
 
-        let rehearsals = Storage.getUserRehearsals(user.id);
+        let rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
         rehearsals = rehearsals.filter(r => r.status === 'pending');
         rehearsals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         rehearsals = rehearsals.slice(0, 3);
@@ -621,39 +627,49 @@ const Rehearsals = {
             return;
         }
 
-        container.innerHTML = rehearsals.map(rehearsal =>
+        const cards = await Promise.all(rehearsals.map(rehearsal =>
             this.renderRehearsalCard(rehearsal)
-        ).join('');
+        ));
+        container.innerHTML = cards.join('');
 
         this.attachVoteHandlers(container);
     },
 
     // Populate statistics rehearsal select
-    populateStatsSelect() {
+    async populateStatsSelect() {
         const select = document.getElementById('statsRehearsalSelect');
         const user = Auth.getCurrentUser();
 
         if (!select || !user) return;
 
-        const rehearsals = Storage.getUserRehearsals(user.id);
+        const rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
 
-        select.innerHTML = '<option value="">Probetermin auswählen</option>' +
-            rehearsals.map(r => {
-                const band = Storage.getBand(r.bandId);
-                return `<option value="${r.id}">${Bands.escapeHtml(r.title)} (${Bands.escapeHtml(band?.name || '')})</option>`;
-            }).join('');
+        const options = await Promise.all(rehearsals.map(async r => {
+            const band = await Storage.getBand(r.bandId);
+            return `<option value="${r.id}">${Bands.escapeHtml(r.title)} (${Bands.escapeHtml(band?.name || '')})</option>`;
+        }));
+
+        select.innerHTML = '<option value="">Probetermin auswählen</option>' + options.join('');
     },
 
     // Populate band select for statistics
-    populateStatsBandSelect() {
+    async populateStatsBandSelect() {
         const select = document.getElementById('statsBandSelect');
         const user = Auth.getCurrentUser();
         if (!select || !user) return;
 
-        const bands = Storage.getUserBands(user.id);
+        const bands = (await Storage.getUserBands(user.id)) || [];
 
         select.innerHTML = '<option value="">Band auswählen</option>' +
             bands.map(b => `<option value="${b.id}">${Bands.escapeHtml(b.name)}</option>`).join('');
+
+        // Wenn der Nutzer genau in einer Band ist, automatisch vorauswählen
+        if (bands.length === 1) {
+            select.value = bands[0].id;
+            // change-Event auslösen, damit abhängige UI sofort aktualisiert
+            const evt = new Event('change', { bubbles: true });
+            select.dispatchEvent(evt);
+        }
     },
 
     // Add date proposal field

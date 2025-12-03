@@ -29,7 +29,7 @@ const Bands = {
     },
 
     // Render all user's bands
-    renderBands() {
+    async renderBands() {
         const container = document.getElementById('bandsList');
         const user = Auth.getCurrentUser();
 
@@ -41,15 +41,19 @@ const Bands = {
             createBtn.style.display = Auth.canCreateBand() ? 'block' : 'none';
         }
 
-        const bands = Storage.getUserBands(user.id);
+        let bands = await Storage.getUserBands(user.id);
+        // Defensive: ensure array
+        if (!Array.isArray(bands)) {
+            bands = [];
+        }
 
         if (bands.length === 0) {
             UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');
             return;
         }
 
-        container.innerHTML = bands.map(band => {
-            const members = Storage.getBandMembers(band.id);
+        container.innerHTML = await Promise.all(bands.map(async band => {
+            const members = await Storage.getBandMembers(band.id);
             const memberCount = members.length;
 
             return `
@@ -69,7 +73,7 @@ const Bands = {
                     </div>
                 </div>
             `;
-        }).join('');
+        })).then(results => results.join(''));
 
         // Add click handlers
         container.querySelectorAll('.band-card').forEach(card => {
@@ -84,16 +88,16 @@ const Bands = {
     },
 
     // Show band details modal
-    showBandDetails(bandId) {
+    async showBandDetails(bandId) {
         this.currentBandId = bandId;
-        const band = Storage.getBand(bandId);
+        const band = await Storage.getBand(bandId);
         const user = Auth.getCurrentUser();
 
         if (!band) return;
 
         // Set band name and add edit button if allowed
         const nameHeader = document.getElementById('bandDetailsName');
-        const canEdit = Auth.canEditBandDetails(bandId);
+        const canEdit = await Auth.canEditBandDetails(bandId);
 
         if (canEdit) {
             nameHeader.innerHTML = `
@@ -113,12 +117,13 @@ const Bands = {
         UI.openModal('bandDetailsModal');
 
         // Render members
-        this.renderBandMembers(bandId);
+        await this.renderBandMembers(bandId);
 
         // Show/hide settings based on permissions
-        const canManage = Auth.canManageBand(bandId);
+        const canManage = await Auth.canManageBand(bandId);
         const addMemberBtn = document.getElementById('addMemberBtn');
         const deleteBandBtn = document.getElementById('deleteBandBtn');
+        const bandSettingsSection = document.getElementById('bandSettingsSection');
 
         if (addMemberBtn) {
             addMemberBtn.style.display = canManage ? 'inline-flex' : 'none';
@@ -126,26 +131,73 @@ const Bands = {
         if (deleteBandBtn) {
             deleteBandBtn.style.display = canManage ? 'inline-flex' : 'none';
         }
+        // Hide entire Band-Einstellungen section if user can't manage
+        if (bandSettingsSection) {
+            bandSettingsSection.style.display = canManage ? 'block' : 'none';
+        }
 
-        // Show join code for leaders/admins
+        // Show join code for all band members
         const settingsTab = document.getElementById('settingsTab');
-        if (canManage) {
-            const existingCode = settingsTab.querySelector('.join-code-section');
-            if (!existingCode) {
-                const codeSection = document.createElement('div');
-                codeSection.className = 'section join-code-section';
-                codeSection.innerHTML = `
-                    <h3>Band-Beitrittscode</h3>
-                    <div class="join-code-display">
-                        <b><code class="join-code">${band.joinCode || 'Kein Code'}</code></b>
-                        <p class="help-text">Teile diesen Code mit neuen Mitgliedern, damit sie der Band beitreten können.</p>
+        // Remove old code section first
+        const oldCodeSection = settingsTab.querySelector('.join-code-section');
+        if (oldCodeSection) oldCodeSection.remove();
+        
+        // Always show join code (all members can see and copy it)
+        const existingCode = settingsTab.querySelector('.join-code-section');
+        if (!existingCode) {
+            const codeSection = document.createElement('div');
+            codeSection.className = 'section join-code-section';
+            codeSection.innerHTML = `
+                <h3>Band-Beitrittscode</h3>
+                <div class="join-code-display">
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
+                        <b><code class="join-code" id="bandJoinCode">${band.joinCode || 'Kein Code'}</code></b>
+                        <button class="btn btn-sm btn-secondary" id="copyJoinCodeBtn" title="Code kopieren">
+                            📋 Kopieren
+                        </button>
                     </div>
-                `;
-                settingsTab.insertBefore(codeSection, settingsTab.firstChild);
-            }
-        } else {
-            const existingCode = settingsTab.querySelector('.join-code-section');
-            if (existingCode) existingCode.remove();
+                    <p class="help-text">Teile diesen Code mit neuen Mitgliedern, damit sie der Band beitreten können.</p>
+                </div>
+            `;
+            settingsTab.insertBefore(codeSection, settingsTab.firstChild);
+            
+            // Add copy handler
+            const copyBtn = codeSection.querySelector('#copyJoinCodeBtn');
+            copyBtn.addEventListener('click', () => {
+                const code = band.joinCode;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(() => {
+                        UI.showToast('Beitrittscode in die Zwischenablage kopiert', 'success');
+                        copyBtn.textContent = '✓ Kopiert!';
+                        setTimeout(() => {
+                            copyBtn.textContent = '📋 Kopieren';
+                        }, 2000);
+                    }).catch(() => {
+                        UI.showToast('Konnte Code nicht kopieren', 'error');
+                    });
+                } else {
+                    // Fallback: select the code element text
+                    const codeEl = document.getElementById('bandJoinCode');
+                    if (codeEl) {
+                        const range = document.createRange();
+                        range.selectNodeContents(codeEl);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        try {
+                            document.execCommand('copy');
+                            UI.showToast('Beitrittscode in die Zwischenablage kopiert', 'success');
+                            copyBtn.textContent = '✓ Kopiert!';
+                            setTimeout(() => {
+                                copyBtn.textContent = '📋 Kopieren';
+                            }, 2000);
+                        } catch (err) {
+                            UI.showToast('Konnte Code nicht kopieren', 'error');
+                        }
+                        sel.removeAllRanges();
+                    }
+                }
+            });
         }
 
         // Add Leave Band button (if not already present)
@@ -266,7 +318,7 @@ const Bands = {
     },
 
     // Edit band name
-    editBandName(bandId) {
+    async editBandName(bandId) {
         const band = Storage.getBand(bandId);
         if (!band) return;
 
@@ -274,23 +326,23 @@ const Bands = {
 
         if (newName && newName.trim() !== '' && newName !== band.name) {
             // Check for duplicate name
-            const allBands = Storage.getAllBands();
-            const duplicate = allBands.find(b =>
+            const allBands = await Storage.getAllBands();
+            const duplicate = Array.isArray(allBands) ? allBands.find(b =>
                 b.name.toLowerCase() === newName.trim().toLowerCase() &&
                 b.id !== bandId
-            );
+            ) : null;
 
             if (duplicate) {
                 UI.showToast(`Eine Band mit dem Namen "${newName}" existiert bereits`, 'error');
                 return;
             }
 
-            Storage.updateBand(bandId, { name: newName.trim() });
+            await Storage.updateBand(bandId, { name: newName.trim() });
             UI.showToast('Bandname aktualisiert', 'success');
 
             // Refresh view
             this.showBandDetails(bandId);
-            this.renderBands();
+            await this.renderBands();
 
             // Update dashboard
             if (typeof App !== 'undefined' && App.updateDashboard) {
@@ -300,11 +352,11 @@ const Bands = {
     },
 
     // Join band with code
-    joinBand(joinCode) {
+    async joinBand(joinCode) {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const band = Storage.getBandByJoinCode(joinCode);
+        const band = await Storage.getBandByJoinCode(joinCode);
 
         if (!band) {
             UI.showToast('Ungültiger Beitrittscode', 'error');
@@ -312,7 +364,7 @@ const Bands = {
         }
 
         // Check if already member
-        if (Auth.isMemberOfBand(band.id)) {
+        if (await Auth.isMemberOfBand(band.id)) {
             UI.showToast('Du bist bereits Mitglied dieser Band', 'error');
             return;
         }
@@ -321,34 +373,57 @@ const Bands = {
         const role = Auth.isAdmin() ? 'leader' : 'member';
 
         // Add as member or leader
-        Storage.addBandMember(band.id, user.id, role);
-        Auth.updateCurrentUser();
+        await Storage.addBandMember(band.id, user.id, role);
+        await Auth.updateCurrentUser();
+        
+        // Update header to reflect current user
+        const updatedUser = Auth.getCurrentUser();
+        const userNameElement = document.getElementById('currentUserName');
+        if (userNameElement && updatedUser) {
+            userNameElement.textContent = updatedUser.name;
+        }
 
         UI.showToast(`Erfolgreich der Band "${band.name}" beigetreten!`, 'success');
+        
+        // Clear the input field
+        const joinCodeInput = document.getElementById('joinBandCode');
+        if (joinCodeInput) joinCodeInput.value = '';
+        
         UI.closeModal('joinBandModal');
-        this.renderBands();
+        await this.renderBands();
 
-        // Update dashboard
-        if (typeof App !== 'undefined' && App.updateDashboard) {
-            App.updateDashboard();
+        // Update dashboard and navigation
+        if (typeof App !== 'undefined') {
+            if (App.updateDashboard) await App.updateDashboard();
+            if (App.updateNavigationVisibility) App.updateNavigationVisibility();
         }
+        
+        // Update nav visibility
+        await this.updateNavVisibility();
     },
 
     // Render band members
-    renderBandMembers(bandId) {
+    async renderBandMembers(bandId) {
         const container = document.getElementById('membersList');
-        const members = Storage.getBandMembers(bandId);
+        const members = await Storage.getBandMembers(bandId);
         const currentUser = Auth.getCurrentUser();
-        const canManage = Auth.canManageBand(bandId);
-        const canChangeRoles = Auth.canChangeRoles(bandId);
+        const canManage = await Auth.canManageBand(bandId);
+        const canChangeRoles = await Auth.canChangeRoles(bandId);
 
-        if (members.length === 0) {
+        if (!Array.isArray(members) || members.length === 0) {
             UI.showEmptyState(container, '👥', 'Noch keine Mitglieder');
             return;
         }
 
+        const userPromises = members.map(m => Storage.getById('users', m.userId));
+        const users = await Promise.all(userPromises);
+        const userMap = {};
+        members.forEach((m, i) => {
+            if (users[i]) userMap[m.userId] = users[i];
+        });
+
         container.innerHTML = members.map(member => {
-            const user = Storage.getById('users', member.userId);
+            const user = userMap[member.userId];
             if (!user) return '';
 
             const isCurrentUser = user.id === currentUser.id;
@@ -466,21 +541,33 @@ const Bands = {
     },
 
     // Update member role
-    updateMemberRole(bandId, userId, newRole) {
-        if (!Auth.canChangeRoles(bandId)) {
+    async updateMemberRole(bandId, userId, newRole) {
+        if (!(await Auth.canChangeRoles(bandId))) {
             UI.showToast('Keine Berechtigung', 'error');
             return;
         }
 
-        Storage.updateBandMemberRole(bandId, userId, newRole);
+        await Storage.updateBandMemberRole(bandId, userId, newRole);
         UI.showToast('Rolle aktualisiert', 'success');
-        this.renderBandMembers(bandId);
+        await this.renderBandMembers(bandId);
     },
 
     // Create new band
-    createBand(name, description) {
+    async createBand(name, description) {
         const user = Auth.getCurrentUser();
-        if (!user) return;
+        const supabaseUser = Auth.getSupabaseUser();
+        
+        // Use Supabase auth ID as fallback
+        const userId = user?.id || supabaseUser?.id;
+        
+        console.log('createBand - user:', user);
+        console.log('createBand - supabaseUser:', supabaseUser);
+        console.log('createBand - userId:', userId);
+        
+        if (!userId) {
+            UI.showToast('Fehler: Benutzer nicht korrekt geladen. Bitte lade die Seite neu und melde dich erneut an.', 'error');
+            return;
+        }
 
         if (!Auth.canCreateBand()) {
             UI.showToast('Du hast keine Berechtigung, Bands zu erstellen', 'error');
@@ -488,26 +575,61 @@ const Bands = {
         }
 
         // Check for duplicate name
-        const allBands = Storage.getAllBands();
-        const duplicate = allBands.find(b => b.name.toLowerCase() === name.trim().toLowerCase());
+        const allBands = await Storage.getAllBands();
+        const duplicate = Array.isArray(allBands) ? allBands.find(b => b.name.toLowerCase() === name.trim().toLowerCase()) : null;
 
         if (duplicate) {
             UI.showToast(`Eine Band mit dem Namen "${name}" existiert bereits`, 'error');
             return;
         }
 
-        // Create band (without automatically adding creator as member)
-        const band = Storage.createBand({
-            name,
-            description,
-            createdBy: user.id
-        });
+        UI.showLoading('Erstelle Band...');
 
-        UI.showToast(`Band "${name}" erstellt! Beitrittscode: ${band.joinCode}`, 'success');
-        UI.closeModal('createBandModal');
-        this.renderBands();
+        try {
+            // Create band
+            const band = await Storage.createBand({
+                name,
+                description
+            });
 
-        return band;
+            UI.showLoading('Füge dich als Bandleiter hinzu...');
+
+            // Debug: Log userId
+            console.log('Creating band membership with userId:', userId);
+            if (!userId) {
+                throw new Error('Benutzer-ID ist undefined - bitte neu anmelden');
+            }
+
+            // Automatically add creator as leader
+            await Storage.addBandMember(band.id, userId, 'leader');
+
+            UI.hideLoading();
+            UI.showToast(`Band "${name}" erstellt! Du bist jetzt Bandleiter.`, 'success');
+
+            // Refresh the admin band management list immediately (whether modal is open or not)
+            if (typeof App !== 'undefined' && typeof App.renderAllBandsList === 'function') {
+                const result = App.renderAllBandsList();
+                if (result && typeof result.then === 'function') {
+                    await result;
+                }
+            }
+            UI.closeModal('createBandModal');
+            await this.renderBands();
+            
+            // Update navigation visibility to show band tabs
+            await this.updateNavVisibility();
+
+            // Refresh dashboard/rehearsals to show new band
+            if (typeof Rehearsals !== 'undefined' && typeof Rehearsals.renderRehearsals === 'function') {
+                await Rehearsals.renderRehearsals();
+            }
+
+            return band;
+        } catch (error) {
+            UI.hideLoading();
+            console.error('Error creating band:', error);
+            UI.showToast('Fehler beim Erstellen der Band: ' + (error.message || 'Unbekannter Fehler'), 'error');
+        }
     },
 
     // Add member to band
@@ -549,43 +671,55 @@ const Bands = {
     },
 
     // Delete band
-    deleteBand(bandId) {
-        const band = Storage.getBand(bandId);
+    async deleteBand(bandId) {
+        const band = await Storage.getBand(bandId);
         if (!band) return;
 
-        UI.showConfirm(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`, () => {
-            Storage.deleteBand(bandId);
+        // Check permission: only leader can delete band
+        const canDelete = await Auth.canManageBand(bandId);
+        if (!canDelete) {
+            UI.showToast('Nur der Band-Leiter kann die Band löschen', 'error');
+            return;
+        }
+
+        UI.showConfirm(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`, async () => {
+            await Storage.deleteBand(bandId);
             UI.showToast('Band gelöscht', 'success');
             UI.closeModal('bandDetailsModal');
-            this.renderBands();
+            await this.renderBands();
+            
+            // Update admin band management list
+            if (typeof App !== 'undefined' && typeof App.renderAllBandsList === 'function') {
+                await App.renderAllBandsList();
+            }
+            
+            // Update dashboard if needed
+            if (typeof App !== 'undefined' && App.updateDashboard) {
+                await App.updateDashboard();
+            }
+            // Update nav visibility after deleting a band
+            await this.updateNavVisibility();
         });
-
-        // Update dashboard if needed
-        if (typeof App !== 'undefined' && App.updateDashboard) {
-            App.updateDashboard();
-        }
-        // Update nav visibility after deleting a band
-        this.updateNavVisibility();
     },
 
     // Leave band (current user)
-    leaveBand(bandId) {
-        const band = Storage.getBand(bandId);
+    async leaveBand(bandId) {
+        const band = await Storage.getBand(bandId);
         const user = Auth.getCurrentUser();
         if (!band || !user) return;
 
-        UI.showConfirm('Willst du die Band wirklich verlassen?', () => {
+        UI.showConfirm('Willst du die Band wirklich verlassen?', async () => {
             // Remove current user from band members
-            const ok = Storage.removeBandMember(bandId, user.id);
+            const ok = await Storage.removeBandMember(bandId, user.id);
             if (ok) {
                 UI.showToast('Du hast die Band verlassen', 'success');
                 UI.closeModal('bandDetailsModal');
-                this.renderBands();
-                if (typeof App !== 'undefined' && App.updateDashboard) App.updateDashboard();
+                await this.renderBands();
+                if (typeof App !== 'undefined' && App.updateDashboard) await App.updateDashboard();
                 // Notify other modules
                 document.dispatchEvent(new Event('bandsUpdated'));
                 // Update nav visibility
-                this.updateNavVisibility();
+                await this.updateNavVisibility();
             } else {
                 UI.showToast('Konnte die Band-Zugehörigkeit nicht entfernen', 'error');
             }
@@ -593,10 +727,11 @@ const Bands = {
     },
 
     // Show/hide navigation items depending on whether the current user is in at least one band
-    updateNavVisibility() {
+    async updateNavVisibility() {
         try {
             const user = Auth.getCurrentUser();
-            const count = user ? (Storage.getUserBands(user.id) || []).length : 0;
+            const bands = user ? (await Storage.getUserBands(user.id)) || [] : [];
+            const count = bands.length;
             const show = count > 0;
 
             const eventsBtn = document.querySelector('.nav-item[data-view="events"]');
@@ -606,31 +741,36 @@ const Bands = {
 
             if (eventsBtn) eventsBtn.style.display = show ? '' : 'none';
             if (rehearsalsBtn) rehearsalsBtn.style.display = show ? '' : 'none';
-            if (absenceBtn) absenceBtn.style.display = show ? '' : 'none';
-            if (settingsBtn) settingsBtn.style.display = show ? '' : 'none';
+            // These buttons should ALWAYS be visible
+            if (absenceBtn) absenceBtn.style.display = 'inline-block';
+            if (settingsBtn) settingsBtn.style.display = 'inline-block';
         } catch (e) {
             console.error('updateNavVisibility error', e);
         }
     },
 
     // Populate band select dropdowns
-    populateBandSelects() {
+    async populateBandSelects() {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const bands = Storage.getUserBands(user.id);
+        const bands = (await Storage.getUserBands(user.id)) || [];
 
-        // Populate rehearsal band select (only bands where user can propose)
+        // Populate rehearsal band select (Rolle egal: alle Bands des Nutzers)
         const rehearsalSelect = document.getElementById('rehearsalBand');
         if (rehearsalSelect) {
-            const eligibleBands = bands.filter(b =>
-                b.role === 'leader' || b.role === 'co-leader'
-            );
+            const eligibleBands = bands;
 
             rehearsalSelect.innerHTML = '<option value="">Band auswählen</option>' +
                 eligibleBands.map(band =>
                     `<option value="${band.id}">${this.escapeHtml(band.name)}</option>`
                 ).join('');
+
+            // Vorauswahl: wenn genau eine Band vorhanden ist
+            if (eligibleBands.length === 1) {
+                rehearsalSelect.value = eligibleBands[0].id;
+                rehearsalSelect.dispatchEvent(new Event('change'));
+            }
         }
 
         // Populate band filter
@@ -640,6 +780,12 @@ const Bands = {
                 bands.map(band =>
                     `<option value="${band.id}">${this.escapeHtml(band.name)}</option>`
                 ).join('');
+
+            // Preselect if user is only in one band
+            if (bands.length === 1) {
+                bandFilter.value = bands[0].id;
+                bandFilter.dispatchEvent(new Event('change'));
+            }
         }
     },
 

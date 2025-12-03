@@ -1,452 +1,323 @@
-// Storage Module - LocalStorage wrapper for data persistence
+// Storage Module - Supabase-only (no localStorage fallback)
 
 const Storage = {
-    // Initialize storage with default data
-    init() {
-        if (!localStorage.getItem('users')) {
-            localStorage.setItem('users', JSON.stringify([]));
+    // Initialize storage
+    async init() {
+        if (!SupabaseClient.isConfigured()) {
+            console.error('⚠️ Supabase nicht konfiguriert! Bitte URL und Anon Key in den Einstellungen eingeben.');
+            return;
         }
-        if (!localStorage.getItem('bands')) {
-            localStorage.setItem('bands', JSON.stringify([]));
-        }
-        if (!localStorage.getItem('bandMembers')) {
-            localStorage.setItem('bandMembers', JSON.stringify([]));
-        }
-        if (!localStorage.getItem('rehearsals')) {
-            localStorage.setItem('rehearsals', JSON.stringify([]));
-        }
-        if (!localStorage.getItem('votes')) {
-            localStorage.setItem('votes', JSON.stringify([]));
-        }
-        if (!localStorage.getItem('events')) {
-            localStorage.setItem('events', JSON.stringify([]));
-        }
-        if (!localStorage.getItem('locations')) {
-            localStorage.setItem('locations', JSON.stringify([]));
-        }
-        if (!localStorage.getItem('absences')) {
-            localStorage.setItem('absences', JSON.stringify([]));
-        }
-        if (!localStorage.getItem('news')) {
-            localStorage.setItem('news', JSON.stringify([]));
-        }
-        if (!localStorage.getItem('songs')) {
-            localStorage.setItem('songs', JSON.stringify([]));
-        }
-
-        // Create admin user if not exists
-        this.ensureAdminUser();
-
-        // Migrate existing bands to have colors
-        this.migrateBandColors();
+        console.log('✓ Storage initialized with Supabase');
     },
 
-    // Migration: Assign colors to bands that don't have one
-    migrateBandColors() {
-        const bands = this.getAll('bands');
-        let updated = false;
-
-        bands.forEach(band => {
-            if (!band.color) {
-                band.color = this.generateBandColor();
-                updated = true;
-            }
-        });
-
-        if (updated) {
-            localStorage.setItem('bands', JSON.stringify(bands));
-        }
-    },
-
-    // Ensure admin user exists
-    ensureAdminUser() {
-        const users = this.getAll('users');
-        const adminIndex = users.findIndex(u => u.username === 'admin');
-        const adminEmail = 'Simon.rohrer04@web.de';
-
-        if (adminIndex === -1) {
-            // Create new admin
-            const adminUser = {
-                id: 'admin-' + Date.now(),
-                username: 'admin',
-                password: 'bandprobe',
-                name: 'Administrator',
-                email: adminEmail,
-                isAdmin: true,
-                bandIds: [],
-                createdAt: new Date().toISOString()
-            };
-            users.push(adminUser);
-            localStorage.setItem('users', JSON.stringify(users));
-        } else {
-            // Update existing admin email if different
-            if (users[adminIndex].email !== adminEmail) {
-                users[adminIndex].email = adminEmail;
-                localStorage.setItem('users', JSON.stringify(users));
-            }
-        }
+    generateId() {
+        return Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
     },
 
     // Generic CRUD operations
-    getAll(key) {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : [];
+    async getAll(key) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from(key).select('*');
+        if (error) { console.error('Supabase getAll error', key, error); return []; }
+        return data || [];
     },
 
-    getById(key, id) {
-        const items = this.getAll(key);
-        return items.find(item => item.id === id);
+    async getById(key, id) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from(key).select('*').eq('id', id).limit(1).maybeSingle();
+        if (error) { console.error('Supabase getById error', key, error); return null; }
+        return data || null;
     },
 
-    save(key, item) {
-        const items = this.getAll(key);
-        items.push(item);
-        localStorage.setItem(key, JSON.stringify(items));
-        return item;
-    },
-
-    update(key, id, updatedItem) {
-        const items = this.getAll(key);
-        const index = items.findIndex(item => item.id === id);
-        if (index !== -1) {
-            items[index] = { ...items[index], ...updatedItem };
-            localStorage.setItem(key, JSON.stringify(items));
-            return items[index];
+    async save(key, item) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from(key).insert(item).select('*').single();
+        if (error) { 
+            console.error('Supabase save error', key, error); 
+            throw new Error(`Fehler beim Speichern in ${key}: ${error.message}`);
         }
-        return null;
+        return data || item;
     },
 
-    delete(key, id) {
-        const items = this.getAll(key);
-        const filtered = items.filter(item => item.id !== id);
-        localStorage.setItem(key, JSON.stringify(filtered));
-        return filtered.length < items.length;
+    async update(key, id, updatedItem) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from(key).update(updatedItem).eq('id', id).select('*').maybeSingle();
+        if (error) { console.error('Supabase update error', key, error); return null; }
+        return data || null;
+    },
+
+    async delete(key, id) {
+        const sb = SupabaseClient.getClient();
+        const { error } = await sb.from(key).delete().eq('id', id);
+        if (error) { console.error('Supabase delete error', key, error); return false; }
+        return true;
     },
 
     // User operations
-    createUser(userData) {
+    async createUser(userData) {
         const user = {
             id: this.generateId(),
             ...userData,
             bandIds: [],
             createdAt: new Date().toISOString()
         };
-        return this.save('users', user);
+        return await this.save('users', user);
     },
 
-    getUserByUsername(username) {
-        const users = this.getAll('users');
-        return users.find(user => user.username === username);
+    async getUserByUsername(username) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('users').select('*').ilike('username', username).limit(1).maybeSingle();
+        if (error) { console.error('Supabase getUserByUsername error', error); return null; }
+        return data || null;
     },
 
-    getUserByEmail(email) {
-        const users = this.getAll('users');
-        return users.find(user => user.email === email);
+    async getUserByEmail(email) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('users').select('*').ilike('email', email).limit(1).maybeSingle();
+        if (error) { console.error('Supabase getUserByEmail error', error); return null; }
+        return data || null;
     },
 
-    updateUser(userId, updates) {
-        return this.update('users', userId, updates);
+    async updateUser(userId, updates) {
+        return await this.update('users', userId, updates);
     },
 
     // Band operations
-    createBand(bandData) {
+    async createBand(bandData) {
         const band = {
             id: this.generateId(),
             ...bandData,
-            color: this.generateBandColor(),
-            joinCode: this.generateJoinCode(),
-            createdAt: new Date().toISOString()
+            joinCode: await this.generateUniqueJoinCode(),
+            createdAt: new Date().toISOString(),
+            color: bandData.color || '#6366f1'
         };
-        return this.save('bands', band);
+        return await this.save('bands', band);
     },
 
-    // Generate random pastel color for bands
-    generateBandColor() {
-        const hue = Math.floor(Math.random() * 360);
-        return `hsl(${hue}, 70%, 50%)`;
+    async getBand(bandId) {
+        return await this.getById('bands', bandId);
     },
 
-    // Generate 8-character join code for bands
-    generateJoinCode() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let code = '';
-        for (let i = 0; i < 8; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
+    async getAllBands() {
+        return await this.getAll('bands');
+    },
+
+    async updateBand(bandId, updates) {
+        return await this.update('bands', bandId, updates);
+    },
+
+    async deleteBand(bandId) {
+        await this.delete('bands', bandId);
+        // Supabase CASCADE handles deletion of related records
+        return true;
+    },
+
+    async getBandByJoinCode(joinCode) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('bands').select('*').eq('joinCode', joinCode).limit(1).maybeSingle();
+        if (error) { console.error('Supabase getBandByJoinCode error', error); return null; }
+        return data || null;
+    },
+
+    async generateUniqueJoinCode() {
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code;
+        let isUnique = false;
+        
+        while (!isUnique) {
+            code = '';
+            for (let i = 0; i < 6; i++) {
+                code += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            const existing = await this.getBandByJoinCode(code);
+            if (!existing) isUnique = true;
         }
         return code;
     },
 
-    // Find band by join code
-    getBandByJoinCode(joinCode) {
-        const bands = this.getAll('bands');
-        return bands.find(b => b.joinCode === joinCode.toUpperCase());
-    },
-
-    getBand(bandId) {
-        return this.getById('bands', bandId);
-    },
-
-    getAllBands() {
-        return this.getAll('bands');
-    },
-
-    getAllBands() {
-        return this.getAll('bands');
-    },
-
-    updateBand(bandId, updates) {
-        return this.update('bands', bandId, updates);
-    },
-
-    deleteBand(bandId) {
-        // Delete band
-        this.delete('bands', bandId);
-
-        // Delete all band members
-        const members = this.getAll('bandMembers');
-        const filteredMembers = members.filter(m => m.bandId !== bandId);
-        localStorage.setItem('bandMembers', JSON.stringify(filteredMembers));
-
-        // Delete all rehearsals
-        const rehearsals = this.getAll('rehearsals');
-        const filteredRehearsals = rehearsals.filter(r => r.bandId !== bandId);
-        localStorage.setItem('rehearsals', JSON.stringify(filteredRehearsals));
-
-        // Delete all events
-        const events = this.getAll('events');
-        const filteredEvents = events.filter(e => e.bandId !== bandId);
-        localStorage.setItem('events', JSON.stringify(filteredEvents));
-
-        // Update users' bandIds
-        const users = this.getAll('users');
-        users.forEach(user => {
-            if (user.bandIds && user.bandIds.includes(bandId)) {
-                user.bandIds = user.bandIds.filter(id => id !== bandId);
-            }
-        });
-        localStorage.setItem('users', JSON.stringify(users));
-
-        return true;
-    },
-
-    // Band Member operations
-    addBandMember(bandId, userId, role) {
-        const member = {
+    // Band member operations
+    async addBandMember(bandId, userId, role = 'member') {
+        const membership = {
             id: this.generateId(),
             bandId,
             userId,
             role,
             joinedAt: new Date().toISOString()
         };
-
-        // Add member
-        this.save('bandMembers', member);
-
-        // Update user's bandIds
-        const user = this.getById('users', userId);
-        if (user) {
-            if (!user.bandIds) user.bandIds = [];
-            if (!user.bandIds.includes(bandId)) {
-                user.bandIds.push(bandId);
-                this.updateUser(userId, { bandIds: user.bandIds });
-            }
-        }
-
-        return member;
+        return await this.save('bandMembers', membership);
     },
 
-    getBandMembers(bandId) {
-        const members = this.getAll('bandMembers');
-        return members.filter(m => m.bandId === bandId);
+    async getBandMembers(bandId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('bandMembers').select('*').eq('bandId', bandId);
+        if (error) { console.error('Supabase getBandMembers error', error); return []; }
+        return data || [];
     },
 
-    getUserBands(userId) {
-        const members = this.getAll('bandMembers');
-        const userMemberships = members.filter(m => m.userId === userId);
-        return userMemberships.map(m => ({
-            ...this.getBand(m.bandId),
-            role: m.role
+    async getUserBands(userId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('bandMembers').select('*').eq('userId', userId);
+        if (error) { console.error('Supabase getUserBands error', error); return []; }
+        const memberships = data || [];
+        const bands = await Promise.all(memberships.map(async m => {
+            const band = await this.getBand(m.bandId);
+            return band ? { ...band, role: m.role } : null;
         }));
+        return bands.filter(b => b !== null);
     },
 
-    getUserRoleInBand(userId, bandId) {
-        const members = this.getAll('bandMembers');
-        const membership = members.find(m => m.userId === userId && m.bandId === bandId);
-        return membership ? membership.role : null;
+    async getUserRoleInBand(userId, bandId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('bandMembers').select('*').eq('userId', userId).eq('bandId', bandId).limit(1).maybeSingle();
+        if (error) { console.error('Supabase getUserRoleInBand error', error); return null; }
+        return data ? data.role : null;
     },
 
-    updateBandMemberRole(bandId, userId, newRole) {
-        const members = this.getAll('bandMembers');
-        const member = members.find(m => m.bandId === bandId && m.userId === userId);
-        if (member) {
-            return this.update('bandMembers', member.id, { role: newRole });
-        }
-        return null;
+    async updateBandMemberRole(bandId, userId, newRole) {
+        const sb = SupabaseClient.getClient();
+        const { error } = await sb.from('bandMembers').update({ role: newRole }).eq('bandId', bandId).eq('userId', userId);
+        if (error) { console.error('Supabase updateBandMemberRole error', error); return false; }
+        return true;
     },
 
-    removeBandMember(bandId, userId) {
-        const members = this.getAll('bandMembers');
-        const member = members.find(m => m.bandId === bandId && m.userId === userId);
-        if (member) {
-            this.delete('bandMembers', member.id);
+    async removeBandMember(bandId, userId) {
+        const sb = SupabaseClient.getClient();
+        const { error } = await sb.from('bandMembers').delete().eq('bandId', bandId).eq('userId', userId);
+        if (error) { console.error('Supabase removeBandMember error', error); return false; }
+        return true;
+    },
 
-            // Update user's bandIds
-            const user = this.getById('users', userId);
-            if (user && user.bandIds) {
-                user.bandIds = user.bandIds.filter(id => id !== bandId);
-                this.updateUser(userId, { bandIds: user.bandIds });
-            }
+    // Event operations
+    async createEvent(eventData) {
+        const event = {
+            id: this.generateId(),
+            ...eventData,
+            createdAt: new Date().toISOString()
+        };
+        return await this.save('events', event);
+    },
 
-            return true;
-        }
-        return false;
+    async getEvent(eventId) {
+        return await this.getById('events', eventId);
+    },
+
+    async getBandEvents(bandId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('events').select('*').eq('bandId', bandId);
+        if (error) { console.error('Supabase getBandEvents error', error); return []; }
+        return data || [];
+    },
+
+    async getUserEvents(userId) {
+        const userBands = await this.getUserBands(userId);
+        const bandIds = userBands.map(b => b.id);
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('events').select('*').in('bandId', bandIds);
+        if (error) { console.error('Supabase getUserEvents error', error); return []; }
+        return data || [];
+    },
+
+    async updateEvent(eventId, updates) {
+        return await this.update('events', eventId, updates);
+    },
+
+    async deleteEvent(eventId) {
+        return await this.delete('events', eventId);
     },
 
     // Rehearsal operations
-    createRehearsal(rehearsalData) {
+    async createRehearsal(rehearsalData) {
         const rehearsal = {
             id: this.generateId(),
             ...rehearsalData,
             status: 'pending',
             createdAt: new Date().toISOString()
         };
-        return this.save('rehearsals', rehearsal);
+        return await this.save('rehearsals', rehearsal);
     },
 
-    getRehearsal(rehearsalId) {
-        return this.getById('rehearsals', rehearsalId);
+    async getRehearsal(rehearsalId) {
+        return await this.getById('rehearsals', rehearsalId);
     },
 
-    getBandRehearsals(bandId) {
-        const rehearsals = this.getAll('rehearsals');
-        return rehearsals.filter(r => r.bandId === bandId);
+    async getBandRehearsals(bandId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('rehearsals').select('*').eq('bandId', bandId);
+        if (error) { console.error('Supabase getBandRehearsals error', error); return []; }
+        return data || [];
     },
 
-    getUserRehearsals(userId) {
-        const userBands = this.getUserBands(userId);
+    async getUserRehearsals(userId) {
+        const userBands = await this.getUserBands(userId);
         const bandIds = userBands.map(b => b.id);
-        const rehearsals = this.getAll('rehearsals');
-        return rehearsals.filter(r => bandIds.includes(r.bandId));
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('rehearsals').select('*').in('bandId', bandIds);
+        if (error) { console.error('Supabase getUserRehearsals error', error); return []; }
+        return data || [];
     },
 
-    updateRehearsal(rehearsalId, updates) {
-        return this.update('rehearsals', rehearsalId, updates);
+    async updateRehearsal(rehearsalId, updates) {
+        return await this.update('rehearsals', rehearsalId, updates);
     },
 
-    deleteRehearsal(rehearsalId) {
-        // Delete rehearsal
-        this.delete('rehearsals', rehearsalId);
-
-        // Delete all votes for this rehearsal
-        const votes = this.getAll('votes');
-        const filteredVotes = votes.filter(v => v.rehearsalId !== rehearsalId);
-        localStorage.setItem('votes', JSON.stringify(filteredVotes));
-
+    async deleteRehearsal(rehearsalId) {
+        await this.delete('rehearsals', rehearsalId);
+        // Supabase CASCADE handles votes deletion
         return true;
     },
 
     // Vote operations
-    createVote(voteData) {
+    async createVote(voteData) {
         const vote = {
             id: this.generateId(),
             ...voteData,
             createdAt: new Date().toISOString()
         };
-
-        // Check if vote already exists
-        const votes = this.getAll('votes');
-        const existingVote = votes.find(v =>
-            v.rehearsalId === vote.rehearsalId &&
-            v.userId === vote.userId &&
-            v.dateIndex === vote.dateIndex
-        );
-
-        if (existingVote) {
-            // Update existing vote
-            return this.update('votes', existingVote.id, { availability: vote.availability });
-        } else {
-            // Create new vote
-            return this.save('votes', vote);
-        }
+        return await this.save('votes', vote);
     },
 
-    getRehearsalVotes(rehearsalId) {
-        const votes = this.getAll('votes');
-        return votes.filter(v => v.rehearsalId === rehearsalId);
+    async getRehearsalVotes(rehearsalId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('votes').select('*').eq('rehearsalId', rehearsalId);
+        if (error) { console.error('Supabase getRehearsalVotes error', error); return []; }
+        return data || [];
     },
 
-    getUserVoteForDate(userId, rehearsalId, dateIndex) {
-        const votes = this.getAll('votes');
-        return votes.find(v =>
-            v.userId === userId &&
-            v.rehearsalId === rehearsalId &&
-            v.dateIndex === dateIndex
-        );
+    async getUserVoteForDate(userId, rehearsalId, dateIndex) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('votes').select('*').eq('userId', userId).eq('rehearsalId', rehearsalId).eq('dateIndex', dateIndex).limit(1).maybeSingle();
+        if (error) { console.error('Supabase getUserVoteForDate error', error); return null; }
+        return data || null;
     },
 
-    deleteVote(voteId) {
-        return this.delete('votes', voteId);
-    },
-
-    // Event operations
-    createEvent(eventData) {
-        const event = {
-            id: this.generateId(),
-            ...eventData,
-            createdAt: new Date().toISOString()
-        };
-        return this.save('events', event);
-    },
-
-    getEvent(eventId) {
-        return this.getById('events', eventId);
-    },
-
-    getBandEvents(bandId) {
-        const events = this.getAll('events');
-        return events.filter(e => e.bandId === bandId);
-    },
-
-    getUserEvents(userId) {
-        const userBands = this.getUserBands(userId);
-        const bandIds = userBands.map(b => b.id);
-        const events = this.getAll('events');
-        return events.filter(e => bandIds.includes(e.bandId));
-    },
-
-    updateEvent(eventId, updates) {
-        return this.update('events', eventId, updates);
-    },
-
-    deleteEvent(eventId) {
-        return this.delete('events', eventId);
+    async deleteVote(voteId) {
+        return await this.delete('votes', voteId);
     },
 
     // Location operations
-    createLocation(name, address) {
+    async createLocation(locationData) {
         const location = {
             id: this.generateId(),
-            name,
-            address,
+            ...locationData,
             createdAt: new Date().toISOString()
         };
-        return this.save('locations', location);
+        return await this.save('locations', location);
     },
 
-    getLocations() {
-        return this.getAll('locations');
+    async getLocations() {
+        return await this.getAll('locations');
     },
 
-    getLocation(id) {
-        return this.getById('locations', id);
+    async getLocation(locationId) {
+        return await this.getById('locations', locationId);
     },
 
-    deleteLocation(id) {
-        this.delete('locations', id);
+    async deleteLocation(locationId) {
+        return await this.delete('locations', locationId);
     },
 
     // Absence operations
-    createAbsence(userId, startDate, endDate, reason = '') {
+    async createAbsence(userId, startDate, endDate, reason = '') {
         const absence = {
             id: this.generateId(),
             userId,
@@ -455,153 +326,133 @@ const Storage = {
             reason,
             createdAt: new Date().toISOString()
         };
-        return this.save('absences', absence);
+        return await this.save('absences', absence);
     },
 
-    getUserAbsences(userId) {
-        const absences = this.getAll('absences');
-        return absences.filter(a => a.userId === userId);
+    async getUserAbsences(userId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('absences').select('*').eq('userId', userId);
+        if (error) { console.error('Supabase getUserAbsences error', error); return []; }
+        return data || [];
     },
 
-    deleteAbsence(absenceId) {
-        return this.delete('absences', absenceId);
+    async deleteAbsence(absenceId) {
+        return await this.delete('absences', absenceId);
     },
 
-    // Check if a user is absent on a specific date
-    isUserAbsentOnDate(userId, date) {
-        const absences = this.getUserAbsences(userId);
+    async isUserAbsentOnDate(userId, date) {
+        const absences = await this.getUserAbsences(userId);
         const checkDate = new Date(date);
-
-        return absences.some(absence => {
-            const start = new Date(absence.startDate);
-            const end = new Date(absence.endDate);
+        return absences.some(a => {
+            const start = new Date(a.startDate);
+            const end = new Date(a.endDate);
             return checkDate >= start && checkDate <= end;
         });
     },
 
-    // Get all users absent during a date range
-    getAbsentUsersDuringRange(startDate, endDate) {
-        const absences = this.getAll('absences');
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        return absences.filter(absence => {
-            const absStart = new Date(absence.startDate);
-            const absEnd = new Date(absence.endDate);
-
-            // Check if date ranges overlap
-            return absStart <= end && absEnd >= start;
+    async getAbsentUsersDuringRange(userIds, startDate, endDate) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('absences').select('*').in('userId', userIds);
+        if (error) { console.error('Supabase getAbsentUsersDuringRange error', error); return []; }
+        
+        const absences = data || [];
+        const rangeStart = new Date(startDate);
+        const rangeEnd = new Date(endDate);
+        
+        return absences.filter(a => {
+            const absStart = new Date(a.startDate);
+            const absEnd = new Date(a.endDate);
+            return (absStart <= rangeEnd && absEnd >= rangeStart);
         });
     },
 
     // News operations
-    createNewsItem(title, content, createdBy, images = []) {
+    async createNewsItem(title, content, createdBy, images = []) {
         const newsItem = {
             id: this.generateId(),
             title,
             content,
-            images, // array of data-URLs or image metadata
+            images,
             createdBy,
-            // mark creator as having read it immediately
-            readBy: [createdBy],
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            readBy: [createdBy]
         };
-        return this.save('news', newsItem);
+        return await this.save('news', newsItem);
     },
 
-    getAllNews() {
-        const news = this.getAll('news');
-        // Sort by creation date, newest first
+    async getAllNews() {
+        const news = await this.getAll('news');
         return news.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     },
 
-    deleteNewsItem(newsId) {
-        return this.delete('news', newsId);
+    async deleteNewsItem(newsId) {
+        return await this.delete('news', newsId);
     },
 
-    // Update an existing news item
-    updateNewsItem(newsId, updates) {
-        return this.update('news', newsId, updates);
+    async updateNewsItem(newsId, updates) {
+        return await this.update('news', newsId, updates);
     },
 
-    // Mark a single news item as read by a user
-    markNewsRead(newsId, userId) {
-        const news = this.getById('news', newsId);
-        if (!news) return null;
-        if (!Array.isArray(news.readBy)) news.readBy = [];
+    async markNewsRead(newsId, userId) {
+        const news = await this.getById('news', newsId);
+        if (!news) return;
+        if (!news.readBy) news.readBy = [];
         if (!news.readBy.includes(userId)) {
             news.readBy.push(userId);
-            // persist
-            this.update('news', newsId, { readBy: news.readBy });
+            await this.update('news', newsId, { readBy: news.readBy });
         }
-        return news;
     },
 
-    // Mark all news items as read for a user
-    markAllNewsReadForUser(userId) {
-        const news = this.getAll('news');
-        let updated = false;
-        news.forEach(n => {
-            if (!Array.isArray(n.readBy)) n.readBy = [];
-            if (!n.readBy.includes(userId)) {
-                n.readBy.push(userId);
-                updated = true;
+    async markAllNewsReadForUser(userId) {
+        const allNews = await this.getAllNews();
+        for (const news of allNews) {
+            if (!news.readBy) news.readBy = [];
+            if (!news.readBy.includes(userId)) {
+                news.readBy.push(userId);
+                await this.update('news', news.id, { readBy: news.readBy });
             }
-        });
-        if (updated) {
-            localStorage.setItem('news', JSON.stringify(news));
         }
-        return true;
     },
 
-    // Count unread news items for a user
-    getUnreadNewsCountForUser(userId) {
-        const news = this.getAll('news');
-        if (!userId) return 0;
-        return news.reduce((acc, n) => {
-            if (!Array.isArray(n.readBy) || !n.readBy.includes(userId)) return acc + 1;
-            return acc;
-        }, 0);
+    async getUnreadNewsCountForUser(userId) {
+        const allNews = await this.getAllNews();
+        return allNews.filter(n => !n.readBy || !n.readBy.includes(userId)).length;
     },
 
-    // Song/Setlist operations
-    createSong(songData) {
+    // Song operations
+    async createSong(songData) {
         const song = {
             id: this.generateId(),
             ...songData,
             createdAt: new Date().toISOString()
         };
-        return this.save('songs', song);
+        return await this.save('songs', song);
     },
 
-    getEventSongs(eventId) {
-        const songs = this.getAll('songs');
-        return songs.filter(s => s.eventId === eventId);
+    async getEventSongs(eventId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('songs').select('*').eq('eventId', eventId);
+        if (error) { console.error('Supabase getEventSongs error', error); return []; }
+        return (data || []).sort((a, b) => a.order - b.order);
     },
 
-    getBandSongs(bandId) {
-        const songs = this.getAll('songs');
-        return songs.filter(s => s.bandId === bandId);
+    async getBandSongs(bandId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('songs').select('*').eq('bandId', bandId);
+        if (error) { console.error('Supabase getBandSongs error', error); return []; }
+        return data || [];
     },
 
-    updateSong(songId, updates) {
-        return this.update('songs', songId, updates);
+    async updateSong(songId, updates) {
+        return await this.update('songs', songId, updates);
     },
 
-    deleteSong(songId) {
-        return this.delete('songs', songId);
-    },
-
-    // Utility functions
-    generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
-    },
-
-    clear() {
-        localStorage.clear();
-        this.init();
+    async deleteSong(songId) {
+        return await this.delete('songs', songId);
     }
 };
 
 // Initialize storage on load
-Storage.init();
+(async () => {
+    await Storage.init();
+})();
