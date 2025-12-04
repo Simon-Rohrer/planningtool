@@ -774,7 +774,7 @@ const Bands = {
             }
         }
 
-        // Populate band filter
+        // Populate band filter (rehearsals)
         const bandFilter = document.getElementById('bandFilter');
         if (bandFilter) {
             bandFilter.innerHTML = '<option value="">Alle Bands</option>' +
@@ -787,6 +787,24 @@ const Bands = {
                 bandFilter.value = bands[0].id;
                 bandFilter.dispatchEvent(new Event('change'));
             }
+        }
+
+        // Populate event band filter
+        const eventBandFilter = document.getElementById('eventBandFilter');
+        if (eventBandFilter) {
+            eventBandFilter.innerHTML = '<option value="">Alle Bands</option>' +
+                bands.map(band =>
+                    `<option value="${band.id}">${this.escapeHtml(band.name)}</option>`
+                ).join('');
+        }
+
+        // Populate stats band select
+        const statsBandSelect = document.getElementById('statsBandSelect');
+        if (statsBandSelect) {
+            statsBandSelect.innerHTML = '<option value="">Band auswählen</option>' +
+                bands.map(band =>
+                    `<option value="${band.id}">${this.escapeHtml(band.name)}</option>`
+                ).join('');
         }
     },
 

@@ -78,9 +78,12 @@ const Rehearsals = {
                             ${rehearsal.description ? `
                                 <p><strong>Beschreibung:</strong> ${Bands.escapeHtml(rehearsal.description)}</p>
                             ` : ''}
-                            ${rehearsal.status === 'confirmed' && rehearsal.confirmedDateIndex !== undefined ? `
-                                <p><strong>Bestätigter Termin:</strong> ${UI.formatDate(rehearsal.proposedDates[rehearsal.confirmedDateIndex])}</p>
-                                <p><strong>Ort:</strong> ${locationName}</p>
+                            ${rehearsal.status === 'confirmed' && rehearsal.confirmedDate ? `
+                                <p><strong>✅ Bestätigter Termin:</strong> ${UI.formatDate(rehearsal.confirmedDate)}</p>
+                                ${locationName ? `<p><strong>📍 Ort:</strong> ${locationName}</p>` : ''}
+                            ` : ''}
+                            ${rehearsal.status === 'pending' && rehearsal.proposedDates && rehearsal.proposedDates.length > 0 ? `
+                                <p><strong>📅 Vorgeschlagene Termine:</strong> ${rehearsal.proposedDates.length} Option(en)</p>
                             ` : ''}
                         </div>
 
@@ -102,6 +105,9 @@ const Rehearsals = {
                             ${canManage ? `
                                 <button class="btn btn-secondary edit-rehearsal" data-rehearsal-id="${rehearsal.id}">
                                     ✏️ Bearbeiten
+                                </button>
+                                <button class="btn btn-danger delete-rehearsal" data-rehearsal-id="${rehearsal.id}">
+                                    🗑️ Löschen
                                 </button>
                             ` : ''}
                         </div>
@@ -197,10 +203,10 @@ const Rehearsals = {
         });
 
         context.querySelectorAll('.open-rehearsal-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
-                this.openRehearsalDetails(rehearsalId);
+                await this.openRehearsalDetails(rehearsalId);
             });
         });
 
@@ -209,6 +215,14 @@ const Rehearsals = {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
                 this.editRehearsal(rehearsalId);
+            });
+        });
+
+        context.querySelectorAll('.delete-rehearsal').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const rehearsalId = btn.dataset.rehearsalId;
+                await this.deleteRehearsal(rehearsalId);
             });
         });
     },
@@ -258,18 +272,30 @@ const Rehearsals = {
     },
 
     // Open rehearsal details for confirmation
-    openRehearsalDetails(rehearsalId) {
-        const rehearsal = Storage.getRehearsal(rehearsalId);
-        if (!rehearsal) return;
+    async openRehearsalDetails(rehearsalId) {
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
+        if (!rehearsal) {
+            console.error('Rehearsal not found:', rehearsalId);
+            return;
+        }
 
         this.currentRehearsalId = rehearsalId;
 
-        const band = Storage.getBand(rehearsal.bandId);
-        const members = Storage.getBandMembers(rehearsal.bandId);
-        const votes = Storage.getRehearsalVotes(rehearsalId);
+        const band = await Storage.getBand(rehearsal.bandId);
+        const members = await Storage.getBandMembers(rehearsal.bandId);
+        const votes = await Storage.getRehearsalVotes(rehearsalId);
+
+        // Check if proposedDates exists and is an array
+        const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
+        
+        if (proposedDates.length === 0) {
+            console.warn('No proposed dates found for rehearsal:', rehearsalId);
+            UI.showToast('Keine vorgeschlagenen Termine gefunden', 'warning');
+            return;
+        }
 
         // Calculate statistics
-        const dateStats = rehearsal.proposedDates.map((date, index) => {
+        const dateStats = proposedDates.map((date, index) => {
             const dateVotes = votes.filter(v => v.dateIndex === index);
             const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
             const maybeCount = dateVotes.filter(v => v.availability === 'maybe').length;
@@ -330,10 +356,10 @@ const Rehearsals = {
 
         // Attach select date handlers
         document.querySelectorAll('.select-date-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const dateIndex = parseInt(btn.dataset.dateIndex);
                 const date = btn.dataset.date;
-                this.showConfirmationModal(rehearsalId, dateIndex, date);
+                await this.showConfirmationModal(rehearsalId, dateIndex, date);
             });
         });
 
@@ -341,9 +367,12 @@ const Rehearsals = {
     },
 
     // Show confirmation modal
-    showConfirmationModal(rehearsalId, dateIndex, date) {
-        const rehearsal = Storage.getRehearsal(rehearsalId);
-        if (!rehearsal) return;
+    async showConfirmationModal(rehearsalId, dateIndex, date) {
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
+        if (!rehearsal) {
+            console.error('Rehearsal not found:', rehearsalId);
+            return;
+        }
 
         document.getElementById('confirmRehearsalId').value = rehearsalId;
         document.getElementById('confirmDateIndex').value = dateIndex;
@@ -351,9 +380,10 @@ const Rehearsals = {
 
         // Populate location select
         const locationSelect = document.getElementById('confirmRehearsalLocation');
-        const locations = Storage.getLocations();
+        const locations = await Storage.getLocations();
+        const locationsArray = Array.isArray(locations) ? locations : [];
         locationSelect.innerHTML = '<option value="">Kein Ort ausgewählt</option>' +
-            locations.map(loc => `<option value="${loc.id}">${Bands.escapeHtml(loc.name)}</option>`).join('');
+            locationsArray.map(loc => `<option value="${loc.id}">${Bands.escapeHtml(loc.name)}</option>`).join('');
 
         // Pre-select location if already set
         if (rehearsal.locationId) {
@@ -361,10 +391,15 @@ const Rehearsals = {
         }
 
         // Populate members list with checkboxes
-        const members = Storage.getBandMembers(rehearsal.bandId);
+        const members = await Storage.getBandMembers(rehearsal.bandId);
+        const membersArray = Array.isArray(members) ? members : [];
         const membersList = document.getElementById('confirmMembersList');
-        membersList.innerHTML = members.map(member => {
-            const user = Storage.getById('users', member.userId);
+        
+        // Load all users first
+        const userPromises = membersArray.map(member => Storage.getById('users', member.userId));
+        const users = await Promise.all(userPromises);
+        
+        membersList.innerHTML = users.map(user => {
             if (!user) return '';
 
             return `
@@ -387,25 +422,36 @@ const Rehearsals = {
         const dateIndex = parseInt(document.getElementById('confirmDateIndex').value);
         const locationId = document.getElementById('confirmRehearsalLocation').value;
 
-        const rehearsal = Storage.getRehearsal(rehearsalId);
-        if (!rehearsal) return;
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
+        if (!rehearsal) {
+            console.error('Rehearsal not found:', rehearsalId);
+            UI.showToast('Probe nicht gefunden', 'error');
+            return;
+        }
+
+        // Check if proposedDates exists and has the selected index
+        if (!Array.isArray(rehearsal.proposedDates) || !rehearsal.proposedDates[dateIndex]) {
+            console.error('Invalid date index:', dateIndex, 'proposedDates:', rehearsal.proposedDates);
+            UI.showToast('Ungültiger Termin ausgewählt', 'error');
+            return;
+        }
+
+        const selectedDate = rehearsal.proposedDates[dateIndex];
 
         // Get selected members
         const checkboxes = document.querySelectorAll('#confirmMembersList input[type="checkbox"]:checked');
         const selectedMemberIds = Array.from(checkboxes).map(cb => cb.value);
 
-        // Update rehearsal with location
-        Storage.updateRehearsal(rehearsalId, {
+        // Update rehearsal with confirmed date (not dateIndex)
+        await Storage.updateRehearsal(rehearsalId, {
             status: 'confirmed',
-            locationId: locationId || null,
-            confirmedDateIndex: dateIndex
+            confirmedLocation: locationId || null,
+            confirmedDate: selectedDate
         });
-
-        const selectedDate = rehearsal.proposedDates[dateIndex];
 
         // Only send emails if members are selected
         if (selectedMemberIds.length > 0) {
-            const members = Storage.getBandMembers(rehearsal.bandId);
+            const members = await Storage.getBandMembers(rehearsal.bandId);
             const selectedMembers = members.filter(m => selectedMemberIds.includes(m.userId));
 
             UI.showToast('Termin bestätigt. Sende E-Mails...', 'info');
@@ -423,10 +469,10 @@ const Rehearsals = {
         }
 
         UI.closeModal('confirmRehearsalModal');
-        this.renderRehearsals(this.currentFilter);
+        await this.renderRehearsals(this.currentFilter);
 
         if (typeof App !== 'undefined' && App.updateDashboard) {
-            App.updateDashboard();
+            await App.updateDashboard();
         }
     },
 
@@ -562,6 +608,18 @@ const Rehearsals = {
         document.getElementById('saveRehearsalBtn').textContent = 'Änderungen speichern';
         document.getElementById('editRehearsalId').value = rehearsalId;
 
+        // Show delete button
+        const deleteBtn = document.getElementById('deleteRehearsalBtn');
+        if (deleteBtn) {
+            deleteBtn.style.display = 'block';
+        }
+
+        // Populate band and location selects
+        await Bands.populateBandSelects();
+        if (typeof App !== 'undefined' && App.populateLocationSelect) {
+            await App.populateLocationSelect();
+        }
+
         // Populate form
         document.getElementById('rehearsalBand').value = rehearsal.bandId;
         document.getElementById('rehearsalTitle').value = rehearsal.title;
@@ -649,9 +707,9 @@ const Rehearsals = {
     async deleteRehearsal(rehearsalId) {
         const confirmed = await UI.confirmDelete('Möchtest du diesen Probentermin wirklich löschen?');
         if (confirmed) {
-            Storage.deleteRehearsal(rehearsalId);
+            await Storage.deleteRehearsal(rehearsalId);
             UI.showToast('Probentermin gelöscht', 'success');
-            this.renderRehearsals(this.currentFilter);
+            await this.renderRehearsals(this.currentFilter);
         }
     },
 
@@ -661,10 +719,39 @@ const Rehearsals = {
             if (!locationId || !isoString || typeof App === 'undefined' || !App.checkLocationAvailability) {
                 return { available: true, conflicts: [] };
             }
-            // Ensure calendar data is available even if calendar page wasn't visited
-            if (App.ensureLocationCalendar && typeof App.ensureLocationCalendar === 'function') {
-                try { await App.ensureLocationCalendar(locationId); } catch (_) {}
+            
+            // Get the location to find its linked calendar
+            const location = await Storage.getLocation(locationId);
+            if (!location) {
+                return { available: true, conflicts: [] };
             }
+            
+            // Determine linked calendar
+            let linkedCalendar = location.linkedCalendar || '';
+            if (!linkedCalendar && location.linkedCalendars) {
+                if (location.linkedCalendars.tonstudio) linkedCalendar = 'tonstudio';
+                else if (location.linkedCalendars.festhalle) linkedCalendar = 'jms-festhalle';
+                else if (location.linkedCalendars.ankersaal) linkedCalendar = 'ankersaal';
+            } else if (!linkedCalendar && location.linkedToCalendar) {
+                linkedCalendar = 'tonstudio';
+            }
+            
+            if (!linkedCalendar) {
+                // No calendar linked, always available
+                return { available: true, conflicts: [] };
+            }
+            
+            // Ensure calendar data is loaded
+            if (typeof Calendar !== 'undefined' && Calendar.ensureLocationCalendar) {
+                try {
+                    await Calendar.ensureLocationCalendar(linkedCalendar, location.name);
+                    console.log(`[Rehearsals] Calendar loaded: ${linkedCalendar}`);
+                } catch (err) {
+                    console.error(`[Rehearsals] Failed to load calendar ${linkedCalendar}:`, err);
+                    // Don't return true here - the calendar might have data that failed to refresh
+                }
+            }
+            
             const startDate = new Date(isoString);
             const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
             return await App.checkLocationAvailability(locationId, startDate, endDate);

@@ -133,7 +133,14 @@ const Events = {
                                     <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
                                     <div class="detail-value">
                                         <ol class="event-songs-list">
-                                            ${eventSongs.map(s => `<li>${Bands.escapeHtml(s.title)}</li>`).join('')}
+                                            ${eventSongs.map(s => `
+                                                <li>
+                                                    <strong>${Bands.escapeHtml(s.title)}</strong>
+                                                    ${s.artist ? `<br><span style="color: var(--color-text-secondary); font-size: 0.9em;">🎤 ${Bands.escapeHtml(s.artist)}</span>` : ''}
+                                                    ${s.key ? `<br><span style="color: var(--color-text-secondary); font-size: 0.9em;">🎹 Tonart: ${Bands.escapeHtml(s.key)}</span>` : ''}
+                                                    ${s.notes ? `<br><span style="color: var(--color-text-secondary); font-size: 0.85em; font-style: italic;">📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
+                                                </li>
+                                            `).join('')}
                                         </ol>
                                     </div>
                                 </div>
@@ -269,6 +276,9 @@ const Events = {
         document.getElementById('eventModalTitle').textContent = 'Auftritt bearbeiten';
         document.getElementById('saveEventBtn').textContent = 'Änderungen speichern';
         document.getElementById('editEventId').value = eventId;
+
+        // WICHTIG: Erst Band-Select befüllen, dann Wert setzen
+        await this.populateBandSelect();
 
         // Populate form
         document.getElementById('eventBand').value = event.bandId;

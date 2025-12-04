@@ -1,4 +1,4 @@
-// Musikpool Module - ChurchTools Group Members Display
+// Musikerpool Module - ChurchTools Group Members Display
 
 const Musikpool = {
     groupId: 2445,
@@ -15,7 +15,7 @@ const Musikpool = {
         const container = document.getElementById('musikpoolContainer');
         if (!container) return;
 
-        container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Musikpool-Mitglieder...</p></div>';
+        container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Musikerpool-Mitglieder...</p></div>';
 
         try {
             // Fetch group details and members
@@ -34,11 +34,11 @@ const Musikpool = {
             this.renderMembers();
 
         } catch (error) {
-            console.error('Error loading Musikpool:', error);
+            console.error('Error loading Musikerpool:', error);
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">⚠️</div>
-                    <p>Musikpool-Daten konnten nicht geladen werden.</p>
+                    <p>Musikerpool-Daten konnten nicht geladen werden.</p>
                     <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
                         ${this.escapeHtml(error.message)}
                     </p>

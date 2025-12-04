@@ -398,6 +398,7 @@ input:checked + .slider:before {
     position: sticky;
     top: 0;
     z-index: 100;
+    overflow: visible;
 }
 
 .header-content {
@@ -436,10 +437,20 @@ input:checked + .slider:before {
     display: flex;
     gap: var(--spacing-sm);
     padding: 0 var(--spacing-xl);
-    overflow-x: auto;
     max-width: 1400px;
     margin: 0 auto;
     width: 100%;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    position: relative;
+    overflow: visible;
+}
+
+.nav-group {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: visible;
 }
 
 .nav-item {
@@ -458,6 +469,10 @@ input:checked + .slider:before {
     white-space: nowrap;
 }
 
+.nav-item.nav-main {
+    font-weight: 700;
+}
+
 .nav-item:hover {
     color: var(--color-primary);
     background: var(--color-bg);
@@ -466,6 +481,54 @@ input:checked + .slider:before {
 .nav-item.active {
     color: var(--color-primary);
     border-bottom-color: var(--color-primary);
+}
+
+.nav-submenu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xl);
+    min-width: 200px;
+    z-index: 10000;
+    margin-top: 0;
+    flex-direction: column;
+}
+
+/* Desktop: show on hover */
+@media (min-width: 769px) {
+    .nav-group:hover .nav-submenu {
+        display: flex;
+    }
+}
+
+.nav-subitem {
+    background: none;
+    border: none;
+    padding: var(--spacing-md) var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    font-size: small;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    white-space: nowrap;
+    text-align: left;
+}
+
+.nav-subitem:hover {
+    background: var(--color-bg);
+    color: var(--color-primary);
+}
+
+.nav-subitem.active {
+    color: var(--color-primary);
+    background: rgba(99, 102, 241, 0.10);
 }
 
 .nav-icon {
@@ -480,28 +543,100 @@ input:checked + .slider:before {
         left: 0;
         right: 0;
         z-index: 1000;
-        padding: var(--spacing-sm) var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-xs);
         border-top: 1px solid var(--color-border);
         border-bottom: none;
         justify-content: space-between;
-        gap: var(--spacing-sm);
+        gap: 2px;
         background: color-mix(in oklab, var(--color-surface) 85%, transparent);
         backdrop-filter: saturate(140%) blur(6px);
         box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
         max-width: none;
         margin: 0;
+        flex-wrap: nowrap;
     }
     .app-main {
         padding-bottom: 72px; /* space for bottom bar */
     }
+    
+    .nav-group {
+        flex: 1;
+        min-width: 0;
+    }
+    
     .nav-item {
         flex: 1;
         justify-content: center;
-        padding: var(--spacing-md);
+        padding: var(--spacing-sm) 2px;
         border-bottom: none;
         border-radius: var(--radius-md);
         min-height: 48px; /* larger touch target */
+        width: 100%;
     }
+    
+    /* Show submenu as modal on mobile */
+    .nav-submenu {
+        display: none !important;
+        position: fixed;
+        bottom: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-xl);
+        padding: var(--spacing-md);
+        min-width: 200px;
+        max-width: 90vw;
+        z-index: 9999;
+    }
+    
+    .nav-group.submenu-open .nav-submenu {
+        display: flex !important;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        animation: slideUpMobile 0.2s ease-out;
+    }
+    
+    @keyframes slideUpMobile {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+    
+    .nav-subitem {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-md);
+        justify-content: flex-start;
+    }
+    
+    .nav-subitem .nav-label {
+        display: inline; /* Show labels in submenu */
+    }
+    
+    /* Only show main nav items on mobile */
+    .nav-item.nav-main {
+        display: flex;
+        position: relative;
+    }
+    
+    /* Indicator for items with submenu */
+    .nav-group .nav-submenu + * .nav-item.nav-main::before,
+    .nav-group:has(.nav-submenu) .nav-item.nav-main::after {
+        content: '▼';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        font-size: 0.5rem;
+        color: var(--color-primary);
+        opacity: 0.6;
+    }
+    
     .nav-item.active {
         background: var(--color-bg);
         border-bottom-color: transparent;
@@ -510,7 +645,7 @@ input:checked + .slider:before {
         display: none; /* icons only for compact bar */
     }
     .nav-icon {
-        font-size: 1.35rem; /* slightly larger icons */
+        font-size: 1.2rem; /* slightly larger icons */
     }
 
     /* Tap feedback */
@@ -528,11 +663,11 @@ input:checked + .slider:before {
         left: 50%;
         transform: translateX(-50%);
         bottom: -8px;
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
         background: var(--nav-active-color, var(--color-primary));
         border-radius: 50%;
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
     }
 }
 
@@ -1379,10 +1514,6 @@ input:checked + .slider:before {
 
     .header-content {
         padding: var(--spacing-md);
-    }
-
-    .user-name {
-        display: none;
     }
 
     .card-icon {
@@ -2388,25 +2519,23 @@ input:checked + .slider:before {
     }
 
     .app-header .header-content {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
         gap: var(--spacing-md);
     }
 
-    /* NEU: Buttons nebeneinander (flex-direction: row) und nach rechts */
     .header-actions {
         flex-direction: row;
         align-items: center;
         gap: var(--spacing-sm);
-        width: 100%;
         justify-content: flex-end;
-        /* Schiebt alles nach rechts */
+        flex-shrink: 0;
     }
 
-    /* NEU: Benutzername nach links verschieben */
     .header-actions .user-name {
-        margin-right: auto;
-        order: -1;
+        font-size: 0.875rem;
+        white-space: nowrap;
     }
 
     /* NEU: Text-Label ausblenden */
@@ -2438,3 +2567,57 @@ input:checked + .slider:before {
         padding: 2px 8px;
     }
 }
+
+/* ===== Personal Calendar Styles ===== */
+/* Personal Calendar - Event Type Styling */
+.calendar-event.event-type {
+    border-left-color: var(--color-secondary) !important;
+    background: linear-gradient(to right, rgba(236, 72, 153, 0.1), transparent);
+}
+
+.calendar-event.rehearsal-type {
+    border-left-color: var(--color-primary) !important;
+    background: linear-gradient(to right, rgba(99, 102, 241, 0.1), transparent);
+}
+
+.calendar-event-type {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-text-light);
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+}
+
+.calendar-event-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 4px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar-event.event-type .calendar-event-type {
+    color: var(--color-secondary);
+}
+
+.calendar-event.rehearsal-type .calendar-event-type {
+    color: var(--color-primary);
+}
+
+.calendar-event-band {
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar-event:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+

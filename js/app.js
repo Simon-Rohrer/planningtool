@@ -17,6 +17,8 @@ const App = {
         // Check authentication
         if (Auth.isAuthenticated()) {
             await this.showApp();
+            // Pre-load standard calendars after login
+            this.preloadStandardCalendars();
         } else {
             this.showAuth();
         }
@@ -35,6 +37,24 @@ const App = {
                 }
             }
         });
+    },
+
+    preloadStandardCalendars() {
+        // Pre-load Tonstudio, JMS Festhalle, and Ankersaal calendars
+        console.log('[App] Pre-loading standard calendars...');
+        if (typeof Calendar !== 'undefined' && Calendar.ensureLocationCalendar) {
+            const standardCalendars = [
+                { id: 'tonstudio', name: 'Tonstudio' },
+                { id: 'jms-festhalle', name: 'JMS Festhalle' },
+                { id: 'ankersaal', name: 'Ankersaal' }
+            ];
+            
+            standardCalendars.forEach(cal => {
+                Calendar.ensureLocationCalendar(cal.id, cal.name)
+                    .then(() => console.log(`[App] Pre-loaded calendar: ${cal.name}`))
+                    .catch(err => console.error(`[App] Failed to pre-load ${cal.name}:`, err));
+            });
+        }
     },
 
     setupEventListeners() {
@@ -63,19 +83,122 @@ const App = {
             this.handleLogout();
         });
 
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
+        // Navigation - Main items and subitems
+        document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
+            item.addEventListener('click', async (e) => {
                 try {
+                    // Check if this is a mobile view and if the item is a nav-main with submenu
+                    const isMobile = window.innerWidth <= 768;
+                    const isMainNav = item.classList.contains('nav-main');
+                    const navGroup = item.closest('.nav-group');
+                    const hasSubmenu = navGroup && navGroup.querySelector('.nav-submenu');
+                    
+                    console.log('[MOBILE NAV]', {
+                        isMobile,
+                        isMainNav,
+                        hasNavGroup: !!navGroup,
+                        hasSubmenu: !!hasSubmenu,
+                        windowWidth: window.innerWidth
+                    });
+                    
+                    // Check if submenu has any visible items
+                    let hasVisibleSubmenuItems = false;
+                    if (hasSubmenu) {
+                        const subitems = Array.from(navGroup.querySelectorAll('.nav-subitem'));
+                        hasVisibleSubmenuItems = subitems.length > 0 && subitems.some(subitem => {
+                            const computedStyle = window.getComputedStyle(subitem);
+                            const isVisible = subitem.style.display !== 'none' && computedStyle.display !== 'none';
+                            return isVisible;
+                        });
+                        console.log('[MOBILE NAV] Subitems:', subitems.length, 'Visible:', hasVisibleSubmenuItems);
+                    }
+                    
+                    if (isMobile && isMainNav && hasSubmenu) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('[MOBILE NAV] Opening submenu for nav-main');
+                        
+                        // Toggle submenu open/close
+                        const isOpen = navGroup.classList.contains('submenu-open');
+                        
+                        // Close all other submenus
+                        document.querySelectorAll('.nav-group.submenu-open').forEach(g => {
+                            g.classList.remove('submenu-open');
+                            const submenu = g.querySelector('.nav-submenu');
+                            if (submenu) {
+                                submenu.style.display = 'none';
+                            }
+                        });
+                        
+                        // Toggle current submenu
+                        if (!isOpen) {
+                            navGroup.classList.add('submenu-open');
+                            const submenu = navGroup.querySelector('.nav-submenu');
+                            if (submenu) {
+                                submenu.style.display = 'flex';
+                                submenu.style.flexDirection = 'column';
+                                console.log('[MOBILE NAV] Set submenu display to flex');
+                            }
+                            console.log('[MOBILE NAV] Added submenu-open class');
+                        } else {
+                            const submenu = navGroup.querySelector('.nav-submenu');
+                            if (submenu) {
+                                submenu.style.display = 'none';
+                            }
+                        }
+                        return; // Don't navigate, just show submenu
+                    }
+                    
+                    // Close submenu after clicking subitem on mobile
+                    if (isMobile && item.classList.contains('nav-subitem') && navGroup) {
+                        navGroup.classList.remove('submenu-open');
+                    }
+                    
+                    e.stopPropagation(); // Prevent event bubbling
                     const view = item.dataset.view;
+                    if (!view) return;
+                    
+                    // Check if this is a settings subitem with a specific tab
+                    const settingsTab = item.dataset.settingsTab;
+                    
                     console.log(`[NAV CLICK] Clicked on nav item with view: "${view}"`);
-                    this.navigateTo(view);
+                    console.log(`[NAV CLICK] this.navigateTo type:`, typeof this.navigateTo);
+                    console.log(`[NAV CLICK] App.navigateTo type:`, typeof App.navigateTo);
+                    console.log(`[NAV CLICK] About to call navigateTo...`);
+                    const result = await App.navigateTo(view);
+                    console.log(`[NAV CLICK] Navigation to "${view}" completed, result:`, result);
+                    
+                    // If navigating to settings with a specific tab, switch to that tab
+                    if (view === 'settings' && settingsTab) {
+                        // Small delay to ensure view is rendered
+                        setTimeout(() => {
+                            const tabButton = document.querySelector(`.settings-tab-btn[data-tab="${settingsTab}"]`);
+                            if (tabButton) {
+                                tabButton.click();
+                            }
+                        }, 100);
+                    }
                 } catch (error) {
                     console.error('[NAV CLICK] Error:', error);
+                    console.error('[NAV CLICK] Stack:', error.stack);
                 }
             });
         });
         console.log(`[INIT] Attached click handlers to ${document.querySelectorAll('.nav-item').length} nav items`);
+        
+        // Close mobile submenus when clicking outside
+        document.addEventListener('click', (e) => {
+            const isMobile = window.innerWidth <= 768;
+            if (!isMobile) return;
+            
+            const clickedInsideNav = e.target.closest('.app-nav');
+            if (!clickedInsideNav) {
+                document.querySelectorAll('.nav-group.submenu-open').forEach(g => {
+                    g.classList.remove('submenu-open');
+                });
+            }
+        });
 
         // Modal close buttons
         document.querySelectorAll('.modal-close').forEach(btn => {
@@ -127,17 +250,29 @@ const App = {
             document.getElementById('editRehearsalId').value = '';
             UI.clearForm('createRehearsalForm');
 
+            // Hide delete button for new rehearsal
+            const deleteBtn = document.getElementById('deleteRehearsalBtn');
+            if (deleteBtn) {
+                deleteBtn.style.display = 'none';
+            }
+
             // Reset date proposals
             const container = document.getElementById('dateProposals');
             container.innerHTML = `
                 <div class="date-proposal-item">
                     <input type="datetime-local" class="date-input" required>
+                    <span class="date-availability" style="margin-left:8px"></span>
                     <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
                 </div>
             `;
 
             await Bands.populateBandSelects();
             await this.populateLocationSelect();
+
+            // Attach availability listeners for initial input
+            if (typeof Rehearsals !== 'undefined' && Rehearsals.attachAvailabilityListeners) {
+                Rehearsals.attachAvailabilityListeners();
+            }
 
             // Clear event select initially
             const eventSelect = document.getElementById('rehearsalEvent');
@@ -180,6 +315,15 @@ const App = {
         // Add date button
         document.getElementById('addDateBtn').addEventListener('click', () => {
             Rehearsals.addDateProposal();
+        });
+
+        // Delete rehearsal button
+        document.getElementById('deleteRehearsalBtn').addEventListener('click', async () => {
+            const rehearsalId = document.getElementById('editRehearsalId').value;
+            if (rehearsalId) {
+                await Rehearsals.deleteRehearsal(rehearsalId);
+                UI.closeModal('createRehearsalModal');
+            }
         });
 
         // Band filter
@@ -397,6 +541,14 @@ const App = {
             absenceEndInput.addEventListener('change', validateDates);
         }
 
+        // Subscribe calendar button
+        const subscribeCalendarBtn = document.getElementById('subscribeCalendarBtn');
+        if (subscribeCalendarBtn) {
+            subscribeCalendarBtn.addEventListener('click', () => {
+                this.showCalendarSubscriptionModal();
+            });
+        }
+
         // Cancel edit absence button
         const cancelEditBtn = document.getElementById('cancelEditAbsenceBtn');
         if (cancelEditBtn) {
@@ -514,6 +666,14 @@ const App = {
             });
         }
 
+        // Add Own Member button (placeholder)
+        const addOwnMemberBtn = document.getElementById('addOwnMemberBtn');
+        if (addOwnMemberBtn) {
+            addOwnMemberBtn.addEventListener('click', () => {
+                UI.showToast('Diese Funktion wird in Kürze verfügbar sein', 'success');
+            });
+        }
+
         // Tab switching in band details
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -551,25 +711,29 @@ const App = {
 
     // Navigate to a specific view
     async navigateTo(view) {
-        console.log(`[navigateTo] Called with view: "${view}"`);
-        
-        const viewMap = {
-            'dashboard': 'dashboardView',
-            'bands': 'bandsView',
-            'events': 'eventsView',
-            'rehearsals': 'rehearsalsView',
-            'statistics': 'statisticsView',
-            'news': 'newsView',
-            'probeorte': 'probeorteView',
-            'tonstudio': 'probeorteView', // Redirect old tonstudio to probeorte
-            'musikpool': 'musikpoolView'
-        };
+        try {
+            console.log(`[navigateTo] Called with view: "${view}"`);
+            
+            const viewMap = {
+                'dashboard': 'dashboardView',
+                'bands': 'bandsView',
+                'events': 'eventsView',
+                'rehearsals': 'rehearsalsView',
+                'statistics': 'statisticsView',
+                'news': 'newsView',
+                'probeorte': 'probeorteView',
+                'tonstudio': 'probeorteView', // Redirect old tonstudio to probeorte
+                'kalender': 'kalenderView',
+                'musikpool': 'musikpoolView',
+                'settings': 'settingsView'
+            };
 
-        const viewId = viewMap[view];
-        console.log(`[navigateTo] Mapped to viewId: "${viewId}"`);
-        
-        if (viewId) {
-            // Set nav active color per view for sticky bottom bar indicator
+            const viewId = viewMap[view];
+            console.log(`[navigateTo] Mapped to viewId: "${viewId}"`);
+            
+            if (viewId) {
+                console.log(`[navigateTo] ViewId is valid, proceeding...`);
+                // Set nav active color per view for sticky bottom bar indicator
             const navActiveColorMap = {
                 dashboard: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
                 bands: '#10b981', // success green
@@ -578,6 +742,7 @@ const App = {
                 statistics: '#2563eb', // blue
                 news: '#f59e0b', // warning
                 probeorte: '#9333ea', // purple
+                kalender: '#f43f5e', // rose
                 musikpool: '#0ea5e9' // cyan
             };
             const navColor = navActiveColorMap[view] || getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
@@ -585,8 +750,8 @@ const App = {
 
             UI.showView(viewId);
 
-            // Update active navigation
-            document.querySelectorAll('.nav-item').forEach(item => {
+            // Update active navigation (both main items and subitems)
+            document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
                 if (item.dataset.view === view || (view === 'tonstudio' && item.dataset.view === 'probeorte')) {
                     item.classList.add('active');
                 } else {
@@ -598,11 +763,14 @@ const App = {
             if (view === 'bands') {
                 await Bands.renderBands();
             } else if (view === 'events') {
+                await Bands.populateBandSelects();
                 await Events.renderEvents();
             } else if (view === 'rehearsals') {
+                await Bands.populateBandSelects();
                 await Rehearsals.renderRehearsals();
             } else if (view === 'statistics') {
-                await Rehearsals.populateStatisticsSelect();
+                await Bands.populateBandSelects();
+                await Rehearsals.populateStatsSelect();
             } else if (view === 'news') {
                 await this.renderNewsView();
 
@@ -617,6 +785,9 @@ const App = {
                     }
                     createNewsBtn.style.display = canCreate ? 'inline-flex' : 'none';
                 }
+
+                // Update donate button visibility and link
+                this.updateDonateButton();
             } else if (view === 'probeorte' || view === 'tonstudio') {
                 // Ensure tonstudio tab and container are active first
                 setTimeout(() => {
@@ -650,7 +821,31 @@ const App = {
                 } else {
                     console.error('Musikpool object not found!');
                 }
+            } else if (view === 'kalender') {
+                // Load personal calendar when navigating to view
+                console.log('[navigateTo] Kalender view detected, loading personal calendar...');
+                console.log('[navigateTo] PersonalCalendar type:', typeof PersonalCalendar);
+                if (typeof PersonalCalendar !== 'undefined') {
+                    console.log('[navigateTo] PersonalCalendar.loadPersonalCalendar type:', typeof PersonalCalendar.loadPersonalCalendar);
+                }
+                if (typeof PersonalCalendar !== 'undefined' && PersonalCalendar.loadPersonalCalendar) {
+                    console.log('[navigateTo] Calling PersonalCalendar.loadPersonalCalendar()...');
+                    PersonalCalendar.loadPersonalCalendar();
+                } else {
+                    console.error('[navigateTo] PersonalCalendar object not found!');
+                }
+            } else if (view === 'settings') {
+                // Load settings view content
+                console.log('[navigateTo] Settings view detected, loading settings...');
+                this.renderSettingsView();
             }
+            console.log(`[navigateTo] Finished handling view: "${view}"`);
+        } else {
+            console.log(`[navigateTo] No viewId found for view: "${view}"`);
+        }
+        } catch (error) {
+            console.error('[navigateTo] ERROR:', error);
+            console.error('[navigateTo] Stack trace:', error.stack);
         }
     },
 
@@ -1654,6 +1849,244 @@ const App = {
     },
 
     // Open settings modal
+    // Render Settings View
+    async renderSettingsView() {
+        const container = document.getElementById('settingsViewContent');
+        if (!container) return;
+
+        const user = Auth.getCurrentUser();
+        const isAdmin = Auth.isAdmin();
+
+        // Clone the settings modal content
+        const modalBody = document.querySelector('#settingsModal .modal-body');
+        if (modalBody) {
+            container.innerHTML = modalBody.innerHTML;
+            
+            // Re-initialize all event listeners for the cloned content
+            this.initializeSettingsViewListeners(isAdmin);
+        }
+    },
+
+    initializeSettingsViewListeners(isAdmin) {
+        const user = Auth.getCurrentUser();
+
+        // Re-attach event listeners to settings tab buttons
+        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                this.switchSettingsTab(tabName);
+            });
+        });
+
+        // Show/Hide tabs based on role
+        const locationsTab = document.getElementById('settingsTabLocations');
+        const bandsTab = document.getElementById('settingsTabBands');
+        const usersTab = document.getElementById('settingsTabUsers');
+
+        if (locationsTab) locationsTab.style.display = isAdmin ? 'block' : 'none';
+        if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
+        if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
+
+        // Pre-fill profile form
+        document.getElementById('profileUsername').value = user.username;
+        document.getElementById('profileEmail').value = user.email;
+        document.getElementById('profileInstrument').value = user.instrument || '';
+        document.getElementById('profilePassword').value = '';
+
+        // Default to profile tab
+        this.switchSettingsTab('profile');
+
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            const savedTheme = localStorage.getItem('theme');
+            const isDark = savedTheme === 'dark' || (savedTheme === null && document.documentElement.classList.contains('theme-dark'));
+            themeToggle.checked = isDark;
+            themeToggle.addEventListener('change', (e) => {
+                const dark = e.target.checked;
+                document.documentElement.classList.toggle('theme-dark', dark);
+                localStorage.setItem('theme', dark ? 'dark' : 'light');
+            });
+        }
+
+        // Donate link
+        const donateLinkInput = document.getElementById('donateLink');
+        const saveDonateBtn = document.getElementById('saveDonateLink');
+        if (donateLinkInput && saveDonateBtn) {
+            const savedLink = localStorage.getItem('donateLink');
+            if (savedLink) {
+                donateLinkInput.value = savedLink;
+            }
+            saveDonateBtn.addEventListener('click', () => {
+                const link = donateLinkInput.value.trim();
+                if (link) {
+                    localStorage.setItem('donateLink', link);
+                    UI.showToast('Spenden-Link gespeichert!', 'success');
+                    this.updateDonateButton();
+                } else {
+                    localStorage.removeItem('donateLink');
+                    UI.showToast('Spenden-Link entfernt', 'info');
+                    this.updateDonateButton();
+                }
+            });
+        }
+
+        if (isAdmin) {
+            this.renderLocationsList();
+            this.renderAllBandsList();
+        }
+
+        // Setup absences form in settings
+        const absenceFormSettings = document.getElementById('createAbsenceFormSettings');
+        if (absenceFormSettings) {
+            absenceFormSettings.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleCreateAbsenceFromSettings();
+            });
+        }
+
+        // Render absences list in settings
+        this.renderAbsencesListSettings();
+    },
+
+    async handleCreateAbsenceFromSettings() {
+        const startInput = document.getElementById('absenceStartSettings');
+        const endInput = document.getElementById('absenceEndSettings');
+        const reasonInput = document.getElementById('absenceReasonSettings');
+        const editIdInput = document.getElementById('editAbsenceIdSettings');
+
+        const start = startInput.value;
+        const end = endInput.value;
+        const reason = reasonInput.value.trim();
+        const editId = editIdInput.value;
+
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        if (editId) {
+            // Update existing absence
+            await Storage.updateAbsence(editId, { start, end, reason });
+            UI.showToast('Abwesenheit aktualisiert', 'success');
+        } else {
+            // Create new absence
+            const absence = {
+                userId: user.id,
+                start,
+                end,
+                reason
+            };
+            await Storage.createAbsence(absence);
+            UI.showToast('Abwesenheit eingetragen', 'success');
+        }
+
+        // Reset form
+        document.getElementById('createAbsenceFormSettings').reset();
+        editIdInput.value = '';
+        document.getElementById('saveAbsenceBtnSettings').textContent = 'Abwesenheit hinzufügen';
+        document.getElementById('cancelEditAbsenceBtnSettings').style.display = 'none';
+
+        // Refresh list
+        this.renderAbsencesListSettings();
+    },
+
+    async renderAbsencesListSettings() {
+        const container = document.getElementById('absencesListSettings');
+        if (!container) return;
+
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const absences = await Storage.getUserAbsences(user.id) || [];
+
+        if (absences.length === 0) {
+            container.innerHTML = '<p class="text-muted">Keine Abwesenheiten eingetragen.</p>';
+            return;
+        }
+
+        container.innerHTML = absences.map(absence => `
+            <div class="absence-item" data-absence-id="${absence.id}">
+                <div class="absence-info">
+                    <strong>${UI.formatDate(absence.start)} - ${UI.formatDate(absence.end)}</strong>
+                    ${absence.reason ? `<p>${Bands.escapeHtml(absence.reason)}</p>` : ''}
+                </div>
+                <div class="absence-actions">
+                    <button class="btn-icon edit-absence-settings" data-absence-id="${absence.id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon delete-absence-settings" data-absence-id="${absence.id}" title="Löschen">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+
+        // Attach event listeners
+        container.querySelectorAll('.edit-absence-settings').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.absenceId;
+                this.editAbsenceSettings(id);
+            });
+        });
+
+        container.querySelectorAll('.delete-absence-settings').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.absenceId;
+                await this.deleteAbsenceSettings(id);
+            });
+        });
+    },
+
+    async editAbsenceSettings(absenceId) {
+        const absence = await Storage.getById('absences', absenceId);
+        if (!absence) return;
+
+        document.getElementById('absenceStartSettings').value = absence.start;
+        document.getElementById('absenceEndSettings').value = absence.end;
+        document.getElementById('absenceReasonSettings').value = absence.reason || '';
+        document.getElementById('editAbsenceIdSettings').value = absenceId;
+        document.getElementById('saveAbsenceBtnSettings').textContent = 'Änderungen speichern';
+        document.getElementById('cancelEditAbsenceBtnSettings').style.display = 'inline-block';
+
+        const cancelBtn = document.getElementById('cancelEditAbsenceBtnSettings');
+        cancelBtn.onclick = () => {
+            document.getElementById('createAbsenceFormSettings').reset();
+            document.getElementById('editAbsenceIdSettings').value = '';
+            document.getElementById('saveAbsenceBtnSettings').textContent = 'Abwesenheit hinzufügen';
+            cancelBtn.style.display = 'none';
+        };
+    },
+
+    async deleteAbsenceSettings(absenceId) {
+        if (confirm('Möchtest du diese Abwesenheit wirklich löschen?')) {
+            await Storage.deleteAbsence(absenceId);
+            UI.showToast('Abwesenheit gelöscht', 'success');
+            this.renderAbsencesListSettings();
+        }
+    },
+
+    showCalendarSubscriptionModal() {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        // Generate webcal URL (this would need a backend endpoint to generate the iCal feed)
+        const webcalUrl = `webcal://your-domain.com/api/calendar/${user.id}`;
+        const httpUrl = `https://your-domain.com/api/calendar/${user.id}`;
+
+        UI.showToast(`
+            <div>
+                <strong>Kalender abonnieren</strong><br>
+                <p style="margin-top: 0.5rem; font-size: 0.9em;">
+                    Um deinen persönlichen Kalender zu abonnieren, benötigst du eine iCal-URL.<br>
+                    Diese Funktion erfordert ein Backend zur Generierung des Kalender-Feeds.
+                </p>
+                <p style="margin-top: 0.5rem; font-size: 0.9em;">
+                    <strong>In Apple Kalender:</strong><br>
+                    Datei → Neues Kalender-Abo → URL eingeben
+                </p>
+                <p style="margin-top: 0.5rem; font-size: 0.9em;">
+                    <strong>In Google Calendar:</strong><br>
+                    Einstellungen → Kalender hinzufügen → Über URL
+                </p>
+            </div>
+        `, 'info', 8000);
+    },
+
     async openSettingsModal() {
         const user = Auth.getCurrentUser();
         const isAdmin = Auth.isAdmin();
@@ -1694,6 +2127,34 @@ const App = {
             const newToggle = themeToggle.cloneNode(true);
             themeToggle.parentNode.replaceChild(newToggle, themeToggle);
             newToggle.addEventListener('change', (e) => applyTheme(e.target.checked));
+        }
+
+        // Donate link setup
+        const donateLinkInput = document.getElementById('donateLink');
+        const saveDonateBtn = document.getElementById('saveDonateLink');
+        if (donateLinkInput && saveDonateBtn) {
+            // Load saved donate link
+            const savedLink = localStorage.getItem('donateLink');
+            if (savedLink) {
+                donateLinkInput.value = savedLink;
+            }
+
+            // Save donate link
+            const newSaveBtn = saveDonateBtn.cloneNode(true);
+            saveDonateBtn.parentNode.replaceChild(newSaveBtn, saveDonateBtn);
+            newSaveBtn.addEventListener('click', () => {
+                const link = donateLinkInput.value.trim();
+                if (link) {
+                    localStorage.setItem('donateLink', link);
+                    UI.showToast('Spenden-Link gespeichert!', 'success');
+                    // Update donate button visibility in news view
+                    this.updateDonateButton();
+                } else {
+                    localStorage.removeItem('donateLink');
+                    UI.showToast('Spenden-Link entfernt', 'info');
+                    this.updateDonateButton();
+                }
+            });
         }
 
         if (isAdmin) {
@@ -2368,46 +2829,6 @@ const App = {
             ).join('');
     },
 
-    // Navigate to view
-    async navigateTo(viewName) {
-        UI.showView(`${viewName}View`);
-
-        switch (viewName) {
-            case 'dashboard':
-                await this.updateDashboard();
-                break;
-            case 'bands':
-                await Bands.renderBands();
-                break;
-            case 'events':
-                await Events.populateBandSelect();
-                await Events.renderEvents();
-                break;
-            case 'rehearsals':
-                await Bands.populateBandSelects();
-                await this.populateLocationSelect();
-                await Rehearsals.renderRehearsals();
-                break;
-            case 'statistics':
-                await Rehearsals.populateStatsSelect();
-                await Rehearsals.populateStatsBandSelect();
-                // Wire up band select change to render band stats
-                const statsBandSelect = document.getElementById('statsBandSelect');
-                if (statsBandSelect) {
-                    statsBandSelect.addEventListener('change', async (e) => {
-                        const bandId = e.target.value;
-                        if (bandId) {
-                            await Statistics.renderBandStatistics(bandId);
-                        } else {
-                            // Clear or show rehearsal selection
-                            document.getElementById('statisticsContent').innerHTML = '';
-                        }
-                    });
-                }
-                break;
-        }
-    },
-
     // Update dashboard
     async updateDashboard() {
         const user = Auth.getCurrentUser();
@@ -2796,6 +3217,20 @@ const App = {
             (Array.isArray(events) ? events.map(event =>
                 `<option value="${event.id}">${Bands.escapeHtml(event.title)} - ${UI.formatDateShort(event.date)}</option>`
             ).join('') : '');
+    },
+
+    // Update donate button visibility and link
+    updateDonateButton() {
+        const donateBtn = document.getElementById('donateBtn');
+        if (!donateBtn) return;
+
+        const savedLink = localStorage.getItem('donateLink');
+        if (savedLink && savedLink.trim()) {
+            donateBtn.style.display = 'inline-flex';
+            donateBtn.href = savedLink;
+        } else {
+            donateBtn.style.display = 'none';
+        }
     }
 };
 

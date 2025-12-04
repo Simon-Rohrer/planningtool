@@ -84,12 +84,35 @@ const Storage = {
 
     // Band operations
     async createBand(bandData) {
+        // Bunter Farbpool ohne Grautöne
+        const vibrantColors = [
+            '#6366f1', // Indigo/Blau
+            '#ec4899', // Pink
+            '#10b981', // Grün
+            '#f59e0b', // Orange
+            '#ef4444', // Rot
+            '#8b5cf6', // Lila
+            '#06b6d4', // Cyan
+            '#f97316', // Dunkelorange
+            '#14b8a6', // Teal
+            '#a855f7', // Violett
+            '#22c55e', // Hellgrün
+            '#eab308', // Gelb
+            '#3b82f6', // Blau
+            '#e11d48', // Rose/Pink
+            '#84cc16', // Lime
+            '#0ea5e9'  // Sky
+        ];
+        
+        // Zufällige Farbe auswählen, wenn keine angegeben
+        const randomColor = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
+        
         const band = {
             id: this.generateId(),
             ...bandData,
             joinCode: await this.generateUniqueJoinCode(),
             createdAt: new Date().toISOString(),
-            color: bandData.color || '#6366f1'
+            color: bandData.color || randomColor
         };
         return await this.save('bands', band);
     },

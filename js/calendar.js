@@ -329,6 +329,66 @@ const Calendar = {
         this.renderMonthView();
     },
 
+    // Ensure a calendar is loaded (for availability checking)
+    async ensureLocationCalendar(calendarId, locationName) {
+        console.log(`[Calendar] ensureLocationCalendar called for: ${calendarId}, ${locationName}`);
+        
+        // Map calendar IDs to internal calendar types
+        const calendarMap = {
+            'tonstudio': 'tonstudio',
+            'jms-festhalle': 'festhalle',
+            'festhalle': 'festhalle',
+            'ankersaal': 'ankersaal'
+        };
+        
+        const calendarType = calendarMap[calendarId] || calendarId;
+        const calendar = this.calendars[calendarType];
+        
+        if (!calendar) {
+            console.warn(`[Calendar] Unknown calendar type: ${calendarType}`);
+            return;
+        }
+        
+        // Check if calendar already has events loaded
+        if (calendar.events && calendar.events.length > 0) {
+            console.log(`[Calendar] ${calendarType} already loaded with ${calendar.events.length} events`);
+            return;
+        }
+        
+        // Load the calendar
+        console.log(`[Calendar] Loading ${calendarType} calendar...`);
+        try {
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(calendar.url)}`;
+            const response = await fetch(proxyUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const icalData = await response.text();
+            const jcalData = ICAL.parse(icalData);
+            const comp = new ICAL.Component(jcalData);
+            const vevents = comp.getAllSubcomponents('vevent');
+            
+            calendar.events = vevents.map(vevent => {
+                const event = new ICAL.Event(vevent);
+                return {
+                    summary: event.summary || 'Kein Titel',
+                    description: event.description || '',
+                    location: event.location || '',
+                    startDate: event.startDate ? event.startDate.toJSDate() : null,
+                    endDate: event.endDate ? event.endDate.toJSDate() : null,
+                    uid: event.uid
+                };
+            }).filter(event => event.startDate);
+            
+            calendar.events.sort((a, b) => a.startDate - b.startDate);
+            console.log(`[Calendar] ${calendarType} loaded successfully with ${calendar.events.length} events`);
+        } catch (error) {
+            console.error(`[Calendar] Failed to load ${calendarType}:`, error);
+            throw error;
+        }
+    },
+
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;

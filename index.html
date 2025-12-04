@@ -98,8 +98,6 @@
                 <h1 class="logo">🎵 Band Planning</h1>
                 <div class="header-actions">
                     <span id="currentUserName" class="user-name">User</span>
-                    <button id="absenceBtn" class="btn btn-secondary" style="display: none;">📅 Abwesenheiten</button>
-                    <button id="settingsBtn" class="btn btn-secondary" style="display: none;">⚙️ Settings</button>
                     <button id="logoutBtn" class="btn btn-secondary">
                         <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
                     </button>
@@ -109,38 +107,83 @@
 
         <!-- Navigation -->
         <nav class="app-nav">
-            <button class="nav-item active" data-view="dashboard">
-                <span class="nav-icon">🏠</span>
-                <span class="nav-label">Dashboard</span>
-            </button>
-            <button class="nav-item" data-view="bands">
-                <span class="nav-icon">🎸</span>
-                <span class="nav-label">Meine Bands</span>
-            </button>
-            <button class="nav-item" data-view="events" style="display: none;">
-                <span class="nav-icon">🎤</span>
-                <span class="nav-label">Auftritte</span>
-            </button>
-            <button class="nav-item" data-view="rehearsals" style="display: none;">
-                <span class="nav-icon">📅</span>
-                <span class="nav-label">Probetermine</span>
-            </button>
-            <button class="nav-item" data-view="statistics">
-                <span class="nav-icon">📊</span>
-                <span class="nav-label">Statistiken</span>
-            </button>
-            <button class="nav-item" data-view="news">
-                <span class="nav-icon">📰</span>
-                <span class="nav-label">News & Updates</span>
-            </button>
-            <button class="nav-item" data-view="probeorte">
-                <span class="nav-icon">🎙️</span>
-                <span class="nav-label">Probeorte</span>
-            </button>
-            <button class="nav-item" data-view="musikpool">
-                <span class="nav-icon">🎵</span>
-                <span class="nav-label">Musikpool</span>
-            </button>
+            <!-- Meine Band (mit Untermenü) -->
+            <div class="nav-group">
+                <button class="nav-item nav-main active" data-view="dashboard">
+                    <span class="nav-icon">🎙️</span>
+                    <span class="nav-label">Home</span>
+                </button>
+                <div class="nav-submenu">
+                    <button class="nav-subitem active" data-view="dashboard">
+                        <span class="nav-icon">🏠</span>
+                        <span class="nav-label">Dashboard</span>
+                    </button>
+                    <button class="nav-subitem" data-view="bands">
+                        <span class="nav-icon">🎸</span>
+                        <span class="nav-label">Meine Bands</span>
+                    </button>
+                    <button class="nav-subitem" data-view="musikpool">
+                        <span class="nav-icon">🎵</span>
+                        <span class="nav-label">Musikerpool</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Planung -->
+            <div class="nav-group">
+                <button class="nav-item nav-main" data-view="rehearsals">
+                    <span class="nav-icon">🗓️</span>
+                    <span class="nav-label">Planung</span>
+                </button>
+                <div class="nav-submenu">
+                    <button class="nav-subitem" data-view="rehearsals" style="display: none;">
+                        <span class="nav-icon">📅</span>
+                        <span class="nav-label">Probetermine</span>
+                    </button>
+                    <button class="nav-subitem" data-view="probeorte">
+                        <span class="nav-icon">🎙️</span>
+                        <span class="nav-label">Probeorte</span>
+                    </button>
+                    <button class="nav-subitem" data-view="kalender">
+                        <span class="nav-icon">📆</span>
+                        <span class="nav-label">Mein Kalender</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Gigs -->
+            <div class="nav-group">
+                <button class="nav-item nav-main" data-view="events" style="display: none;">
+                    <span class="nav-icon">🎸</span>
+                    <span class="nav-label">Gigs</span>
+                </button>
+            </div>
+
+            <!-- Analyse -->
+            <div class="nav-group">
+                <button class="nav-item nav-main" data-view="statistics">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Analyse</span>
+                </button>
+                <div class="nav-submenu">
+                    <button class="nav-subitem" data-view="statistics">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-label">Statistiken</span>
+                    </button>
+                    <button class="nav-subitem" data-view="news">
+                        <span class="nav-icon">📰</span>
+                        <span class="nav-label">News & Updates</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="nav-group">
+                <button class="nav-item nav-main" data-view="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Settings</span>
+                </button>
+            </div>
         </nav>
 
         <!-- Main Content -->
@@ -253,7 +296,12 @@
             <div id="newsView" class="view">
                 <div class="view-header">
                     <h2>News & Updates</h2>
-                    <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News erstellen</button>
+                    <div class="view-controls">
+                        <a href="#" id="donateBtn" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                            💖 Spenden
+                        </a>
+                        <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News erstellen</button>
+                    </div>
                 </div>
                 <div id="newsContainer" class="news-content">
                     <div class="empty-state">
@@ -309,22 +357,106 @@
                 </div>
             </div>
 
-            <!-- Musikpool View -->
+            <!-- Kalender View -->
+            <div id="kalenderView" class="view">
+                <div class="view-header">
+                    <h2>📅 Mein Kalender</h2>
+                    <button id="subscribeCalendarBtn" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                        🔗 Kalender abonnieren
+                    </button>
+                </div>
+                <div class="section">
+                    <div id="personalCalendarContainer">
+                        <!-- Personal calendar will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Musikerpool View -->
             <div id="musikpoolView" class="view">
                 <div class="view-header">
-                    <h2>Musikpool</h2>
+                    <h2>Musikerpool</h2>
                     <button id="refreshMusikpoolBtn" class="btn btn-secondary"
                         style="display: inline-flex; align-items: center; gap: 0.5rem;">
                         🔄 Aktualisieren
                     </button>
                 </div>
+                
+                <!-- Eigene Mitglieder Section -->
                 <div class="section">
+                    <div class="section-header">
+                        <h3>Eigene Mitglieder</h3>
+                        <button id="addOwnMemberBtn" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                            ➕ Mitglied hinzufügen
+                        </button>
+                    </div>
+                    <div id="ownMembersContainer">
+                        <div class="empty-state">
+                            <div class="empty-icon">👥</div>
+                            <p>Noch keine eigenen Mitglieder angelegt</p>
+                            <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                                Hier können Sie eigene Musiker und Kontakte hinzufügen.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ChurchTools Pool Section -->
+                <div class="section">
+                    <h3>ChurchTools Musikpool</h3>
                     <div id="musikpoolContainer">
-                        <!-- Members will be rendered here -->
+                        <!-- ChurchTools members will be rendered here -->
                     </div>
                 </div>
             </div>
+
+            <!-- Settings View -->
+            <div id="settingsView" class="view">
+                <div class="view-header">
+                    <h2>⚙️ Settings</h2>
+                </div>
+                <div id="settingsViewContent" class="settings-view-content">
+                    <!-- Settings content will be rendered here from modal -->
+                </div>
+            </div>
         </main>
+    </div>
+
+    <!-- Absences Content (for inclusion in Settings) -->
+    <div id="absencesSettingsContent" style="display: none;">
+        <!-- Create Absence Section -->
+        <div class="section">
+            <h3>Neue Abwesenheit eintragen</h3>
+            <form id="createAbsenceForm">
+                <input type="hidden" id="editAbsenceId">
+                <div class="form-group">
+                    <label for="absenceStart">Von (Datum)</label>
+                    <input type="date" id="absenceStart" required>
+                </div>
+                <div class="form-group">
+                    <label for="absenceEnd">Bis (Datum)</label>
+                    <input type="date" id="absenceEnd" required>
+                </div>
+                <div class="form-group">
+                    <label for="absenceReason">Grund (optional)</label>
+                    <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit hinzufügen</button>
+                    <button type="button" id="cancelEditAbsenceBtn" class="btn cancel" style="display:none;">Abbrechen</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- List Absences Section -->
+        <div class="section">
+            <h3>Meine eingetragenen Abwesenheiten</h3>
+            <div id="absencesList"></div>
+        </div>
+    </div>
+
+    <!-- Hidden container end -->
+    <div style="display: none;">
     </div>
 
     <!-- Settings Modal -->
@@ -337,6 +469,7 @@
             <div class="modal-body">
                 <div class="settings-tabs">
                     <button id="settingsTabProfile" class="settings-tab-btn active" data-tab="profile">Profil</button>
+                    <button id="settingsTabAbsences" class="settings-tab-btn" data-tab="absences">Abwesenheiten</button>
                     <button id="settingsTabLocations" class="settings-tab-btn" data-tab="locations">Probeorte</button>
                     <button id="settingsTabBands" class="settings-tab-btn" data-tab="bands">Bandmanagement</button>
                     <button id="settingsTabUsers" class="settings-tab-btn" data-tab="users" style="display: none;">Benutzerverwaltung</button>
@@ -386,6 +519,50 @@
                             </div>
                             <small style="color: var(--color-text-secondary);">Der Dark Mode wird lokal gespeichert.</small>
                         </div>
+                        <div class="section" style="margin-top: 1rem;">
+                            <h3>Spenden-Link</h3>
+                            <div class="form-group">
+                                <label for="donateLink">PayPal-Link</label>
+                                <input type="url" id="donateLink" placeholder="https://paypal.me/deinusername" value="">
+                                <small style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
+                                    Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich angezeigt.
+                                </small>
+                            </div>
+                            <button id="saveDonateLink" class="btn btn-primary">Spenden-Link speichern</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Absences Tab -->
+                <div id="absencesSettingsTab" class="settings-tab-content">
+                    <!-- Create Absence Section -->
+                    <div class="section">
+                        <h3>Neue Abwesenheit eintragen</h3>
+                        <form id="createAbsenceFormSettings">
+                            <input type="hidden" id="editAbsenceIdSettings">
+                            <div class="form-group">
+                                <label for="absenceStartSettings">Von (Datum)</label>
+                                <input type="date" id="absenceStartSettings" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="absenceEndSettings">Bis (Datum)</label>
+                                <input type="date" id="absenceEndSettings" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="absenceReasonSettings">Grund (optional)</label>
+                                <input type="text" id="absenceReasonSettings" placeholder="z.B. Urlaub, Krankheit...">
+                            </div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <button type="submit" id="saveAbsenceBtnSettings" class="btn btn-primary">Abwesenheit hinzufügen</button>
+                                <button type="button" id="cancelEditAbsenceBtnSettings" class="btn cancel" style="display:none;">Abbrechen</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- List Absences Section -->
+                    <div class="section">
+                        <h3>Meine eingetragenen Abwesenheiten</h3>
+                        <div id="absencesListSettings"></div>
                     </div>
                 </div>
 
@@ -667,6 +844,7 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="button" class="btn btn-danger" id="deleteRehearsalBtn" style="display:none; margin-right: auto;">🗑️ Löschen</button>
                     <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag erstellen</button>
                 </div>
             </form>
@@ -1038,6 +1216,7 @@
     <script src="js/rehearsals.js"></script>
     <script src="js/statistics.js"></script>
     <script src="js/calendar.js"></script>
+    <script src="js/personal-calendar.js"></script>
     <script src="js/churchtools-api.js"></script>
     <script src="js/musikpool.js"></script>
     <script src="js/ui.js"></script>
