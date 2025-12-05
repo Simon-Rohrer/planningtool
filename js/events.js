@@ -42,10 +42,19 @@ const Events = {
         const isExpanded = this.expandedEventId === event.id;
         const canManage = await Auth.canManageEvents(event.bandId);
 
-        // Get member names
+        // Get member info and absences
         const members = await Promise.all(event.members.map(async memberId => {
             const member = await Storage.getById('users', memberId);
-            return member ? member.name : 'Unbekannt';
+            if (!member) return { name: 'Unbekannt', absence: null };
+            const absences = await Storage.getUserAbsences(memberId);
+            // Find absence covering event date
+            const eventDate = new Date(event.date);
+            const absence = absences.find(a => {
+                const start = new Date(a.startDate);
+                const end = new Date(a.endDate);
+                return eventDate >= start && eventDate <= end;
+            });
+            return { name: member.name, absence };
         }));
 
         const guests = event.guests || [];
@@ -106,7 +115,12 @@ const Events = {
                             <div class="detail-row">
                                 <div class="detail-label">👥 Bandmitglieder (${members.length}):</div>
                                 <div class="detail-value">
-                                    ${members.map(name => `<span class="member-tag">${Bands.escapeHtml(name)}</span>`).join('')}
+                                    ${members.map(m => `
+                                        <span class="member-tag" style="margin-right: 0.5em;">
+                                            ${Bands.escapeHtml(m.name)}
+                                            ${m.absence ? `<span style="color: orange; font-weight: bold; margin-left: 0.5em;">Abwesenheit: ${Bands.escapeHtml(m.absence.reason || '')} (${UI.formatDateShort(m.absence.startDate)} - ${UI.formatDateShort(m.absence.endDate)})</span>` : ''}
+                                        </span>
+                                    `).join('')}
                                 </div>
                             </div>
 
@@ -380,19 +394,38 @@ const Events = {
         const userPromises = members.map(m => Storage.getById('users', m.userId));
         const users = await Promise.all(userPromises);
         
-        container.innerHTML = members.map((member, idx) => {
+        container.innerHTML = await Promise.all(members.map(async (member, idx) => {
             const user = users[idx];
             if (!user) return '';
-
             const isChecked = membersToSelect.includes(user.id);
-
+            let absenceHtml = '';
+            const eventDateInput = document.getElementById('eventDate');
+            let eventDate = eventDateInput && eventDateInput.value ? new Date(eventDateInput.value) : null;
+            if (eventDate && isChecked) {
+                const absences = await Storage.getUserAbsences(user.id);
+                const absence = absences.find(a => {
+                    const start = new Date(a.startDate);
+                    const end = new Date(a.endDate);
+                    return eventDate >= start && eventDate <= end;
+                });
+                if (absence) {
+                    absenceHtml = `<span style="color: orange; font-weight: bold; margin-left: 0.5em;">Abwesenheit: ${Bands.escapeHtml(absence.reason || '')} (${UI.formatDateShort(absence.startDate)} - ${UI.formatDateShort(absence.endDate)})</span>`;
+                }
+            }
             return `
                 <div class="checkbox-item">
                     <input type="checkbox" id="member_${user.id}" value="${user.id}" ${isChecked ? 'checked' : ''}>
-                    <label for="member_${user.id}">${Bands.escapeHtml(user.name)}</label>
+                    <label for="member_${user.id}">${Bands.escapeHtml(user.name)}${absenceHtml}</label>
                 </div>
             `;
-        }).join('');
+        })).then(items => items.join(''));
+        // Add event listener for date change to update absences live
+        const eventDateInput = document.getElementById('eventDate');
+        if (eventDateInput) {
+            eventDateInput.addEventListener('change', async () => {
+                await Events.loadBandMembers(bandId, Events.getSelectedMembers());
+            });
+        }
     },
 
     // Get selected members

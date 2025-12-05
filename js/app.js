@@ -2409,7 +2409,7 @@ const App = {
         container.innerHTML = absences.map(absence => `
             <div class="absence-item" data-absence-id="${absence.id}">
                 <div class="absence-info">
-                    <strong>${UI.formatDate(absence.start)} - ${UI.formatDate(absence.end)}</strong>
+                        <strong>${UI.formatDateOnly(absence.startDate)} - ${UI.formatDateOnly(absence.endDate)}</strong>
                     ${absence.reason ? `<p>${Bands.escapeHtml(absence.reason)}</p>` : ''}
                 </div>
                 <div class="absence-actions">
@@ -2456,7 +2456,8 @@ const App = {
     },
 
     async deleteAbsenceSettings(absenceId) {
-        if (confirm('Möchtest du diese Abwesenheit wirklich löschen?')) {
+        const confirmed = await UI.confirmDelete('Möchtest du diese Abwesenheit wirklich löschen?');
+        if (confirmed) {
             await Storage.deleteAbsence(absenceId);
             UI.showToast('Abwesenheit gelöscht', 'success');
             this.renderAbsencesListSettings();
@@ -3616,20 +3617,25 @@ const App = {
             }
         };
 
-        // Build list of dates to check (event date and optional soundcheck)
-        const datesToCheck = [date];
-        if (soundcheckDate) datesToCheck.push(soundcheckDate);
-
-        const conflicts = await this.getAbsenceConflicts(bandId, datesToCheck);
-        if (conflicts && conflicts.length > 0) {
-            const lines = conflicts.map(c => `${c.name}: ${c.dates.join(', ')}`);
-            const msg = `Achtung — Folgende Mitglieder sind an den gewählten Terminen abwesend:<br><b>\n\n${lines.join('\n')}\n\n </b><br>Trotzdem fortfahren?`;
-            UI.showConfirm(msg, () => {
+        // Only check absences for selected members
+        const selectedMembers = members;
+        const absences = await Promise.all(selectedMembers.map(async memberId => {
+            const abs = await Storage.getUserAbsences(memberId);
+            const eventDate = new Date(date);
+            return abs.find(a => {
+                const start = new Date(a.startDate);
+                const end = new Date(a.endDate);
+                return eventDate >= start && eventDate <= end;
+            });
+        }));
+        const absentMembers = absences.filter(a => !!a);
+        if (absentMembers.length > 0) {
+            UI.showConfirm('Mindestens ein ausgewähltes Bandmitglied ist am Termin abwesend. Trotzdem speichern?', () => {
                 proceed();
             });
-        } else {
-            proceed();
+            return;
         }
+        proceed();
     },
 
     // Handle create absence
