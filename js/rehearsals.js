@@ -52,6 +52,21 @@ const Rehearsals = {
         const isAdmin = Auth.isAdmin();
         const canManage = isCreator || isAdmin; // Simplified permission for demo
 
+        let dateOptionsHtml = '';
+        if (rehearsal.status === 'pending') {
+            if (rehearsal.proposedDates && rehearsal.proposedDates.length > 0) {
+                dateOptionsHtml = `<div class="date-options">
+                    ${(await Promise.all(rehearsal.proposedDates.map((date, index) =>
+                        this.renderDateOption(rehearsal.id, date, index, user.id)
+                    ))).join('')}
+                </div>`;
+            } else {
+                dateOptionsHtml = `<div class="date-options empty">
+                    <em>Keine Terminvorschläge vorhanden.</em>
+                </div>`;
+            }
+        }
+
         return `
             <div class="rehearsal-card accordion-card ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}" style="border-left: 4px solid ${bandColor}">
                 <div class="accordion-header" data-rehearsal-id="${rehearsal.id}">
@@ -87,13 +102,7 @@ const Rehearsals = {
                             ` : ''}
                         </div>
 
-                        ${rehearsal.status === 'pending' ? `
-                            <div class="date-options">
-                                ${(await Promise.all(rehearsal.proposedDates.map((date, index) =>
-            this.renderDateOption(rehearsal.id, date, index, user.id)
-        ))).join('')}
-                            </div>
-                        ` : ''}
+                        ${dateOptionsHtml}
 
                         <div class="rehearsal-action-buttons">
                             ${canManage && rehearsal.status === 'pending' ? `
@@ -434,12 +443,11 @@ const Rehearsals = {
         // If it was already expanded, just close it (already done above)
         if (wasExpanded) {
             this.expandedRehearsalId = null;
+            this.renderRehearsals(this.currentFilter);
         } else {
             // Open this accordion
-            card.classList.add('expanded');
-            if (content) content.style.display = 'block';
-            if (toggle) toggle.textContent = '▼';
             this.expandedRehearsalId = rehearsalId;
+            this.renderRehearsals(this.currentFilter);
         }
     },
 
@@ -1423,14 +1431,21 @@ const Rehearsals = {
 
     // Get dates from form
     getDatesFromForm() {
-        const inputs = document.querySelectorAll('#dateProposals .date-input');
+        // Neue Logik: bestätigte Vorschläge (Kärtchen) und ggf. offene Inputs
+        const confirmedItems = document.querySelectorAll('#dateProposals .date-proposal-item[data-confirmed="true"]');
         const dates = [];
 
-        inputs.forEach(input => {
-            if (input.value) {
-                dates.push(new Date(input.value).toISOString());
+        confirmedItems.forEach(item => {
+            const start = item.dataset.startTime;
+            const end = item.dataset.endTime;
+            if (start && end) {
+                dates.push({ startTime: start, endTime: end });
             }
         });
+
+        // Optional: auch noch nicht bestätigte Inputs berücksichtigen (falls gewünscht)
+        // const unconfirmedInputs = document.querySelectorAll('#dateProposals .date-proposal-item[data-confirmed="false"]');
+        // ...
 
         return dates;
     }
