@@ -132,13 +132,18 @@ const Events = {
                                 <div class="detail-row">
                                     <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
                                     <div class="detail-value">
-                                        <ol class="event-songs-list">
-                                            ${eventSongs.map(s => `
-                                                <li>
-                                                    <strong>${Bands.escapeHtml(s.title)}</strong>
-                                                    ${s.artist ? `<br><span style="color: var(--color-text-secondary); font-size: 0.9em;">🎤 ${Bands.escapeHtml(s.artist)}</span>` : ''}
-                                                    ${s.key ? `<br><span style="color: var(--color-text-secondary); font-size: 0.9em;">🎹 Tonart: ${Bands.escapeHtml(s.key)}</span>` : ''}
-                                                    ${s.notes ? `<br><span style="color: var(--color-text-secondary); font-size: 0.85em; font-style: italic;">📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
+                                        <ol class="event-songs-list" style="padding:0; margin:0;">
+                                            ${eventSongs.map((s, idx) => `
+                                                <li style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: ${idx < eventSongs.length - 1 ? '1px solid var(--color-border)' : 'none'};">
+                                                    <strong style="min-width: 120px;">${Bands.escapeHtml(s.title)}</strong>
+                                                    <span style="display: flex; gap: 1rem; flex-wrap: wrap; color: var(--color-text-secondary); font-size: 0.95em;">
+                                                        ${s.artist ? `<span>🎤 ${Bands.escapeHtml(s.artist)}</span>` : ''}
+                                                        ${s.bpm ? `<span>⏱️ ${Bands.escapeHtml(s.bpm)} BPM</span>` : ''}
+                                                        ${s.key ? `<span>🎹 ${Bands.escapeHtml(s.key)}</span>` : ''}
+                                                        ${s.leadVocal ? `<span>Lead: ${Bands.escapeHtml(s.leadVocal)}</span>` : ''}
+                                                        ${s.ccli ? `<span>CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
+                                                        ${s.notes ? `<span style='font-style:italic;'>📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
+                                                    </span>
                                                 </li>
                                             `).join('')}
                                         </ol>

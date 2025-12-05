@@ -434,30 +434,32 @@ const App = {
         }
 
         // Add existing event song button (pick from band's songs)
+        // Support both button IDs for band song copy (legacy and new)
         const addExistingEventSongBtn = document.getElementById('addExistingEventSongBtn');
+        const copyBandSongsBtn = document.getElementById('copyBandSongsBtn');
+        const handleCopyBandSongs = async () => {
+            const eventId = document.getElementById('editEventId').value;
+            const bandId = document.getElementById('eventBand').value;
+            if (!bandId) {
+                UI.showToast('Bitte wähle zuerst eine Band aus', 'warning');
+                return;
+            }
+            const bandSongs = await Storage.getBandSongs(bandId);
+            if (!Array.isArray(bandSongs) || bandSongs.length === 0) {
+                UI.showToast('Für diese Band sind noch keine Songs vorhanden', 'info');
+                return;
+            }
+            if (eventId) {
+                this.showBandSongSelector(eventId, bandSongs);
+            } else {
+                this.showBandSongSelectorForDraft(bandSongs);
+            }
+        };
         if (addExistingEventSongBtn) {
-            addExistingEventSongBtn.addEventListener('click', async () => {
-                const eventId = document.getElementById('editEventId').value;
-                const bandId = document.getElementById('eventBand').value;
-                if (!bandId) {
-                    UI.showToast('Bitte wähle zuerst eine Band aus', 'warning');
-                    return;
-                }
-
-                const bandSongs = await Storage.getBandSongs(bandId);
-                if (!Array.isArray(bandSongs) || bandSongs.length === 0) {
-                    UI.showToast('Für diese Band sind noch keine Songs vorhanden', 'info');
-                    return;
-                }
-
-                if (eventId) {
-                    // Existing event: copy selected songs to event immediately
-                    this.showBandSongSelector(eventId, bandSongs);
-                } else {
-                    // Draft mode: allow selecting songs and add to draft list
-                    this.showBandSongSelectorForDraft(bandSongs);
-                }
-            });
+            addExistingEventSongBtn.addEventListener('click', handleCopyBandSongs);
+        }
+        if (copyBandSongsBtn) {
+            copyBandSongsBtn.addEventListener('click', handleCopyBandSongs);
         }
 
         // Event band filter
@@ -2015,7 +2017,14 @@ const App = {
             if (!s) return '';
             return `
                 <div class="draft-song-item" data-id="${songId}" style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0;">
-                    <div>${idx + 1}. ${this.escapeHtml(s.title)} — ${this.escapeHtml(s.artist || '-')}</div>
+                    <div>
+                        <strong>${idx + 1}. ${this.escapeHtml(s.title)}</strong>
+                        ${s.artist ? ` — <span>${this.escapeHtml(s.artist)}</span>` : ''}
+                        ${s.bpm ? ` | <span>${this.escapeHtml(s.bpm)} BPM</span>` : ''}
+                        ${s.key ? ` | <span>${this.escapeHtml(s.key)}</span>` : ''}
+                        ${s.leadVocal ? ` | <span>Lead: ${this.escapeHtml(s.leadVocal)}</span>` : ''}
+                        ${s.ccli ? ` | <span>CCLI: ${this.escapeHtml(s.ccli)}</span>` : ''}
+                    </div>
                     <div>
                         <button class="btn btn-sm btn-secondary remove-draft-song" data-id="${songId}">Entfernen</button>
                     </div>
@@ -3485,11 +3494,17 @@ const App = {
         if (locationId && !forceCreate && this.checkLocationAvailability) {
             const allConflicts = [];
 
-            // Check each proposed date
+            // Check each proposed date (jetzt: {startTime, endTime})
             for (let i = 0; i < dates.length; i++) {
                 const date = dates[i];
-                const startDate = new Date(date);
-                const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours
+                let startDate, endDate;
+                if (typeof date === 'object' && date !== null && date.startTime && date.endTime) {
+                    startDate = new Date(date.startTime);
+                    endDate = new Date(date.endTime);
+                } else {
+                    startDate = new Date(date);
+                    endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // fallback: 2h
+                }
 
                 const availability = await this.checkLocationAvailability(locationId, startDate, endDate);
 
@@ -3509,18 +3524,31 @@ const App = {
                     <div style="background: var(--color-bg); padding: 1rem; border-radius: var(--radius-md); border-left: 3px solid var(--color-danger);">
                         <p><strong>Ort:</strong> ${Bands.escapeHtml(location?.name || 'Unbekannt')}</p>
                         <p style="margin-top: 0.5rem;"><strong>${allConflicts.length} von ${dates.length} Terminen haben Konflikte:</strong></p>
-                        ${allConflicts.map(dateConflict => `
-                            <div style="margin-top: 1rem; padding: 0.75rem; background: var(--color-surface); border-radius: var(--radius-sm);">
-                                <p><strong>📅 ${UI.formatDate(dateConflict.date)}</strong></p>
-                                <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
-                                    ${dateConflict.conflicts.map(conflict => {
-                    const start = new Date(conflict.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                    const end = new Date(conflict.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                    return `<li><strong>${Bands.escapeHtml(conflict.summary)}</strong><br><small>${start} - ${end}</small></li>`;
-                }).join('')}
-                                </ul>
-                            </div>
-                        `).join('')}
+                        ${allConflicts.map(dateConflict => {
+                            let dateLabel = '';
+                            if (dateConflict.date && typeof dateConflict.date === 'object' && dateConflict.date.startTime) {
+                                dateLabel = UI.formatDate(dateConflict.date.startTime);
+                                if (dateConflict.date.endTime) {
+                                    const start = new Date(dateConflict.date.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                    const end = new Date(dateConflict.date.endTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                    dateLabel += ` (${start} - ${end})`;
+                                }
+                            } else {
+                                dateLabel = UI.formatDate(dateConflict.date);
+                            }
+                            return `
+                                <div style="margin-top: 1rem; padding: 0.75rem; background: var(--color-surface); border-radius: var(--radius-sm);">
+                                    <p><strong>📅 ${dateLabel}</strong></p>
+                                    <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                                        ${dateConflict.conflicts.map(conflict => {
+                                            const start = new Date(conflict.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                            const end = new Date(conflict.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                            return `<li><strong>${Bands.escapeHtml(conflict.summary)}</strong><br><small>${start} - ${end}</small></li>`;
+                                        }).join('')}
+                                    </ul>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 `;
 

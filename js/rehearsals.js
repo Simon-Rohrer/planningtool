@@ -532,7 +532,19 @@ const Rehearsals = {
                         <div class="best-date-option ${idx === 0 ? 'is-best' : ''}">
                             <div class="date-header">
                                 ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '📅'} 
-                                ${UI.formatDate(stat.date)}
+                                ${(() => {
+                                    if (stat.date && typeof stat.date === 'object' && stat.date.startTime) {
+                                        let label = UI.formatDate(stat.date.startTime);
+                                        if (stat.date.endTime) {
+                                            const start = new Date(stat.date.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                            const end = new Date(stat.date.endTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                            label += ` (${start} - ${end})`;
+                                        }
+                                        return label;
+                                    } else {
+                                        return UI.formatDate(stat.date);
+                                    }
+                                })()}
                             </div>
                             <div class="vote-breakdown">
                                 ✅ ${stat.yesCount} können • 
@@ -743,10 +755,19 @@ const Rehearsals = {
             if (!availability.available && availability.conflicts && availability.conflicts.length > 0) {
                 // Show conflict warning modal
                 const location = await Storage.getLocation(locationId);
+                let dateLabel = '';
+                if (editedStartTime) {
+                    dateLabel = UI.formatDate(editedStartTime);
+                    if (editedEndTime) {
+                        const start = new Date(editedStartTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        const end = new Date(editedEndTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        dateLabel += ` (${start} - ${end})`;
+                    }
+                }
                 const conflictDetailsHtml = `
                     <div style="background: var(--color-bg); padding: 1rem; border-radius: var(--radius-md); border-left: 3px solid var(--color-danger);">
                         <p><strong>Ort:</strong> ${Bands.escapeHtml(location?.name || 'Unbekannt')}</p>
-                        <p><strong>Gewählte Zeit:</strong> ${UI.formatDate(editedStartTime)} - ${new Date(editedEndTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p><strong>Gewählte Zeit:</strong> ${dateLabel}</p>
                         <div style="margin-top: 1rem;">
                             <strong>Konflikte:</strong>
                             <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
@@ -1068,13 +1089,28 @@ const Rehearsals = {
         // Populate dates
         const container = document.getElementById('dateProposals');
         const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
-        container.innerHTML = proposedDates.map(date => `
-            <div class="date-proposal-item">
-                <input type="datetime-local" class="date-input" value="${date.slice(0, 16)}" required>
-                <span class="date-availability" style="margin-left:8px"></span>
-                <button type="button" class="btn-icon remove-date">🗑️</button>
-            </div>
-        `).join('');
+        container.innerHTML = proposedDates.map(date => {
+            let start = '';
+            let end = '';
+            if (typeof date === 'object' && date !== null && date.startTime && date.endTime) {
+                start = date.startTime.slice(0, 16);
+                end = date.endTime.slice(0, 16);
+            } else if (typeof date === 'string') {
+                start = date.slice(0, 16);
+            }
+            return `
+                <div class="date-proposal-item">
+                    <label>Start:
+                        <input type="datetime-local" class="date-input-start" value="${start}" required>
+                    </label>
+                    <label>Ende:
+                        <input type="datetime-local" class="date-input-end" value="${end}" required>
+                    </label>
+                    <span class="date-availability" style="margin-left:8px"></span>
+                    <button type="button" class="btn-icon remove-date">🗑️</button>
+                </div>
+            `;
+        }).join('');
 
         // Attach remove handlers
         container.querySelectorAll('.remove-date').forEach(btn => {
