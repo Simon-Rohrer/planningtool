@@ -3,11 +3,11 @@
 const App = {
     // Track deleted songs for potential rollback
     deletedEventSongs: [],
-    
+
     async init() {
         // Initialize Supabase Auth first
         await Auth.init();
-        
+
         // Apply saved theme on app start
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme) {
@@ -19,6 +19,8 @@ const App = {
             await this.showApp();
             // Pre-load standard calendars after login
             this.preloadStandardCalendars();
+            // Clean up past events and rehearsals
+            await Storage.cleanupPastItems();
         } else {
             this.showAuth();
         }
@@ -48,7 +50,7 @@ const App = {
                 { id: 'jms-festhalle', name: 'JMS Festhalle' },
                 { id: 'ankersaal', name: 'Ankersaal' }
             ];
-            
+
             standardCalendars.forEach(cal => {
                 Calendar.ensureLocationCalendar(cal.id, cal.name)
                     .then(() => console.log(`[App] Pre-loaded calendar: ${cal.name}`))
@@ -92,7 +94,7 @@ const App = {
                     const isMainNav = item.classList.contains('nav-main');
                     const navGroup = item.closest('.nav-group');
                     const hasSubmenu = navGroup && navGroup.querySelector('.nav-submenu');
-                    
+
                     console.log('[MOBILE NAV]', {
                         isMobile,
                         isMainNav,
@@ -100,7 +102,7 @@ const App = {
                         hasSubmenu: !!hasSubmenu,
                         windowWidth: window.innerWidth
                     });
-                    
+
                     // Check if submenu has any visible items
                     let hasVisibleSubmenuItems = false;
                     if (hasSubmenu) {
@@ -112,16 +114,16 @@ const App = {
                         });
                         console.log('[MOBILE NAV] Subitems:', subitems.length, 'Visible:', hasVisibleSubmenuItems);
                     }
-                    
+
                     if (isMobile && isMainNav && hasSubmenu) {
                         e.preventDefault();
                         e.stopPropagation();
-                        
+
                         console.log('[MOBILE NAV] Opening submenu for nav-main');
-                        
+
                         // Toggle submenu open/close
                         const isOpen = navGroup.classList.contains('submenu-open');
-                        
+
                         // Close all other submenus
                         document.querySelectorAll('.nav-group.submenu-open').forEach(g => {
                             g.classList.remove('submenu-open');
@@ -130,7 +132,7 @@ const App = {
                                 submenu.style.display = 'none';
                             }
                         });
-                        
+
                         // Toggle current submenu
                         if (!isOpen) {
                             navGroup.classList.add('submenu-open');
@@ -149,26 +151,26 @@ const App = {
                         }
                         return; // Don't navigate, just show submenu
                     }
-                    
+
                     // Close submenu after clicking subitem on mobile
                     if (isMobile && item.classList.contains('nav-subitem') && navGroup) {
                         navGroup.classList.remove('submenu-open');
                     }
-                    
+
                     e.stopPropagation(); // Prevent event bubbling
                     const view = item.dataset.view;
                     if (!view) return;
-                    
+
                     // Check if this is a settings subitem with a specific tab
                     const settingsTab = item.dataset.settingsTab;
-                    
+
                     console.log(`[NAV CLICK] Clicked on nav item with view: "${view}"`);
                     console.log(`[NAV CLICK] this.navigateTo type:`, typeof this.navigateTo);
                     console.log(`[NAV CLICK] App.navigateTo type:`, typeof App.navigateTo);
                     console.log(`[NAV CLICK] About to call navigateTo...`);
                     const result = await App.navigateTo(view);
                     console.log(`[NAV CLICK] Navigation to "${view}" completed, result:`, result);
-                    
+
                     // If navigating to settings with a specific tab, switch to that tab
                     if (view === 'settings' && settingsTab) {
                         // Small delay to ensure view is rendered
@@ -186,12 +188,12 @@ const App = {
             });
         });
         console.log(`[INIT] Attached click handlers to ${document.querySelectorAll('.nav-item').length} nav items`);
-        
+
         // Close mobile submenus when clicking outside
         document.addEventListener('click', (e) => {
             const isMobile = window.innerWidth <= 768;
             if (!isMobile) return;
-            
+
             const clickedInsideNav = e.target.closest('.app-nav');
             if (!clickedInsideNav) {
                 document.querySelectorAll('.nav-group.submenu-open').forEach(g => {
@@ -212,9 +214,11 @@ const App = {
             });
         });
 
-        // Create band button
-        document.getElementById('createBandBtn').addEventListener('click', () => {
-            UI.openModal('createBandModal');
+        // Create band button (using event delegation since button is in settings modal)
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'createBandBtn') {
+                UI.openModal('createBandModal');
+            }
         });
 
         // Create band form
@@ -222,6 +226,15 @@ const App = {
             e.preventDefault();
             this.handleCreateBand();
         });
+
+        // Edit band form
+        const editBandForm = document.getElementById('editBandForm');
+        if (editBandForm) {
+            editBandForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleEditBand();
+            });
+        }
 
         // Add member button
         document.getElementById('addMemberBtn').addEventListener('click', () => {
@@ -259,12 +272,21 @@ const App = {
             // Reset date proposals
             const container = document.getElementById('dateProposals');
             container.innerHTML = `
-                <div class="date-proposal-item">
-                    <input type="datetime-local" class="date-input" required>
+                <div class="date-proposal-item" data-confirmed="false">
+                    <div class="date-time-range">
+                        <input type="date" class="date-input-date">
+                        <input type="time" class="date-input-start">
+                        <span class="time-separator">bis</span>
+                        <input type="time" class="date-input-end">
+                    </div>
                     <span class="date-availability" style="margin-left:8px"></span>
+                    <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
                     <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
                 </div>
             `;
+
+            // Attach event handlers to the new elements
+            Rehearsals.attachVoteHandlers(container);
 
             await Bands.populateBandSelects();
             await this.populateLocationSelect();
@@ -449,8 +471,75 @@ const App = {
         // Send confirmation button
         const sendConfirmBtn = document.getElementById('sendConfirmationBtn');
         if (sendConfirmBtn) {
-            sendConfirmBtn.addEventListener('click', () => {
-                Rehearsals.confirmRehearsal();
+            sendConfirmBtn.addEventListener('click', async () => {
+                await Rehearsals.confirmRehearsal();
+            });
+        }
+
+        // Time suggestion modal handlers
+        const saveTimeSuggestionBtn = document.getElementById('saveTimeSuggestionBtn');
+        if (saveTimeSuggestionBtn) {
+            saveTimeSuggestionBtn.addEventListener('click', async () => {
+                await Rehearsals.saveTimeSuggestion();
+            });
+        }
+
+        const deleteTimeSuggestionBtn = document.getElementById('deleteTimeSuggestionBtn');
+        if (deleteTimeSuggestionBtn) {
+            deleteTimeSuggestionBtn.addEventListener('click', async () => {
+                await Rehearsals.deleteTimeSuggestion();
+            });
+        }
+
+        // Confirmation modal time validation
+        const confirmStartTime = document.getElementById('confirmRehearsalStartTime');
+        const confirmEndTime = document.getElementById('confirmRehearsalEndTime');
+        if (confirmStartTime && confirmEndTime) {
+            const validateConfirmTimes = () => {
+                if (confirmStartTime.value && confirmEndTime.value) {
+                    const startDateTime = new Date(confirmStartTime.value);
+                    const endDateTime = new Date(confirmEndTime.value);
+
+                    if (endDateTime <= startDateTime) {
+                        confirmEndTime.setCustomValidity('Endzeit muss nach Startzeit liegen');
+                        confirmEndTime.reportValidity();
+                    } else {
+                        confirmEndTime.setCustomValidity('');
+                    }
+                }
+            };
+
+            confirmStartTime.addEventListener('change', validateConfirmTimes);
+            confirmEndTime.addEventListener('change', validateConfirmTimes);
+        }
+
+        // Location conflict modal handlers
+        const abortConfirmationBtn = document.getElementById('abortConfirmationBtn');
+        if (abortConfirmationBtn) {
+            abortConfirmationBtn.addEventListener('click', () => {
+                UI.closeModal('locationConflictModal');
+
+                // Check if we're in creation or confirmation mode
+                if (window._pendingRehearsalCreation) {
+                    UI.openModal('createRehearsalModal'); // Return to creation modal
+                } else {
+                    UI.openModal('confirmRehearsalModal'); // Return to confirmation modal
+                }
+            });
+        }
+
+        const proceedAnywayBtn = document.getElementById('proceedAnywayBtn');
+        if (proceedAnywayBtn) {
+            proceedAnywayBtn.addEventListener('click', async () => {
+                // Check if we're in creation mode
+                if (window._pendingRehearsalCreation) {
+                    window._pendingRehearsalCreation(); // Execute stored proceed function
+                    window._pendingRehearsalCreation = null; // Clear it
+                    UI.closeModal('locationConflictModal');
+                } else {
+                    // Confirmation mode
+                    await Rehearsals.confirmRehearsal(true); // Force confirm despite conflicts
+                }
             });
         }
 
@@ -637,18 +726,18 @@ const App = {
         document.querySelectorAll('.calendar-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 const calendarType = tab.dataset.calendar;
-                
+
                 // Update active tab
                 document.querySelectorAll('.calendar-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                
+
                 // Show/hide calendar containers
                 document.querySelectorAll('.calendar-container').forEach(c => c.classList.remove('active'));
                 const container = document.getElementById(`${calendarType}Calendar`);
                 if (container) {
                     container.classList.add('active');
                 }
-                
+
                 // Load calendar data
                 if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
                     Calendar.loadCalendar(calendarType);
@@ -690,6 +779,62 @@ const App = {
             });
         });
 
+        // Add User Button (Admin only) - using event delegation
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'addUserBtn') {
+                console.log('[addUserBtn] Button clicked!');
+                // Reset form
+                document.getElementById('addUserForm').reset();
+                UI.openModal('addUserModal');
+            }
+        });
+
+        // Add User Form (Admin only)
+        const addUserForm = document.getElementById('addUserForm');
+        console.log('[setupEventListeners] addUserForm found:', !!addUserForm);
+        if (addUserForm) {
+            console.log('[setupEventListeners] Adding submit listener to addUserForm');
+            addUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                console.log('[addUserForm] Form submitted! Calling handleAddUser...');
+                try {
+                    await this.handleAddUser();
+                } catch (error) {
+                    console.error('[addUserForm] Caught error:', error);
+                    UI.hideLoading();
+                    UI.showToast('Fehler: ' + error.message, 'error');
+                }
+            });
+        }
+
+        // News Banner Buttons
+        const newsBannerButton = document.getElementById('newsBannerButton');
+        if (newsBannerButton) {
+            newsBannerButton.addEventListener('click', () => {
+                this.navigateTo('news');
+                this.hideNewsBanner();
+            });
+        }
+
+        const newsBannerClose = document.getElementById('newsBannerClose');
+        if (newsBannerClose) {
+            newsBannerClose.addEventListener('click', () => {
+                this.hideNewsBanner();
+                // Mark as dismissed in localStorage so it doesn't show again until next new news
+                const user = Auth.getCurrentUser();
+                if (user) {
+                    localStorage.setItem(`newsBanner_dismissed_${user.id}`, Date.now().toString());
+                }
+            });
+        }
+
+        // Create Band Button (in Bands View)
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'createBandBtnView') {
+                UI.openModal('createBandModal');
+            }
+        });
+
         // Join Band Button
         const joinBandBtn = document.getElementById('joinBandBtn');
         if (joinBandBtn) {
@@ -713,7 +858,7 @@ const App = {
     async navigateTo(view) {
         try {
             console.log(`[navigateTo] Called with view: "${view}"`);
-            
+
             const viewMap = {
                 'dashboard': 'dashboardView',
                 'bands': 'bandsView',
@@ -730,119 +875,122 @@ const App = {
 
             const viewId = viewMap[view];
             console.log(`[navigateTo] Mapped to viewId: "${viewId}"`);
-            
+
             if (viewId) {
                 console.log(`[navigateTo] ViewId is valid, proceeding...`);
                 // Set nav active color per view for sticky bottom bar indicator
-            const navActiveColorMap = {
-                dashboard: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
-                bands: '#10b981', // success green
-                events: '#ec4899', // secondary pink
-                rehearsals: '#6366f1', // primary
-                statistics: '#2563eb', // blue
-                news: '#f59e0b', // warning
-                probeorte: '#9333ea', // purple
-                kalender: '#f43f5e', // rose
-                musikpool: '#0ea5e9' // cyan
-            };
-            const navColor = navActiveColorMap[view] || getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
-            document.documentElement.style.setProperty('--nav-active-color', navColor);
+                const navActiveColorMap = {
+                    dashboard: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
+                    bands: '#10b981', // success green
+                    events: '#ec4899', // secondary pink
+                    rehearsals: '#6366f1', // primary
+                    statistics: '#2563eb', // blue
+                    news: '#f59e0b', // warning
+                    probeorte: '#9333ea', // purple
+                    kalender: '#f43f5e', // rose
+                    musikpool: '#0ea5e9' // cyan
+                };
+                const navColor = navActiveColorMap[view] || getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+                document.documentElement.style.setProperty('--nav-active-color', navColor);
 
-            UI.showView(viewId);
+                UI.showView(viewId);
 
-            // Update active navigation (both main items and subitems)
-            document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
-                if (item.dataset.view === view || (view === 'tonstudio' && item.dataset.view === 'probeorte')) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
-            });
-
-            // Render specific views
-            if (view === 'bands') {
-                await Bands.renderBands();
-            } else if (view === 'events') {
-                await Bands.populateBandSelects();
-                await Events.renderEvents();
-            } else if (view === 'rehearsals') {
-                await Bands.populateBandSelects();
-                await Rehearsals.renderRehearsals();
-            } else if (view === 'statistics') {
-                await Bands.populateBandSelects();
-                await Rehearsals.populateStatsSelect();
-            } else if (view === 'news') {
-                await this.renderNewsView();
-
-                // Show/hide create button based on admin or band leader/co-leader status
-                const createNewsBtn = document.getElementById('createNewsBtn');
-                if (createNewsBtn) {
-                    const user = Auth.getCurrentUser();
-                    let canCreate = Auth.isAdmin();
-                    if (!canCreate && user) {
-                        const userBands = Storage.getUserBands(user.id) || [];
-                        canCreate = userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
-                    }
-                    createNewsBtn.style.display = canCreate ? 'inline-flex' : 'none';
-                }
-
-                // Update donate button visibility and link
-                this.updateDonateButton();
-            } else if (view === 'probeorte' || view === 'tonstudio') {
-                // Ensure tonstudio tab and container are active first
-                setTimeout(() => {
-                    const tonstudioTab = document.querySelector('.calendar-tab[data-calendar="tonstudio"]');
-                    const tonstudioContainer = document.getElementById('tonstudioCalendar');
-                    
-                    if (tonstudioTab) {
-                        document.querySelectorAll('.calendar-tab').forEach(t => t.classList.remove('active'));
-                        tonstudioTab.classList.add('active');
-                    }
-                    
-                    if (tonstudioContainer) {
-                        document.querySelectorAll('.calendar-container').forEach(c => c.classList.remove('active'));
-                        tonstudioContainer.classList.add('active');
-                    }
-                    
-                    // Load calendar when navigating to probeorte view
-                    console.log('Navigating to probeorte, loading tonstudio calendar...');
-                    if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
-                        console.log('Loading tonstudio calendar now...');
-                        Calendar.loadCalendar('tonstudio');
+                // Update active navigation (both main items and subitems)
+                document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
+                    if (item.dataset.view === view || (view === 'tonstudio' && item.dataset.view === 'probeorte')) {
+                        item.classList.add('active');
                     } else {
-                        console.error('Calendar object not found!');
+                        item.classList.remove('active');
                     }
-                }, 50);
-            } else if (view === 'musikpool') {
-                // Load Musikpool members when navigating to view
-                console.log('Navigating to musikpool, loading members...');
-                if (typeof Musikpool !== 'undefined' && Musikpool.loadGroupData) {
-                    Musikpool.loadGroupData();
-                } else {
-                    console.error('Musikpool object not found!');
+                });
+
+                // Render specific views
+                if (view === 'bands') {
+                    await Bands.renderBands();
+                } else if (view === 'events') {
+                    await Bands.populateBandSelects();
+                    await Events.renderEvents();
+                } else if (view === 'rehearsals') {
+                    await Bands.populateBandSelects();
+                    await Rehearsals.renderRehearsals();
+                } else if (view === 'statistics') {
+                    await Bands.populateBandSelects();
+                    await Rehearsals.populateStatsSelect();
+                } else if (view === 'news') {
+                    await this.renderNewsView();
+
+                    // Hide news banner when viewing news
+                    this.hideNewsBanner();
+
+                    // Show/hide create button based on admin or band leader/co-leader status
+                    const createNewsBtn = document.getElementById('createNewsBtn');
+                    if (createNewsBtn) {
+                        const user = Auth.getCurrentUser();
+                        let canCreate = Auth.isAdmin();
+                        if (!canCreate && user) {
+                            const userBands = await Storage.getUserBands(user.id);
+                            canCreate = Array.isArray(userBands) && userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
+                        }
+                        createNewsBtn.style.display = canCreate ? 'inline-flex' : 'none';
+                    }
+
+                    // Update donate button visibility and link
+                    this.updateDonateButton();
+                } else if (view === 'probeorte' || view === 'tonstudio') {
+                    // Ensure tonstudio tab and container are active first
+                    setTimeout(() => {
+                        const tonstudioTab = document.querySelector('.calendar-tab[data-calendar="tonstudio"]');
+                        const tonstudioContainer = document.getElementById('tonstudioCalendar');
+
+                        if (tonstudioTab) {
+                            document.querySelectorAll('.calendar-tab').forEach(t => t.classList.remove('active'));
+                            tonstudioTab.classList.add('active');
+                        }
+
+                        if (tonstudioContainer) {
+                            document.querySelectorAll('.calendar-container').forEach(c => c.classList.remove('active'));
+                            tonstudioContainer.classList.add('active');
+                        }
+
+                        // Load calendar when navigating to probeorte view
+                        console.log('Navigating to probeorte, loading tonstudio calendar...');
+                        if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+                            console.log('Loading tonstudio calendar now...');
+                            Calendar.loadCalendar('tonstudio');
+                        } else {
+                            console.error('Calendar object not found!');
+                        }
+                    }, 50);
+                } else if (view === 'musikpool') {
+                    // Load Musikpool members when navigating to view
+                    console.log('Navigating to musikpool, loading members...');
+                    if (typeof Musikpool !== 'undefined' && Musikpool.loadGroupData) {
+                        Musikpool.loadGroupData();
+                    } else {
+                        console.error('Musikpool object not found!');
+                    }
+                } else if (view === 'kalender') {
+                    // Load personal calendar when navigating to view
+                    console.log('[navigateTo] Kalender view detected, loading personal calendar...');
+                    console.log('[navigateTo] PersonalCalendar type:', typeof PersonalCalendar);
+                    if (typeof PersonalCalendar !== 'undefined') {
+                        console.log('[navigateTo] PersonalCalendar.loadPersonalCalendar type:', typeof PersonalCalendar.loadPersonalCalendar);
+                    }
+                    if (typeof PersonalCalendar !== 'undefined' && PersonalCalendar.loadPersonalCalendar) {
+                        console.log('[navigateTo] Calling PersonalCalendar.loadPersonalCalendar()...');
+                        PersonalCalendar.loadPersonalCalendar();
+                    } else {
+                        console.error('[navigateTo] PersonalCalendar object not found!');
+                    }
+                } else if (view === 'settings') {
+                    // Load settings view content
+                    console.log('[navigateTo] Settings view detected, loading settings...');
+                    this.renderSettingsView();
                 }
-            } else if (view === 'kalender') {
-                // Load personal calendar when navigating to view
-                console.log('[navigateTo] Kalender view detected, loading personal calendar...');
-                console.log('[navigateTo] PersonalCalendar type:', typeof PersonalCalendar);
-                if (typeof PersonalCalendar !== 'undefined') {
-                    console.log('[navigateTo] PersonalCalendar.loadPersonalCalendar type:', typeof PersonalCalendar.loadPersonalCalendar);
-                }
-                if (typeof PersonalCalendar !== 'undefined' && PersonalCalendar.loadPersonalCalendar) {
-                    console.log('[navigateTo] Calling PersonalCalendar.loadPersonalCalendar()...');
-                    PersonalCalendar.loadPersonalCalendar();
-                } else {
-                    console.error('[navigateTo] PersonalCalendar object not found!');
-                }
-            } else if (view === 'settings') {
-                // Load settings view content
-                console.log('[navigateTo] Settings view detected, loading settings...');
-                this.renderSettingsView();
+                console.log(`[navigateTo] Finished handling view: "${view}"`);
+            } else {
+                console.log(`[navigateTo] No viewId found for view: "${view}"`);
             }
-            console.log(`[navigateTo] Finished handling view: "${view}"`);
-        } else {
-            console.log(`[navigateTo] No viewId found for view: "${view}"`);
-        }
         } catch (error) {
             console.error('[navigateTo] ERROR:', error);
             console.error('[navigateTo] Stack trace:', error.stack);
@@ -943,7 +1091,7 @@ const App = {
             UI.showLoading('Registriere Benutzer...');
             await Auth.register(registrationCode, name, email, username, password);
             // Supabase Auth automatically signs in after registration
-            
+
             UI.hideLoading();
             UI.showToast('Registrierung erfolgreich!', 'success');
             UI.clearForm('registerForm');
@@ -954,6 +1102,75 @@ const App = {
             // Then show onboarding modal
             UI.openModal('onboardingModal');
         } catch (error) {
+            UI.hideLoading();
+            UI.showToast(error.message, 'error');
+        }
+    },
+
+    // Handle adding a new user (Admin only)
+    async handleAddUser() {
+        console.log('[handleAddUser] Starting...');
+        if (!Auth.isAdmin()) {
+            UI.showToast('Keine Berechtigung', 'error');
+            return;
+        }
+
+        const name = document.getElementById('newUserName').value.trim();
+        const email = document.getElementById('newUserEmail').value.trim();
+        const username = document.getElementById('newUserUsername').value.trim();
+        const password = document.getElementById('newUserPassword').value;
+        const isAdmin = document.getElementById('newUserIsAdmin').checked;
+
+        console.log('[handleAddUser] Form values:', { name, email, username, passwordLength: password.length, isAdmin });
+
+        if (!name || !email || !username || !password) {
+            UI.showToast('Bitte fülle alle Felder aus', 'error');
+            return;
+        }
+
+        if (password.length < 6) {
+            UI.showToast('Passwort muss mindestens 6 Zeichen lang sein', 'error');
+            return;
+        }
+
+        try {
+            UI.showLoading('Erstelle Benutzer...');
+            console.log('[handleAddUser] Loading shown, checking existing users...');
+
+            // Check if username or email already exists
+            const existingUsers = await Storage.getAll('users');
+            console.log('[handleAddUser] Existing users count:', existingUsers.length);
+
+            const usernameExists = existingUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
+            const emailExists = existingUsers.some(u => u.email.toLowerCase() === email.toLowerCase());
+
+            if (usernameExists) {
+                UI.hideLoading();
+                UI.showToast('Benutzername existiert bereits', 'error');
+                return;
+            }
+
+            if (emailExists) {
+                UI.hideLoading();
+                UI.showToast('E-Mail-Adresse existiert bereits', 'error');
+                return;
+            }
+
+            console.log('[handleAddUser] Creating user via Auth.createUserByAdmin...');
+            // Create user via Auth module (without registration code check)
+            const userId = await Auth.createUserByAdmin(name, email, username, password, isAdmin);
+            console.log('[handleAddUser] User created with ID:', userId);
+
+            UI.hideLoading();
+            UI.showToast(`Benutzer "${name}" erfolgreich angelegt!`, 'success');
+            UI.closeModal('addUserModal');
+            UI.clearForm('addUserForm');
+
+            // Refresh users list
+            await this.renderUsersList();
+            console.log('[handleAddUser] Done!');
+        } catch (error) {
+            console.error('[handleAddUser] Error:', error);
             UI.hideLoading();
             UI.showToast(error.message, 'error');
         }
@@ -1162,15 +1379,15 @@ const App = {
         }
         const preview = document.getElementById('newsImagesPreview');
         if (preview) preview.innerHTML = '';
-        
+
         // reset edit id if any
         if (editIdInput) editIdInput.value = '';
-        
+
         UI.closeModal('createNewsModal');
 
         // Navigate to news view (this will automatically call renderNewsView)
         await this.navigateTo('news');
-        
+
         // Update badge
         await this.updateNewsNavBadge();
     },
@@ -1212,7 +1429,7 @@ const App = {
         const titleInput = document.getElementById('newsTitle');
         const contentInput = document.getElementById('newsContent');
         const editInput = document.getElementById('editNewsId');
-        
+
         if (titleInput) titleInput.value = news.title || '';
         if (contentInput) contentInput.value = news.content || '';
         if (editInput) editInput.value = news.id;
@@ -1268,12 +1485,55 @@ const App = {
         }
     },
 
+    // Check for unread news and show banner
+    async checkAndShowNewsBanner() {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const unreadCount = await Storage.getUnreadNewsCountForUser(user.id);
+        if (unreadCount === 0) return;
+
+        // Check if user has dismissed the banner recently (within last 24 hours)
+        const dismissedTime = localStorage.getItem(`newsBanner_dismissed_${user.id}`);
+        if (dismissedTime) {
+            const hoursSinceDismissed = (Date.now() - parseInt(dismissedTime)) / (1000 * 60 * 60);
+            if (hoursSinceDismissed < 24) {
+                return; // Don't show if dismissed within last 24 hours
+            }
+        }
+
+        // Get the latest unread news
+        const allNews = await Storage.getAllNews();
+        const unreadNews = allNews.filter(n => !n.readBy || !n.readBy.includes(user.id));
+
+        if (unreadNews.length === 0) return;
+
+        // Show banner with count
+        const banner = document.getElementById('newsBanner');
+        const message = document.getElementById('newsBannerMessage');
+
+        if (banner && message) {
+            const newsText = unreadCount === 1
+                ? '1 neue News verfügbar'
+                : `${unreadCount} neue News verfügbar`;
+            message.textContent = newsText;
+            banner.style.display = 'block';
+        }
+    },
+
+    hideNewsBanner() {
+        const banner = document.getElementById('newsBanner');
+        if (banner) {
+            banner.style.display = 'none';
+        }
+    },
+
     // Return array of conflicts for given band and dates (dates = array of ISO strings)
     async getAbsenceConflicts(bandId, dates) {
         if (!bandId || !dates || dates.length === 0) return [];
         const members = await Storage.getBandMembers(bandId);
         if (!Array.isArray(members)) return [];
-        
+
         const conflicts = [];
 
         for (const m of members) {
@@ -1371,7 +1631,7 @@ const App = {
         } else {
             // Create new song
             const created = await Storage.createSong(songData);
-            
+
             // If song was created for an event, also add to band's general setlist
             if (created.eventId) {
                 const event = await Storage.getEvent(created.eventId);
@@ -1388,7 +1648,7 @@ const App = {
                         createdBy: user.id
                     });
                     UI.showToast('Song zu Auftritt und Band-Setlist hinzugefügt', 'success');
-                    
+
                     // Update both event songs and band songs lists
                     await this.renderEventSongs(created.eventId);
                     await this.renderBandSongs(event.bandId);
@@ -1510,18 +1770,18 @@ const App = {
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const confirmed = await UI.confirmDelete('Möchtest du diesen Song wirklich löschen?');
                 if (confirmed) {
                     const songId = btn.dataset.id;
                     console.log('Deleting song:', songId, 'for event:', eventId);
-                    
+
                     // Save song data before deleting for potential rollback
                     const song = await Storage.getById('songs', songId);
                     if (song) {
                         this.deletedEventSongs.push(song);
                     }
-                    
+
                     await Storage.deleteSong(songId);
                     UI.showToast('Song gelöscht', 'success');
                     console.log('Re-rendering event songs only');
@@ -1809,13 +2069,16 @@ const App = {
             const user = Auth.getCurrentUser();
             let canCreate = Auth.isAdmin();
             if (!canCreate && user) {
-                const userBands = await Storage.getUserBands(user.id) || [];
-                canCreate = userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
+                const userBands = await Storage.getUserBands(user.id);
+                canCreate = Array.isArray(userBands) && userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
             }
             createNewsBtnGlobal.style.display = canCreate ? 'inline-flex' : 'none';
         }
         // Update unread news badge
         await this.updateNewsNavBadge();
+
+        // Check for unread news and show banner
+        await this.checkAndShowNewsBanner();
 
         // Load calendar right after login so it is ready without manual refresh
         if (document.getElementById('tonstudioView')) {
@@ -1861,13 +2124,13 @@ const App = {
         const modalBody = document.querySelector('#settingsModal .modal-body');
         if (modalBody) {
             container.innerHTML = modalBody.innerHTML;
-            
+
             // Re-initialize all event listeners for the cloned content
-            this.initializeSettingsViewListeners(isAdmin);
+            await this.initializeSettingsViewListeners(isAdmin);
         }
     },
 
-    initializeSettingsViewListeners(isAdmin) {
+    async initializeSettingsViewListeners(isAdmin) {
         const user = Auth.getCurrentUser();
 
         // Re-attach event listeners to settings tab buttons
@@ -1893,6 +2156,24 @@ const App = {
         document.getElementById('profileInstrument').value = user.instrument || '';
         document.getElementById('profilePassword').value = '';
 
+        // Password confirmation field toggle
+        const profilePassword = document.getElementById('profilePassword');
+        const profilePasswordConfirm = document.getElementById('profilePasswordConfirm');
+        const profilePasswordConfirmGroup = document.getElementById('profilePasswordConfirmGroup');
+        
+        if (profilePassword && profilePasswordConfirmGroup) {
+            profilePassword.addEventListener('input', () => {
+                if (profilePassword.value.trim()) {
+                    profilePasswordConfirmGroup.style.display = 'block';
+                    profilePasswordConfirm.required = true;
+                } else {
+                    profilePasswordConfirmGroup.style.display = 'none';
+                    profilePasswordConfirm.required = false;
+                    profilePasswordConfirm.value = '';
+                }
+            });
+        }
+
         // Default to profile tab
         this.switchSettingsTab('profile');
 
@@ -1913,20 +2194,109 @@ const App = {
         const donateLinkInput = document.getElementById('donateLink');
         const saveDonateBtn = document.getElementById('saveDonateLink');
         if (donateLinkInput && saveDonateBtn) {
-            const savedLink = localStorage.getItem('donateLink');
+            // Lade gespeicherten Link aus Supabase
+            const savedLink = await Storage.getSetting('donateLink');
             if (savedLink) {
                 donateLinkInput.value = savedLink;
             }
-            saveDonateBtn.addEventListener('click', () => {
+            saveDonateBtn.addEventListener('click', async () => {
                 const link = donateLinkInput.value.trim();
-                if (link) {
-                    localStorage.setItem('donateLink', link);
-                    UI.showToast('Spenden-Link gespeichert!', 'success');
-                    this.updateDonateButton();
-                } else {
-                    localStorage.removeItem('donateLink');
-                    UI.showToast('Spenden-Link entfernt', 'info');
-                    this.updateDonateButton();
+                try {
+                    await Storage.setSetting('donateLink', link);
+                    if (link) {
+                        UI.showToast('Spenden-Link gespeichert!', 'success');
+                    } else {
+                        UI.showToast('Spenden-Link entfernt', 'info');
+                    }
+                    await this.updateDonateButton();
+                } catch (error) {
+                    console.error('Error saving donate link:', error);
+                    UI.showToast('Fehler beim Speichern: ' + error.message, 'error');
+                }
+            });
+        }
+
+        // Profile form in settings view
+        const updateProfileForm = document.getElementById('updateProfileForm');
+        if (updateProfileForm) {
+            updateProfileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('profileUsername').value;
+                const email = document.getElementById('profileEmail').value;
+                const instrument = document.getElementById('profileInstrument').value;
+                const password = document.getElementById('profilePassword').value;
+                const passwordConfirm = document.getElementById('profilePasswordConfirm').value;
+
+                // Validate password confirmation
+                if (password && password.trim() !== '') {
+                    if (password !== passwordConfirm) {
+                        UI.showToast('Passwörter stimmen nicht überein', 'error');
+                        return;
+                    }
+                }
+
+                UI.showLoading('Profil wird aktualisiert...');
+
+                try {
+                    // Update in users table
+                    const updates = {
+                        username,
+                        email,
+                        instrument
+                    };
+
+                    console.log('Updating user profile with:', updates);
+
+                    if (password && password.trim() !== '') {
+                        updates.password = password;
+                    }
+
+                    const updateResult = await Storage.updateUser(user.id, updates);
+                    console.log('Update result:', updateResult);
+
+                    // Update email in Supabase Auth if changed
+                    if (email !== user.email) {
+                        const sb = SupabaseClient.getClient();
+                        const { error } = await sb.auth.updateUser({ email });
+                        if (error) {
+                            console.error('Error updating auth email:', error);
+                        }
+                    }
+
+                    // Update password in Supabase Auth if provided
+                    if (password && password.trim() !== '') {
+                        const sb = SupabaseClient.getClient();
+                        const { error } = await sb.auth.updateUser({ password });
+                        if (error) {
+                            console.error('Error updating password:', error);
+                        }
+                    }
+
+                    // Update current session user data
+                    await Auth.updateCurrentUser();
+                    const updatedUser = Auth.getCurrentUser();
+                    console.log('Updated user:', updatedUser);
+
+                    // Update header
+                    document.getElementById('currentUserName').textContent = updatedUser.username;
+
+                    // Clear password field
+                    document.getElementById('profilePassword').value = '';
+                    document.getElementById('profilePasswordConfirm').value = '';
+                    document.getElementById('profilePasswordConfirmGroup').style.display = 'none';
+
+                    // Reload form with updated values
+                    document.getElementById('profileUsername').value = updatedUser.username;
+                    document.getElementById('profileEmail').value = updatedUser.email;
+                    document.getElementById('profileInstrument').value = updatedUser.instrument || '';
+
+                    UI.hideLoading();
+                    UI.showToast('Profil erfolgreich aktualisiert!', 'success');
+                } catch (error) {
+                    console.error('Error updating profile:', error);
+                    UI.hideLoading();
+                    UI.showToast('Fehler beim Aktualisieren: ' + error.message, 'error');
                 }
             });
         }
@@ -1965,17 +2335,15 @@ const App = {
 
         if (editId) {
             // Update existing absence
-            await Storage.updateAbsence(editId, { start, end, reason });
+            await Storage.update('absences', editId, {
+                startDate: start,
+                endDate: end,
+                reason
+            });
             UI.showToast('Abwesenheit aktualisiert', 'success');
         } else {
             // Create new absence
-            const absence = {
-                userId: user.id,
-                start,
-                end,
-                reason
-            };
-            await Storage.createAbsence(absence);
+            await Storage.createAbsence(user.id, start, end, reason);
             UI.showToast('Abwesenheit eingetragen', 'success');
         }
 
@@ -2133,8 +2501,8 @@ const App = {
         const donateLinkInput = document.getElementById('donateLink');
         const saveDonateBtn = document.getElementById('saveDonateLink');
         if (donateLinkInput && saveDonateBtn) {
-            // Load saved donate link
-            const savedLink = localStorage.getItem('donateLink');
+            // Load saved donate link from Supabase
+            const savedLink = await Storage.getSetting('donateLink');
             if (savedLink) {
                 donateLinkInput.value = savedLink;
             }
@@ -2142,17 +2510,20 @@ const App = {
             // Save donate link
             const newSaveBtn = saveDonateBtn.cloneNode(true);
             saveDonateBtn.parentNode.replaceChild(newSaveBtn, saveDonateBtn);
-            newSaveBtn.addEventListener('click', () => {
+            newSaveBtn.addEventListener('click', async () => {
                 const link = donateLinkInput.value.trim();
-                if (link) {
-                    localStorage.setItem('donateLink', link);
-                    UI.showToast('Spenden-Link gespeichert!', 'success');
+                try {
+                    await Storage.setSetting('donateLink', link);
+                    if (link) {
+                        UI.showToast('Spenden-Link gespeichert!', 'success');
+                    } else {
+                        UI.showToast('Spenden-Link entfernt', 'info');
+                    }
                     // Update donate button visibility in news view
-                    this.updateDonateButton();
-                } else {
-                    localStorage.removeItem('donateLink');
-                    UI.showToast('Spenden-Link entfernt', 'info');
-                    this.updateDonateButton();
+                    await this.updateDonateButton();
+                } catch (error) {
+                    console.error('Error saving donate link:', error);
+                    UI.showToast('Fehler beim Speichern: ' + error.message, 'error');
                 }
             });
         }
@@ -2160,6 +2531,7 @@ const App = {
         if (isAdmin) {
             await this.renderLocationsList();
             await this.renderAllBandsList();
+            await this.renderUsersList();
         }
     },
 
@@ -2177,10 +2549,10 @@ const App = {
 
         container.innerHTML = locations.map(loc => {
             console.log('[renderLocationsList] Processing location:', loc);
-            
+
             // Support new format (linkedCalendar string) and old formats
             let linkedCalendar = loc.linkedCalendar || '';
-            
+
             // Migration from old linkedCalendars object
             if (!linkedCalendar && loc.linkedCalendars) {
                 if (loc.linkedCalendars.tonstudio) linkedCalendar = 'tonstudio';
@@ -2189,19 +2561,19 @@ const App = {
             } else if (!linkedCalendar && loc.linkedToCalendar) {
                 linkedCalendar = 'tonstudio';
             }
-            
+
             console.log('[renderLocationsList] linkedCalendar for', loc.name, ':', linkedCalendar);
-            
+
             const calendarNames = {
                 'tonstudio': '🎙️ Tonstudio',
                 'festhalle': '🏛️ JMS Festhalle',
                 'ankersaal': '⚓ Ankersaal'
             };
-            
+
             const linkedBadge = linkedCalendar ? `<br><span style="color: var(--color-primary); font-size: 0.875rem;">🔗 ${calendarNames[linkedCalendar]}</span>` : '';
-            
+
             console.log('[renderLocationsList] linkedBadge:', linkedBadge);
-            
+
             return `
                 <div class="location-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);">
                     <div>
@@ -2426,8 +2798,8 @@ const App = {
                 userBands.map(async ub => {
                     const band = await Storage.getBand(ub.bandId);
                     if (!band) return null; // Band existiert nicht mehr
-                    return { 
-                        name: band.name, 
+                    return {
+                        name: band.name,
                         role: ub.role,
                         color: band.color || '#6366f1'
                     };
@@ -2494,14 +2866,14 @@ const App = {
                         UI.showToast('Benutzer nicht gefunden', 'error');
                         return;
                     }
-                    
+
                     const confirmed = await UI.confirmAction(
                         `Möchtest du ${user.name || user.username} wirklich zum Admin machen? Als Admin hat dieser Benutzer vollen Zugriff auf alle Funktionen.`,
                         'Admin-Rechte erteilen?',
                         'Zum Admin machen',
                         'btn-primary'
                     );
-                    
+
                     if (confirmed) {
                         await this.toggleUserAdmin(userId, true);
                     }
@@ -2521,14 +2893,14 @@ const App = {
                         UI.showToast('Benutzer nicht gefunden', 'error');
                         return;
                     }
-                    
+
                     const confirmed = await UI.confirmAction(
                         `Möchtest du die Admin-Rechte von ${user.name || user.username} wirklich entfernen?`,
                         'Admin-Rechte entfernen?',
                         'Admin entfernen',
                         'btn-secondary'
                     );
-                    
+
                     if (confirmed) {
                         await this.toggleUserAdmin(userId, false);
                     }
@@ -2544,18 +2916,18 @@ const App = {
                 try {
                     const userId = btn.dataset.userId;
                     console.log('Delete user button clicked for:', userId);
-                    
+
                     const user = await Storage.getById('users', userId);
                     console.log('User found:', user);
-                    
+
                     if (!user) {
                         UI.showToast('Benutzer nicht gefunden', 'error');
                         return;
                     }
-                    
+
                     const confirmed = await UI.confirmDelete(`Möchtest du den Benutzer ${user.name || user.username} wirklich löschen? Dies kann nicht rückgängig gemacht werden!`);
                     console.log('User confirmed deletion:', confirmed);
-                    
+
                     if (confirmed) {
                         await this.deleteUser(userId);
                     }
@@ -2571,41 +2943,41 @@ const App = {
     async toggleUserAdmin(userId, makeAdmin) {
         try {
             console.log('Toggling admin status:', { userId, makeAdmin });
-            
+
             const sb = SupabaseClient.getClient();
             if (!sb) {
                 throw new Error('Supabase Client nicht verfügbar');
             }
-            
+
             // First verify the user exists
             const { data: existingUser, error: fetchError } = await sb
                 .from('users')
                 .select('*')
                 .eq('id', userId)
                 .maybeSingle();
-            
+
             if (fetchError) {
                 console.error('Error fetching user:', fetchError);
                 throw new Error('Benutzer konnte nicht gefunden werden');
             }
-            
+
             if (!existingUser) {
                 throw new Error('Benutzer existiert nicht');
             }
-            
+
             console.log('Current user state:', existingUser);
-            
+
             // Update admin status without expecting a return value
             const { error: updateError } = await sb
                 .from('users')
                 .update({ isAdmin: makeAdmin })
                 .eq('id', userId);
-            
+
             if (updateError) {
                 console.error('Supabase error toggling admin:', updateError);
                 throw new Error(updateError.message || 'Fehler beim Aktualisieren');
             }
-            
+
             console.log('Admin status updated successfully');
             UI.showToast(makeAdmin ? 'Benutzer ist jetzt Admin' : 'Admin-Rechte entfernt', 'success');
             await this.renderUsersList();
@@ -2620,14 +2992,14 @@ const App = {
         try {
             console.log('Deleting user:', userId);
             UI.showLoading('Lösche Benutzer...');
-            
+
             // Remove user from all bands
             const userBands = await Storage.getUserBands(userId);
             console.log('User bands:', userBands);
             for (const ub of userBands) {
                 await Storage.removeBandMember(ub.bandId, userId);
             }
-            
+
             // Delete all user's votes
             const sb = SupabaseClient.getClient();
             if (sb) {
@@ -2636,13 +3008,13 @@ const App = {
                     console.error('Error deleting votes:', error);
                 }
             }
-            
+
             // Delete user
             const deleted = await Storage.delete('users', userId);
             if (!deleted) {
                 throw new Error('Benutzer konnte nicht gelöscht werden (RLS/Policy?)');
             }
-            
+
             console.log('User deleted successfully');
             UI.hideLoading();
             UI.showToast('Benutzer gelöscht', 'success');
@@ -2664,35 +3036,67 @@ const App = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const updates = {
-            username,
-            email,
-            instrument
-        };
+        UI.showLoading('Profil wird aktualisiert...');
 
-        if (password && password.trim() !== '') {
-            updates.password = password;
+        try {
+            // Update in users table
+            const updates = {
+                username,
+                email,
+                instrument
+            };
+
+            // Update password if provided
+            if (password && password.trim() !== '') {
+                updates.password = password;
+            }
+
+            await Storage.updateUser(user.id, updates);
+
+            // Update email in Supabase Auth if changed
+            if (email !== user.email) {
+                const sb = SupabaseClient.getClient();
+                const { error } = await sb.auth.updateUser({ email });
+                if (error) {
+                    console.error('Error updating auth email:', error);
+                    UI.showToast('E-Mail in Benutzertabelle aktualisiert, aber Auth-Update fehlgeschlagen', 'warning');
+                }
+            }
+
+            // Update password in Supabase Auth if provided
+            if (password && password.trim() !== '') {
+                const sb = SupabaseClient.getClient();
+                const { error } = await sb.auth.updateUser({ password });
+                if (error) {
+                    console.error('Error updating password:', error);
+                }
+            }
+
+            // Update current session user data
+            await Auth.updateCurrentUser();
+            const updatedUser = Auth.getCurrentUser();
+
+            // Update header
+            document.getElementById('currentUserName').textContent = updatedUser.username;
+
+            // Clear password field after successful update
+            document.getElementById('profilePassword').value = '';
+
+            // Reload profile form with updated values
+            document.getElementById('profileUsername').value = updatedUser.username;
+            document.getElementById('profileEmail').value = updatedUser.email;
+            document.getElementById('profileInstrument').value = updatedUser.instrument || '';
+
+            UI.hideLoading();
+            UI.showToast('Profil erfolgreich aktualisiert', 'success');
+            
+            // Refresh settings view to show updated values
+            await this.renderSettingsView();
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            UI.hideLoading();
+            UI.showToast('Fehler beim Aktualisieren: ' + error.message, 'error');
         }
-
-        await Storage.updateUser(user.id, updates);
-
-        // Update current session user data
-        await Auth.updateCurrentUser();
-        const updatedUser = Auth.getCurrentUser();
-
-        // Update header
-        document.getElementById('currentUserName').textContent = updatedUser.name;
-        
-        // Clear password field after successful update
-        document.getElementById('profilePassword').value = '';
-        
-        // Reload profile form with updated values
-        document.getElementById('profileUsername').value = updatedUser.username;
-        document.getElementById('profileEmail').value = updatedUser.email;
-        document.getElementById('profileInstrument').value = updatedUser.instrument || '';
-        
-        UI.showToast('Profil erfolgreich aktualisiert', 'success');
-        UI.closeModal('settingsModal');
     },
 
     // Handle create location
@@ -2723,10 +3127,10 @@ const App = {
         document.getElementById('editLocationId').value = location.id;
         document.getElementById('editLocationName').value = location.name;
         document.getElementById('editLocationAddress').value = location.address || '';
-        
+
         // Support both old formats (linkedToCalendar, linkedCalendars) and new (linkedCalendar)
         let linkedCalendar = location.linkedCalendar || '';
-        
+
         // Migration from old format
         if (!linkedCalendar && location.linkedCalendars) {
             if (location.linkedCalendars.tonstudio) linkedCalendar = 'tonstudio';
@@ -2735,7 +3139,7 @@ const App = {
         } else if (!linkedCalendar && location.linkedToCalendar) {
             linkedCalendar = 'tonstudio'; // Old single calendar was always tonstudio
         }
-        
+
         document.getElementById('editLocationLinkedCalendar').value = linkedCalendar;
 
         UI.openModal('editLocationModal');
@@ -2759,10 +3163,10 @@ const App = {
     // Check if location is available (for calendar-linked locations)
     async checkLocationAvailability(locationId, startDate, endDate) {
         const location = await Storage.getLocation(locationId);
-        
+
         // Support new format (linkedCalendar string) and old formats
         let linkedCalendar = location.linkedCalendar || '';
-        
+
         // Migration from old formats
         if (!linkedCalendar && location.linkedCalendars) {
             if (location.linkedCalendars.tonstudio) linkedCalendar = 'tonstudio';
@@ -2771,7 +3175,7 @@ const App = {
         } else if (!linkedCalendar && location.linkedToCalendar) {
             linkedCalendar = 'tonstudio';
         }
-        
+
         if (!location || !linkedCalendar) {
             // Location not linked to any calendar, always available
             return { available: true };
@@ -2785,13 +3189,13 @@ const App = {
 
         const startTime = new Date(startDate);
         const endTime = new Date(endDate);
-        
+
         // Check the linked calendar
         const calendar = Calendar.calendars[linkedCalendar];
         if (!calendar || !calendar.events || calendar.events.length === 0) {
             return { available: true };
         }
-        
+
         // Find overlapping events
         const conflicts = calendar.events.filter(event => {
             const eventStart = new Date(event.startDate);
@@ -2800,7 +3204,7 @@ const App = {
             // Check if times overlap
             return (startTime < eventEnd && endTime > eventStart);
         });
-        
+
         if (conflicts.length > 0) {
             return {
                 available: false,
@@ -2950,6 +3354,56 @@ const App = {
         }
     },
 
+    // Handle edit band
+    async handleEditBand() {
+        const bandId = document.getElementById('editBandId').value;
+        const name = document.getElementById('editBandName').value.trim();
+        const description = document.getElementById('editBandDescription').value.trim();
+
+        if (!name) {
+            UI.showToast('Bitte gib einen Bandnamen ein', 'error');
+            return;
+        }
+
+        // Check for duplicate band names
+        const allBands = await Storage.getAllBands();
+        if (Array.isArray(allBands)) {
+            const duplicate = allBands.find(b => b.name.toLowerCase() === name.toLowerCase() && b.id !== bandId);
+
+            if (duplicate) {
+                UI.showToast('Eine Band mit diesem Namen existiert bereits', 'error');
+                return;
+            }
+        }
+
+        // Update band
+        const success = await Storage.updateBand(bandId, { name, description });
+
+        if (success) {
+            UI.closeModal('editBandModal');
+            UI.clearForm('editBandForm');
+            UI.showToast('Band wurde aktualisiert', 'success');
+
+            // Refresh band details view if currently viewing this band
+            if (Bands.currentBandId === bandId) {
+                await Bands.showBandDetails(bandId);
+            }
+
+            // Refresh band cards in "Meine Bands" view
+            await Bands.renderBands();
+
+            // Refresh band management list if admin
+            if (Auth.isAdmin()) {
+                await this.renderAllBandsList();
+            }
+
+            // Update dashboard if visible
+            if (this.currentView === 'dashboard') {
+                await this.updateDashboard();
+            }
+        }
+    },
+
     // Handle add member
     handleAddMember() {
         const username = document.getElementById('memberUsername').value;
@@ -2962,17 +3416,31 @@ const App = {
     },
 
     // Handle create rehearsal
-    async handleCreateRehearsal() {
+    async handleCreateRehearsal(forceCreate = false) {
         const editId = document.getElementById('editRehearsalId').value;
-        const bandId = document.getElementById('rehearsalBand').value;
         const title = document.getElementById('rehearsalTitle').value;
         const description = document.getElementById('rehearsalDescription').value;
+        const bandId = document.getElementById('rehearsalBand').value;
         const locationId = document.getElementById('rehearsalLocation').value;
-        const eventId = document.getElementById('rehearsalEvent').value;
+        const eventId = document.getElementById('rehearsalEvent').value || null;
+
+        if (!title || !bandId) {
+            UI.showToast('Bitte Titel und Band auswählen', 'error');
+            return;
+        }
+
         const dates = Rehearsals.getDatesFromForm();
 
+        // Check if there's at least one confirmed proposal
+        const confirmedProposals = document.querySelectorAll('#dateProposals .date-proposal-item[data-confirmed="true"]');
+
+        if (confirmedProposals.length === 0) {
+            UI.showToast('Bitte mindestens einen Terminvorschlag bestätigen', 'error');
+            return;
+        }
+
         if (dates.length === 0) {
-            UI.showToast('Bitte füge mindestens einen Terminvorschlag hinzu', 'error');
+            UI.showToast('Bitte mindestens einen Terminvorschlag machen', 'error');
             return;
         }
 
@@ -2986,6 +3454,62 @@ const App = {
                 Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);
             }
         };
+
+        // Check for location conflicts if location is selected and not forcing creation
+        if (locationId && !forceCreate && this.checkLocationAvailability) {
+            const allConflicts = [];
+
+            // Check each proposed date
+            for (let i = 0; i < dates.length; i++) {
+                const date = dates[i];
+                const startDate = new Date(date);
+                const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours
+
+                const availability = await this.checkLocationAvailability(locationId, startDate, endDate);
+
+                if (!availability.available && availability.conflicts && availability.conflicts.length > 0) {
+                    allConflicts.push({
+                        date: date,
+                        dateIndex: i,
+                        conflicts: availability.conflicts
+                    });
+                }
+            }
+
+            // If there are any conflicts, show warning modal
+            if (allConflicts.length > 0) {
+                const location = await Storage.getLocation(locationId);
+                const conflictDetailsHtml = `
+                    <div style="background: var(--color-bg); padding: 1rem; border-radius: var(--radius-md); border-left: 3px solid var(--color-danger);">
+                        <p><strong>Ort:</strong> ${Bands.escapeHtml(location?.name || 'Unbekannt')}</p>
+                        <p style="margin-top: 0.5rem;"><strong>${allConflicts.length} von ${dates.length} Terminen haben Konflikte:</strong></p>
+                        ${allConflicts.map(dateConflict => `
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: var(--color-surface); border-radius: var(--radius-sm);">
+                                <p><strong>📅 ${UI.formatDate(dateConflict.date)}</strong></p>
+                                <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                                    ${dateConflict.conflicts.map(conflict => {
+                    const start = new Date(conflict.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                    const end = new Date(conflict.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                    return `<li><strong>${Bands.escapeHtml(conflict.summary)}</strong><br><small>${start} - ${end}</small></li>`;
+                }).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                document.getElementById('conflictDetails').innerHTML = conflictDetailsHtml;
+
+                // Store the proceed function for later use
+                window._pendingRehearsalCreation = proceed;
+
+                // Close create modal and open conflict modal
+                UI.closeModal('createRehearsalModal');
+                UI.openModal('locationConflictModal');
+
+                return; // Stop here, wait for user decision
+            }
+        }
 
         // Check for absence conflicts
         const conflicts = await this.getAbsenceConflicts(bandId, dates);
@@ -3019,7 +3543,7 @@ const App = {
         const proceed = () => {
             // Clear deleted songs list - changes are being saved
             this.deletedEventSongs = [];
-            
+
             if (editId) {
                 // Update existing
                 Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
@@ -3073,7 +3597,7 @@ const App = {
         // Validate that start date is not after end date
         const startDate = new Date(start);
         const endDate = new Date(end);
-        
+
         if (startDate > endDate) {
             UI.showToast('Das "Von"-Datum darf nicht nach dem "Bis"-Datum liegen', 'error');
             return;
@@ -3220,16 +3744,28 @@ const App = {
     },
 
     // Update donate button visibility and link
-    updateDonateButton() {
+    async updateDonateButton() {
         const donateBtn = document.getElementById('donateBtn');
         if (!donateBtn) return;
 
-        const savedLink = localStorage.getItem('donateLink');
+        const savedLink = await Storage.getSetting('donateLink');
         if (savedLink && savedLink.trim()) {
+            // Wenn Link vorhanden, öffne externe Seite
             donateBtn.style.display = 'inline-flex';
             donateBtn.href = savedLink;
+            donateBtn.target = '_blank';
+            donateBtn.rel = 'noopener noreferrer';
         } else {
-            donateBtn.style.display = 'none';
+            // Wenn kein Link, führe zu Settings um Link zu konfigurieren
+            donateBtn.style.display = 'inline-flex';
+            donateBtn.href = '#';
+            donateBtn.removeAttribute('target');
+            donateBtn.removeAttribute('rel');
+            donateBtn.onclick = (e) => {
+                e.preventDefault();
+                this.navigateTo('settings');
+                UI.showToast('Bitte konfiguriere deinen Spenden-Link in den Einstellungen', 'info');
+            };
         }
     }
 };

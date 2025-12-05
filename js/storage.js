@@ -32,8 +32,8 @@ const Storage = {
     async save(key, item) {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from(key).insert(item).select('*').single();
-        if (error) { 
-            console.error('Supabase save error', key, error); 
+        if (error) {
+            console.error('Supabase save error', key, error);
             throw new Error(`Fehler beim Speichern in ${key}: ${error.message}`);
         }
         return data || item;
@@ -103,10 +103,10 @@ const Storage = {
             '#84cc16', // Lime
             '#0ea5e9'  // Sky
         ];
-        
+
         // Zufällige Farbe auswählen, wenn keine angegeben
         const randomColor = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
-        
+
         const band = {
             id: this.generateId(),
             ...bandData,
@@ -146,7 +146,7 @@ const Storage = {
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let code;
         let isUnique = false;
-        
+
         while (!isUnique) {
             code = '';
             for (let i = 0; i < 6; i++) {
@@ -317,6 +317,34 @@ const Storage = {
         return await this.delete('votes', voteId);
     },
 
+    // Time Suggestion operations
+    async createTimeSuggestion(suggestionData) {
+        const suggestion = {
+            id: this.generateId(),
+            ...suggestionData,
+            createdAt: new Date().toISOString()
+        };
+        return await this.save('timeSuggestions', suggestion);
+    },
+
+    async getTimeSuggestionsForDate(rehearsalId, dateIndex) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('timeSuggestions').select('*').eq('rehearsalId', rehearsalId).eq('dateIndex', dateIndex);
+        if (error) { console.error('Supabase getTimeSuggestionsForDate error', error); return []; }
+        return data || [];
+    },
+
+    async getUserTimeSuggestionForDate(userId, rehearsalId, dateIndex) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('timeSuggestions').select('*').eq('userId', userId).eq('rehearsalId', rehearsalId).eq('dateIndex', dateIndex).limit(1).maybeSingle();
+        if (error) { console.error('Supabase getUserTimeSuggestionForDate error', error); return null; }
+        return data || null;
+    },
+
+    async deleteTimeSuggestion(suggestionId) {
+        return await this.delete('timeSuggestions', suggestionId);
+    },
+
     // Location operations
     async createLocation(locationData) {
         const location = {
@@ -381,11 +409,11 @@ const Storage = {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from('absences').select('*').in('userId', userIds);
         if (error) { console.error('Supabase getAbsentUsersDuringRange error', error); return []; }
-        
+
         const absences = data || [];
         const rangeStart = new Date(startDate);
         const rangeEnd = new Date(endDate);
-        
+
         return absences.filter(a => {
             const absStart = new Date(a.startDate);
             const absEnd = new Date(a.endDate);
@@ -476,6 +504,112 @@ const Storage = {
 
     async deleteSong(songId) {
         return await this.delete('songs', songId);
+    },
+
+    // Settings operations
+    async getSetting(key) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('settings').select('value').eq('key', key).limit(1).maybeSingle();
+        if (error) { console.error('Supabase getSetting error', key, error); return null; }
+        return data ? data.value : null;
+    },
+
+    async setSetting(key, value) {
+        const sb = SupabaseClient.getClient();
+        const id = `setting-${key}`;
+
+        // Try to update first
+        const { data: existing } = await sb.from('settings').select('id').eq('key', key).limit(1).maybeSingle();
+
+        if (existing) {
+            // Update existing
+            const { error } = await sb.from('settings').update({ value, updated_at: new Date().toISOString() }).eq('key', key);
+            if (error) {
+                console.error('Supabase setSetting update error', key, error);
+                throw new Error(`Fehler beim Aktualisieren der Einstellung: ${error.message}`);
+            }
+        } else {
+            // Insert new
+            const { error } = await sb.from('settings').insert({ id, key, value });
+            if (error) {
+                console.error('Supabase setSetting insert error', key, error);
+                throw new Error(`Fehler beim Speichern der Einstellung: ${error.message}`);
+            }
+        }
+        return true;
+    },
+
+    // Cleanup operations
+    async cleanupPastItems() {
+        try {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0); // Set to start of today
+
+            // Clean up past events
+            const allEvents = await this.getAll('events');
+            let deletedEventsCount = 0;
+
+            for (const event of allEvents) {
+                if (event.date) {
+                    const eventDate = new Date(event.date);
+                    eventDate.setHours(0, 0, 0, 0);
+
+                    if (eventDate < now) {
+                        await this.deleteEvent(event.id);
+                        deletedEventsCount++;
+                        console.log(`🗑️ Deleted past event: ${event.title} (${event.date})`);
+                    }
+                }
+            }
+
+            // Clean up past rehearsals
+            const allRehearsals = await this.getAll('rehearsals');
+            let deletedRehearsalsCount = 0;
+
+            for (const rehearsal of allRehearsals) {
+                let shouldDelete = false;
+
+                // Check confirmed rehearsals with finalDate
+                if (rehearsal.finalDate) {
+                    const rehearsalDate = new Date(rehearsal.finalDate);
+                    rehearsalDate.setHours(0, 0, 0, 0);
+
+                    if (rehearsalDate < now) {
+                        shouldDelete = true;
+                    }
+                }
+                // Check unconfirmed rehearsals - delete if ALL proposed dates are in the past
+                else if (rehearsal.proposedDates && Array.isArray(rehearsal.proposedDates) && rehearsal.proposedDates.length > 0) {
+                    const allDatesInPast = rehearsal.proposedDates.every(dateStr => {
+                        const proposedDate = new Date(dateStr);
+                        proposedDate.setHours(0, 0, 0, 0);
+                        return proposedDate < now;
+                    });
+
+                    if (allDatesInPast) {
+                        shouldDelete = true;
+                    }
+                }
+
+                if (shouldDelete) {
+                    await this.deleteRehearsal(rehearsal.id);
+                    deletedRehearsalsCount++;
+                    const dateInfo = rehearsal.finalDate || (rehearsal.proposedDates ? rehearsal.proposedDates[0] : 'unknown');
+                    console.log(`🗑️ Deleted past rehearsal: ${rehearsal.title} (${dateInfo})`);
+                }
+            }
+
+            if (deletedEventsCount > 0 || deletedRehearsalsCount > 0) {
+                console.log(`✓ Cleanup complete: ${deletedEventsCount} events and ${deletedRehearsalsCount} rehearsals deleted`);
+            } else {
+                console.log('✓ Cleanup complete: No past items to delete');
+            }
+
+            return { deletedEventsCount, deletedRehearsalsCount };
+        } catch (error) {
+            console.error('Error during cleanup:', error);
+            return { deletedEventsCount: 0, deletedRehearsalsCount: 0 };
+        }
     }
 };
 

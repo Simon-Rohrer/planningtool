@@ -129,10 +129,39 @@ const Rehearsals = {
         const userVote = await Storage.getUserVoteForDate(userId, rehearsalId, dateIndex);
         const userAvailability = userVote ? userVote.availability : null;
 
+        // Get time suggestions for this date
+        const timeSuggestions = (await Storage.getTimeSuggestionsForDate(rehearsalId, dateIndex)) || [];
+        const userTimeSuggestion = await Storage.getUserTimeSuggestionForDate(userId, rehearsalId, dateIndex);
+
+        // Group suggestions by time
+        const suggestionsByTime = {};
+        for (const suggestion of timeSuggestions) {
+            const time = suggestion.suggestedTime;
+            if (!suggestionsByTime[time]) {
+                suggestionsByTime[time] = [];
+            }
+            const user = await Storage.getById('users', suggestion.userId);
+            if (user) {
+                suggestionsByTime[time].push(user.name);
+            }
+        }
+
+        // Handle both old format (string) and new format (object with startTime/endTime)
+        const dateString = typeof date === 'string' ? date : date.startTime;
+        const endTimeString = typeof date === 'object' && date.endTime ? date.endTime : null;
+
+        // Format date display
+        let dateDisplay = UI.formatDate(dateString);
+        if (endTimeString) {
+            const startTime = new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+            const endTime = new Date(endTimeString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+            dateDisplay += ` (${startTime} - ${endTime})`;
+        }
+
         return `
             <div class="date-option">
                 <div class="date-info">
-                    <div class="date-time">📅 ${UI.formatDate(date)}</div>
+                    <div class="date-time">📅 ${dateDisplay}</div>
                     <div class="vote-summary">
                         <span class="vote-count">✅ ${yesCount}</span>
                         <span class="vote-count">❓ ${maybeCount}</span>
@@ -168,7 +197,24 @@ const Rehearsals = {
                             title="Ich kann nicht">
                         ❌
                     </button>
+                    <button class="suggest-time-btn ${userTimeSuggestion ? 'has-suggestion' : ''}" 
+                            data-rehearsal-id="${rehearsalId}" 
+                            data-date-index="${dateIndex}"
+                            title="${userTimeSuggestion ? 'Zeitvorschlag bearbeiten' : 'Alternative Zeit vorschlagen'}">
+                        🕐
+                    </button>
                 </div>
+                ${Object.keys(suggestionsByTime).length > 0 ? `
+                    <div class="time-suggestions">
+                        <strong>Vorgeschlagene Uhrzeiten:</strong>
+                        ${Object.entries(suggestionsByTime).map(([time, users]) => `
+                            <div class="time-suggestion-item">
+                                <span class="suggested-time">🕐 ${time}</span>
+                                <span class="suggested-by">(${users.join(', ')})</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
             </div>
         `;
     },
@@ -189,6 +235,123 @@ const Rehearsals = {
 
                 const card = newHeader.closest('.rehearsal-card');
                 this.toggleAccordion(card);
+            });
+        });
+
+        context.querySelectorAll('.suggest-time-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const rehearsalId = btn.dataset.rehearsalId;
+                const dateIndex = parseInt(btn.dataset.dateIndex);
+                await this.suggestTime(rehearsalId, dateIndex);
+            });
+        });
+
+        // Confirm proposal button handler
+        context.querySelectorAll('.confirm-proposal-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const item = btn.closest('.date-proposal-item');
+                if (!item) return;
+
+                const dateInput = item.querySelector('.date-input-date');
+                const startInput = item.querySelector('.date-input-start');
+                const endInput = item.querySelector('.date-input-end');
+                const availabilitySpan = item.querySelector('.date-availability');
+
+                // Validate inputs
+                if (!dateInput || !dateInput.value || !startInput || !startInput.value || !endInput || !endInput.value) {
+                    UI.showToast('Bitte alle Felder ausfüllen', 'error');
+                    return;
+                }
+
+                // Validate end time is after start time
+                if (endInput.value <= startInput.value) {
+                    UI.showToast('Endzeit muss nach Startzeit liegen', 'error');
+                    return;
+                }
+
+                // Get location and check availability
+                const locationId = document.getElementById('rehearsalLocation')?.value;
+                let availabilityText = availabilitySpan?.textContent || '';
+                let hasConflict = false;
+                let conflictDetails = null;
+
+                if (locationId && typeof App !== 'undefined' && App.checkLocationAvailability) {
+                    const startDateTime = `${dateInput.value}T${startInput.value}`;
+                    const endDateTime = `${dateInput.value}T${endInput.value}`;
+
+                    const availability = await App.checkLocationAvailability(
+                        locationId,
+                        new Date(startDateTime),
+                        new Date(endDateTime)
+                    );
+
+                    if (!availability.available && availability.conflicts && availability.conflicts.length > 0) {
+                        hasConflict = true;
+                        conflictDetails = availability.conflicts;
+                    }
+                }
+
+                // Format date and time for display
+                const date = new Date(dateInput.value);
+                const dateStr = date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+                const timeStr = `${startInput.value} - ${endInput.value}`;
+
+                // Create confirmed display
+                const confirmedDisplay = document.createElement('div');
+                confirmedDisplay.className = 'confirmed-proposal-display';
+                confirmedDisplay.innerHTML = `
+                    <span class="confirmed-date">📅 ${dateStr}, ${timeStr}</span>
+                    <span class="confirmed-availability ${hasConflict ? 'has-conflict' : 'is-available'}">${availabilityText}</span>
+                `;
+
+                // Store data in dataset
+                item.dataset.confirmed = 'true';
+                item.dataset.startTime = new Date(`${dateInput.value}T${startInput.value}`).toISOString();
+                item.dataset.endTime = new Date(`${dateInput.value}T${endInput.value}`).toISOString();
+                item.dataset.hasConflict = hasConflict;
+
+                // Clear item and add confirmed display
+                item.innerHTML = '';
+                item.appendChild(confirmedDisplay);
+
+                // Add conflict details if there are conflicts
+                if (hasConflict && conflictDetails) {
+                    const detailsBox = document.createElement('div');
+                    detailsBox.className = 'conflict-details-box';
+                    detailsBox.innerHTML = `
+                        <div class="conflict-details-header">Konflikte:</div>
+                        ${conflictDetails.map(c => {
+                        const start = new Date(c.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        const end = new Date(c.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        return `<div class="conflict-item">• ${Bands.escapeHtml(c.summary)} (${start}-${end})</div>`;
+                    }).join('')}
+                    `;
+                    item.appendChild(detailsBox);
+                }
+
+                // Add delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'btn-icon remove-confirmed';
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.addEventListener('click', () => {
+                    item.remove();
+                    this.updateRemoveButtons();
+                });
+                item.appendChild(deleteBtn);
+
+                // Check if we need to add a new empty proposal
+                const container = document.getElementById('dateProposals');
+                if (container) {
+                    const unconfirmedProposals = container.querySelectorAll('.date-proposal-item[data-confirmed="false"]');
+
+                    if (unconfirmedProposals.length === 0) {
+                        // Add a new empty proposal
+                        this.addDateProposal();
+                    }
+                }
             });
         });
 
@@ -223,6 +386,15 @@ const Rehearsals = {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
                 await this.deleteRehearsal(rehearsalId);
+            });
+        });
+
+        context.querySelectorAll('.suggest-time-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const rehearsalId = btn.dataset.rehearsalId;
+                const dateIndex = parseInt(btn.dataset.dateIndex);
+                await this.suggestTime(rehearsalId, dateIndex);
             });
         });
     },
@@ -287,15 +459,15 @@ const Rehearsals = {
 
         // Check if proposedDates exists and is an array
         const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
-        
+
         if (proposedDates.length === 0) {
             console.warn('No proposed dates found for rehearsal:', rehearsalId);
             UI.showToast('Keine vorgeschlagenen Termine gefunden', 'warning');
             return;
         }
 
-        // Calculate statistics
-        const dateStats = proposedDates.map((date, index) => {
+        // Calculate statistics and get time suggestions for each date
+        const dateStats = await Promise.all(proposedDates.map(async (date, index) => {
             const dateVotes = votes.filter(v => v.dateIndex === index);
             const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
             const maybeCount = dateVotes.filter(v => v.availability === 'maybe').length;
@@ -303,8 +475,24 @@ const Rehearsals = {
             const totalVotes = dateVotes.length;
             const score = yesCount + (maybeCount * 0.5);
 
-            return { date, index, yesCount, maybeCount, noCount, totalVotes, score };
-        });
+            // Get time suggestions for this date
+            const timeSuggestions = await Storage.getTimeSuggestionsForDate(rehearsalId, index);
+
+            // Group suggestions by time with user names
+            const suggestionsByTime = {};
+            for (const suggestion of timeSuggestions) {
+                const time = suggestion.suggestedTime;
+                if (!suggestionsByTime[time]) {
+                    suggestionsByTime[time] = [];
+                }
+                const user = await Storage.getById('users', suggestion.userId);
+                if (user) {
+                    suggestionsByTime[time].push(user.name);
+                }
+            }
+
+            return { date, index, yesCount, maybeCount, noCount, totalVotes, score, timeSuggestions: suggestionsByTime };
+        }));
 
         // Find best date
         const bestDate = dateStats.reduce((best, current) =>
@@ -343,9 +531,17 @@ const Rehearsals = {
                                 ❓ ${stat.maybeCount} vielleicht • 
                                 ❌ ${stat.noCount} können nicht
                             </div>
+                            ${Object.keys(stat.timeSuggestions).length > 0 ? `
+                                <div class="time-suggestions-compact">
+                                    <strong>🕐 Zeitvorschläge:</strong>
+                                    ${Object.entries(stat.timeSuggestions).map(([time, users]) => `
+                                        <span class="time-suggestion-tag">${time} (${users.join(', ')})</span>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
                             <button class="btn btn-primary select-date-btn" 
                                     data-date-index="${stat.index}"
-                                    data-date="${stat.date}">
+                                    data-date="${typeof stat.date === 'string' ? stat.date : stat.date.startTime}">
                                 Diesen Termin auswählen
                             </button>
                         </div>
@@ -376,7 +572,92 @@ const Rehearsals = {
 
         document.getElementById('confirmRehearsalId').value = rehearsalId;
         document.getElementById('confirmDateIndex').value = dateIndex;
-        document.getElementById('selectedDateTime').textContent = UI.formatDate(date);
+
+        // Populate editable fields
+        document.getElementById('confirmRehearsalTitle').value = rehearsal.title;
+        document.getElementById('confirmRehearsalDescription').value = rehearsal.description || '';
+
+        // Handle both old format (string) and new format (object with startTime/endTime)
+        const dateString = typeof date === 'string' ? date : date.startTime;
+        const endTimeString = typeof date === 'object' && date.endTime ? date.endTime : null;
+
+        // Set start time from the selected date
+        document.getElementById('confirmRehearsalStartTime').value = dateString.slice(0, 16);
+
+        // Set end time
+        let endDate;
+        if (endTimeString) {
+            endDate = new Date(endTimeString);
+        } else {
+            // Default to 2 hours after start
+            const startDate = new Date(dateString);
+            endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+        }
+        document.getElementById('confirmRehearsalEndTime').value = endDate.toISOString().slice(0, 16);
+
+        // Get time suggestions for this date
+        const timeSuggestions = await Storage.getTimeSuggestionsForDate(rehearsalId, dateIndex);
+
+        // Display time suggestions if any exist
+        const startTimeGroup = document.getElementById('confirmRehearsalStartTime').closest('.form-group');
+        let suggestionsHtml = '';
+
+        if (timeSuggestions && timeSuggestions.length > 0) {
+            // Group suggestions by time
+            const suggestionsByTime = {};
+            for (const suggestion of timeSuggestions) {
+                const time = suggestion.suggestedTime;
+                if (!suggestionsByTime[time]) {
+                    suggestionsByTime[time] = [];
+                }
+                const user = await Storage.getById('users', suggestion.userId);
+                if (user) {
+                    suggestionsByTime[time].push(user.name);
+                }
+            }
+
+            suggestionsHtml = `
+                <div class="time-suggestions-info" style="margin-top: 0.5rem;">
+                    <small style="color: var(--color-text-secondary); display: block; margin-bottom: 0.25rem;">
+                        <strong>🕐 Vorgeschlagene Uhrzeiten:</strong>
+                    </small>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                        ${Object.entries(suggestionsByTime).map(([time, users]) => `
+                            <button type="button" class="time-suggestion-quick-select" data-time="${time}" 
+                                    style="padding: 0.25rem 0.5rem; background: var(--color-primary); color: white; 
+                                           border: none; border-radius: 4px; cursor: pointer; font-size: 0.8125rem;">
+                                ${time} (${users.join(', ')})
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Remove any existing suggestions display
+        const existingSuggestions = startTimeGroup.querySelector('.time-suggestions-info');
+        if (existingSuggestions) {
+            existingSuggestions.remove();
+        }
+
+        // Add suggestions after the start time input
+        if (suggestionsHtml) {
+            startTimeGroup.insertAdjacentHTML('beforeend', suggestionsHtml);
+
+            // Add click handlers for quick-select buttons
+            startTimeGroup.querySelectorAll('.time-suggestion-quick-select').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const selectedTime = btn.dataset.time;
+                    const currentDateTime = document.getElementById('confirmRehearsalStartTime').value;
+
+                    // Extract date part and combine with selected time
+                    if (currentDateTime) {
+                        const datePart = currentDateTime.split('T')[0];
+                        document.getElementById('confirmRehearsalStartTime').value = `${datePart}T${selectedTime}`;
+                    }
+                });
+            });
+        }
 
         // Populate location select
         const locationSelect = document.getElementById('confirmRehearsalLocation');
@@ -394,11 +675,11 @@ const Rehearsals = {
         const members = await Storage.getBandMembers(rehearsal.bandId);
         const membersArray = Array.isArray(members) ? members : [];
         const membersList = document.getElementById('confirmMembersList');
-        
+
         // Load all users first
         const userPromises = membersArray.map(member => Storage.getById('users', member.userId));
         const users = await Promise.all(userPromises);
-        
+
         membersList.innerHTML = users.map(user => {
             if (!user) return '';
 
@@ -417,10 +698,21 @@ const Rehearsals = {
     },
 
     // Confirm rehearsal and send emails
-    async confirmRehearsal() {
+    async confirmRehearsal(forceConfirm = false) {
         const rehearsalId = document.getElementById('confirmRehearsalId').value;
         const dateIndex = parseInt(document.getElementById('confirmDateIndex').value);
         const locationId = document.getElementById('confirmRehearsalLocation').value;
+
+        // Get edited values
+        const editedTitle = document.getElementById('confirmRehearsalTitle').value;
+        const editedDescription = document.getElementById('confirmRehearsalDescription').value;
+        const editedStartTime = document.getElementById('confirmRehearsalStartTime').value;
+        const editedEndTime = document.getElementById('confirmRehearsalEndTime').value;
+
+        if (!editedTitle || !editedStartTime || !editedEndTime) {
+            UI.showToast('Bitte Titel, Start- und Endzeit ausfüllen', 'error');
+            return;
+        }
 
         const rehearsal = await Storage.getRehearsal(rehearsalId);
         if (!rehearsal) {
@@ -429,24 +721,59 @@ const Rehearsals = {
             return;
         }
 
-        // Check if proposedDates exists and has the selected index
-        if (!Array.isArray(rehearsal.proposedDates) || !rehearsal.proposedDates[dateIndex]) {
-            console.error('Invalid date index:', dateIndex, 'proposedDates:', rehearsal.proposedDates);
-            UI.showToast('Ungültiger Termin ausgewählt', 'error');
-            return;
-        }
+        // Use edited start time
+        const selectedDate = new Date(editedStartTime).toISOString();
+        const selectedEndTime = new Date(editedEndTime).toISOString();
 
-        const selectedDate = rehearsal.proposedDates[dateIndex];
+        // Check location availability if location is selected and not forcing confirmation
+        if (locationId && !forceConfirm && typeof App !== 'undefined' && App.checkLocationAvailability) {
+            const startDate = new Date(editedStartTime);
+            const endDate = new Date(editedEndTime);
+
+            const availability = await App.checkLocationAvailability(locationId, startDate, endDate);
+
+            if (!availability.available && availability.conflicts && availability.conflicts.length > 0) {
+                // Show conflict warning modal
+                const location = await Storage.getLocation(locationId);
+                const conflictDetailsHtml = `
+                    <div style="background: var(--color-bg); padding: 1rem; border-radius: var(--radius-md); border-left: 3px solid var(--color-danger);">
+                        <p><strong>Ort:</strong> ${Bands.escapeHtml(location?.name || 'Unbekannt')}</p>
+                        <p><strong>Gewählte Zeit:</strong> ${UI.formatDate(editedStartTime)} - ${new Date(editedEndTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <div style="margin-top: 1rem;">
+                            <strong>Konflikte:</strong>
+                            <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                                ${availability.conflicts.map(conflict => {
+                    const start = new Date(conflict.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                    const end = new Date(conflict.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                    return `<li><strong>${Bands.escapeHtml(conflict.summary)}</strong><br><small>${start} - ${end}</small></li>`;
+                }).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('conflictDetails').innerHTML = conflictDetailsHtml;
+
+                // Close confirmation modal and open conflict modal
+                UI.closeModal('confirmRehearsalModal');
+                UI.openModal('locationConflictModal');
+
+                return; // Stop here, wait for user decision
+            }
+        }
 
         // Get selected members
         const checkboxes = document.querySelectorAll('#confirmMembersList input[type="checkbox"]:checked');
         const selectedMemberIds = Array.from(checkboxes).map(cb => cb.value);
 
-        // Update rehearsal with confirmed date (not dateIndex)
+        // Update rehearsal with confirmed date and edited details
         await Storage.updateRehearsal(rehearsalId, {
             status: 'confirmed',
+            title: editedTitle,
+            description: editedDescription,
             confirmedLocation: locationId || null,
-            confirmedDate: selectedDate
+            confirmedDate: selectedDate,
+            endTime: selectedEndTime
         });
 
         // Only send emails if members are selected
@@ -469,6 +796,7 @@ const Rehearsals = {
         }
 
         UI.closeModal('confirmRehearsalModal');
+        UI.closeModal('locationConflictModal'); // Close conflict modal if it was open
         await this.renderRehearsals(this.currentFilter);
 
         if (typeof App !== 'undefined' && App.updateDashboard) {
@@ -529,6 +857,103 @@ const Rehearsals = {
         }
     },
 
+    // Suggest alternative time for a date
+    async suggestTime(rehearsalId, dateIndex) {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const existingSuggestion = await Storage.getUserTimeSuggestionForDate(user.id, rehearsalId, dateIndex);
+
+        // Set hidden fields
+        document.getElementById('suggestTimeRehearsalId').value = rehearsalId;
+        document.getElementById('suggestTimeDateIndex').value = dateIndex;
+
+        // Set existing time if available
+        const timeInput = document.getElementById('suggestedTimeInput');
+        if (existingSuggestion) {
+            timeInput.value = existingSuggestion.suggestedTime;
+            document.getElementById('deleteTimeSuggestionBtn').style.display = 'inline-block';
+        } else {
+            timeInput.value = '';
+            document.getElementById('deleteTimeSuggestionBtn').style.display = 'none';
+        }
+
+        // Open modal
+        UI.openModal('timeSuggestionModal');
+    },
+
+    // Save time suggestion from modal
+    async saveTimeSuggestion() {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const rehearsalId = document.getElementById('suggestTimeRehearsalId').value;
+        const dateIndex = parseInt(document.getElementById('suggestTimeDateIndex').value);
+        const timeInput = document.getElementById('suggestedTimeInput').value;
+
+        if (!timeInput) {
+            UI.showToast('Bitte eine Uhrzeit auswählen', 'error');
+            return;
+        }
+
+        // Delete existing suggestion if changing
+        const existingSuggestion = await Storage.getUserTimeSuggestionForDate(user.id, rehearsalId, dateIndex);
+        if (existingSuggestion) {
+            await Storage.deleteTimeSuggestion(existingSuggestion.id);
+        }
+
+        // Create new suggestion
+        await Storage.createTimeSuggestion({
+            rehearsalId,
+            userId: user.id,
+            dateIndex,
+            suggestedTime: timeInput
+        });
+
+        UI.showToast('Zeitvorschlag gespeichert!', 'success');
+        UI.closeModal('timeSuggestionModal');
+
+        // Update the rehearsal card
+        await this.refreshRehearsalCard(rehearsalId);
+    },
+
+    // Delete time suggestion from modal
+    async deleteTimeSuggestion() {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const rehearsalId = document.getElementById('suggestTimeRehearsalId').value;
+        const dateIndex = parseInt(document.getElementById('suggestTimeDateIndex').value);
+
+        const existingSuggestion = await Storage.getUserTimeSuggestionForDate(user.id, rehearsalId, dateIndex);
+        if (existingSuggestion) {
+            await Storage.deleteTimeSuggestion(existingSuggestion.id);
+            UI.showToast('Zeitvorschlag gelöscht', 'info');
+            UI.closeModal('timeSuggestionModal');
+
+            // Update the rehearsal card
+            await this.refreshRehearsalCard(rehearsalId);
+        }
+    },
+
+    // Helper to refresh a single rehearsal card
+    async refreshRehearsalCard(rehearsalId) {
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
+        if (rehearsal) {
+            const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+            if (card) {
+                const newCardHtml = await this.renderRehearsalCard(rehearsal);
+                card.outerHTML = newCardHtml;
+
+                // Re-attach handlers to the updated card
+                const updatedCard = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+                if (updatedCard) {
+                    this.attachVoteHandlers(updatedCard);
+                }
+            }
+        }
+    },
+
     // Create new rehearsal
     async createRehearsal(bandId, title, description, dates, locationId = null, eventId = null) {
         const user = Auth.getCurrentUser();
@@ -544,9 +969,9 @@ const Rehearsals = {
             for (const date of dates) {
                 const startDate = new Date(`${date.date}T${date.startTime}`);
                 const endDate = new Date(`${date.date}T${date.endTime}`);
-                
+
                 const availability = await App.checkLocationAvailability(locationId, startDate, endDate);
-                
+
                 if (!availability.available) {
                     const location = await Storage.getLocation(locationId);
                     const conflictList = availability.conflicts.map(c => {
@@ -554,13 +979,13 @@ const Rehearsals = {
                         const end = new Date(c.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
                         return `• ${c.summary} (${start} - ${end})`;
                     }).join('\n');
-                    
+
                     const proceed = confirm(
                         `⚠️ Achtung: ${location.name} ist zu dieser Zeit bereits belegt!\n\n` +
                         `Konflikte am ${date.date}:\n${conflictList}\n\n` +
                         `Möchtest du trotzdem fortfahren?`
                     );
-                    
+
                     if (!proceed) {
                         return;
                     }
@@ -719,13 +1144,13 @@ const Rehearsals = {
             if (!locationId || !isoString || typeof App === 'undefined' || !App.checkLocationAvailability) {
                 return { available: true, conflicts: [] };
             }
-            
+
             // Get the location to find its linked calendar
             const location = await Storage.getLocation(locationId);
             if (!location) {
                 return { available: true, conflicts: [] };
             }
-            
+
             // Determine linked calendar
             let linkedCalendar = location.linkedCalendar || '';
             if (!linkedCalendar && location.linkedCalendars) {
@@ -735,12 +1160,12 @@ const Rehearsals = {
             } else if (!linkedCalendar && location.linkedToCalendar) {
                 linkedCalendar = 'tonstudio';
             }
-            
+
             if (!linkedCalendar) {
                 // No calendar linked, always available
                 return { available: true, conflicts: [] };
             }
-            
+
             // Ensure calendar data is loaded
             if (typeof Calendar !== 'undefined' && Calendar.ensureLocationCalendar) {
                 try {
@@ -751,7 +1176,7 @@ const Rehearsals = {
                     // Don't return true here - the calendar might have data that failed to refresh
                 }
             }
-            
+
             const startDate = new Date(isoString);
             const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
             return await App.checkLocationAvailability(locationId, startDate, endDate);
@@ -764,25 +1189,78 @@ const Rehearsals = {
     async updateAvailabilityIndicators() {
         const locationId = document.getElementById('rehearsalLocation')?.value || '';
         const items = document.querySelectorAll('#dateProposals .date-proposal-item');
+
         for (const item of items) {
-            const input = item.querySelector('.date-input');
+            // Skip confirmed proposals
+            if (item.dataset.confirmed === 'true') {
+                continue;
+            }
+
+            const dateInput = item.querySelector('.date-input-date');
+            const startInput = item.querySelector('.date-input-start');
+            const endInput = item.querySelector('.date-input-end');
             const indicator = item.querySelector('.date-availability');
+
             if (!indicator) continue;
-            if (!input.value || !locationId) {
+
+            if (!dateInput || !dateInput.value || !startInput || !startInput.value || !endInput || !endInput.value || !locationId) {
                 indicator.textContent = '';
                 indicator.style.color = '';
                 indicator.style.fontWeight = '';
                 continue;
             }
-            const availability = await this.checkSingleDateAvailability(locationId, new Date(input.value).toISOString());
-            if (availability.available) {
-                indicator.textContent = 'Ort ist frei';
-                indicator.style.color = 'green';
-                indicator.style.fontWeight = '600';
-            } else {
-                indicator.textContent = '⚠️ Ort belegt';
-                indicator.style.color = 'red';
-                indicator.style.fontWeight = '600';
+
+            // Combine date with start and end times
+            const startDateTime = `${dateInput.value}T${startInput.value}`;
+            const endDateTime = `${dateInput.value}T${endInput.value}`;
+
+            // Check availability for the full time range
+            if (typeof App !== 'undefined' && App.checkLocationAvailability) {
+                const availability = await App.checkLocationAvailability(
+                    locationId,
+                    new Date(startDateTime),
+                    new Date(endDateTime)
+                );
+
+                // Remove any existing conflict details box
+                const existingDetails = item.querySelector('.conflict-details-box');
+                if (existingDetails) {
+                    existingDetails.remove();
+                }
+
+                if (availability.available) {
+                    indicator.textContent = '✓ Ort ist frei';
+                    indicator.style.color = 'green';
+                    indicator.style.fontWeight = '600';
+                } else {
+                    const conflictCount = availability.conflicts?.length || 0;
+                    indicator.textContent = `⚠️ ${conflictCount} Konflikt${conflictCount > 1 ? 'e' : ''}`;
+                    indicator.style.color = 'red';
+                    indicator.style.fontWeight = '600';
+
+                    // Create conflict details box
+                    if (availability.conflicts && availability.conflicts.length > 0) {
+                        const detailsBox = document.createElement('div');
+                        detailsBox.className = 'conflict-details-box';
+                        detailsBox.innerHTML = `
+                            <div class="conflict-details-header">Konflikte:</div>
+                            ${availability.conflicts.map(c => {
+                            const start = new Date(c.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                            const end = new Date(c.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                            return `<div class="conflict-item">• ${Bands.escapeHtml(c.summary)} (${start}-${end})</div>`;
+                        }).join('')}
+                        `;
+
+                        // Insert after the date-time-range div
+                        const dateTimeRange = item.querySelector('.date-time-range');
+                        if (dateTimeRange) {
+                            dateTimeRange.insertAdjacentElement('afterend', detailsBox);
+                        } else {
+                            // Fallback if .date-time-range is not found, append to item
+                            item.appendChild(detailsBox);
+                        }
+                    }
+                }
             }
         }
     },
@@ -793,11 +1271,40 @@ const Rehearsals = {
             locSelect.addEventListener('change', () => this.updateAvailabilityIndicators());
             locSelect._availabilityBound = true;
         }
-        const inputs = document.querySelectorAll('#dateProposals .date-input');
-        inputs.forEach(input => {
+
+        // Attach listeners to all date, start time, and end time inputs
+        const dateInputs = document.querySelectorAll('#dateProposals .date-input-date');
+        const startInputs = document.querySelectorAll('#dateProposals .date-input-start');
+        const endInputs = document.querySelectorAll('#dateProposals .date-input-end');
+
+        [...dateInputs, ...startInputs, ...endInputs].forEach(input => {
             if (!input._availabilityBound) {
                 input.addEventListener('change', () => this.updateAvailabilityIndicators());
                 input._availabilityBound = true;
+            }
+        });
+
+        // Add time validation listeners
+        const items = document.querySelectorAll('#dateProposals .date-proposal-item');
+        items.forEach(item => {
+            const startInput = item.querySelector('.date-input-start');
+            const endInput = item.querySelector('.date-input-end');
+
+            if (startInput && endInput && !startInput._timeValidationBound) {
+                const validateTimes = () => {
+                    if (startInput.value && endInput.value) {
+                        if (endInput.value <= startInput.value) {
+                            endInput.setCustomValidity('Endzeit muss nach Startzeit liegen');
+                            endInput.reportValidity();
+                        } else {
+                            endInput.setCustomValidity('');
+                        }
+                    }
+                };
+
+                startInput.addEventListener('change', validateTimes);
+                endInput.addEventListener('change', validateTimes);
+                startInput._timeValidationBound = true;
             }
         });
     },
@@ -867,16 +1374,27 @@ const Rehearsals = {
     // Add date proposal field
     addDateProposal() {
         const container = document.getElementById('dateProposals');
+        if (!container) return;
 
         const newItem = document.createElement('div');
         newItem.className = 'date-proposal-item';
+        newItem.dataset.confirmed = 'false';
         newItem.innerHTML = `
-            <input type="datetime-local" class="date-input" required>
+            <div class="date-time-range">
+                <input type="date" class="date-input-date" required>
+                <input type="time" class="date-input-start" required>
+                <span class="time-separator">bis</span>
+                <input type="time" class="date-input-end" required>
+            </div>
             <span class="date-availability" style="margin-left:8px"></span>
+            <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
             <button type="button" class="btn-icon remove-date">🗑️</button>
         `;
 
         container.appendChild(newItem);
+
+        // Attach event handlers to the new item
+        this.attachVoteHandlers(newItem);
 
         newItem.querySelector('.remove-date').addEventListener('click', () => {
             newItem.remove();

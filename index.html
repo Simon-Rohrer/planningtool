@@ -3,10 +3,28 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Band Planning Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Band Management Tool</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Organisiere deine Bandproben effizient">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Band Planning">
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Icons (optional, remove if not yet created) -->
+    <!-- <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png"> -->
+    <!-- <link rel="icon" type="image/png" sizes="512x512" href="/images/icon-512.png"> -->
+    <!-- <link rel="apple-touch-icon" href="/images/icon-192.png"> -->
+
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/calendar.css">
+
     <!-- Supabase JS (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -95,7 +113,7 @@
         <!-- Header -->
         <header class="app-header">
             <div class="header-content">
-                <h1 class="logo">🎵 Band Planning</h1>
+                <h1 class="logo">🎸 Band Management Tool</h1>
                 <div class="header-actions">
                     <span id="currentUserName" class="user-name">User</span>
                     <button id="logoutBtn" class="btn btn-secondary">
@@ -136,7 +154,7 @@
                     <span class="nav-label">Planung</span>
                 </button>
                 <div class="nav-submenu">
-                    <button class="nav-subitem" data-view="rehearsals" style="display: none;">
+                    <button class="nav-subitem" data-view="rehearsals">
                         <span class="nav-icon">📅</span>
                         <span class="nav-label">Probetermine</span>
                     </button>
@@ -185,6 +203,23 @@
                 </button>
             </div>
         </nav>
+
+        <!-- News Banner (appears when there are unread news) -->
+        <div id="newsBanner" class="news-banner" style="display: none;">
+            <div class="news-banner-content">
+                <span class="news-banner-icon">📰</span>
+                <div class="news-banner-text">
+                    <strong>Neue News verfügbar!</strong>
+                    <span id="newsBannerMessage">Es gibt ungelesene Updates</span>
+                </div>
+                <button id="newsBannerButton" class="btn btn-sm btn-primary">
+                    Mehr Infos
+                </button>
+                <button id="newsBannerClose" class="news-banner-close" title="Schließen">
+                    ×
+                </button>
+            </div>
+        </div>
 
         <!-- Main Content -->
         <main class="app-main">
@@ -235,7 +270,10 @@
                 <div class="view-header">
                     <h2>Meine Bands</h2>
                     <div class="view-controls">
-                        <button id="joinBandBtn" class="btn btn-primary btn-bands-join-modal">
+                        <button id="createBandBtnView" class="btn btn-primary">
+                            + Band erstellen
+                        </button>
+                        <button id="joinBandBtn" class="btn btn-secondary btn-bands-join-modal">
                             Band beitreten
                         </button>
                     </div>
@@ -297,10 +335,12 @@
                 <div class="view-header">
                     <h2>News & Updates</h2>
                     <div class="view-controls">
-                        <a href="#" id="donateBtn" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                        <a href="#" id="donateBtn" class="btn btn-secondary"
+                            style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
                             💖 Spenden
                         </a>
-                        <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News erstellen</button>
+                        <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News
+                            erstellen</button>
                     </div>
                 </div>
                 <div id="newsContainer" class="news-content">
@@ -316,7 +356,7 @@
                 <div class="view-header">
                     <h2>Probeorte Kalender</h2>
                 </div>
-                
+
                 <!-- Submenu for calendar selection -->
                 <div class="calendar-submenu">
                     <button class="calendar-tab active" data-calendar="tonstudio">
@@ -332,7 +372,7 @@
                         🔄 Aktualisieren
                     </button>
                 </div>
-                
+
                 <div class="section">
                     <!-- Tonstudio Calendar -->
                     <div id="tonstudioCalendar" class="calendar-container active">
@@ -340,14 +380,14 @@
                             <!-- Events will be rendered here -->
                         </div>
                     </div>
-                    
+
                     <!-- Festhalle Calendar -->
                     <div id="festhalleCalendar" class="calendar-container">
                         <div id="festhalleEventsContainer" style="min-height: 400px;">
                             <!-- Events will be rendered here -->
                         </div>
                     </div>
-                    
+
                     <!-- Ankersaal Calendar -->
                     <div id="ankersaalCalendar" class="calendar-container">
                         <div id="ankersaalEventsContainer" style="min-height: 400px;">
@@ -361,7 +401,8 @@
             <div id="kalenderView" class="view">
                 <div class="view-header">
                     <h2>📅 Mein Kalender</h2>
-                    <button id="subscribeCalendarBtn" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <button id="subscribeCalendarBtn" class="btn btn-secondary"
+                        style="display: inline-flex; align-items: center; gap: 0.5rem;">
                         🔗 Kalender abonnieren
                     </button>
                 </div>
@@ -381,12 +422,13 @@
                         🔄 Aktualisieren
                     </button>
                 </div>
-                
+
                 <!-- Eigene Mitglieder Section -->
                 <div class="section">
                     <div class="section-header">
                         <h3>Eigene Mitglieder</h3>
-                        <button id="addOwnMemberBtn" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <button id="addOwnMemberBtn" class="btn btn-primary"
+                            style="display: inline-flex; align-items: center; gap: 0.5rem;">
                             ➕ Mitglied hinzufügen
                         </button>
                     </div>
@@ -400,7 +442,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- ChurchTools Pool Section -->
                 <div class="section">
                     <h3>ChurchTools Musikpool</h3>
@@ -443,7 +485,8 @@
                 </div>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
                     <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit hinzufügen</button>
-                    <button type="button" id="cancelEditAbsenceBtn" class="btn cancel" style="display:none;">Abbrechen</button>
+                    <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
+                        style="display:none;">Abbrechen</button>
                 </div>
             </form>
         </div>
@@ -472,7 +515,8 @@
                     <button id="settingsTabAbsences" class="settings-tab-btn" data-tab="absences">Abwesenheiten</button>
                     <button id="settingsTabLocations" class="settings-tab-btn" data-tab="locations">Probeorte</button>
                     <button id="settingsTabBands" class="settings-tab-btn" data-tab="bands">Bandmanagement</button>
-                    <button id="settingsTabUsers" class="settings-tab-btn" data-tab="users" style="display: none;">Benutzerverwaltung</button>
+                    <button id="settingsTabUsers" class="settings-tab-btn" data-tab="users"
+                        style="display: none;">Benutzerverwaltung</button>
                 </div>
 
                 <!-- Profile Tab -->
@@ -506,6 +550,10 @@
                                 <label for="profilePassword">Neues Passwort (leer lassen für keine Änderung)</label>
                                 <input type="password" id="profilePassword" placeholder="Neues Passwort">
                             </div>
+                            <div class="form-group" id="profilePasswordConfirmGroup" style="display: none;">
+                                <label for="profilePasswordConfirm">Passwort bestätigen</label>
+                                <input type="password" id="profilePasswordConfirm" placeholder="Passwort wiederholen">
+                            </div>
                             <button type="submit" class="btn btn-primary">Speichern</button>
                         </form>
                         <div class="section" style="margin-top: 1rem;">
@@ -517,7 +565,8 @@
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <small style="color: var(--color-text-secondary);">Der Dark Mode wird lokal gespeichert.</small>
+                            <small style="color: var(--color-text-secondary);">Der Dark Mode wird lokal
+                                gespeichert.</small>
                         </div>
                         <div class="section" style="margin-top: 1rem;">
                             <h3>Spenden-Link</h3>
@@ -553,8 +602,10 @@
                                 <input type="text" id="absenceReasonSettings" placeholder="z.B. Urlaub, Krankheit...">
                             </div>
                             <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <button type="submit" id="saveAbsenceBtnSettings" class="btn btn-primary">Abwesenheit hinzufügen</button>
-                                <button type="button" id="cancelEditAbsenceBtnSettings" class="btn cancel" style="display:none;">Abbrechen</button>
+                                <button type="submit" id="saveAbsenceBtnSettings" class="btn btn-primary">Abwesenheit
+                                    hinzufügen</button>
+                                <button type="button" id="cancelEditAbsenceBtnSettings" class="btn cancel"
+                                    style="display:none;">Abbrechen</button>
                             </div>
                         </form>
                     </div>
@@ -587,7 +638,8 @@
                                     <option value="festhalle">🏛️ JMS Festhalle</option>
                                     <option value="ankersaal">⚓ Ankersaal</option>
                                 </select>
-                                <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu prüfen.</p>
+                                <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit
+                                    zu prüfen.</p>
                             </div>
                             <button type="submit" class="btn btn-primary">Hinzufügen</button>
                         </form>
@@ -613,8 +665,16 @@
                 <!-- User Management Tab (Admin Only) -->
                 <div id="usersSettingsTab" class="settings-tab-content">
                     <div class="section">
-                        <h3>Benutzerverwaltung</h3>
-                        <p class="help-text">Verwalte alle registrierten Benutzer</p>
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div>
+                                <h3>Benutzerverwaltung</h3>
+                                <p class="help-text">Verwalte alle registrierten Benutzer</p>
+                            </div>
+                            <button id="addUserBtn" class="btn btn-primary" style="white-space: nowrap;">
+                                ➕ Mitglied hinzufügen
+                            </button>
+                        </div>
                         <div id="usersList" class="users-list"></div>
                     </div>
                 </div>
@@ -632,7 +692,8 @@
                                 <label for="supabaseAnonKey">Supabase Anon Key</label>
                                 <input type="text" id="supabaseAnonKey" placeholder="ey...">
                             </div>
-                            <small style="color: var(--color-text-secondary);">Diese Daten werden lokal gespeichert und für die Datenbankverbindung genutzt.</small>
+                            <small style="color: var(--color-text-secondary);">Diese Daten werden lokal gespeichert und
+                                für die Datenbankverbindung genutzt.</small>
                             <div class="modal-actions" style="margin-top: 0.5rem;">
                                 <button type="submit" class="btn btn-primary">Speichern</button>
                             </div>
@@ -667,6 +728,31 @@
         </div>
     </div>
 
+    <!-- Edit Band Modal -->
+    <div id="editBandModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Band bearbeiten</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="editBandForm">
+                <input type="hidden" id="editBandId">
+                <div class="form-group">
+                    <label for="editBandName">Bandname</label>
+                    <input type="text" id="editBandName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editBandDescription">Beschreibung</label>
+                    <textarea id="editBandDescription" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit Location Modal -->
     <div id="editLocationModal" class="modal">
         <div class="modal-content">
@@ -692,7 +778,8 @@
                         <option value="festhalle">🏛️ JMS Festhalle</option>
                         <option value="ankersaal">⚓ Ankersaal</option>
                     </select>
-                    <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu prüfen.</p>
+                    <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu prüfen.
+                    </p>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
@@ -790,6 +877,45 @@
         </div>
     </div>
 
+    <!-- Add User Modal (Admin Only) -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Neues Mitglied anlegen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label for="newUserName">Name</label>
+                    <input type="text" id="newUserName" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserEmail">E-Mail</label>
+                    <input type="email" id="newUserEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserUsername">Benutzername</label>
+                    <input type="text" id="newUserUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserPassword">Passwort</label>
+                    <input type="password" id="newUserPassword" required minlength="6">
+                    <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Mindestens 6 Zeichen</small>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="newUserIsAdmin">
+                        Als Admin anlegen
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Mitglied anlegen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Create Rehearsal Modal -->
     <div id="createRehearsalModal" class="modal">
         <div class="modal-content modal-large">
@@ -828,8 +954,15 @@
                 <div class="form-group">
                     <label>Terminvorschläge</label>
                     <div id="dateProposals" class="date-proposals">
-                        <div class="date-proposal-item">
-                            <input type="datetime-local" class="date-input" required>
+                        <div class="date-proposal-item" data-confirmed="false">
+                            <div class="date-time-range">
+                                <input type="date" class="date-input-date">
+                                <input type="time" class="date-input-start">
+                                <span class="time-separator">bis</span>
+                                <input type="time" class="date-input-end">
+                            </div>
+                            <span class="date-availability" style="margin-left:8px"></span>
+                            <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
                             <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
                         </div>
                     </div>
@@ -844,7 +977,8 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="button" class="btn btn-danger" id="deleteRehearsalBtn" style="display:none; margin-right: auto;">🗑️ Löschen</button>
+                    <button type="button" class="btn btn-danger" id="deleteRehearsalBtn"
+                        style="display:none; margin-right: auto;">🗑️ Löschen</button>
                     <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag erstellen</button>
                 </div>
             </form>
@@ -865,6 +999,34 @@
     </div>
 
     <!-- Confirm Rehearsal Modal -->
+    <!-- Time Suggestion Modal -->
+    <div id="timeSuggestionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Uhrzeit vorschlagen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="suggestTimeRehearsalId">
+                <input type="hidden" id="suggestTimeDateIndex">
+
+                <div class="form-group">
+                    <label for="suggestedTimeInput">Welche Uhrzeit würdest du vorschlagen?</label>
+                    <input type="time" id="suggestedTimeInput" class="form-control" required>
+                    <small class="help-text">Wähle eine Uhrzeit aus, die besser für dich passt</small>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="button" id="deleteTimeSuggestionBtn" class="btn btn-secondary"
+                        style="display: none;">🗑️ Vorschlag löschen</button>
+                    <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">💾 Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Rehearsal Modal -->
     <div id="confirmRehearsalModal" class="modal">
         <div class="modal-content modal-large">
             <div class="modal-header">
@@ -876,8 +1038,23 @@
                 <input type="hidden" id="confirmDateIndex">
 
                 <div class="section">
-                    <h3>Ausgewählter Termin</h3>
-                    <p id="selectedDateTime" class="selected-date-display"></p>
+                    <h3>Probendetails bearbeiten</h3>
+                    <div class="form-group">
+                        <label for="confirmRehearsalTitle">Titel</label>
+                        <input type="text" id="confirmRehearsalTitle" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmRehearsalDescription">Beschreibung (optional)</label>
+                        <textarea id="confirmRehearsalDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmRehearsalStartTime">Von (Start)</label>
+                        <input type="datetime-local" id="confirmRehearsalStartTime" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmRehearsalEndTime">Bis (Ende)</label>
+                        <input type="datetime-local" id="confirmRehearsalEndTime" class="form-control" required>
+                    </div>
                 </div>
 
                 <div class="section">
@@ -897,6 +1074,32 @@
                     <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="button" id="sendConfirmationBtn" class="btn btn-primary">✅ Probe bestätigen & E-Mail
                         senden</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Conflict Warning Modal -->
+    <div id="locationConflictModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚠️ Probeort belegt</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem;">
+                    <strong>Der gewählte Probeort ist zu dieser Zeit bereits belegt!</strong>
+                </p>
+
+                <div id="conflictDetails" class="conflict-details"></div>
+
+                <p style="margin-top: 1rem; color: var(--color-text-secondary);">
+                    Möchtest du trotzdem fortfahren?
+                </p>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel" id="abortConfirmationBtn">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" id="proceedAnywayBtn">Trotzdem fortfahren</button>
                 </div>
             </div>
         </div>
@@ -1065,7 +1268,8 @@
                     <label for="joinBandCode">Band-Beitrittscode</label>
                     <input type="text" id="joinBandCode" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="XXXXXX"
                         required style="text-transform: uppercase;">
-                    <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem 6-stelligen Code</small>
+                    <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem 6-stelligen
+                        Code</small>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
@@ -1208,7 +1412,6 @@
 
     <script src="js/supabase.js"></script>
     <script src="js/storage.js"></script>
-    <script src="js/storage-compat.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/email-service.js"></script>
     <script src="js/bands.js"></script>
@@ -1221,6 +1424,24 @@
     <script src="js/musikpool.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered:', registration);
+                    })
+                    .catch((error) => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+
+    <!-- Capacitor JS (will be injected by Capacitor on iOS, safe to fail in browser) -->
+    <script src="capacitor.js" onerror="console.log('Capacitor not available (running in browser)')"></script>
 </body>
 
 </html>

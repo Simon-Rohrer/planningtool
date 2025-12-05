@@ -106,7 +106,9 @@ const Bands = {
             `;
 
             // Add edit handler
-            nameHeader.querySelector('.edit-band-name').addEventListener('click', () => {
+            nameHeader.querySelector('.edit-band-name').addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.editBandName(bandId);
             });
         } else {
@@ -319,36 +321,21 @@ const Bands = {
 
     // Edit band name
     async editBandName(bandId) {
-        const band = Storage.getBand(bandId);
+        const band = await Storage.getBand(bandId);
         if (!band) return;
 
-        const newName = prompt('Neuer Bandname:', band.name);
+        // Populate modal form with current band data
+        document.getElementById('editBandId').value = bandId;
+        document.getElementById('editBandName').value = band.name;
+        document.getElementById('editBandDescription').value = band.description || '';
 
-        if (newName && newName.trim() !== '' && newName !== band.name) {
-            // Check for duplicate name
-            const allBands = await Storage.getAllBands();
-            const duplicate = Array.isArray(allBands) ? allBands.find(b =>
-                b.name.toLowerCase() === newName.trim().toLowerCase() &&
-                b.id !== bandId
-            ) : null;
-
-            if (duplicate) {
-                UI.showToast(`Eine Band mit dem Namen "${newName}" existiert bereits`, 'error');
-                return;
-            }
-
-            await Storage.updateBand(bandId, { name: newName.trim() });
-            UI.showToast('Bandname aktualisiert', 'success');
-
-            // Refresh view
-            this.showBandDetails(bandId);
-            await this.renderBands();
-
-            // Update dashboard
-            if (typeof App !== 'undefined' && App.updateDashboard) {
-                App.updateDashboard();
-            }
-        }
+        // Close band details modal first, then open edit modal
+        UI.closeModal('bandDetailsModal');
+        
+        // Small delay to ensure smooth transition
+        setTimeout(() => {
+            UI.openModal('editBandModal');
+        }, 100);
     },
 
     // Join band with code

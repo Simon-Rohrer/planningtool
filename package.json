@@ -1,0 +1,30 @@
+{
+  "name": "band-management-tool",
+  "version": "1.0.0",
+  "description": "Band Management Tool - Manage your band's rehearsals, events, and schedules",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "install-capacitor": "npm install @capacitor/core @capacitor/cli @capacitor/ios",
+    "init-capacitor": "npx cap init",
+    "add-ios": "npx cap add ios",
+    "sync": "npx cap sync",
+    "open-ios": "npx cap open ios",
+    "build-ios": "npx cap copy && npx cap sync && npx cap open ios"
+  },
+  "keywords": [
+    "band",
+    "planning",
+    "rehearsal",
+    "music"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0"
+  }
+}
