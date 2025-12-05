@@ -132,15 +132,22 @@ const Events = {
                                 <div class="detail-row">
                                     <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
                                     <div class="detail-value">
+                                        <div style="display: flex; align-items: center; gap: 1.5rem; font-weight: bold; color: var(--color-text-secondary); font-size: 0.97em; border-bottom: 2px solid var(--color-border); padding-bottom: 0.3rem; margin-bottom: 0.2rem;">
+                                            <span style="min-width: 120px;">Titel</span>
+                                            <span style="min-width: 100px;">Interpret</span>
+                                            <span style="min-width: 70px;">BPM</span>
+                                            <span style="min-width: 70px;">Tonart</span>
+                                            <span style="min-width: 100px;">Lead Vocal</span>
+                                        </div>
                                         <ol class="event-songs-list" style="padding:0; margin:0;">
                                             ${eventSongs.map((s, idx) => `
                                                 <li style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: ${idx < eventSongs.length - 1 ? '1px solid var(--color-border)' : 'none'};">
-                                                    <strong style="min-width: 120px;">${Bands.escapeHtml(s.title)}</strong>
+                                                    <span style="min-width: 120px; font-weight: bold;">${Bands.escapeHtml(s.title)}</span>
+                                                    <span style="min-width: 100px;">${s.artist ? Bands.escapeHtml(s.artist) : ''}</span>
+                                                    <span style="min-width: 70px;">${s.bpm ? Bands.escapeHtml(s.bpm) : ''}</span>
+                                                    <span style="min-width: 70px;">${s.key ? Bands.escapeHtml(s.key) : ''}</span>
+                                                    <span style="min-width: 100px;">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : ''}</span>
                                                     <span style="display: flex; gap: 1rem; flex-wrap: wrap; color: var(--color-text-secondary); font-size: 0.95em;">
-                                                        ${s.artist ? `<span>🎤 ${Bands.escapeHtml(s.artist)}</span>` : ''}
-                                                        ${s.bpm ? `<span>⏱️ ${Bands.escapeHtml(s.bpm)} BPM</span>` : ''}
-                                                        ${s.key ? `<span>🎹 ${Bands.escapeHtml(s.key)}</span>` : ''}
-                                                        ${s.leadVocal ? `<span>Lead: ${Bands.escapeHtml(s.leadVocal)}</span>` : ''}
                                                         ${s.ccli ? `<span>CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
                                                         ${s.notes ? `<span style='font-style:italic;'>📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
                                                     </span>
