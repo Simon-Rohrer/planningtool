@@ -3276,6 +3276,22 @@ const App = {
 
         const bands = await Storage.getUserBands(user.id);
         document.getElementById('bandCount').textContent = bands.length;
+        // Make dashboard cards clickable for navigation
+        const dashboardCards = document.querySelectorAll('.dashboard-card');
+        if (dashboardCards.length >= 4) {
+            // Meine Bands
+            dashboardCards[0].style.cursor = 'pointer';
+            dashboardCards[0].onclick = () => this.navigateTo('bands');
+            // Nächste Auftritte
+            dashboardCards[1].style.cursor = 'pointer';
+            dashboardCards[1].onclick = () => this.navigateTo('events');
+            // Offene Abstimmungen
+            dashboardCards[2].style.cursor = 'pointer';
+            dashboardCards[2].onclick = () => this.navigateTo('rehearsals');
+            // Geplante Proben
+            dashboardCards[3].style.cursor = 'pointer';
+            dashboardCards[3].onclick = () => this.navigateTo('rehearsals');
+        }
 
         const rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
         const pendingRehearsals = rehearsals.filter(r => r.status === 'pending');
@@ -3595,7 +3611,7 @@ const App = {
         const members = Events.getSelectedMembers();
         const guests = Events.getGuests();
 
-        const proceed = () => {
+        const proceed = async () => {
             // Clear deleted songs list - changes are being saved
             this.deletedEventSongs = [];
 
@@ -3615,6 +3631,8 @@ const App = {
                     this.draftEventSongIds = [];
                 }
             }
+            // Always update dashboard after event changes
+            await this.updateDashboard();
         };
 
         // Only check absences for selected members

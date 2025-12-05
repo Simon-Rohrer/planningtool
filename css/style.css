@@ -660,6 +660,12 @@ input:checked+.slider:before {
     }
 }
 
+@media (max-width: 769px) {
+    .nav-submenu {
+        display: none;
+    }
+}
+
 .nav-subitem {
     background: none;
     border: none;

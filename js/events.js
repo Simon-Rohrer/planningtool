@@ -118,7 +118,7 @@ const Events = {
                                     ${members.map(m => `
                                         <span class="member-tag" style="margin-right: 0.5em;">
                                             ${Bands.escapeHtml(m.name)}
-                                            ${m.absence ? `<span style="color: orange; font-weight: bold; margin-left: 0.5em;">Abwesenheit: ${Bands.escapeHtml(m.absence.reason || '')} (${UI.formatDateShort(m.absence.startDate)} - ${UI.formatDateShort(m.absence.endDate)})</span>` : ''}
+                                            ${m.absence ? `<span style="color: orange; font-weight: bold; margin-left: 0.5em;">Abwesenheit: ${Bands.escapeHtml(m.absence.reason || '')} (${UI.formatDateOnly(m.absence.startDate)} - ${UI.formatDateOnly(m.absence.endDate)})</span>` : ''}
                                         </span>
                                     `).join('')}
                                 </div>
@@ -409,7 +409,7 @@ const Events = {
                     return eventDate >= start && eventDate <= end;
                 });
                 if (absence) {
-                    absenceHtml = `<span style="color: orange; font-weight: bold; margin-left: 0.5em;">Abwesenheit: ${Bands.escapeHtml(absence.reason || '')} (${UI.formatDateShort(absence.startDate)} - ${UI.formatDateShort(absence.endDate)})</span>`;
+                    absenceHtml = `<span style=\"color: orange; font-weight: bold; margin-left: 0.5em;\">Abwesenheit: ${Bands.escapeHtml(absence.reason || '')} (${UI.formatDateOnly(absence.startDate)} - ${UI.formatDateOnly(absence.endDate)})</span>`;
                 }
             }
             return `
