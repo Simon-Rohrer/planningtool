@@ -280,6 +280,33 @@
                     </div>
                 </div>
 
+                <!-- Neue Dashboard-Abschnitte -->
+                <div class="dashboard-sections">
+                    <div class="dashboard-section" id="dashboardNewsSection">
+                        <h3>📰 Letzte News</h3>
+                        <div id="dashboardNewsList" class="dashboard-news-list"></div>
+                    </div>
+                    <div class="dashboard-section" id="dashboardQuickAccessSection">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <h3 style="margin: 0;">⚡ Schnellzugriff</h3>
+                            <button id="editQuickAccessBtn" class="btn btn-icon" title="Schnellzugriff bearbeiten" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                                ✏️
+                            </button>
+                        </div>
+                        <div class="dashboard-quick-links" id="dashboardQuickLinks"></div>
+                    </div>
+                    <div class="dashboard-section" id="dashboardCalendarSection">
+                        <h3>📅 Eigener Kalender</h3>
+                        <div>
+                            <button class="btn btn-primary" onclick="App.navigateTo('kalender')">Zum Kalender & Export</button>
+                        </div>
+                    </div>
+                    <div class="dashboard-section" id="dashboardActivitySection">
+                        <h3>✨ Neue Aktivität</h3>
+                        <div id="dashboardActivityList" class="dashboard-activity-list"></div>
+                    </div>
+                </div>
+
                 <div class="section">
                     <h3>Nächste Termine</h3>
                     <div id="upcomingList" class="rehearsal-list"></div>
@@ -483,6 +510,20 @@
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Modal: Schnellzugriff bearbeiten -->
+    <div id="quickAccessModal" class="modal">
+        <div class="modal-content" style="max-width: 420px;">
+            <h2>Schnellzugriff bearbeiten</h2>
+            <form id="quickAccessForm">
+                <div id="quickAccessOptions" style="display: flex; flex-direction: column; gap: 0.7rem; margin: 1rem 0;"></div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                    <button type="button" class="btn btn-secondary" id="cancelQuickAccessBtn">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Absences Content (for inclusion in Settings) -->

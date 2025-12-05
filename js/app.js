@@ -1,5 +1,12 @@
 // Main Application Controller
 
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+    App.setupDashboardFeatures();
+});
+// Main Application Controller
+
 const App = {
 
     // Track deleted songs for potential rollback
@@ -21,6 +28,62 @@ const App = {
         } catch (err) {
             UI.showToast('Fehler beim Löschen: ' + (err.message || err), 'error');
         }
+    },
+setupQuickAccessEdit() {
+        const editBtn = document.getElementById('editQuickAccessBtn');
+        const modal = document.getElementById('quickAccessModal');
+        const form = document.getElementById('quickAccessForm');
+        const optionsDiv = document.getElementById('quickAccessOptions');
+        const cancelBtn = document.getElementById('cancelQuickAccessBtn');
+        const quickLinks = [
+            { key: 'kalender', label: '📆 Mein Kalender', view: 'kalender' },
+            { key: 'news', label: '📰 News', view: 'news' },
+            { key: 'musikpool', label: '🎵 Musikerpool', view: 'musikpool' },
+            { key: 'bands', label: '🎸 Meine Bands', view: 'bands' },
+            { key: 'rehearsals', label: '📅 Probetermine', view: 'rehearsals' },
+            { key: 'events', label: '🎤 Auftritte', view: 'events' },
+            { key: 'statistics', label: '📊 Statistiken', view: 'statistics' },
+        ];
+        if (!editBtn || !modal || !form || !optionsDiv || !cancelBtn) return;
+        editBtn.onclick = (e) => {
+            e.stopPropagation();
+            let selected = [];
+            try {
+                selected = JSON.parse(localStorage.getItem('quickAccessLinks') || 'null');
+            } catch {}
+            if (!Array.isArray(selected) || selected.length === 0) {
+                selected = ['kalender', 'news', 'musikpool'];
+            }
+            optionsDiv.innerHTML = quickLinks.map(l =>
+                `<label style="display:flex;align-items:center;gap:0.5em;">
+                    <input type="checkbox" name="quickAccess" value="${l.key}" ${selected.includes(l.key) ? 'checked' : ''}>
+                    <span>${l.label}</span>
+                </label>`
+            ).join('');
+            modal.classList.add('active');
+        };
+        cancelBtn.onclick = (e) => {
+            e.preventDefault();
+            modal.classList.remove('active');
+        };
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            const checked = Array.from(form.querySelectorAll('input[name="quickAccess"]:checked')).map(i => i.value);
+            localStorage.setItem('quickAccessLinks', JSON.stringify(checked));
+            modal.classList.remove('active');
+            App.updateDashboard();
+        };
+        // Close modal on outside click
+        window.addEventListener('click', function handler(ev) {
+            if (ev.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    },
+
+    // Call this after DOMContentLoaded
+    setupDashboardFeatures() {
+        this.setupQuickAccessEdit();
     },
 
     async init() {
@@ -3312,6 +3375,101 @@ const App = {
         document.getElementById('confirmedRehearsals').textContent = confirmedRehearsals.length;
 
         await this.renderUpcomingList();
+        // Populate Letzte News
+        const newsSection = document.getElementById('dashboardNewsList');
+        if (newsSection) {
+            const news = await Storage.getAllNews();
+            if (news.length === 0) {
+                newsSection.innerHTML = '<div class="empty-state"><div class="empty-icon">📰</div><p>Keine News vorhanden.</p></div>';
+            } else {
+                newsSection.innerHTML = news.slice(0, 3).map(n => `
+                    <div class="dashboard-news-item">
+                        <div class="news-title">${Bands.escapeHtml(n.title)}</div>
+                        <div class="news-date">${UI.formatDateShort(n.createdAt)}</div>
+                        <div class="news-content">${Bands.escapeHtml(n.content).slice(0, 80)}${n.content.length > 80 ? '…' : ''}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Populate Schnellzugriff (Quick Access)
+        const quickLinksDiv = document.getElementById('dashboardQuickLinks');
+        if (quickLinksDiv) {
+            // Define available quick links (same as in setupQuickAccessEdit)
+            const quickLinks = [
+                { key: 'kalender', label: '📆 Mein Kalender', view: 'kalender' },
+                { key: 'news', label: '📰 News', view: 'news' },
+                { key: 'musikpool', label: '🎵 Musikerpool', view: 'musikpool' },
+                { key: 'bands', label: '🎸 Meine Bands', view: 'bands' },
+                { key: 'rehearsals', label: '📅 Probetermine', view: 'rehearsals' },
+                { key: 'events', label: '🎤 Auftritte', view: 'events' },
+                { key: 'statistics', label: '📊 Statistiken', view: 'statistics' },
+            ];
+            let selected = [];
+            try {
+                selected = JSON.parse(localStorage.getItem('quickAccessLinks') || 'null');
+            } catch {}
+            if (!Array.isArray(selected) || selected.length === 0) {
+                selected = ['kalender', 'news', 'musikpool'];
+            }
+            const linksToShow = quickLinks.filter(l => selected.includes(l.key));
+            if (linksToShow.length === 0) {
+                quickLinksDiv.innerHTML = '<span class="text-muted">Keine Schnellzugriffs-Links ausgewählt.</span>';
+            } else {
+                quickLinksDiv.innerHTML = linksToShow.map(l =>
+                    `<button class="btn btn-quick-link" data-view="${l.view}" style="margin:0 0.5em 0.5em 0;">${l.label}</button>`
+                ).join('');
+                // Add click handlers
+                quickLinksDiv.querySelectorAll('.btn-quick-link').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.preventDefault();
+                        this.navigateTo(btn.dataset.view);
+                    };
+                });
+            }
+        }
+
+        // Populate Neue Aktivität (recent events, rehearsals, news)
+        const activitySection = document.getElementById('dashboardActivityList');
+        if (activitySection) {
+            const user = Auth.getCurrentUser();
+            const [events, rehearsals, news] = await Promise.all([
+                Storage.getUserEvents(user.id),
+                Storage.getUserRehearsals(user.id),
+                Storage.getAllNews()
+            ]);
+            // Get most recent 5 items (events, rehearsals, news)
+            let activities = [];
+            activities = activities.concat(
+                (events || []).map(e => ({
+                    type: 'event',
+                    date: e.date,
+                    title: e.title,
+                })),
+                (rehearsals || []).filter(r => r.status === 'confirmed' && r.confirmedDateIndex !== undefined).map(r => ({
+                    type: 'rehearsal',
+                    date: r.proposedDates[r.confirmedDateIndex],
+                    title: r.title,
+                })),
+                (news || []).map(n => ({
+                    type: 'news',
+                    date: n.createdAt,
+                    title: n.title,
+                }))
+            );
+            activities = activities.filter(a => a.date).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+            if (activities.length === 0) {
+                activitySection.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>Keine neue Aktivität.</p></div>';
+            } else {
+                activitySection.innerHTML = activities.map(a => `
+                    <div class="dashboard-activity-item">
+                        <span class="activity-icon">${a.type === 'event' ? '🎤' : a.type === 'rehearsal' ? '📅' : '📰'}</span>
+                        <span class="activity-title">${Bands.escapeHtml(a.title)}</span>
+                        <span class="activity-date">${UI.formatDateShort(a.date)}</span>
+                    </div>
+                `).join('');
+            }
+        }
     },
 
     // Render upcoming events and rehearsals sorted by date
