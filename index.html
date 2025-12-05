@@ -136,6 +136,9 @@
             <div class="header-content">
                 <h1 class="logo">🎸 Band Management Tool</h1>
                 <div class="header-actions">
+                    <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten" style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-right: 0.5em;">
+                        <span id="themeToggleIcon">🌙</span>
+                    </button>
                     <span id="currentUserName" class="user-name">User</span>
                     <button id="logoutBtn" class="btn btn-secondary">
                         <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
@@ -283,12 +286,16 @@
                 <!-- Neue Dashboard-Abschnitte -->
                 <div class="dashboard-sections">
                     <div class="dashboard-section" id="dashboardNewsSection">
-                        <h3>📰 Letzte News</h3>
+                        <div class="dashboard-section-header">
+                            <h3>📰 Letzte News</h3>
+                            <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                        </div>
                         <div id="dashboardNewsList" class="dashboard-news-list"></div>
                     </div>
                     <div class="dashboard-section" id="dashboardQuickAccessSection">
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div class="dashboard-section-header">
                             <h3 style="margin: 0;">⚡ Schnellzugriff</h3>
+                            <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
                             <button id="editQuickAccessBtn" class="btn btn-icon" title="Schnellzugriff bearbeiten" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
                                 ✏️
                             </button>
@@ -296,13 +303,19 @@
                         <div class="dashboard-quick-links" id="dashboardQuickLinks"></div>
                     </div>
                     <div class="dashboard-section" id="dashboardCalendarSection">
-                        <h3>📅 Eigener Kalender</h3>
+                        <div class="dashboard-section-header">
+                            <h3>📅 Eigener Kalender</h3>
+                            <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                        </div>
                         <div>
                             <button class="btn btn-primary" onclick="App.navigateTo('kalender')">Zum Kalender & Export</button>
                         </div>
                     </div>
                     <div class="dashboard-section" id="dashboardActivitySection">
-                        <h3>✨ Neue Aktivität</h3>
+                        <div class="dashboard-section-header">
+                            <h3>✨ Neue Aktivität</h3>
+                            <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                        </div>
                         <div id="dashboardActivityList" class="dashboard-activity-list"></div>
                     </div>
                 </div>
@@ -632,16 +645,6 @@
                                         </div>
                                     </div>
                                 </div>
-                            <h3>Darstellung</h3>
-                            <div class="form-group" style="display:flex;align-items:center;gap:12px;">
-                                <label for="themeToggle" style="margin:0;">Dark Mode</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="themeToggle">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <small style="color: var(--color-text-secondary);">Der Dark Mode wird lokal
-                                gespeichert.</small>
                         </div>
                         <div class="section" style="margin-top: 1rem;">
                             <h3>Spenden-Link</h3>

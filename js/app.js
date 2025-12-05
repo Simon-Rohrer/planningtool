@@ -91,10 +91,20 @@ setupQuickAccessEdit() {
         // Initialize Supabase Auth first
         await Auth.init();
 
-        // Apply saved theme on app start
+        // Apply saved theme on app start (and update icon if present)
         const savedTheme = localStorage.getItem('theme');
+        const themeToggleHeader = document.getElementById('themeToggleHeader');
+        const themeToggleIcon = document.getElementById('themeToggleIcon');
+        let isDark = false;
         if (savedTheme) {
-            document.documentElement.classList.toggle('theme-dark', savedTheme === 'dark');
+            isDark = savedTheme === 'dark';
+        } else {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        document.documentElement.classList.toggle('theme-dark', isDark);
+        if (themeToggleIcon && themeToggleHeader) {
+            themeToggleIcon.textContent = isDark ? '☀️' : '🌙';
+            themeToggleHeader.title = isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren';
         }
 
         // Check authentication
@@ -2130,7 +2140,29 @@ setupQuickAccessEdit() {
         document.getElementById('app').style.display = 'flex';
 
         const user = Auth.getCurrentUser();
-        document.getElementById('currentUserName').textContent = user.name;
+        document.getElementById('currentUserName').textContent = user.username || user.name;
+
+        // Theme toggle header initialisieren (falls noch nicht gesetzt)
+        const themeToggleHeader = document.getElementById('themeToggleHeader');
+        const themeToggleIcon = document.getElementById('themeToggleIcon');
+        if (themeToggleHeader && themeToggleIcon && !themeToggleHeader._themeInit) {
+            function updateThemeIcon() {
+                const isDark = document.documentElement.classList.contains('theme-dark');
+                themeToggleIcon.textContent = isDark ? '☀️' : '🌙';
+                themeToggleHeader.title = isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren';
+            }
+            const savedTheme = localStorage.getItem('theme');
+            const isDark = savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('theme-dark', isDark);
+            updateThemeIcon();
+            themeToggleHeader.addEventListener('click', () => {
+                const dark = !document.documentElement.classList.contains('theme-dark');
+                document.documentElement.classList.toggle('theme-dark', dark);
+                localStorage.setItem('theme', dark ? 'dark' : 'light');
+                updateThemeIcon();
+            });
+            themeToggleHeader._themeInit = true;
+        }
 
         const isAdmin = Auth.isAdmin();
 
@@ -2275,18 +2307,7 @@ setupQuickAccessEdit() {
         // Default to profile tab
         this.switchSettingsTab('profile');
 
-        // Theme toggle
-        const themeToggle = document.getElementById('themeToggle');
-        if (themeToggle) {
-            const savedTheme = localStorage.getItem('theme');
-            const isDark = savedTheme === 'dark' || (savedTheme === null && document.documentElement.classList.contains('theme-dark'));
-            themeToggle.checked = isDark;
-            themeToggle.addEventListener('change', (e) => {
-                const dark = e.target.checked;
-                document.documentElement.classList.toggle('theme-dark', dark);
-                localStorage.setItem('theme', dark ? 'dark' : 'light');
-            });
-        }
+        // Theme toggle wird global im Header gehandhabt
 
         // Donate link
         const donateLinkInput = document.getElementById('donateLink');
@@ -3374,6 +3395,65 @@ setupQuickAccessEdit() {
         const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
         document.getElementById('confirmedRehearsals').textContent = confirmedRehearsals.length;
 
+        // Dashboard Sections Drag & Drop
+        const dashboardSectionsContainer = document.querySelector('.dashboard-sections');
+        if (dashboardSectionsContainer) {
+            const sectionIds = [
+                'dashboardNewsSection',
+                'dashboardQuickAccessSection',
+                'dashboardCalendarSection',
+                'dashboardActivitySection'
+            ];
+            // Reihenfolge aus localStorage holen
+            let order = [];
+            try {
+                order = JSON.parse(localStorage.getItem('dashboardSectionOrder') || 'null');
+            } catch {}
+            if (!Array.isArray(order) || order.length !== sectionIds.length) {
+                order = sectionIds;
+            }
+            // Sortiere die Sections nach gespeicherter Reihenfolge
+            order.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) dashboardSectionsContainer.appendChild(el);
+            });
+            // Drag & Drop Setup
+            sectionIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.setAttribute('draggable', 'true');
+                el.ondragstart = (e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', id);
+                    el.classList.add('dragging');
+                };
+                el.ondragend = () => {
+                    el.classList.remove('dragging');
+                    el.classList.remove('drag-over');
+                };
+                el.ondragover = (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    el.classList.add('drag-over');
+                };
+                el.ondragleave = (e) => {
+                    el.classList.remove('drag-over');
+                };
+                el.ondrop = (e) => {
+                    e.preventDefault();
+                    el.classList.remove('drag-over');
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    if (!draggedId || draggedId === id) return;
+                    const draggedEl = document.getElementById(draggedId);
+                    if (draggedEl) {
+                        dashboardSectionsContainer.insertBefore(draggedEl, el);
+                        // Neue Reihenfolge speichern
+                        const newOrder = Array.from(dashboardSectionsContainer.children).map(child => child.id);
+                        localStorage.setItem('dashboardSectionOrder', JSON.stringify(newOrder));
+                    }
+                };
+            });
+        }
         await this.renderUpcomingList();
         // Populate Letzte News
         const newsSection = document.getElementById('dashboardNewsList');
