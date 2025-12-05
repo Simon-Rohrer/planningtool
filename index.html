@@ -30,62 +30,83 @@
 </head>
 
 <body>
-    <!-- Login/Registration Modal -->
-    <div id="authModal" class="modal active">
-        <div class="modal-content auth-modal">
-            <h1>🎵 Band Planning Tool</h1>
-            <p class="subtitle">Organisiere deine Bandproben effizient</p>
-
-            <div class="auth-tabs">
-                <button class="auth-tab active" data-tab="login">Anmelden</button>
-                <button class="auth-tab" data-tab="register">Registrieren</button>
+    <!-- Landing Page with Split Layout -->
+    <div id="landingPage" class="landing-page active">
+        <div class="landing-container">
+            <!-- Left Side: Welcome Text -->
+            <div class="landing-left">
+                <div class="welcome-content">
+                    <h1>🎵 Band Planning Tool</h1>
+                    <h2>Willkommen!</h2>
+                    <p>Organisiere deine Bandproben effizient und behalte den Überblick über alle wichtigen Termine.</p>
+                    <ul class="feature-list">
+                        <li>📅 Proben und Events planen</li>
+                        <li>👥 Band-Mitglieder verwalten</li>
+                        <li>📊 Statistiken und Übersichten</li>
+                        <li>📧 E-Mail-Benachrichtigungen</li>
+                    </ul>
+                </div>
             </div>
 
-            <!-- Login Form -->
-            <form id="loginForm" class="auth-form active">
-                <div class="form-group">
-                    <label for="loginUsername">Benutzername oder E-Mail</label>
-                    <input type="text" id="loginUsername" required>
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">Passwort</label>
-                    <input type="password" id="loginPassword" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Anmelden</button>
-            </form>
+            <!-- Right Side: Login/Register Forms -->
+            <div class="landing-right">
+                <div class="auth-container">
+                    <div class="auth-tabs">
+                        <button class="auth-tab active" data-tab="login">Anmelden</button>
+                        <button class="auth-tab" data-tab="register">Registrieren</button>
+                    </div>
 
-            <!-- Register Form -->
-            <form id="registerForm" class="auth-form">
-                <div class="form-group">
-                    <label for="registerCode">Registrierungscode</label>
-                    <input type="text" id="registerCode" placeholder="Code eingeben" required>
-                    <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Bitte gib den gültigen
-                        Registrierungscode ein</small>
+                    <!-- Login Form -->
+                    <form id="loginForm" class="auth-form active">
+                        <div class="form-group">
+                            <label for="loginUsername">Benutzername oder E-Mail</label>
+                            <input type="text" id="loginUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Passwort</label>
+                            <input type="password" id="loginPassword" required>
+                        </div>
+                        <button type="button" class="btn-link forgot-password">Passwort vergessen?</button>
+                        <button type="submit" class="btn btn-primary">Anmelden</button>
+                    </form>
+
+                    <!-- Register Form -->
+                    <form id="registerForm" class="auth-form">
+                        <div class="form-group">
+                            <label for="registerCode">Registrierungscode</label>
+                            <input type="text" id="registerCode" placeholder="Code eingeben" required>
+                            <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Bitte gib den gültigen
+                                Registrierungscode ein</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerName">Name</label>
+                            <input type="text" id="registerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerEmail">E-Mail</label>
+                            <input type="email" id="registerEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerUsername">Benutzername</label>
+                            <input type="text" id="registerUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword">Passwort</label>
+                            <input type="password" id="registerPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPasswordConfirm">Passwort bestätigen</label>
+                            <input type="password" id="registerPasswordConfirm" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Registrieren</button>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label for="registerName">Name</label>
-                    <input type="text" id="registerName" required>
-                </div>
-                <div class="form-group">
-                    <label for="registerEmail">E-Mail</label>
-                    <input type="email" id="registerEmail" required>
-                </div>
-                <div class="form-group">
-                    <label for="registerUsername">Benutzername</label>
-                    <input type="text" id="registerUsername" required>
-                </div>
-                <div class="form-group">
-                    <label for="registerPassword">Passwort</label>
-                    <input type="password" id="registerPassword" required>
-                </div>
-                <div class="form-group">
-                    <label for="registerPasswordConfirm">Passwort bestätigen</label>
-                    <input type="password" id="registerPasswordConfirm" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Registrieren</button>
-            </form>
+            </div>
         </div>
     </div>
+
+    <!-- Main Dashboard (hidden initially) -->
+    <div id="mainApp" class="main-app" style="display: none;">
 
     <!-- Onboarding Modal -->
     <div id="onboardingModal" class="modal">
@@ -557,6 +578,19 @@
                             <button type="submit" class="btn btn-primary">Speichern</button>
                         </form>
                         <div class="section" style="margin-top: 1rem;">
+                                <!-- Account löschen Button -->
+                                <button id="deleteAccountBtn" class="btn btn-danger" style="margin-top:2rem;">Account löschen</button>
+                                <!-- Account-Löschen Modal -->
+                                <div id="deleteAccountModal" class="modal">
+                                    <div class="modal-content" style="max-width: 400px;">
+                                        <h2 style="color:#c00;">Account wirklich löschen?</h2>
+                                        <p style="margin:1rem 0; color:#c00; font-weight:600;">Achtung: Wenn du deinen Account löschst, werden <u>alle deine Daten unwiderruflich entfernt</u> und können nicht wiederhergestellt werden!</p>
+                                        <div style="display:flex; gap:1rem; justify-content:flex-end;">
+                                            <button id="cancelDeleteAccountBtn" class="btn">Abbrechen</button>
+                                            <button id="confirmDeleteAccountBtn" class="btn btn-danger">Ja, endgültig löschen</button>
+                                        </div>
+                                    </div>
+                                </div>
                             <h3>Darstellung</h3>
                             <div class="form-group" style="display:flex;align-items:center;gap:12px;">
                                 <label for="themeToggle" style="margin:0;">Dark Mode</label>
@@ -1405,6 +1439,8 @@
             </div>
         </div>
     </div>
+
+    </div> <!-- End of mainApp -->
 
     <!-- Scripts -->
     <!-- iCal.js library for parsing calendar data -->

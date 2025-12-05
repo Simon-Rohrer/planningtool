@@ -1,6 +1,15 @@
+    // (removed duplicate top-level async deleteUser)
 // Storage Module - Supabase-only (no localStorage fallback)
 
 const Storage = {
+    // Löscht einen User aus der eigenen Datenbank
+    async deleteUser(userId) {
+        const sb = SupabaseClient.getClient();
+        if (!sb || !userId) throw new Error('Kein User zum Löschen gefunden!');
+        const { error } = await sb.from('users').delete().eq('id', userId);
+        if (error) throw new Error('User konnte nicht aus der Datenbank gelöscht werden!');
+        return true;
+    },
     // Initialize storage
     async init() {
         if (!SupabaseClient.isConfigured()) {

@@ -1,11 +1,29 @@
+    // (removed duplicate top-level async deleteCurrentUser)
 // Authentication Module with Supabase Auth
 
 const Auth = {
+
     currentUser: null,
     supabaseUser: null, // Supabase auth.users record
 
-    // Valid registration codes (can be managed via localStorage)
-    validRegistrationCodes: [],
+    // Löscht den aktuell eingeloggten User aus Supabase Auth
+    async deleteCurrentUser() {
+        const sb = SupabaseClient.getClient();
+        const user = this.getSupabaseUser();
+        if (!sb || !user) throw new Error('Kein eingeloggter User gefunden!');
+        // Supabase Admin API: User löschen (nur mit Service Role Key möglich)
+        // Workaround: User kann sich selbst löschen über REST API
+        const res = await fetch(`https://YOUR_PROJECT_ID.supabase.co/auth/v1/user`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': sb.auth['anonKey'],
+                'Authorization': `Bearer ${sb.auth['currentSession']?.access_token}`
+            }
+        });
+        if (!res.ok) throw new Error('Account konnte nicht gelöscht werden!');
+        this.currentUser = null;
+        this.supabaseUser = null;
+    },
 
     async init() {
         // Set the single valid registration code

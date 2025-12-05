@@ -1,10 +1,30 @@
 // Main Application Controller
 
 const App = {
+
     // Track deleted songs for potential rollback
     deletedEventSongs: [],
 
+    // Account löschen Logik
+    async handleDeleteAccount() {
+        try {
+            UI.showToast('Account wird gelöscht...', 'error');
+            // 1. User aus Supabase Auth löschen
+            await Auth.deleteCurrentUser();
+            // 2. User aus eigener Datenbank löschen
+            await Storage.deleteUser(Auth.getCurrentUser().id);
+            UI.showToast('Account und alle Daten wurden gelöscht.', 'success');
+            UI.closeModal('deleteAccountModal');
+            // 3. Logout und zurück zur Landing-Page
+            await Auth.logout();
+            this.showAuth();
+        } catch (err) {
+            UI.showToast('Fehler beim Löschen: ' + (err.message || err), 'error');
+        }
+    },
+
     async init() {
+        // Initialisierung
         // Initialize Supabase Auth first
         await Auth.init();
 
@@ -43,7 +63,6 @@ const App = {
 
     preloadStandardCalendars() {
         // Pre-load Tonstudio, JMS Festhalle, and Ankersaal calendars
-        console.log('[App] Pre-loading standard calendars...');
         if (typeof Calendar !== 'undefined' && Calendar.ensureLocationCalendar) {
             const standardCalendars = [
                 { id: 'tonstudio', name: 'Tonstudio' },
@@ -53,13 +72,35 @@ const App = {
 
             standardCalendars.forEach(cal => {
                 Calendar.ensureLocationCalendar(cal.id, cal.name)
-                    .then(() => console.log(`[App] Pre-loaded calendar: ${cal.name}`))
-                    .catch(err => console.error(`[App] Failed to pre-load ${cal.name}:`, err));
+                    .catch(err => console.error(`[App] Kalender konnte nicht geladen werden: ${cal.name}`, err));
             });
         }
     },
 
     setupEventListeners() {
+        // Account löschen Button
+        const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+        if (deleteAccountBtn) {
+            deleteAccountBtn.addEventListener('click', () => {
+                UI.openModal('deleteAccountModal');
+            });
+        }
+
+                // Modal: Abbrechen
+                const cancelDeleteAccountBtn = document.getElementById('cancelDeleteAccountBtn');
+                if (cancelDeleteAccountBtn) {
+                    cancelDeleteAccountBtn.addEventListener('click', () => {
+                        UI.closeModal('deleteAccountModal');
+                    });
+                }
+
+                // Modal: Bestätigen
+                const confirmDeleteAccountBtn = document.getElementById('confirmDeleteAccountBtn');
+                if (confirmDeleteAccountBtn) {
+                    confirmDeleteAccountBtn.addEventListener('click', async () => {
+                        await App.handleDeleteAccount();
+                    });
+                }
         // Auth form tabs
         document.querySelectorAll('.auth-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -95,14 +136,6 @@ const App = {
                     const navGroup = item.closest('.nav-group');
                     const hasSubmenu = navGroup && navGroup.querySelector('.nav-submenu');
 
-                    console.log('[MOBILE NAV]', {
-                        isMobile,
-                        isMainNav,
-                        hasNavGroup: !!navGroup,
-                        hasSubmenu: !!hasSubmenu,
-                        windowWidth: window.innerWidth
-                    });
-
                     // Check if submenu has any visible items
                     let hasVisibleSubmenuItems = false;
                     if (hasSubmenu) {
@@ -112,14 +145,11 @@ const App = {
                             const isVisible = subitem.style.display !== 'none' && computedStyle.display !== 'none';
                             return isVisible;
                         });
-                        console.log('[MOBILE NAV] Subitems:', subitems.length, 'Visible:', hasVisibleSubmenuItems);
                     }
 
                     if (isMobile && isMainNav && hasSubmenu) {
                         e.preventDefault();
                         e.stopPropagation();
-
-                        console.log('[MOBILE NAV] Opening submenu for nav-main');
 
                         // Toggle submenu open/close
                         const isOpen = navGroup.classList.contains('submenu-open');
@@ -140,9 +170,7 @@ const App = {
                             if (submenu) {
                                 submenu.style.display = 'flex';
                                 submenu.style.flexDirection = 'column';
-                                console.log('[MOBILE NAV] Set submenu display to flex');
                             }
-                            console.log('[MOBILE NAV] Added submenu-open class');
                         } else {
                             const submenu = navGroup.querySelector('.nav-submenu');
                             if (submenu) {
@@ -164,12 +192,7 @@ const App = {
                     // Check if this is a settings subitem with a specific tab
                     const settingsTab = item.dataset.settingsTab;
 
-                    console.log(`[NAV CLICK] Clicked on nav item with view: "${view}"`);
-                    console.log(`[NAV CLICK] this.navigateTo type:`, typeof this.navigateTo);
-                    console.log(`[NAV CLICK] App.navigateTo type:`, typeof App.navigateTo);
-                    console.log(`[NAV CLICK] About to call navigateTo...`);
                     const result = await App.navigateTo(view);
-                    console.log(`[NAV CLICK] Navigation to "${view}" completed, result:`, result);
 
                     // If navigating to settings with a specific tab, switch to that tab
                     if (view === 'settings' && settingsTab) {
@@ -183,11 +206,9 @@ const App = {
                     }
                 } catch (error) {
                     console.error('[NAV CLICK] Error:', error);
-                    console.error('[NAV CLICK] Stack:', error.stack);
                 }
             });
         });
-        console.log(`[INIT] Attached click handlers to ${document.querySelectorAll('.nav-item').length} nav items`);
 
         // Close mobile submenus when clicking outside
         document.addEventListener('click', (e) => {
@@ -550,7 +571,7 @@ const App = {
                 if (modal) {
                     // If closing event modal, restore deleted songs
                     if (modal.id === 'createEventModal' && this.deletedEventSongs.length > 0) {
-                        console.log('Restoring', this.deletedEventSongs.length, 'deleted songs');
+                        // Wiederherstellen gelöschter Songs
                         for (const song of this.deletedEventSongs) {
                             await Storage.createSong(song);
                         }
@@ -782,7 +803,6 @@ const App = {
         // Add User Button (Admin only) - using event delegation
         document.addEventListener('click', (e) => {
             if (e.target && e.target.id === 'addUserBtn') {
-                console.log('[addUserBtn] Button clicked!');
                 // Reset form
                 document.getElementById('addUserForm').reset();
                 UI.openModal('addUserModal');
@@ -791,16 +811,13 @@ const App = {
 
         // Add User Form (Admin only)
         const addUserForm = document.getElementById('addUserForm');
-        console.log('[setupEventListeners] addUserForm found:', !!addUserForm);
         if (addUserForm) {
-            console.log('[setupEventListeners] Adding submit listener to addUserForm');
             addUserForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                console.log('[addUserForm] Form submitted! Calling handleAddUser...');
                 try {
                     await this.handleAddUser();
                 } catch (error) {
-                    console.error('[addUserForm] Caught error:', error);
+                    console.error('[addUserForm] Fehler beim Hinzufügen:', error);
                     UI.hideLoading();
                     UI.showToast('Fehler: ' + error.message, 'error');
                 }
@@ -857,8 +874,6 @@ const App = {
     // Navigate to a specific view
     async navigateTo(view) {
         try {
-            console.log(`[navigateTo] Called with view: "${view}"`);
-
             const viewMap = {
                 'dashboard': 'dashboardView',
                 'bands': 'bandsView',
@@ -874,10 +889,8 @@ const App = {
             };
 
             const viewId = viewMap[view];
-            console.log(`[navigateTo] Mapped to viewId: "${viewId}"`);
 
             if (viewId) {
-                console.log(`[navigateTo] ViewId is valid, proceeding...`);
                 // Set nav active color per view for sticky bottom bar indicator
                 const navActiveColorMap = {
                     dashboard: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
@@ -953,9 +966,7 @@ const App = {
                         }
 
                         // Load calendar when navigating to probeorte view
-                        console.log('Navigating to probeorte, loading tonstudio calendar...');
                         if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
-                            console.log('Loading tonstudio calendar now...');
                             Calendar.loadCalendar('tonstudio');
                         } else {
                             console.error('Calendar object not found!');
@@ -963,7 +974,6 @@ const App = {
                     }, 50);
                 } else if (view === 'musikpool') {
                     // Load Musikpool members when navigating to view
-                    console.log('Navigating to musikpool, loading members...');
                     if (typeof Musikpool !== 'undefined' && Musikpool.loadGroupData) {
                         Musikpool.loadGroupData();
                     } else {
@@ -971,29 +981,20 @@ const App = {
                     }
                 } else if (view === 'kalender') {
                     // Load personal calendar when navigating to view
-                    console.log('[navigateTo] Kalender view detected, loading personal calendar...');
-                    console.log('[navigateTo] PersonalCalendar type:', typeof PersonalCalendar);
-                    if (typeof PersonalCalendar !== 'undefined') {
-                        console.log('[navigateTo] PersonalCalendar.loadPersonalCalendar type:', typeof PersonalCalendar.loadPersonalCalendar);
-                    }
                     if (typeof PersonalCalendar !== 'undefined' && PersonalCalendar.loadPersonalCalendar) {
-                        console.log('[navigateTo] Calling PersonalCalendar.loadPersonalCalendar()...');
                         PersonalCalendar.loadPersonalCalendar();
                     } else {
                         console.error('[navigateTo] PersonalCalendar object not found!');
                     }
                 } else if (view === 'settings') {
                     // Load settings view content
-                    console.log('[navigateTo] Settings view detected, loading settings...');
                     this.renderSettingsView();
                 }
-                console.log(`[navigateTo] Finished handling view: "${view}"`);
             } else {
-                console.log(`[navigateTo] No viewId found for view: "${view}"`);
+                // Kein View gefunden
             }
         } catch (error) {
-            console.error('[navigateTo] ERROR:', error);
-            console.error('[navigateTo] Stack trace:', error.stack);
+            console.error('[navigateTo] Fehler:', error);
         }
     },
 
@@ -1133,8 +1134,13 @@ const App = {
             return;
         }
 
+        let loadingTimeout;
         try {
             UI.showLoading('Erstelle Benutzer...');
+            loadingTimeout = setTimeout(() => {
+                UI.hideLoading();
+                UI.showToast('Timeout beim Erstellen des Benutzers. Bitte prüfe die Verbindung.', 'error');
+            }, 15000);
             console.log('[handleAddUser] Loading shown, checking existing users...');
 
             // Check if username or email already exists
@@ -1145,12 +1151,14 @@ const App = {
             const emailExists = existingUsers.some(u => u.email.toLowerCase() === email.toLowerCase());
 
             if (usernameExists) {
+                clearTimeout(loadingTimeout);
                 UI.hideLoading();
                 UI.showToast('Benutzername existiert bereits', 'error');
                 return;
             }
 
             if (emailExists) {
+                clearTimeout(loadingTimeout);
                 UI.hideLoading();
                 UI.showToast('E-Mail-Adresse existiert bereits', 'error');
                 return;
@@ -1161,6 +1169,7 @@ const App = {
             const userId = await Auth.createUserByAdmin(name, email, username, password, isAdmin);
             console.log('[handleAddUser] User created with ID:', userId);
 
+            clearTimeout(loadingTimeout);
             UI.hideLoading();
             UI.showToast(`Benutzer "${name}" erfolgreich angelegt!`, 'success');
             UI.closeModal('addUserModal');
@@ -1170,6 +1179,7 @@ const App = {
             await this.renderUsersList();
             console.log('[handleAddUser] Done!');
         } catch (error) {
+            clearTimeout(loadingTimeout);
             console.error('[handleAddUser] Error:', error);
             UI.hideLoading();
             UI.showToast(error.message, 'error');
@@ -1657,6 +1667,10 @@ const App = {
                 }
             } else {
                 UI.showToast('Song hinzugefügt', 'success');
+                // Nach dem Hinzufügen eines Songs zur Band-Setlist sofort neu rendern
+                if (bandId) {
+                    await this.renderBandSongs(bandId);
+                }
             }
 
             // If this song was created from the create-event modal, add to draft list
@@ -2022,13 +2036,25 @@ const App = {
 
     // Show authentication screen
     showAuth() {
-        document.getElementById('authModal').classList.add('active');
+        // Show landing page instead of modal
+        const landingPage = document.getElementById('landingPage');
+        const mainApp = document.getElementById('mainApp');
+        
+        if (landingPage) landingPage.classList.add('active');
+        if (mainApp) mainApp.style.display = 'none';
+        
         document.getElementById('app').style.display = 'none';
     },
 
     // Show main application
     async showApp() {
-        document.getElementById('authModal').classList.remove('active');
+        // Hide landing page and show main app
+        const landingPage = document.getElementById('landingPage');
+        const mainApp = document.getElementById('mainApp');
+        
+        if (landingPage) landingPage.classList.remove('active');
+        if (mainApp) mainApp.style.display = 'block';
+        
         document.getElementById('app').style.display = 'flex';
 
         const user = Auth.getCurrentUser();

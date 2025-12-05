@@ -75,6 +75,143 @@ body {
     overflow-x: hidden;
 }
 
+/* ===== Landing Page Styles ===== */
+.landing-page {
+    display: none;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.landing-page.active {
+    display: block;
+}
+
+.landing-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.landing-left,
+.landing-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.landing-left {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    color: white;
+}
+
+.welcome-content {
+    max-width: 500px;
+}
+
+.welcome-content h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.welcome-content h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.welcome-content p {
+    font-size: 1.125rem;
+    margin-bottom: 2rem;
+    opacity: 0.95;
+    line-height: 1.6;
+}
+
+.feature-list {
+    list-style: none;
+    padding: 0;
+}
+
+.feature-list li {
+    font-size: 1.125rem;
+    margin-bottom: 1rem;
+    padding-left: 0;
+    opacity: 0.9;
+}
+
+.landing-right {
+    background: white;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 2rem;
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+}
+
+/* Responsive Design for Landing Page */
+@media (max-width: 768px) {
+    .landing-container {
+        flex-direction: column;
+    }
+
+    .landing-left,
+    .landing-right {
+        padding: 3rem 1.5rem;
+    }
+
+    .welcome-content h1 {
+        font-size: 2rem;
+    }
+
+    .welcome-content h2 {
+        font-size: 1.5rem;
+    }
+
+    .welcome-content p,
+    .feature-list li {
+        font-size: 1rem;
+    }
+}
+
+/* Main App Container (hidden by default) */
+.main-app {
+    display: none;
+}
+
+.main-app.active {
+    display: block;
+}
+
+/* Forgot Password Link */
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.5rem 0;
+    text-align: left;
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.btn-link:hover {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+}
+
+.forgot-password {
+    margin-bottom: 1rem;
+}
+
+/* ===== End Landing Page Styles ===== */
+
 /* Toggle switch component */
 .switch {
     position: relative;
