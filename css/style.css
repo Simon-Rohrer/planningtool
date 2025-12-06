@@ -3523,7 +3523,7 @@ s
 }
 
 /* ===== Extra: Header compact rules for very small screens (<=380px) ===== */
-@media (max-width: 380px) {
+@media (max-width: 450px) {
     /* hide icons in the header submenu (header area) */
     #headerSubmenu .nav-icon,
     #headerSubmenu .icon-img {
