@@ -113,8 +113,13 @@ setupQuickAccessEdit() {
         const items = submenuMap[view] || [];
         const container = document.getElementById('headerSubmenu');
         if (!container) return;
-        container.innerHTML = items.map(i => `<button type="button" class="header-submenu-btn" data-view="${i.key}" onclick="App.navigateTo('${i.key}')">${i.icon} ${i.label}</button>`).join('');
+        container.innerHTML = items.map(i => `<button type="button" class="header-submenu-btn" data-view="${i.key}" onclick="App.navigateTo('${i.key}')"><span class=\"nav-icon\">${i.icon}</span><span class=\"header-submenu-label\">${i.label}</span></button>`).join('');
         console.log('[updateHeaderSubmenu] populated for', view, 'items:', items.map(i=>i.key));
+
+        // After rendering submenu buttons, set underline widths to match label+icon
+        setTimeout(() => {
+            try { this.updateHeaderUnderlineWidths(); } catch (e) { /* ignore */ }
+        }, 0);
 
         // Attach a delegated click handler once to the container to reliably
         // capture clicks on dynamically created buttons.
@@ -141,6 +146,21 @@ setupQuickAccessEdit() {
             });
             container.dataset.delegationAttached = 'true';
         }
+    },
+
+    // Measure header submenu button label widths and store in CSS variable
+    updateHeaderUnderlineWidths() {
+        const container = document.getElementById('headerSubmenu');
+        if (!container) return;
+        const btns = container.querySelectorAll('.header-submenu-btn');
+        btns.forEach(btn => {
+            // measure content width (approx): clientWidth minus horizontal padding
+            const cs = getComputedStyle(btn);
+            const paddingLeft = parseFloat(cs.paddingLeft) || 0;
+            const paddingRight = parseFloat(cs.paddingRight) || 0;
+            const contentWidth = Math.max(20, Math.round(btn.clientWidth - paddingLeft - paddingRight));
+            btn.style.setProperty('--underline-width', contentWidth + 'px');
+        });
     },
     setupMobileSubmenuToggle() {
         const navBar = document.getElementById('appNav');
@@ -1112,6 +1132,23 @@ setupQuickAccessEdit() {
                         item.classList.remove('active');
                     }
                 });
+
+                // Update header submenu active state (underline) if present
+                try {
+                    document.querySelectorAll('.header-submenu-btn').forEach(btn => {
+                        const v = btn.getAttribute('data-view');
+                        if (v === view || (view === 'tonstudio' && v === 'probeorte')) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.remove('active');
+                        }
+                    });
+                } catch (err) {
+                    // ignore if header submenu not present in DOM
+                }
+
+                // Recalculate underline widths in case layout changed
+                try { this.updateHeaderUnderlineWidths(); } catch (e) {}
 
                 // Render specific views
                 if (view === 'bands') {

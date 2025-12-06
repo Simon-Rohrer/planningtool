@@ -3521,3 +3521,100 @@ s
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
+
+/* ===== Extra: Header compact rules for very small screens (<=380px) ===== */
+@media (max-width: 380px) {
+    /* hide icons in the header submenu (header area) */
+    #headerSubmenu .nav-icon,
+    #headerSubmenu .icon-img {
+        display: none !important;
+    }
+
+    /* tighten spacing for header submenu buttons */
+    #headerSubmenu {
+        gap: 0.12rem !important;
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+    }
+
+    #headerSubmenu .header-submenu-btn {
+        padding: 0.45rem 0.36rem !important;
+        margin-right: 0.08rem !important;
+        font-size: 0.9rem !important;
+        min-height: 44px !important;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* Hide icons inside header (top) menu buttons as well */
+    .app-header .nav-icon,
+    .app-header .icon-img {
+        display: none !important;
+    }
+
+    /* Keep subnav items' icons visible (those inside .nav-subitem) */
+    .nav-subitem .nav-icon,
+    .nav-subitem .icon-img {
+        display: inline-block !important;
+    }
+
+    /* Logo: show only emoji, hide textual parts */
+    .logo-text { display: none !important; }
+    .logo-emoji { display: inline-block; margin-right: 0.25rem; }
+    
+    /* dashboard card icons: force 15px size for very small screens */
+    .dashboard-card .card-icon {
+        width: 35px !important;
+        height: 35px !important;
+        min-width: 35px !important;
+        min-height: 35px !important;
+        font-size: 15px !important;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+    /* Dashboard cards: show icon, title and stat in one row for touch screens */
+    .dashboard-card {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 0.6rem !important;
+        padding: 0.5rem 1.5rem !important;
+    }
+
+    .dashboard-card .card-content {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.6rem !important;
+        width: 100%;
+    }
+
+    .dashboard-card .card-content h3 {
+        margin: 0 !important;
+        font-size: 0.95rem !important;
+        font-weight: 700 !important;
+        white-space: nowrap;
+    }
+
+    .dashboard-card .card-stat {
+        margin: 0 !important;
+        margin-left: auto !important;
+        font-size: 1rem !important;
+        font-weight: 800 !important;
+    }
+
+    /* Dashboard cards should be flexible (auto width) on very small screens */
+    .dashboard-card {
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+    }
+    
+    .dashboard-card {
+        width: auto;
+        height: auto;
+        font-size: 1.5rem;
+    }
+}
