@@ -139,6 +139,8 @@
                     <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten" style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-right: 0.5em;">
                         <span id="themeToggleIcon">🌙</span>
                     </button>
+                    <!-- Header container for submenu buttons (populated by JS) -->
+                    <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
                     <span id="currentUserName" class="user-name">User</span>
                     <button id="logoutBtn" class="btn btn-secondary">
                         <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
@@ -148,8 +150,8 @@
         </header>
 
         <!-- Navigation -->
-        <nav class="app-nav">
-            <!-- Meine Band (mit Untermenü) -->
+        <nav class="app-nav" id="appNav">
+            <!-- Home (Hauptreiter) -->
             <div class="nav-group">
                 <button class="nav-item nav-main active" data-view="dashboard">
                     <span class="nav-icon">🎙️</span>
@@ -171,7 +173,7 @@
                 </div>
             </div>
 
-            <!-- Planung -->
+            <!-- Planung (Hauptreiter) -->
             <div class="nav-group">
                 <button class="nav-item nav-main" data-view="rehearsals">
                     <span class="nav-icon">🗓️</span>
@@ -201,7 +203,7 @@
                 </button>
             </div>
 
-            <!-- Analyse -->
+            <!-- Analyse (Hauptreiter) -->
             <div class="nav-group">
                 <button class="nav-item nav-main" data-view="statistics">
                     <span class="nav-icon">📊</span>

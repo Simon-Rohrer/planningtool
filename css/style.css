@@ -1,3 +1,10 @@
+@media (max-width: 769px) {
+    .nav-group.submenu-open .nav-submenu {
+        display: flex !important;
+        flex-direction: column;
+        z-index: 10001;
+    }
+}
 /* Dashboard Section Header & Drag Handle */
 .dashboard-section-header {
     display: flex;
@@ -888,9 +895,9 @@ input:checked+.slider:before {
 
     /* Show submenu as modal on mobile */
     .nav-submenu {
-        display: none;
+        /* display: none; wird vom globalen @media (max-width: 769px) Block übernommen */
         position: absolute;
-        bottom: auto;
+        bottom: 100%; /* Startet an der Oberkante des Elternelements */
         left: 50%;
         transform: translateX(-50%);
         background: var(--color-surface);
@@ -900,25 +907,29 @@ input:checked+.slider:before {
         padding: var(--spacing-md);
         min-width: 200px;
         max-width: 90vw;
-
+        z-index: 1001; /* Wichtig: Liegt über der Nav-Bar (1000) */
     }
 
     .nav-group.submenu-open .nav-submenu {
         display: flex !important;
         flex-direction: column;
         gap: var(--spacing-xs);
+        /* FINALE POSITION: bottom: 100% plus der gewünschte Abstand zur nav-group */
+        bottom: calc(100% + var(--spacing-sm)); 
         animation: slideUpMobile 0.2s ease-out forwards;
     }
 
     @keyframes slideUpMobile {
         from {
             opacity: 0;
-            transform: translateX(-50%) translateY(20px);
+            /* Startet leicht unter der finalen Position */
+            transform: translateX(-50%) translateY(20px); 
         }
 
         to {
             opacity: 1;
-            transform: translateX(-50%) translateY(-220px);
+            /* Endet an der durch 'bottom' definierten finalen Position */
+            transform: translateX(-50%) translateY(0); 
         }
     }
 
@@ -2792,6 +2803,30 @@ input:checked+.slider:before {
     .rehearsal-actions button {
         width: 100%;
     }
+}
+
+/* Header Submenu (dynamically populated) */
+.header-submenu-nav {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.5rem;
+}
+.header-submenu-btn {
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.header-submenu-btn:hover { background: var(--color-primary-dark); }
+
+@media (max-width: 480px) {
+    .header-submenu-nav { gap: 0.2rem; }
+    .header-submenu-btn { font-size: 0.82rem; padding: 0.18rem 0.45rem; }
 }
 
 /* Füge diese Styles zu deiner bestehenden style.css hinzu */

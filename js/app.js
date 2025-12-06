@@ -85,10 +85,120 @@ setupQuickAccessEdit() {
     setupDashboardFeatures() {
         this.setupQuickAccessEdit();
     },
+    // Update header submenu buttons depending on active main view
+    updateHeaderSubmenu(view) {
+        const submenuMap = {
+            dashboard: [
+                { key: 'dashboard', label: 'Dashboard', icon: '🏠' },
+                { key: 'bands', label: 'Meine Bands', icon: '🎸' },
+                { key: 'musikpool', label: 'Musikerpool', icon: '🎵' }
+            ],
+            rehearsals: [
+                { key: 'rehearsals', label: 'Probetermine', icon: '📅' },
+                { key: 'probeorte', label: 'Probeorte', icon: '🎙️' },
+                { key: 'kalender', label: 'Mein Kalender', icon: '📆' }
+            ],
+            events: [
+                { key: 'events', label: 'Auftritte', icon: '🎸' }
+            ],
+            statistics: [
+                { key: 'statistics', label: 'Statistiken', icon: '📊' },
+                { key: 'news', label: 'News', icon: '📰' }
+            ],
+            settings: [
+                { key: 'settings', label: 'Einstellungen', icon: '⚙️' }
+            ]
+        };
+
+        const items = submenuMap[view] || [];
+        const container = document.getElementById('headerSubmenu');
+        if (!container) return;
+        container.innerHTML = items.map(i => `<button type="button" class="header-submenu-btn" data-view="${i.key}" onclick="App.navigateTo('${i.key}')">${i.icon} ${i.label}</button>`).join('');
+        console.log('[updateHeaderSubmenu] populated for', view, 'items:', items.map(i=>i.key));
+
+        // Attach a delegated click handler once to the container to reliably
+        // capture clicks on dynamically created buttons.
+        if (!container.dataset.delegationAttached) {
+            container.addEventListener('click', (e) => {
+                const btn = e.target.closest('.header-submenu-btn');
+                if (!btn) return;
+                const viewKey = btn.getAttribute('data-view');
+                console.log('[HEADER SUBMENU] delegated click sync', viewKey, 'target:', e.target);
+                if (!viewKey) return;
+                try {
+                    if (typeof App !== 'undefined' && App.navigateTo) {
+                        App.navigateTo(viewKey);
+                        console.log('[HEADER SUBMENU] navigateTo invoked sync for', viewKey);
+                    } else if (this && this.navigateTo) {
+                        this.navigateTo(viewKey);
+                        console.log('[HEADER SUBMENU] this.navigateTo invoked sync for', viewKey);
+                    } else {
+                        console.warn('[HEADER SUBMENU] navigateTo not available for', viewKey);
+                    }
+                } catch (err) {
+                    console.error('[HEADER SUBMENU] navigateTo error for', viewKey, err);
+                }
+            });
+            container.dataset.delegationAttached = 'true';
+        }
+    },
+    setupMobileSubmenuToggle() {
+        const navBar = document.getElementById('appNav');
+        if (!navBar) {
+            console.warn('Fehler: #appNav Element für mobile Navigation nicht gefunden.');
+            return;
+        }
+
+        // On desktop we keep the click/hover behaviour that shows nav-submenu.
+        // On mobile we do not attach the old toggle handler because mobile will
+        // show the submenu in the header instead.
+        if (window.innerWidth <= 768) {
+            return;
+        }
+
+        navBar.addEventListener('click', (e) => {
+            // Findet das geklickte .nav-item (oder dessen Elternelement)
+            const clickedItem = e.target.closest('.nav-item');
+            if (!clickedItem) return;
+
+            const navGroup = clickedItem.closest('.nav-group');
+            
+            // Prüfen, ob das geklickte Element Teil einer Gruppe mit Submenü ist
+            if (navGroup && navGroup.querySelector('.nav-submenu')) {
+                e.preventDefault(); // Verhindert, dass der Link (#) die Seite neu lädt oder springt
+                e.stopPropagation(); // Verhindert sofortiges Schließen durch globalen Handler
+
+                // 1. Alle anderen offenen Submenüs schließen
+                document.querySelectorAll('.nav-group.submenu-open').forEach(group => {
+                    // Schließe nur, wenn es nicht die aktuell geklickte Gruppe ist
+                    if (group !== navGroup) {
+                        group.classList.remove('submenu-open');
+                    }
+                });
+
+                // 2. Das geklickte Submenü öffnen/schließen (Toggle)
+                navGroup.classList.toggle('submenu-open');
+            }
+        });
+
+        // Submenüs schließen, wenn man irgendwo anders klickt (Globale Schließlogik)
+        document.addEventListener('click', (e) => {
+            const isClickInsideNav = e.target.closest('.app-nav');
+            const isClickInsideSubmenu = e.target.closest('.nav-submenu');
+            // Schließe alle Submenüs, wenn der Klick NICHT in der Nav-Bar und NICHT im Submenü war
+            if (!isClickInsideNav && !isClickInsideSubmenu) {
+                document.querySelectorAll('.nav-group.submenu-open').forEach(group => {
+                    group.classList.remove('submenu-open');
+                });
+            }
+        });
+    },
 
     async init() {
         // Initialisierung
         // Initialize Supabase Auth first
+        this.setupMobileSubmenuToggle();
+
         await Auth.init();
 
         // Apply saved theme on app start (and update icon if present)
@@ -120,6 +230,10 @@ setupQuickAccessEdit() {
 
         // Setup event listeners
         this.setupEventListeners();
+        // Initialize header submenu for default view on mobile only
+        if (window.innerWidth <= 768) {
+            this.updateHeaderSubmenu('dashboard');
+        }
         // init draft song list for new events
         this.draftEventSongIds = [];
         this.lastSongModalContext = null; // { eventId, bandId, origin }
@@ -224,33 +338,30 @@ setupQuickAccessEdit() {
                         e.preventDefault();
                         e.stopPropagation();
 
-                        // Toggle submenu open/close
-                        const isOpen = navGroup.classList.contains('submenu-open');
-
-                        // Close all other submenus
-                        document.querySelectorAll('.nav-group.submenu-open').forEach(g => {
-                            g.classList.remove('submenu-open');
-                            const submenu = g.querySelector('.nav-submenu');
-                            if (submenu) {
-                                submenu.style.display = 'none';
-                            }
-                        });
-
-                        // Toggle current submenu
-                        if (!isOpen) {
-                            navGroup.classList.add('submenu-open');
-                            const submenu = navGroup.querySelector('.nav-submenu');
-                            if (submenu) {
-                                submenu.style.display = 'flex';
-                                submenu.style.flexDirection = 'column';
-                            }
-                        } else {
-                            const submenu = navGroup.querySelector('.nav-submenu');
-                            if (submenu) {
-                                submenu.style.display = 'none';
+                        // On mobile: render the subitems in the header area.
+                        const mainView = item.dataset.view;
+                        if (mainView) {
+                            this.updateHeaderSubmenu(mainView);
+                            // Also navigate to the primary subitem (first one) so
+                            // the main tab is clickable and leads somewhere — similar
+                            // to tapping the main item on desktop which often shows
+                            // a default child view.
+                            const submenuMap = {
+                                dashboard: ['dashboard','bands','musikpool'],
+                                rehearsals: ['rehearsals','probeorte','kalender'],
+                                events: ['events'],
+                                statistics: ['statistics','news'],
+                                settings: ['settings']
+                            };
+                            const first = (submenuMap[mainView] && submenuMap[mainView][0]) || mainView;
+                            try {
+                                await this.navigateTo(first);
+                            } catch (navErr) {
+                                console.error('[MOBILE NAV] navigateTo error for', first, navErr);
                             }
                         }
-                        return; // Don't navigate, just show submenu
+
+                        return;
                     }
 
                     // Close submenu after clicking subitem on mobile
@@ -261,6 +372,11 @@ setupQuickAccessEdit() {
                     e.stopPropagation(); // Prevent event bubbling
                     const view = item.dataset.view;
                     if (!view) return;
+
+                    // If main nav clicked and we're on mobile, update header submenu accordingly
+                    if (isMobile && item.classList.contains('nav-main')) {
+                        this.updateHeaderSubmenu(view);
+                    }
 
                     // Check if this is a settings subitem with a specific tab
                     const settingsTab = item.dataset.settingsTab;
@@ -949,6 +1065,7 @@ setupQuickAccessEdit() {
     // Navigate to a specific view
     async navigateTo(view) {
         try {
+            console.log('[navigateTo] called with view:', view);
             const viewMap = {
                 'dashboard': 'dashboardView',
                 'bands': 'bandsView',
@@ -981,7 +1098,11 @@ setupQuickAccessEdit() {
                 const navColor = navActiveColorMap[view] || getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
                 document.documentElement.style.setProperty('--nav-active-color', navColor);
 
-                UI.showView(viewId);
+                try {
+                    UI.showView(viewId);
+                } catch (uiErr) {
+                    console.error('[navigateTo] UI.showView error:', uiErr);
+                }
 
                 // Update active navigation (both main items and subitems)
                 document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
