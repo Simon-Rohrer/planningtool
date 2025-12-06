@@ -2347,11 +2347,11 @@ setupQuickAccessEdit() {
         const bands = await Storage.getUserBands(user.id);
         const hasBands = Array.isArray(bands) && bands.length > 0;
 
-        // Hide/Show Events and Rehearsals nav items
+        // Hide/Show Rehearsals nav item. Events should always be visible.
         const eventsNav = document.querySelector('.nav-item[data-view="events"]');
         const rehearsalsNav = document.querySelector('.nav-item[data-view="rehearsals"]');
 
-        if (eventsNav) eventsNav.style.display = hasBands ? 'flex' : 'none';
+        if (eventsNav) eventsNav.style.display = 'flex';
         if (rehearsalsNav) rehearsalsNav.style.display = hasBands ? 'flex' : 'none';
     },
 

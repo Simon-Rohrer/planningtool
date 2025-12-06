@@ -12,6 +12,32 @@ const Events = {
 
         if (!user) return;
 
+        // Check if user is member of any band
+        const userBands = await Storage.getUserBands(user.id);
+        const hasBands = Array.isArray(userBands) && userBands.length > 0;
+
+        // If user has no bands, show a helpful CTA to join or create a band
+        if (!hasBands) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🎤</div>
+                    <h3>Du bist aktuell in keiner Band</h3>
+                    <p>Um Auftritte zu sehen oder zu erstellen, trete einer Band bei oder erstelle eine neue Band.</p>
+                    <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                        <button class="btn btn-primary" id="events_join_band_btn">Band beitreten</button>
+                        <button class="btn btn-secondary" id="events_create_band_btn">Neue Band erstellen</button>
+                    </div>
+                </div>
+            `;
+
+            // Wire CTAs
+            const joinBtn = document.getElementById('events_join_band_btn');
+            const createBtn = document.getElementById('events_create_band_btn');
+            if (joinBtn) joinBtn.addEventListener('click', () => UI.openModal('joinBandModal'));
+            if (createBtn) createBtn.addEventListener('click', () => UI.openModal('createBandModal'));
+            return;
+        }
+
         let events = (await Storage.getUserEvents(user.id)) || [];
 
         // Apply filter
