@@ -2308,6 +2308,18 @@ setupQuickAccessEdit() {
                 const isDark = document.documentElement.classList.contains('theme-dark');
                 themeToggleIcon.textContent = isDark ? '☀️' : '🌙';
                 themeToggleHeader.title = isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren';
+                // Update the logout icon depending on theme
+                try {
+                    const logoutImg = document.querySelector('#logoutBtn img.icon-img') || document.querySelector('#logoutBtn img');
+                    if (logoutImg) {
+                        // Use a dark-mode specific asset when in dark theme, otherwise the white/light asset
+                        logoutImg.src = isDark ? 'images/logout darkmode.jpg' : 'images/logout whitemode.jpg';
+                        // Ensure alt text for accessibility
+                        logoutImg.alt = isDark ? 'Abmelden (dark)' : 'Abmelden (light)';
+                    }
+                } catch (e) {
+                    // ignore if element not present yet
+                }
             }
             const savedTheme = localStorage.getItem('theme');
             const isDark = savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
