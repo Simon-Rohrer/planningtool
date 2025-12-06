@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Band Management Tool</title>
-
+    
     <!-- PWA Meta Tags -->
     <meta name="description" content="Organisiere deine Bandproben effizient">
     <meta name="theme-color" content="#6366f1">
@@ -134,10 +134,12 @@
         <!-- Header -->
         <header class="app-header">
             <div class="header-content">
-                <h1 class="logo">🎸 Band Management Tool</h1>
+                <h1 class="logo">
+                    <span class="logo-part">🎸 Band</span>
+                    <span class="logo-part">Management</span>
+                    <span class="logo-part">Tool</span>
+                </h1>
                 <div class="header-actions">
-                    <!-- Header container for submenu buttons (populated by JS) -->
-                    <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
                     <span id="currentUserName" class="user-name">User</span>
                     <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten" style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-left: 0.5em;">
                         <span id="themeToggleIcon">🌙</span>
@@ -147,6 +149,8 @@
                     </button>
                 </div>
             </div>
+            <!-- Header container for submenu buttons (populated by JS) -->
+            <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
         </header>
 
         <!-- Navigation -->
