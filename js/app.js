@@ -3583,13 +3583,29 @@ setupQuickAccessEdit() {
             if (news.length === 0) {
                 newsSection.innerHTML = '<div class="empty-state"><div class="empty-icon">📰</div><p>Keine News vorhanden.</p></div>';
             } else {
+                // Render each news item with a clear heading (icon removed) and make it clickable
                 newsSection.innerHTML = news.slice(0, 3).map(n => `
-                    <div class="dashboard-news-item">
+                    <div class="dashboard-news-item clickable" data-id="${n.id}">
+                        <div class="news-heading"><strong>📰 News</strong></div>
                         <div class="news-title">${Bands.escapeHtml(n.title)}</div>
                         <div class="news-date">${UI.formatDateShort(n.createdAt)}</div>
                         <div class="news-content">${Bands.escapeHtml(n.content).slice(0, 80)}${n.content.length > 80 ? '…' : ''}</div>
                     </div>
                 `).join('');
+
+                // Attach click handlers to navigate to news view and mark the item as read
+                const self = this;
+                newsSection.querySelectorAll('.dashboard-news-item.clickable').forEach(item => {
+                    item.addEventListener('click', async (e) => {
+                        const id = item.dataset.id;
+                        const user = Auth.getCurrentUser();
+                        if (user && id) {
+                            try { await Storage.markNewsRead(id, user.id); } catch (err) { console.warn('markNewsRead failed', err); }
+                            if (typeof self.updateNewsNavBadge === 'function') await self.updateNewsNavBadge();
+                        }
+                        self.navigateTo('news');
+                    });
+                });
             }
         }
 
@@ -3618,7 +3634,7 @@ setupQuickAccessEdit() {
                 quickLinksDiv.innerHTML = '<span class="text-muted">Keine Schnellzugriffs-Links ausgewählt.</span>';
             } else {
                 quickLinksDiv.innerHTML = linksToShow.map(l =>
-                    `<button class="btn btn-quick-link" data-view="${l.view}" style="margin:0 0.5em 0.5em 0;">${l.label}</button>`
+                    `<button class="btn btn-primary btn-quick-link" data-view="${l.view}" style="margin:0 0.5em 0.5em 0;">${l.label}</button>`
                 ).join('');
                 // Add click handlers
                 quickLinksDiv.querySelectorAll('.btn-quick-link').forEach(btn => {
@@ -3662,13 +3678,34 @@ setupQuickAccessEdit() {
             if (activities.length === 0) {
                 activitySection.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>Keine neue Aktivität.</p></div>';
             } else {
+                // Include type label and make each activity clickable
+                // Ensure we include IDs if available when building activities above
                 activitySection.innerHTML = activities.map(a => `
-                    <div class="dashboard-activity-item">
-                        <span class="activity-icon">${a.type === 'event' ? '🎤' : a.type === 'rehearsal' ? '📅' : '📰'}</span>
-                        <span class="activity-title">${Bands.escapeHtml(a.title)}</span>
-                        <span class="activity-date">${UI.formatDateShort(a.date)}</span>
+                    <div class="dashboard-activity-item clickable" data-type="${a.type}" data-id="${a.id || ''}">
+                        <div style="display:flex; flex-direction:column; gap:0.2rem;">
+                            <div class="activity-heading">${a.type === 'event' ? '🎤 Auftritt' : a.type === 'rehearsal' ? '📅 Probetermin' : '📰 News'}</div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <div class="activity-title">${Bands.escapeHtml(a.title)}</div>
+                            </div>
+                            <div class="activity-date">${UI.formatDateShort(a.date)}</div>
+                        </div>
                     </div>
                 `).join('');
+
+                const self = this;
+                activitySection.querySelectorAll('.dashboard-activity-item.clickable').forEach(item => {
+                    item.addEventListener('click', async () => {
+                        const type = item.dataset.type;
+                        // Navigate to the correct view depending on type
+                        if (type === 'event') {
+                            self.navigateTo('events');
+                        } else if (type === 'rehearsal') {
+                            self.navigateTo('rehearsals');
+                        } else {
+                            self.navigateTo('news');
+                        }
+                    });
+                });
             }
         }
     },
@@ -3733,15 +3770,19 @@ setupQuickAccessEdit() {
             }
 
             return `
-                <div class="date-option">
-                    <div class="date-info">
-                        <div class="date-time">${typeIcon} ${UI.formatDate(item.date)}</div>
-                        <div class="vote-summary">
-                            <span class="vote-count">🎸 ${Bands.escapeHtml(bandName)}</span>
-                            <span class="vote-count">📍 ${locationText}</span>
+                <div class="dashboard-card upcoming-card">
+                    <div style="display:flex; align-items:center; gap:0.8rem; flex:1;">
+                        <div style="font-size:1.4rem;">${typeIcon}</div>
+                        <div style="display:flex; flex-direction:column;">
+                            <div style="font-weight:600;">${Bands.escapeHtml(item.title)}</div>
+                            <div style="font-size:0.9rem; color:var(--color-text-secondary); line-height:1.4;">
+                                ${UI.formatDate(item.date)}<br>
+                                🎸 ${Bands.escapeHtml(bandName)}<br>
+                                📍 ${locationText}
+                            </div>
                         </div>
                     </div>
-                    <div class="vote-actions">
+                    <div style="margin-left: 0.5rem;">
                         ${item.type === 'event' ? `<button class="btn btn-secondary" onclick="App.navigateTo('events')">Öffnen</button>` : `<button class="btn btn-secondary" onclick="App.navigateTo('rehearsals')">Öffnen</button>`}
                     </div>
                 </div>

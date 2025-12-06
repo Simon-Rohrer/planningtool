@@ -136,12 +136,12 @@
             <div class="header-content">
                 <h1 class="logo">🎸 Band Management Tool</h1>
                 <div class="header-actions">
-                    <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten" style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-right: 0.5em;">
-                        <span id="themeToggleIcon">🌙</span>
-                    </button>
                     <!-- Header container for submenu buttons (populated by JS) -->
                     <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
                     <span id="currentUserName" class="user-name">User</span>
+                    <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten" style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-left: 0.5em;">
+                        <span id="themeToggleIcon">🌙</span>
+                    </button>
                     <button id="logoutBtn" class="btn btn-secondary">
                         <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
                     </button>
@@ -323,6 +323,7 @@
                 </div>
 
                 <div class="section">
+                    <br>
                     <h3>Nächste Termine</h3>
                     <div id="upcomingList" class="rehearsal-list"></div>
                 </div>
