@@ -254,6 +254,19 @@
             </div>
         </div>
 
+        <!-- Tutorial Suggest Banner (for admins) -->
+        <div id="tutorialSuggestBanner" class="news-banner" style="display: none; background: linear-gradient(90deg,#f0f7ff,#e8f4ff); border: 1px solid var(--color-border);">
+            <div class="news-banner-content">
+                <span class="news-banner-icon">🎓</span>
+                <div class="news-banner-text">
+                    <strong>Tutorial verfügbar</strong>
+                    <span id="tutorialBannerMessage">Möchtest du eine kurze Tour durch die App starten?</span>
+                </div>
+                <button id="tutorialStartBannerBtn" class="btn btn-primary">Tour starten</button>
+                <button id="tutorialDismissBannerBtn" class="news-banner-close" title="Schließen">×</button>
+            </div>
+        </div>
+
         <!-- Main Content -->
         <main class="app-main">
             <!-- Dashboard View -->
@@ -641,6 +654,12 @@
                             </div>
                             <button type="submit" class="btn btn-primary">Speichern</button>
                         </form>
+                        <!-- Admin: Tutorial anzeigen / testen (sichtbar nur für Admins, wird per JS gesteuert) -->
+                        <div id="adminTutorialSection" style="margin-top: 1rem; display: none;">
+                            <h4>Tutorial</h4>
+                            <p style="color: var(--color-text-secondary); margin-top: 0.25rem;">Als Admin kannst du das Onboarding/Tutorial anzeigen und testen.</p>
+                            <button id="adminShowTutorialBtn" class="btn btn-secondary">Tutorial anzeigen / testen</button>
+                        </div>
                         <div class="section" style="margin-top: 1rem;">
                                 <!-- Account löschen Button -->
                                 <button id="deleteAccountBtn" class="btn btn-danger" style="margin-top:2rem;">Account löschen</button>
@@ -787,6 +806,22 @@
                             </div>
                         </form>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Overlay (step-by-step) -->
+    <div id="tutorialOverlay" class="tour-overlay" style="display:none;">
+        <div id="tourHighlight" class="tour-highlight" aria-hidden="true"></div>
+        <div id="tourTooltip" class="tour-tooltip" role="dialog" aria-modal="true">
+            <div id="tourTooltipContent">
+                <h3 id="tourTitle">Tutorial</h3>
+                <p id="tourBody">Schritt</p>
+                <div class="tour-controls" style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem;">
+                    <button id="tourPrevBtn" class="btn">Zurück</button>
+                    <button id="tourNextBtn" class="btn btn-primary">Weiter</button>
+                    <button id="tourEndBtn" class="btn">Beenden</button>
                 </div>
             </div>
         </div>

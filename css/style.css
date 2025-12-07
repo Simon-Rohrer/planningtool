@@ -133,6 +133,41 @@
         font-size: 0.95rem;
         max-width: 8.5rem;
     }
+
+    /* Events & Rehearsals: keep filter select to the left of the create button
+       on narrow screens. Use a single-row flex container and clamp the select
+       width so it doesn't overlap the button. */
+    #eventsView .view-controls,
+    #rehearsalsView .view-controls {
+        display: flex !important;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: nowrap;
+    }
+
+    #eventsView .view-controls .form-select,
+    #rehearsalsView .view-controls .form-select {
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+    }
+
+    #eventsView .view-controls .btn,
+    #rehearsalsView .view-controls .btn {
+        flex: 0 0 auto;
+    }
+    /* Right-align the last action/create button so selects stay left */
+    #eventsView .view-controls .btn:last-child,
+    #rehearsalsView .view-controls .btn:last-child {
+        margin-left: auto;
+    }
+    /* Hide top view titles (e.g. 'Dashboard', 'Auftritte') on narrow screens */
+    .view-header h2,
+    .view-header .page-title {
+        display: none;
+    }
 }
 .dashboard-news-item .news-title {
     font-weight: 600;
@@ -1069,6 +1104,19 @@ input:checked+.slider:before {
         opacity: 0.6;
     }
 
+    /* Remove small submenu arrow for specific main items on very small screens */
+    @media (max-width: 520px) {
+        .nav-item.nav-main[data-view="dashboard"]::after,
+        .nav-item.nav-main[data-view="rehearsals"]::after,
+        .nav-item.nav-main[data-view="statistics"]::after,
+        .nav-item.nav-main[data-view="dashboard"]::before,
+        .nav-item.nav-main[data-view="rehearsals"]::before,
+        .nav-item.nav-main[data-view="statistics"]::before {
+            content: none !important;
+            display: none !important;
+        }
+    }
+
     .nav-item.active {
         background: var(--color-bg);
         border-bottom-color: transparent;
@@ -1858,6 +1906,69 @@ input:checked+.slider:before {
     }
 }
 
+/* Improve animation performance: prefer transform & opacity, hint compositor */
+.dashboard-card,
+.band-card,
+.band-management-card,
+.nav-item,
+.nav-subitem,
+.card-icon,
+.modal-content,
+.news-banner-content,
+.toast {
+    transition: transform var(--transition-base) ease, box-shadow var(--transition-base) ease, opacity var(--transition-base) ease;
+    will-change: transform, opacity;
+}
+
+/* Ensure header actions (logout etc.) align and size correctly on very small screens */
+#logoutBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 8px;
+    background: transparent;
+}
+
+#logoutBtn .icon-img {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+/* Mobile override: slightly smaller logout icon to avoid layout shift at narrow widths */
+@media (max-width: 520px) {
+    #logoutBtn .icon-img {
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        min-height: 24px !important;
+    }
+
+    /* Make sure header actions stay on one line where possible */
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Ensure the header buttons don't wrap and keep consistent spacing */
+    .header-actions > * {
+        flex: 0 0 auto;
+    }
+}
+
+/* Reduce transition-jank for elements animating position by using transform where possible.
+   Fallback: provide short transitions for top/left changes so they appear smoother. */
+.tour-highlight,
+.tour-tooltip {
+    transition: transform 160ms ease, top 160ms ease, left 160ms ease, opacity 160ms ease;
+    will-change: transform, top, left, opacity;
+}
+
 .statistics-content {
     background: var(--color-surface);
     border-radius: var(--radius-lg);
@@ -2152,6 +2263,9 @@ input:checked+.slider:before {
 #themeToggleIcon{
     padding: 0px;
 }
+ #bandFilter, #eventBandFilter, #rehearsalBandFilter, #memberBandFilter{
+    width: auto;
+ }
 
 /* ===== Loading Spinner ===== */
 .loader-overlay {
@@ -2205,6 +2319,137 @@ input:checked+.slider:before {
 #logoutBtn .icon-img {
     width: 30px;
     height: 30px;
+    min-height: 30px;
+    min-width: 30px;
+}
+
+/* Additional layout & animation fixes to reduce reflow/jank */
+/* Make view transitions smoother by hinting compositor and using transform/opacity */
+.app-main,
+.view,
+.view-header,
+.view * {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+.view {
+    transition: opacity 180ms ease, transform 180ms ease;
+    will-change: opacity, transform;
+}
+
+.view:not(.active) {
+    /* if JS toggles display:none this will be skipped, but when class toggles,
+       this provides a quick fade/slide to reduce perceived jank */
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+}
+
+.view.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Keep header actions stable: avoid wrapping and prevent elements from pushing logout */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.header-actions > * {
+    flex: 0 0 auto;
+}
+
+/* Prevent logout button from resizing layout: fixed min size and centered content */
+#logoutBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    width: auto;
+    margin-left: 0.25rem;
+}
+
+/* Make header container allow overlays and keep layout stable */
+.header-content {
+    overflow: visible; /* allow tooltips/overlays to be visible without shifting layout */
+}
+
+/* Force consistent box model and fixed size for logout button so it doesn't push neighbors */
+#logoutBtn {
+    box-sizing: border-box;
+    height: 36px;
+    width: 36px;
+    padding: 6px;
+}
+
+#logoutBtn .icon-img {
+    display: block;
+    margin: 0 auto;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Make header buttons use consistent line-height to avoid vertical shifts */
+.header-actions button,
+.header-actions .btn {
+    line-height: 1;
+    height: 36px;
+    min-width: 36px;
+    padding: 0 8px;
+}
+
+/* Ensure the tour tooltip/highlight sit above header and don't change layout */
+.tour-tooltip {
+    z-index: 4000;
+    position: absolute;
+}
+
+.tour-highlight {
+    z-index: 3500;
+}
+
+/* Extra small screens: reduce icon size but keep layout stable */
+@media (max-width: 520px) {
+    #logoutBtn {
+        min-width: 34px;
+        min-height: 34px;
+        margin-left: 0.25rem;
+    }
+
+    #logoutBtn .icon-img {
+        width: 22px !important;
+        height: 22px !important;
+        min-width: 22px !important;
+        min-height: 22px !important;
+    }
+
+    /* tighten header spacing to avoid wrapping */
+    .header-content {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+}
+
+/* Lessen expensive box-shadow repaints on hover by favoring transform */
+.dashboard-card:hover,
+.band-card:hover,
+.band-management-card:hover {
+    transform: translateY(-3px);
+    /* keep shadow but avoid heavy scaling */
+}
+
+/* Ensure tour elements animate smoothly */
+.tour-highlight,
+.tour-tooltip {
+    transition: transform 140ms ease, top 140ms ease, left 140ms ease, opacity 140ms ease;
+    will-change: transform, top, left, opacity;
 }
 
 /* ===== Settings ===== */
@@ -2955,6 +3200,15 @@ s
     padding: 0.25rem 0.6rem;
     font-size: 0.9rem;
     cursor: pointer;
+    width: 115px;
+    margin-left: 15px;
+    margin-right: 15px;
+    
+    /* NEU: Zentrierung des Textes */
+    display: flex; /* Button als Flex-Container definieren */
+    justify-content: center; /* Horizontale Zentrierung */
+    align-items: center; /* Vertikale Zentrierung */
+    text-align: center; /* Fallback, primär für Text, falls der Button kein Flex-Container wäre, schadet hier aber nicht */
 }
 
 .header-submenu-btn:hover { background: var(--color-primary-dark); }
@@ -3617,4 +3871,52 @@ s
         height: auto;
         font-size: 1.5rem;
     }
+}
+
+/* Ensure logout icon keeps 30px across all media sizes */
+#logoutBtn .icon-img {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    display: inline-block !important;
+}
+
+/* Tutorial / Tour overlay styles */
+.tour-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    pointer-events: none;
+}
+.tour-overlay.active {
+    pointer-events: auto;
+}
+.tour-highlight {
+    position: absolute;
+    border: 3px solid rgba(99,102,241,0.95);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    transition: all 0.18s ease;
+    pointer-events: none;
+}
+.tour-tooltip {
+    position: absolute;
+    max-width: 340px;
+    background: var(--color-surface, #fff);
+    color: var(--color-text, #111827);
+    border-radius: 8px;
+    padding: 0.75rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    border: 1px solid var(--color-border, #e5e7eb);
+    pointer-events: auto;
+}
+.tour-tooltip h3 { margin: 0 0 0.25rem 0; font-size: 1rem; }
+.tour-tooltip p { margin: 0; font-size: 0.95rem; color: var(--color-text-secondary); }
+.tour-tooltip .btn { font-size: 0.9rem; }
+
+/* Small responsive adjustments */
+@media (max-width: 520px) {
+    .tour-tooltip { max-width: 90%; font-size: 0.95rem; }
 }

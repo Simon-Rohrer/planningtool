@@ -148,6 +148,216 @@ setupQuickAccessEdit() {
         }
     },
 
+    /* ===== Tutorial / Guided Tour ===== */
+    showTutorialSuggestBanner() {
+        try {
+            const banner = document.getElementById('tutorialSuggestBanner');
+            const startBtn = document.getElementById('tutorialStartBannerBtn');
+            const dismissBtn = document.getElementById('tutorialDismissBannerBtn');
+            if (!banner) return;
+
+            // If dismissed before, don't show
+            if (localStorage.getItem('tutorialBannerDismissed') === '1') return;
+
+            banner.style.display = 'flex';
+            if (startBtn) startBtn.onclick = (e) => { e.preventDefault(); this.startTutorial(); banner.style.display = 'none'; };
+            if (dismissBtn) dismissBtn.onclick = (e) => { e.preventDefault(); banner.style.display = 'none'; localStorage.setItem('tutorialBannerDismissed', '1'); };
+        } catch (err) {
+            console.error('Error showing tutorial banner:', err);
+        }
+    },
+
+    async startTutorial(steps) {
+        // Default steps if none provided
+        this.tour = this.tour || {};
+        this.tour.steps = steps || [
+            { navigate: 'dashboard', sel: '.nav-item[data-view="dashboard"]', title: 'Start / Dashboard', body: 'Das Dashboard gibt dir einen schnellen Überblick über Bands, nächste Termine und Aktivitäten.' },
+            { navigate: 'bands', sel: '#bandsView .view-header h2', title: 'Meine Bands', body: 'Hier findest du alle Bands, in denen du Mitglied bist. Klicke auf eine Band, um Details zu sehen.' },
+            { navigate: 'rehearsals', sel: '.nav-item[data-view="rehearsals"]', title: 'Probetermine', body: 'Erstelle neue Proben oder bearbeite bestehende Termine. Du kannst Teilnehmer einladen und Zeiten vorschlagen.' },
+            { navigate: 'events', sel: '.nav-item[data-view="events"]', title: 'Auftritte', body: 'Verwalte Auftritte, erstelle Setlists und lade Musiker ein.' },
+            { navigate: 'dashboard', sel: '#dashboardView .dashboard-card:nth-child(1) .card-icon', title: 'Dashboard-Karten', body: 'Die Karten zeigen Metriken — klicke eine Karte, um zur entsprechenden Ansicht zu springen.' },
+            { navigate: 'settings', tab: 'profile', sel: '#profileSettingsTab .section h3', title: 'Profil bearbeiten', body: 'Bearbeite hier Benutzername, E-Mail und Instrument. Passwörter kannst du hier ändern.' },
+            { navigate: 'settings', tab: 'absences', sel: '#absencesSettingsTab .section h3', title: 'Abwesenheiten', body: 'Trage deine Abwesenheiten ein, damit andere Mitglieder Bescheid wissen.' },
+            { navigate: 'settings', tab: 'users', sel: '#settingsTabUsers', title: 'Benutzerverwaltung', body: 'Admins können hier Benutzer verwalten (sichtbar nur für Admins).', adminOnly: true }
+        ];
+        this.tour.index = 0;
+        this.tourOverlay = document.getElementById('tutorialOverlay');
+        this.tourHighlight = document.getElementById('tourHighlight');
+        this.tourTooltip = document.getElementById('tourTooltip');
+
+        if (!this.tourOverlay || !this.tourHighlight || !this.tourTooltip) {
+            console.error('Tutorial elements missing');
+            return;
+        }
+
+        this.tourOverlay.style.display = 'block';
+        this.tourOverlay.classList.add('active');
+
+        // Wire up controls
+        document.getElementById('tourNextBtn').onclick = () => this.nextTutorialStep();
+        document.getElementById('tourPrevBtn').onclick = () => this.prevTutorialStep();
+        document.getElementById('tourEndBtn').onclick = () => this.endTutorial();
+
+        // Keyboard navigation
+        this._tourKeyHandler = (e) => {
+            if (e.key === 'Escape') this.endTutorial();
+            if (e.key === 'ArrowRight') this.nextTutorialStep();
+            if (e.key === 'ArrowLeft') this.prevTutorialStep();
+        };
+        document.addEventListener('keydown', this._tourKeyHandler);
+
+        await this.renderTutorialStep(this.tour.index);
+    },
+
+    async renderTutorialStep(idx) {
+        // If the step requires navigation, do it first
+        if (!this.tour || !Array.isArray(this.tour.steps)) return;
+        if (idx < 0 || idx >= this.tour.steps.length) {
+            this.endTutorial();
+            return;
+        }
+        this.tour.index = idx;
+        const step = this.tour.steps[idx];
+        // Optional navigation: if step.navigate is provided, navigate there first
+        try {
+            if (step.navigate) {
+                await this.navigateTo(step.navigate);
+                // small delay for view DOM to render
+                await new Promise(r => setTimeout(r, 200));
+            }
+            if (step.tab && step.navigate === 'settings') {
+                // ensure settings tab is shown
+                this.switchSettingsTab(step.tab);
+                await new Promise(r => setTimeout(r, 120));
+            }
+        } catch (navErr) {
+            console.warn('Tour navigation error:', navErr);
+        }
+
+        // Skip admin-only steps when current user is not admin
+        if (step.adminOnly && !(Auth && Auth.isAdmin && Auth.isAdmin())) {
+            // jump to next step
+            setTimeout(() => this.nextTutorialStep(), 10);
+            return;
+        }
+
+        const el = document.querySelector(step.sel);
+
+        // Update tooltip text
+        const titleEl = document.getElementById('tourTitle');
+        const bodyEl = document.getElementById('tourBody');
+        titleEl.textContent = step.title || 'Schritt ' + (idx+1);
+        bodyEl.textContent = step.body || '';
+
+        // Update buttons
+        document.getElementById('tourPrevBtn').style.display = idx === 0 ? 'none' : 'inline-block';
+        document.getElementById('tourNextBtn').textContent = idx === this.tour.steps.length - 1 ? 'Fertig' : 'Weiter';
+
+        if (!el) {
+            console.warn('Tour: target not found for selector', step.sel);
+            setTimeout(() => this.nextTutorialStep(), 300);
+            return;
+        }
+
+        // Try to find a visible/fallback element if the target is hidden or tiny
+        let target = el;
+        const getRect = (node) => node ? node.getBoundingClientRect() : { width: 0, height: 0, top: 0, left: 0, bottom: 0 }; 
+        let rect = getRect(target);
+        if ((rect.width < 8 || rect.height < 8) && step.navigate) {
+            const candidates = [
+                document.querySelector(`.nav-item[data-view="${step.navigate}"]`),
+                document.querySelector(`.nav-subitem[data-view="${step.navigate}"]`),
+                document.querySelector(`#headerSubmenu .header-submenu-btn[data-view="${step.navigate}"]`),
+                target.closest('.nav-item'),
+                target.closest('.nav-subitem')
+            ].filter(Boolean);
+            for (const c of candidates) {
+                const r = getRect(c);
+                if (r.width > 8 && r.height > 8) {
+                    target = c;
+                    rect = r;
+                    break;
+                }
+            }
+        }
+
+        // Bring the chosen element into view
+        try { target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch {}
+        // Recompute rect after scroll
+        rect = getRect(target);
+
+        // Position highlight around element (ensure minimum size)
+        const pad = 10;
+        const highlightStyle = this.tourHighlight.style;
+        const hWidth = Math.max(rect.width + pad * 2, 24);
+        const hHeight = Math.max(rect.height + pad * 2, 24);
+        highlightStyle.top = (window.scrollY + rect.top - pad) + 'px';
+        highlightStyle.left = (window.scrollX + rect.left - pad) + 'px';
+        highlightStyle.width = hWidth + 'px';
+        highlightStyle.height = hHeight + 'px';
+
+        // Position tooltip centered under (or above if not enough space)
+        const tooltip = this.tourTooltip;
+        tooltip.style.display = 'block';
+        // Allow browser to compute tooltip size
+        const ttWidth = tooltip.offsetWidth || 300;
+        const ttHeight = tooltip.offsetHeight || 120;
+        const viewportWidth = document.documentElement.clientWidth;
+        const centerLeft = window.scrollX + rect.left + (rect.width / 2) - (ttWidth / 2);
+        let ttLeft = Math.max(8 + window.scrollX, Math.min(centerLeft, window.scrollX + viewportWidth - ttWidth - 8));
+        // Prefer below element
+        let ttTop = window.scrollY + rect.bottom + 12;
+        const viewportBottom = window.scrollY + document.documentElement.clientHeight;
+        if (ttTop + ttHeight > viewportBottom - 8) {
+            // not enough space below, show above
+            ttTop = window.scrollY + rect.top - ttHeight - 12;
+        }
+
+        // Special case: on small screens the logout icon is tiny and the
+        // centered tooltip may appear off. Anchor the tooltip to the
+        // logout button center, but increase highlight padding so the
+        // small icon is still visible and the tooltip doesn't overlap
+        // header items.
+        // remove special-case logout positioning: tooltip defaults handle placement
+
+        tooltip.style.top = ttTop + 'px';
+        tooltip.style.left = ttLeft + 'px';
+        // Ensure overlay active
+        this.tourOverlay.classList.add('active');
+    },
+
+    async nextTutorialStep() {
+        if (!this.tour) return;
+        if (this.tour.index >= this.tour.steps.length - 1) {
+            this.endTutorial();
+        } else {
+            await this.renderTutorialStep(this.tour.index + 1);
+        }
+    },
+
+    async prevTutorialStep() {
+        if (!this.tour) return;
+        await this.renderTutorialStep(Math.max(0, this.tour.index - 1));
+    },
+
+    endTutorial() {
+        try {
+            if (this.tourOverlay) {
+                this.tourOverlay.style.display = 'none';
+                this.tourOverlay.classList.remove('active');
+            }
+            if (this.tourHighlight) {
+                this.tourHighlight.style.width = '0px';
+            }
+            document.removeEventListener('keydown', this._tourKeyHandler);
+            this.tour = null;
+            this._tourKeyHandler = null;
+            UI.showToast('Tutorial beendet', 'success');
+        } catch (err) {
+            console.error('Error ending tutorial:', err);
+        }
+    },
+
     // Measure header submenu button label widths and store in CSS variable
     updateHeaderUnderlineWidths() {
         const container = document.getElementById('headerSubmenu');
@@ -219,6 +429,8 @@ setupQuickAccessEdit() {
         // Initialize Supabase Auth first
         this.setupMobileSubmenuToggle();
 
+        // NOTE: tutorial banner will be shown after auth initialization below
+
         await Auth.init();
 
         // Apply saved theme on app start (and update icon if present)
@@ -244,6 +456,13 @@ setupQuickAccessEdit() {
             this.preloadStandardCalendars();
             // Clean up past events and rehearsals
             await Storage.cleanupPastItems();
+
+            // Show tutorial suggest banner for admins (if not dismissed)
+            try {
+                if (Auth.isAdmin && Auth.isAdmin()) {
+                    setTimeout(() => this.showTutorialSuggestBanner(), 350);
+                }
+            } catch (err) { /* ignore */ }
         } else {
             this.showAuth();
         }
@@ -2432,9 +2651,11 @@ setupQuickAccessEdit() {
 
     async initializeSettingsViewListeners(isAdmin) {
         const user = Auth.getCurrentUser();
+        const root = document.getElementById('settingsViewContent');
+        if (!root) return;
 
-        // Re-attach event listeners to settings tab buttons
-        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+        // Re-attach event listeners to settings tab buttons (scoped)
+        root.querySelectorAll('.settings-tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tabName = btn.dataset.tab;
                 this.switchSettingsTab(tabName);
@@ -2442,34 +2663,37 @@ setupQuickAccessEdit() {
         });
 
         // Show/Hide tabs based on role
-        const locationsTab = document.getElementById('settingsTabLocations');
-        const bandsTab = document.getElementById('settingsTabBands');
-        const usersTab = document.getElementById('settingsTabUsers');
+        const locationsTab = root.querySelector('#settingsTabLocations');
+        const bandsTab = root.querySelector('#settingsTabBands');
+        const usersTab = root.querySelector('#settingsTabUsers');
 
         if (locationsTab) locationsTab.style.display = isAdmin ? 'block' : 'none';
         if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
         if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
 
-        // Pre-fill profile form
-        document.getElementById('profileUsername').value = user.username;
-        document.getElementById('profileEmail').value = user.email;
-        document.getElementById('profileInstrument').value = user.instrument || '';
-        document.getElementById('profilePassword').value = '';
+        // Pre-fill profile form (scoped)
+        const profileUsername = root.querySelector('#profileUsername');
+        const profileEmail = root.querySelector('#profileEmail');
+        const profileInstrument = root.querySelector('#profileInstrument');
+        const profilePassword = root.querySelector('#profilePassword');
+        const profilePasswordConfirm = root.querySelector('#profilePasswordConfirm');
+        const profilePasswordConfirmGroup = root.querySelector('#profilePasswordConfirmGroup');
+
+        if (profileUsername) profileUsername.value = user.username || '';
+        if (profileEmail) profileEmail.value = user.email || '';
+        if (profileInstrument) profileInstrument.value = user.instrument || '';
+        if (profilePassword) profilePassword.value = '';
 
         // Password confirmation field toggle
-        const profilePassword = document.getElementById('profilePassword');
-        const profilePasswordConfirm = document.getElementById('profilePasswordConfirm');
-        const profilePasswordConfirmGroup = document.getElementById('profilePasswordConfirmGroup');
-        
         if (profilePassword && profilePasswordConfirmGroup) {
             profilePassword.addEventListener('input', () => {
                 if (profilePassword.value.trim()) {
                     profilePasswordConfirmGroup.style.display = 'block';
-                    profilePasswordConfirm.required = true;
+                    if (profilePasswordConfirm) profilePasswordConfirm.required = true;
                 } else {
                     profilePasswordConfirmGroup.style.display = 'none';
-                    profilePasswordConfirm.required = false;
-                    profilePasswordConfirm.value = '';
+                    if (profilePasswordConfirm) profilePasswordConfirm.required = false;
+                    if (profilePasswordConfirm) profilePasswordConfirm.value = '';
                 }
             });
         }
@@ -2477,11 +2701,32 @@ setupQuickAccessEdit() {
         // Default to profile tab
         this.switchSettingsTab('profile');
 
-        // Theme toggle wird global im Header gehandhabt
+        // Admin-only: show tutorial/test button in profile settings (scoped)
+        try {
+            const adminTutorialSection = root.querySelector('#adminTutorialSection');
+            const adminTutorialBtn = root.querySelector('#adminShowTutorialBtn');
+            if (adminTutorialSection) adminTutorialSection.style.display = isAdmin ? 'block' : 'none';
+            if (adminTutorialBtn) {
+                adminTutorialBtn.style.display = isAdmin ? 'inline-block' : 'none';
+                adminTutorialBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Start the interactive tutorial/tour
+                    try {
+                        this.startTutorial();
+                        UI.showToast('Tutorial wird gestartet', 'info');
+                    } catch (err) {
+                        console.error('Fehler beim Starten des Tutorials:', err);
+                        UI.showToast('Fehler beim Starten des Tutorials', 'error');
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Error initializing admin tutorial button:', err);
+        }
 
-        // Donate link
-        const donateLinkInput = document.getElementById('donateLink');
-        const saveDonateBtn = document.getElementById('saveDonateLink');
+        // Donate link (scoped)
+        const donateLinkInput = root.querySelector('#donateLink');
+        const saveDonateBtn = root.querySelector('#saveDonateLink');
         if (donateLinkInput && saveDonateBtn) {
             // Lade gespeicherten Link aus Supabase
             const savedLink = await Storage.getSetting('donateLink');
@@ -2505,17 +2750,17 @@ setupQuickAccessEdit() {
             });
         }
 
-        // Profile form in settings view
-        const updateProfileForm = document.getElementById('updateProfileForm');
+        // Profile form in settings view (scoped)
+        const updateProfileForm = root.querySelector('#updateProfileForm');
         if (updateProfileForm) {
             updateProfileForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
-                const username = document.getElementById('profileUsername').value;
-                const email = document.getElementById('profileEmail').value;
-                const instrument = document.getElementById('profileInstrument').value;
-                const password = document.getElementById('profilePassword').value;
-                const passwordConfirm = document.getElementById('profilePasswordConfirm').value;
+                const username = (root.querySelector('#profileUsername') || {}).value;
+                const email = (root.querySelector('#profileEmail') || {}).value;
+                const instrument = (root.querySelector('#profileInstrument') || {}).value;
+                const password = (root.querySelector('#profilePassword') || {}).value;
+                const passwordConfirm = (root.querySelector('#profilePasswordConfirm') || {}).value;
 
                 // Validate password confirmation
                 if (password && password.trim() !== '') {
@@ -2570,15 +2815,21 @@ setupQuickAccessEdit() {
                     // Update header
                     document.getElementById('currentUserName').textContent = updatedUser.username;
 
-                    // Clear password field
-                    document.getElementById('profilePassword').value = '';
-                    document.getElementById('profilePasswordConfirm').value = '';
-                    document.getElementById('profilePasswordConfirmGroup').style.display = 'none';
+                    // Clear password field (scoped to settings view)
+                    const pwdEl = root.querySelector('#profilePassword');
+                    const pwdConfirmEl = root.querySelector('#profilePasswordConfirm');
+                    const pwdConfirmGroupEl = root.querySelector('#profilePasswordConfirmGroup');
+                    if (pwdEl) pwdEl.value = '';
+                    if (pwdConfirmEl) pwdConfirmEl.value = '';
+                    if (pwdConfirmGroupEl) pwdConfirmGroupEl.style.display = 'none';
 
-                    // Reload form with updated values
-                    document.getElementById('profileUsername').value = updatedUser.username;
-                    document.getElementById('profileEmail').value = updatedUser.email;
-                    document.getElementById('profileInstrument').value = updatedUser.instrument || '';
+                    // Reload form with updated values (scoped)
+                    const usernameEl = root.querySelector('#profileUsername');
+                    const emailEl = root.querySelector('#profileEmail');
+                    const instrumentEl = root.querySelector('#profileInstrument');
+                    if (usernameEl) usernameEl.value = updatedUser.username;
+                    if (emailEl) emailEl.value = updatedUser.email;
+                    if (instrumentEl) instrumentEl.value = updatedUser.instrument || '';
 
                     UI.hideLoading();
                     UI.showToast('Profil erfolgreich aktualisiert!', 'success');
