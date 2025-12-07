@@ -3930,3 +3930,76 @@ s
 @media (max-width: 768px) {
     .tour-tooltip { max-width: 90%; font-size: 0.95rem; }
 }
+
+/* Apply mobile calendar/button rules between 390px and 580px
+    so the arrows and buttons remain side-by-side in this range */
+@media (min-width: 390px) and (max-width: 580px) {
+    .calendar-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.3rem !important;
+        flex-direction: row !important;
+    }
+
+    .calendar-header h3 {
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .calendar-header > div {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.4rem !important;
+        flex: 0 1 auto !important;
+    }
+
+    .calendar-header .btn.btn-icon {
+        font-size: 1rem !important;
+        padding: 0.12rem 0.26rem !important;
+        line-height: 1 !important;
+    }
+
+    .calendar-header .btn.btn-icon:first-child { margin-right: 0.25rem !important; }
+    .calendar-header .btn.btn-icon:last-child  { margin-left: 0.25rem !important; }
+
+    .btn {
+        padding: 0.12rem 0.28rem !important;
+        font-size: 0.78rem !important;
+        min-height: 26px !important;
+    }
+
+    .btn-sm {
+        padding: 0.08rem 0.22rem !important;
+        font-size: 0.68rem !important;
+        min-height: 22px !important;
+    }
+
+    .btn-icon,
+    .header-actions .btn-icon,
+    .view-controls .btn-icon {
+        padding: 0.08rem 0.2rem !important;
+        font-size: 0.9rem !important;
+        min-width: 26px !important;
+        min-height: 26px !important;
+    }
+
+    .calendar-header .btn.btn-secondary {
+        padding: 0.08rem 0.28rem !important;
+        font-size: 0.72rem !important;
+    }
+
+    .calendar-container .calendar-header {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .calendar-container .calendar-header h3 {
+        font-size: 1rem !important;
+    }
+}
