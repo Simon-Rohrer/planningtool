@@ -160,11 +160,7 @@ const Events = {
                             ` : ''}
 
                             <div class="detail-row">
-                                <div class="detail-label">🎚️ Soundcheck Datum & Uhrzeit:</div>
-                                <div class="detail-value">${event.soundcheckDate ? UI.formatDate(event.soundcheckDate) : '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">🎚️ Soundcheck Ort:</div>
+                                <div class="detail-label">🎚️ Infos zum Soundcheck:</div>
                                 <div class="detail-value">${event.soundcheckLocation ? Bands.escapeHtml(event.soundcheckLocation) : '-'}</div>
                             </div>
 
@@ -338,9 +334,19 @@ const Events = {
         document.getElementById('eventDate').value = event.date.slice(0, 16);
         document.getElementById('eventLocation').value = event.location;
         document.getElementById('eventInfo').value = event.info || '';
-    document.getElementById('eventTechInfo').value = event.techInfo || '';
-    document.getElementById('eventSoundcheckDate').value = event.soundcheckDate ? event.soundcheckDate.slice(0,16) : '';
-    document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
+        document.getElementById('eventTechInfo').value = event.techInfo || '';
+        // Combine previous separate soundcheck date+location into a single info field.
+        if (event.soundcheckDate) {
+            try {
+                const dt = new Date(event.soundcheckDate);
+                const dtStr = dt.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+                document.getElementById('eventSoundcheckLocation').value = dtStr + (event.soundcheckLocation ? ' — ' + event.soundcheckLocation : '');
+            } catch (e) {
+                document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
+            }
+        } else {
+            document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
+        }
         document.getElementById('eventGuests').value = (event.guests || []).join('\n');
 
         // Open modal first so the container exists

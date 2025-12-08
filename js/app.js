@@ -504,6 +504,60 @@ setupQuickAccessEdit() {
     },
 
     setupEventListeners() {
+                        // Zeige '+ Neuer Auftritt' nur, wenn User in mindestens einer Band ist
+                        const createEventBtn = document.getElementById('createEventBtn');
+                        if (createEventBtn) {
+                            Storage.getUserBands(Auth.getCurrentUser().id).then(bands => {
+                                createEventBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
+                            });
+                        }
+                // Band löschen Button
+                const deleteBandBtn = document.getElementById('deleteBandBtn');
+                if (deleteBandBtn) {
+                    deleteBandBtn.addEventListener('click', async () => {
+                        const bandId = App.getCurrentBandId && App.getCurrentBandId();
+                        if (!bandId) {
+                            UI.showToast('Fehler: Keine Band ausgewählt!', 'error');
+                            return;
+                        }
+                        if (!confirm('Willst du diese Band wirklich löschen? Alle zugehörigen Songs, Probetermine und Auftritte werden unwiderruflich entfernt! Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+                        try {
+                            await Storage.deleteBand(bandId);
+                            UI.showToast('Band und alle zugehörigen Daten wurden gelöscht.', 'success');
+                            // UI aktualisieren: z.B. zurück zur Bandübersicht
+                            App.navigateTo('bands');
+                        } catch (err) {
+                            UI.showToast('Fehler beim Löschen: ' + (err.message || err), 'error');
+                        }
+                    });
+                }
+        // Show/hide extra event fields in modal
+        const extrasCheckbox = document.getElementById('eventShowExtras');
+        const extrasFields = document.getElementById('eventExtrasFields');
+        const guestsCheckbox = document.getElementById('eventShowGuests');
+        const guestsField = document.getElementById('eventGuestsField');
+        if (extrasCheckbox && extrasFields) {
+            extrasCheckbox.addEventListener('change', function() {
+                extrasFields.style.display = this.checked ? '' : 'none';
+            });
+        }
+        if (guestsCheckbox && guestsField) {
+            guestsCheckbox.addEventListener('change', function() {
+                guestsField.style.display = this.checked ? '' : 'none';
+            });
+        }
+        // When opening the modal, reset extras and guest fields visibility
+        const createEventModal = document.getElementById('createEventModal');
+        if (createEventModal) {
+            createEventModal.addEventListener('show', function() {
+                if (extrasCheckbox && extrasFields) {
+                    extrasFields.style.display = extrasCheckbox.checked ? '' : 'none';
+                }
+                if (guestsCheckbox && guestsField) {
+                    guestsField.style.display = guestsCheckbox.checked ? '' : 'none';
+                }
+            });
+        }
         // Account löschen Button
         const deleteAccountBtn = document.getElementById('deleteAccountBtn');
         if (deleteAccountBtn) {
@@ -553,38 +607,21 @@ setupQuickAccessEdit() {
         });
 
         // Navigation - Main items and subitems
+        // Remove any logic that hides the 'Planung' tab based on band membership.
         document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
             item.addEventListener('click', async (e) => {
                 try {
-                    // Check if this is a mobile view and if the item is a nav-main with submenu
                     const isMobile = window.innerWidth <= 768;
                     const isMainNav = item.classList.contains('nav-main');
                     const navGroup = item.closest('.nav-group');
                     const hasSubmenu = navGroup && navGroup.querySelector('.nav-submenu');
 
-                    // Check if submenu has any visible items
-                    let hasVisibleSubmenuItems = false;
-                    if (hasSubmenu) {
-                        const subitems = Array.from(navGroup.querySelectorAll('.nav-subitem'));
-                        hasVisibleSubmenuItems = subitems.length > 0 && subitems.some(subitem => {
-                            const computedStyle = window.getComputedStyle(subitem);
-                            const isVisible = subitem.style.display !== 'none' && computedStyle.display !== 'none';
-                            return isVisible;
-                        });
-                    }
-
                     if (isMobile && isMainNav && hasSubmenu) {
                         e.preventDefault();
                         e.stopPropagation();
-
-                        // On mobile: render the subitems in the header area.
                         const mainView = item.dataset.view;
                         if (mainView) {
                             this.updateHeaderSubmenu(mainView);
-                            // Also navigate to the primary subitem (first one) so
-                            // the main tab is clickable and leads somewhere — similar
-                            // to tapping the main item on desktop which often shows
-                            // a default child view.
                             const submenuMap = {
                                 dashboard: ['dashboard','bands','musikpool'],
                                 rehearsals: ['rehearsals','probeorte','kalender'],
@@ -599,32 +636,22 @@ setupQuickAccessEdit() {
                                 console.error('[MOBILE NAV] navigateTo error for', first, navErr);
                             }
                         }
-
                         return;
                     }
 
-                    // Close submenu after clicking subitem on mobile
                     if (isMobile && item.classList.contains('nav-subitem') && navGroup) {
                         navGroup.classList.remove('submenu-open');
                     }
 
-                    e.stopPropagation(); // Prevent event bubbling
+                    e.stopPropagation();
                     const view = item.dataset.view;
                     if (!view) return;
-
-                    // If main nav clicked and we're on mobile, update header submenu accordingly
                     if (isMobile && item.classList.contains('nav-main')) {
                         this.updateHeaderSubmenu(view);
                     }
-
-                    // Check if this is a settings subitem with a specific tab
                     const settingsTab = item.dataset.settingsTab;
-
-                    const result = await App.navigateTo(view);
-
-                    // If navigating to settings with a specific tab, switch to that tab
+                    await App.navigateTo(view);
                     if (view === 'settings' && settingsTab) {
-                        // Small delay to ensure view is rendered
                         setTimeout(() => {
                             const tabButton = document.querySelector(`.settings-tab-btn[data-tab="${settingsTab}"]`);
                             if (tabButton) {
@@ -704,62 +731,68 @@ setupQuickAccessEdit() {
         });
 
 
-        // Create rehearsal button
-        document.getElementById('createRehearsalBtn').addEventListener('click', async () => {
-            // Reset form for new rehearsal
-            document.getElementById('rehearsalModalTitle').textContent = 'Neuen Probetermin vorschlagen';
-            document.getElementById('saveRehearsalBtn').textContent = 'Vorschlag erstellen';
-            document.getElementById('editRehearsalId').value = '';
-            UI.clearForm('createRehearsalForm');
+        // Show 'Probetermine hinzufügen' button only if user is in at least one band
+        const createRehearsalBtn = document.getElementById('createRehearsalBtn');
+        if (createRehearsalBtn) {
+            Storage.getUserBands(Auth.getCurrentUser().id).then(bands => {
+                createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
+            });
+            createRehearsalBtn.addEventListener('click', async () => {
+                // Reset form for new rehearsal
+                document.getElementById('rehearsalModalTitle').textContent = 'Neuen Probetermin vorschlagen';
+                document.getElementById('saveRehearsalBtn').textContent = 'Vorschlag erstellen';
+                document.getElementById('editRehearsalId').value = '';
+                UI.clearForm('createRehearsalForm');
 
-            // Hide delete button for new rehearsal
-            const deleteBtn = document.getElementById('deleteRehearsalBtn');
-            if (deleteBtn) {
-                deleteBtn.style.display = 'none';
-            }
+                // Hide delete button for new rehearsal
+                const deleteBtn = document.getElementById('deleteRehearsalBtn');
+                if (deleteBtn) {
+                    deleteBtn.style.display = 'none';
+                }
 
-            // Reset date proposals
-            const container = document.getElementById('dateProposals');
-            container.innerHTML = `
-                <div class="date-proposal-item" data-confirmed="false">
-                    <div class="date-time-range">
-                        <input type="date" class="date-input-date">
-                        <input type="time" class="date-input-start">
-                        <span class="time-separator">bis</span>
-                        <input type="time" class="date-input-end">
+                // Reset date proposals
+                const container = document.getElementById('dateProposals');
+                container.innerHTML = `
+                    <div class="date-proposal-item" data-confirmed="false">
+                        <div class="date-time-range">
+                            <input type="date" class="date-input-date">
+                            <input type="time" class="date-input-start">
+                            <span class="time-separator">bis</span>
+                            <input type="time" class="date-input-end">
+                        </div>
+                        <span class="date-availability" style="margin-left:8px"></span>
+                        <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
+                        <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
                     </div>
-                    <span class="date-availability" style="margin-left:8px"></span>
-                    <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
-                    <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
-                </div>
-            `;
+                `;
 
-            // Attach event handlers to the new elements
-            Rehearsals.attachVoteHandlers(container);
+                // Attach event handlers to the new elements
+                Rehearsals.attachVoteHandlers(container);
 
-            await Bands.populateBandSelects();
-            await this.populateLocationSelect();
+                await Bands.populateBandSelects();
+                await this.populateLocationSelect();
 
-            // Attach availability listeners for initial input
-            if (typeof Rehearsals !== 'undefined' && Rehearsals.attachAvailabilityListeners) {
-                Rehearsals.attachAvailabilityListeners();
-            }
+                // Attach availability listeners for initial input
+                if (typeof Rehearsals !== 'undefined' && Rehearsals.attachAvailabilityListeners) {
+                    Rehearsals.attachAvailabilityListeners();
+                }
 
-            // Clear event select initially
-            const eventSelect = document.getElementById('rehearsalEvent');
-            if (eventSelect) {
-                eventSelect.innerHTML = '<option value="">Bitte zuerst eine Band auswählen</option>';
-            }
+                // Clear event select initially
+                const eventSelect = document.getElementById('rehearsalEvent');
+                if (eventSelect) {
+                    eventSelect.innerHTML = '<option value="">Bitte zuerst eine Band auswählen</option>';
+                }
 
-            // Hide notification checkbox for new rehearsals
-            const notifyGroup = document.getElementById('notifyMembersGroup');
-            if (notifyGroup) {
-                notifyGroup.style.display = 'none';
-                document.getElementById('notifyMembersOnUpdate').checked = false;
-            }
+                // Hide notification checkbox for new rehearsals
+                const notifyGroup = document.getElementById('notifyMembersGroup');
+                if (notifyGroup) {
+                    notifyGroup.style.display = 'none';
+                    document.getElementById('notifyMembersOnUpdate').checked = false;
+                }
 
-            UI.openModal('createRehearsalModal');
-        });
+                UI.openModal('createRehearsalModal');
+            });
+        }
 
         // Listen for band selection changes in rehearsal form
         const rehearsalBandSelect = document.getElementById('rehearsalBand');
@@ -3245,6 +3278,24 @@ setupQuickAccessEdit() {
                 if (confirmed) {
                     await Storage.deleteBand(bandId);
                     await this.renderAllBandsList();
+                    // Refresh band cards in "Meine Bands" view
+                    if (typeof Bands.renderBands === 'function') {
+                        await Bands.renderBands();
+                    }
+                    // Always update dashboard after band deletion
+                    if (typeof App.updateDashboard === 'function') {
+                        await App.updateDashboard();
+                    }
+                    // Show/hide 'Neuer Auftritt' and 'Neuer Probetermin' buttons
+                    const userBands = await Storage.getUserBands(Auth.getCurrentUser().id);
+                    const createEventBtn = document.getElementById('createEventBtn');
+                    if (createEventBtn) {
+                        createEventBtn.style.display = (userBands && userBands.length > 0) ? '' : 'none';
+                    }
+                    const createRehearsalBtn = document.getElementById('createRehearsalBtn');
+                    if (createRehearsalBtn) {
+                        createRehearsalBtn.style.display = (userBands && userBands.length > 0) ? '' : 'none';
+                    }
                     UI.showToast('Band gelöscht', 'success');
                 }
             });
@@ -4097,13 +4148,36 @@ setupQuickAccessEdit() {
         const name = document.getElementById('bandName').value;
         const description = document.getElementById('bandDescription').value;
 
-        Bands.createBand(name, description);
-        UI.clearForm('createBandForm');
-
-        // Refresh band management list if admin
-        if (Auth.isAdmin()) {
-            this.renderAllBandsList();
-        }
+        Bands.createBand(name, description).then(async () => {
+            UI.clearForm('createBandForm');
+            UI.closeModal('createBandModal');
+            // Refresh band cards in "Meine Bands" view
+            if (typeof Bands.renderBands === 'function') {
+                await Bands.renderBands();
+            }
+            // Always update dashboard after band creation
+            if (typeof this.updateDashboard === 'function') {
+                await this.updateDashboard();
+            }
+            // Show 'Neuer Auftritt' and 'Neuer Probetermin' buttons if user is now in a band
+            const userBands = await Storage.getUserBands(Auth.getCurrentUser().id);
+            const createEventBtn = document.getElementById('createEventBtn');
+            if (createEventBtn) {
+                createEventBtn.style.display = (userBands && userBands.length > 0) ? '' : 'none';
+            }
+            const createRehearsalBtn = document.getElementById('createRehearsalBtn');
+            if (createRehearsalBtn) {
+                createRehearsalBtn.style.display = (userBands && userBands.length > 0) ? '' : 'none';
+            }
+            // Refresh band management list if admin
+            if (Auth.isAdmin() && typeof this.renderAllBandsList === 'function') {
+                await this.renderAllBandsList();
+            }
+            // Navigate to bands view so user sees their new band
+            if (typeof App.navigateTo === 'function') {
+                App.navigateTo('bands');
+            }
+        });
     },
 
     // Handle edit band
@@ -4302,12 +4376,15 @@ setupQuickAccessEdit() {
         const bandId = document.getElementById('eventBand').value;
         const title = document.getElementById('eventTitle').value;
         const date = new Date(document.getElementById('eventDate').value).toISOString();
-        const soundcheckInput = document.getElementById('eventSoundcheckDate').value;
-        const soundcheckDate = soundcheckInput ? new Date(soundcheckInput).toISOString() : null;
-        const soundcheckLocation = document.getElementById('eventSoundcheckLocation').value || null;
+        // Soundcheck: we now store combined info in a single text field
+        const soundcheckDate = null; // removed separate date field
         const location = document.getElementById('eventLocation').value;
-        const info = document.getElementById('eventInfo').value;
-        const techInfo = document.getElementById('eventTechInfo').value;
+        let soundcheckLocation = null, info = null, techInfo = null;
+        if (document.getElementById('eventShowExtras').checked) {
+            soundcheckLocation = document.getElementById('eventSoundcheckLocation').value || null;
+            info = document.getElementById('eventInfo').value;
+            techInfo = document.getElementById('eventTechInfo').value;
+        }
         const members = Events.getSelectedMembers();
         const guests = Events.getGuests();
 

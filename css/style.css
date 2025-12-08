@@ -931,6 +931,12 @@ input:checked+.slider:before {
     .nav-submenu {
         display: none;
     }
+    .nav-group.submenu-open .nav-submenu {
+        display: flex !important;
+    }
+    .nav-item.nav-main[data-view="rehearsals"] {
+        display: flex !important;
+    }
 }
 
 .nav-subitem {

@@ -73,29 +73,29 @@
                     <!-- Register Form -->
                     <form id="registerForm" class="auth-form">
                         <div class="form-group">
-                            <label for="registerCode">Registrierungscode</label>
+                            <label for="registerCode">Registrierungscode <span style="color:red;" title="Pflichtfeld">*</span></label>
                             <input type="text" id="registerCode" placeholder="Code eingeben" required>
                             <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Bitte gib den gültigen
                                 Registrierungscode ein</small>
                         </div>
                         <div class="form-group">
-                            <label for="registerName">Name</label>
+                            <label for="registerName">Name <span style="color:red;" title="Pflichtfeld">*</span></label>
                             <input type="text" id="registerName" required>
                         </div>
                         <div class="form-group">
-                            <label for="registerEmail">E-Mail</label>
+                            <label for="registerEmail">E-Mail <span style="color:red;" title="Pflichtfeld">*</span></label>
                             <input type="email" id="registerEmail" required>
                         </div>
                         <div class="form-group">
-                            <label for="registerUsername">Benutzername</label>
+                            <label for="registerUsername">Benutzername <span style="color:red;" title="Pflichtfeld">*</span></label>
                             <input type="text" id="registerUsername" required>
                         </div>
                         <div class="form-group">
-                            <label for="registerPassword">Passwort</label>
+                            <label for="registerPassword">Passwort <span style="color:red;" title="Pflichtfeld">*</span></label>
                             <input type="password" id="registerPassword" required>
                         </div>
                         <div class="form-group">
-                            <label for="registerPasswordConfirm">Passwort bestätigen</label>
+                            <label for="registerPasswordConfirm">Passwort bestätigen <span style="color:red;" title="Pflichtfeld">*</span></label>
                             <input type="password" id="registerPasswordConfirm" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Registrieren</button>
@@ -960,6 +960,9 @@
                     <div class="section" id="bandSettingsSection">
                         <h3>Band-Einstellungen</h3>
                         <div class="settings-actions">
+                            <div style="margin-bottom:0.5em;color:#b91c1c;font-weight:bold;">
+                                Achtung: Beim Löschen werden alle zugehörigen Songs, Probetermine und Auftritte <u>unwiderruflich</u> entfernt!
+                            </div>
                             <button id="deleteBandBtn" class="btn btn-danger">Band löschen</button>
                         </div>
                     </div>
@@ -1053,13 +1056,13 @@
             <form id="createRehearsalForm">
                 <input type="hidden" id="editRehearsalId">
                 <div class="form-group">
-                    <label for="rehearsalBand">Band</label>
+                    <label for="rehearsalBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
                     <select id="rehearsalBand" required>
                         <option value="">Band auswählen</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="rehearsalTitle">Titel</label>
+                    <label for="rehearsalTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
                     <input type="text" id="rehearsalTitle" required>
                 </div>
                 <div class="form-group">
@@ -1167,7 +1170,7 @@
                 <div class="section">
                     <h3>Probendetails bearbeiten</h3>
                     <div class="form-group">
-                        <label for="confirmRehearsalTitle">Titel</label>
+                        <label for="confirmRehearsalTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
                         <input type="text" id="confirmRehearsalTitle" class="form-control" required>
                     </div>
                     <div class="form-group">
@@ -1175,11 +1178,11 @@
                         <textarea id="confirmRehearsalDescription" class="form-control" rows="2"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="confirmRehearsalStartTime">Von (Start)</label>
+                        <label for="confirmRehearsalStartTime">Von (Start) <span style="color:red;" title="Pflichtfeld">*</span></label>
                         <input type="datetime-local" id="confirmRehearsalStartTime" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label for="confirmRehearsalEndTime">Bis (Ende)</label>
+                        <label for="confirmRehearsalEndTime">Bis (Ende) <span style="color:red;" title="Pflichtfeld">*</span></label>
                         <input type="datetime-local" id="confirmRehearsalEndTime" class="form-control" required>
                     </div>
                 </div>
@@ -1242,46 +1245,52 @@
             <form id="createEventForm">
                 <input type="hidden" id="editEventId">
                 <div class="form-group">
-                    <label for="eventBand">Band</label>
+                    <label for="eventBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
                     <select id="eventBand" required>
                         <option value="">Band auswählen</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="eventTitle">Titel</label>
+                    <label for="eventTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
                     <input type="text" id="eventTitle" required>
                 </div>
                 <div class="form-group">
-                    <label for="eventDate">Datum und Uhrzeit</label>
+                    <label for="eventDate">Datum und Uhrzeit <span style="color:red;" title="Pflichtfeld">*</span></label>
                     <input type="datetime-local" id="eventDate" required>
                 </div>
                 <div class="form-group">
-                    <label for="eventSoundcheckDate">Soundcheck Datum & Uhrzeit (Optional)</label>
-                    <input type="datetime-local" id="eventSoundcheckDate">
-                </div>
-                <div class="form-group">
-                    <label for="eventSoundcheckLocation">Soundcheck Ort (Optional)</label>
-                    <input type="text" id="eventSoundcheckLocation" placeholder="Ort des Soundchecks">
-                </div>
-                <div class="form-group">
-                    <label for="eventLocation">Ort (optional)</label>
+                    <label for="eventLocation">Ort</label>
                     <input type="text" id="eventLocation">
                 </div>
                 <div class="form-group">
-                    <label for="eventInfo">Sonstige Infos zum Event</label>
-                    <textarea id="eventInfo" rows="3"></textarea>
+                    <label for="eventShowExtras" style="display:inline;">Gibt es weitere Infos zum Soundcheck, Event oder zur Technik?</label>
+                    <input type="checkbox" id="eventShowExtras">
+                </div>
+                <div id="eventExtrasFields" style="display:none;">
+                    <div class="form-group">
+                        <label for="eventSoundcheckLocation">Infos zum Soundcheck</label>
+                        <input type="text" id="eventSoundcheckLocation" placeholder="Uhrzeit, Datum...">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventInfo">Infos zum Event</label>
+                        <textarea id="eventInfo" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventTechInfo">Infos zur Technik</label>
+                        <textarea id="eventTechInfo" rows="3"></textarea>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="eventTechInfo">Infos zur Technik</label>
-                    <textarea id="eventTechInfo" rows="3"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Bandmitglieder</label>
+                    <label>Folgende Bandmitglieder sind mit dabei</label>
                     <div id="eventBandMembers" class="checkbox-list"></div>
                 </div>
                 <div class="form-group">
-                    <label>Gästeliste (Optional)</label>
-                    <textarea id="eventGuests" rows="2" placeholder="Namen, durch Komma getrennt"></textarea>
+                    <label for="eventShowGuests" style="display:inline;">Sind Gäste mit dabei?</label>
+                    <input type="checkbox" id="eventShowGuests">
+                </div>
+                <div class="form-group" id="eventGuestsField" style="display:none;">
+                    <label>Gästeliste</label>
+                    <textarea id="eventGuests" rows="2"></textarea>
                 </div>
                 <div class="form-group">
                     <div class="section-header">
