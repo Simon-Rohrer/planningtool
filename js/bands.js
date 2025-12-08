@@ -222,7 +222,15 @@ const Bands = {
         settingsTab.appendChild(leaveSection);
 
         leaveSection.querySelector('#leaveBandBtn').addEventListener('click', () => {
-            this.leaveBand(bandId);
+            (async () => {
+                const members = await Storage.getBandMembers(bandId);
+                const user = Auth.getCurrentUser();
+                if (members.length <= 1 || (members.length === 2 && members.some(m => m.userId === user.id))) {
+                    UI.showToast('Du bist das letzte Mitglied dieser Band. Bitte lösche die Band, bevor du sie verlässt, um Datenmüll zu vermeiden.', 'warning');
+                    return;
+                }
+                this.leaveBand(bandId);
+            })();
         });
 
         // Wire up song button
@@ -719,17 +727,26 @@ const Bands = {
         try {
             const user = Auth.getCurrentUser();
             const bands = user ? (await Storage.getUserBands(user.id)) || [] : [];
-            const count = bands.length;
-            const show = count > 0;
+            const show = bands.length > 0;
 
-            const eventsBtn = document.querySelector('.nav-item[data-view="events"]');
+            // 'Auftritte' Tab soll IMMER sichtbar sein
+            document.querySelectorAll('.nav-item[data-view="events"], .nav-subitem[data-view="events"]').forEach(item => {
+                item.style.display = '';
+            });
+
+            // 'Neuen Probetermin' Button nur anzeigen, wenn mindestens eine Band
+            const createRehearsalBtn = document.getElementById('createRehearsalBtn');
+            if (createRehearsalBtn) {
+                createRehearsalBtn.style.display = show ? '' : 'none';
+            }
+
+            // Probetermine Tab nur anzeigen, wenn mindestens eine Band
             const rehearsalsBtn = document.querySelector('.nav-item[data-view="rehearsals"]');
+            if (rehearsalsBtn) rehearsalsBtn.style.display = show ? '' : 'none';
+
+            // Diese Buttons sollen IMMER sichtbar sein
             const absenceBtn = document.getElementById('absenceBtn');
             const settingsBtn = document.getElementById('settingsBtn');
-
-            if (eventsBtn) eventsBtn.style.display = show ? '' : 'none';
-            if (rehearsalsBtn) rehearsalsBtn.style.display = show ? '' : 'none';
-            // These buttons should ALWAYS be visible
             if (absenceBtn) absenceBtn.style.display = 'inline-block';
             if (settingsBtn) settingsBtn.style.display = 'inline-block';
         } catch (e) {

@@ -511,6 +511,22 @@ setupQuickAccessEdit() {
                                 createEventBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
                             });
                         }
+                        // Ensure 'Auftritte' and 'Planung' main navigation tabs are always visible (desktop & mobile)
+                        document.querySelectorAll('.nav-item[data-view="events"], .nav-item[data-view="rehearsals"]').forEach(item => {
+                            item.style.display = '';
+                        });
+                        // Also ensure mobile tabs are always visible
+                        document.querySelectorAll('.nav-subitem[data-view="events"], .nav-subitem[data-view="rehearsals"], .nav-subitem[data-view="probeorte"], .nav-subitem[data-view="kalender"]').forEach(item => {
+                            item.style.display = '';
+                        });
+
+                        // Hide 'Neuen Probetermin' button if user is not in a band
+                        Storage.getUserBands(Auth.getCurrentUser().id).then(bands => {
+                            const createRehearsalBtn = document.getElementById('createRehearsalBtn');
+                            if (createRehearsalBtn) {
+                                createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
+                            }
+                        });
                 // Band löschen Button
                 const deleteBandBtn = document.getElementById('deleteBandBtn');
                 if (deleteBandBtn) {
@@ -526,6 +542,17 @@ setupQuickAccessEdit() {
                             UI.showToast('Band und alle zugehörigen Daten wurden gelöscht.', 'success');
                             // UI aktualisieren: z.B. zurück zur Bandübersicht
                             App.navigateTo('bands');
+                            // Force visibility of 'Auftritte' and 'Planung' navigation tabs (desktop & mobile)
+                            document.querySelectorAll('.nav-item[data-view="events"], .nav-item[data-view="rehearsals"], .nav-subitem[data-view="events"], .nav-subitem[data-view="rehearsals"], .nav-subitem[data-view="probeorte"], .nav-subitem[data-view="kalender"]').forEach(item => {
+                                item.style.display = '';
+                            });
+                            // Hide 'Neuen Probetermin' button if user is not in a band
+                            Storage.getUserBands(Auth.getCurrentUser().id).then(bands => {
+                                const createRehearsalBtn = document.getElementById('createRehearsalBtn');
+                                if (createRehearsalBtn) {
+                                    createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
+                                }
+                            });
                         } catch (err) {
                             UI.showToast('Fehler beim Löschen: ' + (err.message || err), 'error');
                         }
@@ -698,10 +725,13 @@ setupQuickAccessEdit() {
         });
 
         // Create band form
-        document.getElementById('createBandForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleCreateBand();
-        });
+        const createBandForm = document.getElementById('createBandForm');
+        if (createBandForm) {
+            createBandForm.onsubmit = (e) => {
+                e.preventDefault();
+                this.handleCreateBand();
+            };
+        }
 
         // Edit band form
         const editBandForm = document.getElementById('editBandForm');
@@ -811,10 +841,13 @@ setupQuickAccessEdit() {
         }
 
         // Create rehearsal form
-        document.getElementById('createRehearsalForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleCreateRehearsal();
-        });
+        const createRehearsalForm = document.getElementById('createRehearsalForm');
+        if (createRehearsalForm) {
+            createRehearsalForm.onsubmit = (e) => {
+                e.preventDefault();
+                this.handleCreateRehearsal();
+            };
+        }
 
         // Add date button
         document.getElementById('addDateBtn').addEventListener('click', () => {
@@ -858,10 +891,13 @@ setupQuickAccessEdit() {
         });
 
         // Create event form
-        document.getElementById('createEventForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleCreateEvent();
-        });
+        const createEventForm = document.getElementById('createEventForm');
+        if (createEventForm) {
+            createEventForm.onsubmit = (e) => {
+                e.preventDefault();
+                this.handleCreateEvent();
+            };
+        }
 
         // Event band change
         document.getElementById('eventBand').addEventListener('change', async (e) => {

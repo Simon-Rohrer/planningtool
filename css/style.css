@@ -2903,7 +2903,20 @@ input:checked+.slider:before {
 
 .event-card.event-past {
     opacity: 0.7;
-    border-left-color: var(--color-text-light);
+    /* Verhindere Grautöne als border-left-color */
+    border-left-color: var(--event-past-border-color, #10b981); /* Standard: grün, kann überschrieben werden */
+}
+
+/* Falls irgendwo explizit grau gesetzt wird, überschreibe es für vergangene Events */
+.event-card.event-past[style*="border-left-color: #888"],
+.event-card.event-past[style*="border-left-color: #999"],
+.event-card.event-past[style*="border-left-color: #ccc"],
+.event-card.event-past[style*="border-left-color: #bbb"],
+.event-card.event-past[style*="border-left-color: #e0e0e0"],
+.event-card.event-past[style*="border-left-color: #f0f0f0"],
+.event-card.event-past[style*="border-left-color: #d3d3d3"],
+.event-card.event-past[style*="border-left-color: #808080"] {
+    border-left-color: var(--event-past-border-color, #10b981) !important;
 }
 
 .event-header {
