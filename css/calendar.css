@@ -78,7 +78,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    overflow-y: auto;
+    overflow-y: visible;
 }
 
 /* Individual Event */
@@ -96,8 +96,11 @@
 }
 
 .calendar-event:hover {
-    transform: scale(1.02);
-    box-shadow: var(--shadow-md);
+    /* Remove scaling and shadow on hover */
+    /* transform: scale(1.02); */
+    /* box-shadow: var(--shadow-md); */
+    /* Prevent scrollbars and overflow on hover */
+    overflow: hidden;
 }
 
 .event-time {

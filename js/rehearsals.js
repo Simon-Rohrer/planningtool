@@ -63,7 +63,14 @@ const Rehearsals = {
 
         const isCreator = rehearsal.createdBy === user.id;
         const isAdmin = Auth.isAdmin();
-        const canManage = isCreator || isAdmin; // Simplified permission for demo
+        let isLeader = false;
+        let isCoLeader = false;
+        if (user && band) {
+            const role = await Storage.getUserRoleInBand(user.id, band.id);
+            isLeader = role === 'leader';
+            isCoLeader = role === 'co-leader';
+        }
+        const canManage = isCreator || isAdmin || isLeader || isCoLeader;
 
         let dateOptionsHtml = '';
         if (rehearsal.status === 'pending') {
@@ -896,21 +903,18 @@ const Rehearsals = {
         const rehearsal = await Storage.getRehearsal(rehearsalId);
         if (rehearsal) {
             const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
-            let scrollY = null;
             if (card) {
-                // Position relativ zum Viewport merken
-                const rect = card.getBoundingClientRect();
-                scrollY = window.scrollY + rect.top;
+                const previousScrollY = window.scrollY;
                 const newCardHtml = await this.renderRehearsalCard(rehearsal);
                 card.outerHTML = newCardHtml;
 
-                // Re-attach handlers to the updated card
-                const updatedCard = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
-                if (updatedCard) {
-                    this.attachVoteHandlers(updatedCard);
-                    // Nach dem Update wieder zur Karte scrollen
-                    window.scrollTo({ top: scrollY, behavior: 'smooth' });
-                }
+                setTimeout(() => {
+                    window.scrollTo({ top: previousScrollY });
+                    const updatedCard = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+                    if (updatedCard) {
+                        this.attachVoteHandlers(updatedCard);
+                    }
+                }, 50);
             }
         }
 

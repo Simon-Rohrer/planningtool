@@ -809,6 +809,25 @@ const Bands = {
                 bands.map(band =>
                     `<option value="${band.id}">${this.escapeHtml(band.name)}</option>`
                 ).join('');
+                // Vorauswahl: wenn genau eine Band vorhanden ist
+            if (bands.length === 1) {
+                statsBandSelect.value = bands[0].id;
+                statsBandSelect.dispatchEvent(new Event('change'));
+            }
+        }
+
+        // Populate event band select (for event creation)
+        const eventBandSelect = document.getElementById('eventBand');
+        if (eventBandSelect) {
+            eventBandSelect.innerHTML = '<option value="">Band auswählen</option>' +
+                bands.map(band =>
+                    `<option value="${band.id}">${this.escapeHtml(band.name)}</option>`
+                ).join('');
+            // Vorauswahl: wenn genau eine Band vorhanden ist
+            if (bands.length === 1) {
+                eventBandSelect.value = bands[0].id;
+                eventBandSelect.dispatchEvent(new Event('change'));
+            }
         }
     },
 

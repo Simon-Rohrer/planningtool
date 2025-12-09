@@ -110,21 +110,19 @@ const Statistics = {
 
             <div class="band-stats-grid">
                 <div class="stat-card">
-                    <div class="stat-value">${events.length}</div>
-                    <div class="stat-label">Alle Auftritte</div>
+                    <div class="stat-label"><b>Anzahl der Auftritte: </b>${events.length}</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">${rehearsals.length}</div>
-                    <div class="stat-label">Alle Proben</div>
+                    <div class="stat-label"><b>Anzahl der Proben: </b>${rehearsals.length}</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">${rehearsals.filter(r=>r.status==='confirmed').length}</div>
-                    <div class="stat-label">Bestätigte Proben</div>
+                <div class="stat-label"><b>Bestätigte Proben: </b>${rehearsals.filter(r=>r.status==='confirmed').length}</div>
+                    <div class="stat-value"></div>
                 </div>
             </div>
 
             <div style="margin-top: var(--spacing-md);">
-                <h4>Letzte 5 Auftritte</h4>
+                <h4>Letzte 5 Auftritte:</h4>
                 <ul>
                     ${events.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5).map(e => `<li>${UI.formatDateShort(e.date)} — ${Bands.escapeHtml(e.title)}</li>`).join('')}
                 </ul>

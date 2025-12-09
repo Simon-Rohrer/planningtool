@@ -386,6 +386,7 @@ const PersonalCalendar = {
     async showItemDetails(itemId, itemType) {
         let item;
         
+
         if (itemType === 'event') {
             item = this.events.find(e => e.id === itemId);
         } else {
@@ -411,18 +412,27 @@ const PersonalCalendar = {
                 year: 'numeric' 
             });
 
-            // Get band members for this event
+            // Get band members for this event, fetch user names
             let membersHTML = '';
             if (item.bandId) {
                 const members = await Storage.getBandMembers(item.bandId);
+                let memberUsers = [];
                 if (members && members.length > 0) {
+                    // Fetch all user objects in parallel
+                    memberUsers = await Promise.all(members.map(async m => {
+                        const user = await Storage.getById('users', m.userId);
+                        return {
+                            ...m,
+                            name: user ? (user.name || user.username || user.email || m.userId) : m.userId
+                        };
+                    }));
                     membersHTML = `
                         <div style="margin-top: 1rem;">
                             <strong style="color: var(--color-text);">Band-Mitglieder:</strong>
                             <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                                ${members.map(m => `
+                                ${memberUsers.map(m => `
                                     <span style="background: var(--color-bg); padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.875rem;">
-                                        ${this.escapeHtml(m.name || m.userId)}
+                                        ${this.escapeHtml(m.name)}
                                     </span>
                                 `).join('')}
                             </div>
@@ -496,6 +506,34 @@ const PersonalCalendar = {
                 }
             }
 
+            // Get band members for this rehearsal, fetch user names
+            let membersHTML = '';
+            if (item.bandId) {
+                const members = await Storage.getBandMembers(item.bandId);
+                let memberUsers = [];
+                if (members && members.length > 0) {
+                    memberUsers = await Promise.all(members.map(async m => {
+                        const user = await Storage.getById('users', m.userId);
+                        return {
+                            ...m,
+                            name: user ? (user.name || user.username || user.email || m.userId) : m.userId
+                        };
+                    }));
+                    membersHTML = `
+                        <div style="margin-top: 1rem;">
+                            <strong style="color: var(--color-text);">Band-Mitglieder:</strong>
+                            <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                ${memberUsers.map(m => `
+                                    <span style="background: var(--color-bg); padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.875rem;">
+                                        ${this.escapeHtml(m.name)}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
             // Get attendance
             let attendanceHTML = '';
             if (item.responses && Object.keys(item.responses).length > 0) {
@@ -521,11 +559,6 @@ const PersonalCalendar = {
                         <span style="font-size: 2rem;">📅</span>
                         ${this.escapeHtml(item.title || 'Probe')}
                     </h2>
-                    
-                    <div style="background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary)); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); display: inline-block; margin-bottom: 1rem;">
-                        <strong>Probe</strong>
-                    </div>
-
                     <div style="color: var(--color-text-secondary); line-height: 1.8;">
                         <p><strong>🎸 Band:</strong> ${this.escapeHtml(bandName)}</p>
                         <p><strong>📅 Datum:</strong> ${dateStr}</p>
@@ -534,6 +567,7 @@ const PersonalCalendar = {
                         ${item.notes ? `<p><strong>📝 Notizen:</strong><br>${this.escapeHtml(item.notes)}</p>` : ''}
                     </div>
 
+                    ${membersHTML}
                     ${attendanceHTML}
                 </div>
             `;
@@ -544,7 +578,9 @@ const PersonalCalendar = {
             <div id="itemDetailsModal" class="modal active" style="z-index: 1000;">
                 <div class="modal-content" style="max-width: 600px;">
                     <div class="modal-header">
-                        <h2>Details</h2>
+                        <h2>
+                            ${itemType === 'event' ? 'Auftrittdetails' : 'Probendetails'}
+                        </h2>
                         <button class="modal-close" onclick="PersonalCalendar.closeDetailsModal()">×</button>
                     </div>
                     <div class="modal-body">

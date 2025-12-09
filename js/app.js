@@ -897,8 +897,34 @@ setupQuickAccessEdit() {
         });
 
         // Statistics rehearsal select
+
         document.getElementById('statsRehearsalSelect').addEventListener('change', (e) => {
-            Statistics.renderStatistics(e.target.value);
+            const rehearsalId = e.target.value;
+            if (rehearsalId) {
+                Statistics.renderStatistics(rehearsalId);
+            } else {
+                // If a band is selected but no rehearsal, show band stats
+                const bandId = document.getElementById('statsBandSelect').value;
+                if (bandId) {
+                    Statistics.renderBandStatistics(bandId);
+                } else {
+                    const container = document.getElementById('statisticsContent');
+                    UI.showEmptyState(container, '📊', 'Wähle eine Band oder einen Probetermin aus, um die Statistiken zu sehen');
+                }
+            }
+        });
+
+        document.getElementById('statsBandSelect').addEventListener('change', (e) => {
+            const bandId = e.target.value;
+            const rehearsalId = document.getElementById('statsRehearsalSelect').value;
+            if (rehearsalId) {
+                Statistics.renderStatistics(rehearsalId);
+            } else if (bandId) {
+                Statistics.renderBandStatistics(bandId);
+            } else {
+                const container = document.getElementById('statisticsContent');
+                UI.showEmptyState(container, '📊', 'Wähle eine Band oder einen Probetermin aus, um die Statistiken zu sehen');
+            }
         });
 
         // Create event button
@@ -3918,9 +3944,16 @@ setupQuickAccessEdit() {
             dashboardCards[3].onclick = () => this.navigateTo('rehearsals');
         }
 
+
+        // --- Fix: Upcoming Events Count ---
+        const events = (await Storage.getUserEvents(user.id)) || [];
+        const now = new Date();
+        const upcomingEvents = events.filter(e => new Date(e.date) >= now);
+        document.getElementById('upcomingEvents').textContent = upcomingEvents.length;
+
+        // Pending votes logic (unchanged)
         const rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
         const pendingRehearsals = rehearsals.filter(r => r.status === 'pending');
-
         let pendingVotesCount = 0;
         for (const rehearsal of pendingRehearsals) {
             for (let index = 0; index < rehearsal.proposedDates.length; index++) {
@@ -3930,9 +3963,9 @@ setupQuickAccessEdit() {
                 }
             }
         }
-
         document.getElementById('pendingVotes').textContent = pendingVotesCount;
 
+        // Confirmed rehearsals logic (unchanged)
         const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
         document.getElementById('confirmedRehearsals').textContent = confirmedRehearsals.length;
 
@@ -4152,19 +4185,20 @@ setupQuickAccessEdit() {
             }));
 
         const upcomingRehearsals = rehearsals
-            .filter(r => r.status === 'confirmed' && r.confirmedDateIndex !== undefined)
+            .filter(r => r.status === 'confirmed' && ((r.confirmedDate && r.confirmedDate !== '') || (r.confirmedDateIndex !== undefined && r.proposedDates && r.proposedDates[r.confirmedDateIndex])))
             .map(r => {
-                const iso = r.proposedDates[r.confirmedDateIndex];
+                // Prefer confirmedDate if present, else fallback to proposedDates[confirmedDateIndex]
+                const dateIso = r.confirmedDate ? r.confirmedDate : (r.proposedDates && r.confirmedDateIndex !== undefined ? r.proposedDates[r.confirmedDateIndex] : null);
                 return {
                     type: 'rehearsal',
-                    date: iso,
+                    date: dateIso,
                     title: r.title,
                     bandId: r.bandId,
                     locationId: r.locationId || null,
                     id: r.id
                 };
             })
-            .filter(item => new Date(item.date) >= now);
+            .filter(item => item.date && new Date(item.date) >= now);
 
         const combined = [...upcomingEvents, ...upcomingRehearsals]
             .sort((a, b) => new Date(a.date) - new Date(b.date))
@@ -4180,6 +4214,7 @@ setupQuickAccessEdit() {
             const bandName = band?.name || 'Band';
             const dateText = UI.formatDateShort(item.date);
             const typeIcon = item.type === 'event' ? '🎤' : '📅';
+            const typeLabel = item.type === 'event' ? 'Auftritt' : 'Probetermin';
 
             let locationText = '-';
             if (item.type === 'event') {
@@ -4196,6 +4231,7 @@ setupQuickAccessEdit() {
                         <div style="display:flex; flex-direction:column;">
                             <div style="font-weight:600;">${Bands.escapeHtml(item.title)}</div>
                             <div style="font-size:0.9rem; color:var(--color-text-secondary); line-height:1.4;">
+                                <span style="font-weight:500; color:var(--color-primary);">${typeLabel}</span><br>
                                 ${UI.formatDate(item.date)}<br>
                                 🎸 ${Bands.escapeHtml(bandName)}<br>
                                 📍 ${locationText}
@@ -4203,7 +4239,7 @@ setupQuickAccessEdit() {
                         </div>
                     </div>
                     <div style="margin-left: 0.5rem;">
-                        ${item.type === 'event' ? `<button class="btn btn-secondary" onclick="App.navigateTo('events')">Öffnen</button>` : `<button class="btn btn-secondary" onclick="App.navigateTo('rehearsals')">Öffnen</button>`}
+                        ${item.type === 'event' ? `<button class=\"btn btn-secondary\" onclick=\"App.navigateTo('events')\">Öffnen</button>` : `<button class=\"btn btn-secondary\" onclick=\"App.navigateTo('rehearsals')\">Öffnen</button>`}
                     </div>
                 </div>
             `;
