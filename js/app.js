@@ -19,7 +19,10 @@ const App = {
             // 1. User aus Supabase Auth löschen
             await Auth.deleteCurrentUser();
             // 2. User aus eigener Datenbank löschen
-            await Storage.deleteUser(Auth.getCurrentUser().id);
+            const user = Auth.getCurrentUser();
+            if (user) {
+                await Storage.deleteUser(user.id);
+            }
             UI.showToast('Account und alle Daten wurden gelöscht.', 'success');
             UI.closeModal('deleteAccountModal');
             // 3. Logout und zurück zur Landing-Page
@@ -506,8 +509,9 @@ setupQuickAccessEdit() {
     setupEventListeners() {
                         // Zeige '+ Neuer Auftritt' nur, wenn User in mindestens einer Band ist
                         const createEventBtn = document.getElementById('createEventBtn');
-                        if (createEventBtn) {
-                            Storage.getUserBands(Auth.getCurrentUser().id).then(bands => {
+                        const user = Auth.getCurrentUser();
+                        if (createEventBtn && user) {
+                            Storage.getUserBands(user.id).then(bands => {
                                 createEventBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
                             });
                         }
@@ -521,12 +525,15 @@ setupQuickAccessEdit() {
                         });
 
                         // Hide 'Neuen Probetermin' button if user is not in a band
-                        Storage.getUserBands(Auth.getCurrentUser().id).then(bands => {
-                            const createRehearsalBtn = document.getElementById('createRehearsalBtn');
-                            if (createRehearsalBtn) {
-                                createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
-                            }
-                        });
+                        const user2 = Auth.getCurrentUser();
+                        if (user2) {
+                            Storage.getUserBands(user2.id).then(bands => {
+                                const createRehearsalBtn = document.getElementById('createRehearsalBtn');
+                                if (createRehearsalBtn) {
+                                    createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
+                                }
+                            });
+                        }
                 // Band löschen Button
                 const deleteBandBtn = document.getElementById('deleteBandBtn');
                 if (deleteBandBtn) {
@@ -619,7 +626,8 @@ setupQuickAccessEdit() {
         // Login form
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            await this.handleLogin();
+            const rememberMe = document.getElementById('loginRememberMe')?.checked;
+            await this.handleLogin(undefined, undefined, rememberMe);
         });
 
         // Register form
@@ -764,9 +772,12 @@ setupQuickAccessEdit() {
         // Show 'Probetermine hinzufügen' button only if user is in at least one band
         const createRehearsalBtn = document.getElementById('createRehearsalBtn');
         if (createRehearsalBtn) {
-            Storage.getUserBands(Auth.getCurrentUser().id).then(bands => {
-                createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
-            });
+            const user = Auth.getCurrentUser();
+            if (user) {
+                Storage.getUserBands(user.id).then(bands => {
+                    createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
+                });
+            }
             createRehearsalBtn.addEventListener('click', async () => {
                 // Reset form for new rehearsal
                 document.getElementById('rehearsalModalTitle').textContent = 'Neuen Probetermin vorschlagen';
@@ -807,10 +818,20 @@ setupQuickAccessEdit() {
                     Rehearsals.attachAvailabilityListeners();
                 }
 
-                // Clear event select initially
+                // Event-Dropdown richtig vorbelegen
                 const eventSelect = document.getElementById('rehearsalEvent');
-                if (eventSelect) {
-                    eventSelect.innerHTML = '<option value="">Bitte zuerst eine Band auswählen</option>';
+                const bandSelect = document.getElementById('rehearsalBand');
+                if (eventSelect && bandSelect) {
+                    const user = Auth.getCurrentUser();
+                    if (user) {
+                        const bands = await Storage.getUserBands(user.id);
+                        if (bands && bands.length === 1 && bandSelect.value) {
+                            // Wenn nur eine Band, direkt Events dieser Band laden
+                            await App.populateEventSelect(bandSelect.value);
+                        } else {
+                            eventSelect.innerHTML = '<option value="">Bitte zuerst eine Band auswählen</option>';
+                        }
+                    }
                 }
 
                 // Hide notification checkbox for new rehearsals
@@ -850,9 +871,15 @@ setupQuickAccessEdit() {
         }
 
         // Add date button
-        document.getElementById('addDateBtn').addEventListener('click', () => {
-            Rehearsals.addDateProposal();
-        });
+        const addDateBtn = document.getElementById('addDateBtn');
+        if (addDateBtn) {
+            // Vorherige Listener entfernen
+            addDateBtn.replaceWith(addDateBtn.cloneNode(true));
+            const newAddDateBtn = document.getElementById('addDateBtn');
+            newAddDateBtn.addEventListener('click', () => {
+                Rehearsals.addDateProposal();
+            });
+        }
 
         // Delete rehearsal button
         document.getElementById('deleteRehearsalBtn').addEventListener('click', async () => {
@@ -1585,9 +1612,10 @@ setupQuickAccessEdit() {
     async handleLogin() {
         const username = document.getElementById('loginUsername').value;
         const password = document.getElementById('loginPassword').value;
+        const rememberMe = arguments.length > 2 ? arguments[2] : false;
 
         try {
-            await Auth.login(username, password);
+            await Auth.login(username, password, rememberMe);
             UI.showToast('Erfolgreich angemeldet!', 'success');
             await this.showApp();
         } catch (error) {
@@ -3323,7 +3351,11 @@ setupQuickAccessEdit() {
                         await App.updateDashboard();
                     }
                     // Show/hide 'Neuer Auftritt' and 'Neuer Probetermin' buttons
-                    const userBands = await Storage.getUserBands(Auth.getCurrentUser().id);
+                    const user = Auth.getCurrentUser();
+                    let userBands = [];
+                    if (user) {
+                        userBands = await Storage.getUserBands(user.id);
+                    }
                     const createEventBtn = document.getElementById('createEventBtn');
                     if (createEventBtn) {
                         createEventBtn.style.display = (userBands && userBands.length > 0) ? '' : 'none';
@@ -3434,7 +3466,8 @@ setupQuickAccessEdit() {
                 })
             )).filter(bd => bd !== null); // Filtere gelöschte Bands heraus
 
-            const isCurrentUser = Auth.getCurrentUser().id === user.id;
+            const currentUser = Auth.getCurrentUser();
+            const isCurrentUser = currentUser ? currentUser.id === user.id : false;
 
             return `
                 <div class="user-management-card">
@@ -4196,7 +4229,11 @@ setupQuickAccessEdit() {
                 await this.updateDashboard();
             }
             // Show 'Neuer Auftritt' and 'Neuer Probetermin' buttons if user is now in a band
-            const userBands = await Storage.getUserBands(Auth.getCurrentUser().id);
+            const user = Auth.getCurrentUser();
+            let userBands = [];
+            if (user) {
+                userBands = await Storage.getUserBands(user.id);
+            }
             const createEventBtn = document.getElementById('createEventBtn');
             if (createEventBtn) {
                 createEventBtn.style.display = (userBands && userBands.length > 0) ? '' : 'none';

@@ -291,7 +291,6 @@ const Auth = {
 
         // Check if input is email or username
         let email = usernameOrEmail;
-        
         // If it's not an email format, look up the email by username
         if (!usernameOrEmail.includes('@')) {
             const profile = await Storage.getUserByUsername(usernameOrEmail);
@@ -301,10 +300,15 @@ const Auth = {
             email = profile.email;
         }
 
+        // Session-Lifetime setzen
+        const rememberMe = arguments.length > 2 ? arguments[2] : false;
+        let expiresIn = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24; // 30 Tage oder 24h
+
         // Sign in with Supabase Auth
         const { data, error } = await sb.auth.signInWithPassword({
             email,
-            password
+            password,
+            options: { expiresIn }
         });
 
         if (error) {

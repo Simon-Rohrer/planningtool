@@ -1,6 +1,19 @@
 // Rehearsals Management Module
 
 const Rehearsals = {
+        // Attach listeners to date/time inputs for availability checks
+        attachAvailabilityListeners(context = document) {
+            const dateInputs = context.querySelectorAll('.date-input-date');
+            const startInputs = context.querySelectorAll('.date-input-start');
+            const endInputs = context.querySelectorAll('.date-input-end');
+
+            [...dateInputs, ...startInputs, ...endInputs].forEach(input => {
+                if (!input._availabilityBound) {
+                    input.addEventListener('change', () => this.updateAvailabilityIndicators());
+                    input._availabilityBound = true;
+                }
+            });
+        },
     currentFilter: '',
     currentRehearsalId: null,
     expandedRehearsalId: null,
@@ -351,16 +364,7 @@ const Rehearsals = {
                 });
                 item.appendChild(deleteBtn);
 
-                // Check if we need to add a new empty proposal
-                const container = document.getElementById('dateProposals');
-                if (container) {
-                    const unconfirmedProposals = container.querySelectorAll('.date-proposal-item[data-confirmed="false"]');
-
-                    if (unconfirmedProposals.length === 0) {
-                        // Add a new empty proposal
-                        this.addDateProposal();
-                    }
-                }
+                // Kein automatisches Hinzufügen eines neuen Vorschlags mehr
             });
         });
 
@@ -500,6 +504,29 @@ const Rehearsals = {
             }
 
             return { date, index, yesCount, maybeCount, noCount, totalVotes, score, timeSuggestions: suggestionsByTime };
+            const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
+            proposedDates.forEach(date => {
+                let start = '';
+                let end = '';
+                if (typeof date === 'object' && date !== null && date.startTime && date.endTime) {
+                    start = date.startTime.slice(0, 10);
+                    const startTime = date.startTime.slice(11, 16);
+                    end = date.endTime.slice(11, 16);
+                    // Neues Feld wie im Standardformular
+                    const newItem = document.createElement('div');
+                    newItem.className = 'date-proposal-item';
+                    newItem.dataset.confirmed = 'false';
+                    newItem.innerHTML = `
+                        <div class="date-time-range">
+                            <input type="date" class="date-input-date" value="${start}" required>
+                            <input type="time" class="date-input-start" value="${startTime}" required>
+                            <span class="time-separator">bis</span>
+                            <input type="time" class="date-input-end" value="${end}" required>
+                        </div>
+                    `;
+                    container.appendChild(newItem);
+                }
+            });
         }));
 
         // Find best date
@@ -865,11 +892,15 @@ const Rehearsals = {
             UI.showToast('Abstimmung gespeichert!', 'success');
         }
 
-        // Update only this rehearsal card instead of re-rendering entire list (preserves scroll position)
+        // Update only this rehearsal card and scroll back to it
         const rehearsal = await Storage.getRehearsal(rehearsalId);
         if (rehearsal) {
             const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+            let scrollY = null;
             if (card) {
+                // Position relativ zum Viewport merken
+                const rect = card.getBoundingClientRect();
+                scrollY = window.scrollY + rect.top;
                 const newCardHtml = await this.renderRehearsalCard(rehearsal);
                 card.outerHTML = newCardHtml;
 
@@ -877,6 +908,8 @@ const Rehearsals = {
                 const updatedCard = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
                 if (updatedCard) {
                     this.attachVoteHandlers(updatedCard);
+                    // Nach dem Update wieder zur Karte scrollen
+                    window.scrollTo({ top: scrollY, behavior: 'smooth' });
                 }
             }
         }
@@ -1086,46 +1119,62 @@ const Rehearsals = {
             document.getElementById('rehearsalEvent').value = rehearsal.eventId || '';
         }
 
-        // Populate dates
-        const container = document.getElementById('dateProposals');
-        const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
-        container.innerHTML = proposedDates.map(date => {
-            let start = '';
-            let end = '';
-            if (typeof date === 'object' && date !== null && date.startTime && date.endTime) {
-                start = date.startTime.slice(0, 16);
-                end = date.endTime.slice(0, 16);
-            } else if (typeof date === 'string') {
-                start = date.slice(0, 16);
-            }
-            return `
-                <div class="date-proposal-item">
-                    <label>Start:
-                        <input type="datetime-local" class="date-input-start" value="${start}" required>
-                    </label>
-                    <label>Ende:
-                        <input type="datetime-local" class="date-input-end" value="${end}" required>
-                    </label>
-                    <span class="date-availability" style="margin-left:8px"></span>
-                    <button type="button" class="btn-icon remove-date">🗑️</button>
-                </div>
-            `;
-        }).join('');
 
-        // Attach remove handlers
+        // Nur initial die Felder aus der Datenbank hinzufügen, vorhandene DOM-Felder beibehalten
+        const container = document.getElementById('dateProposals');
+        container.innerHTML = '';
+        const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
+        // Zeige alle Vorschläge als Kärtchen mit Details (wie bei Neuanlage)
+        // Zeige alle Vorschläge als Kärtchen mit Verfügbarkeits-/Konfliktinfo
+        const locationId = rehearsal.locationId;
+        (async () => {
+            for (const date of proposedDates) {
+                if (typeof date === 'object' && date !== null && date.startTime && date.endTime) {
+                    const dateObj = new Date(date.startTime);
+                    const dateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+                    const timeStr = `${date.startTime.slice(11, 16)} - ${date.endTime.slice(11, 16)}`;
+                    let availability = { available: true, conflicts: [] };
+                    if (locationId && typeof App !== 'undefined' && App.checkLocationAvailability) {
+                        availability = await this.checkSingleDateAvailability(locationId, date.startTime);
+                    }
+                    const conflictDetails = availability.conflicts && availability.conflicts.length > 0
+                        ? `<div class='conflict-details-box'><div class='conflict-details-header'>Konflikte:</div>${availability.conflicts.map(c => `<div class='conflict-item'>• ${Bands.escapeHtml(c.summary)}</div>`).join('')}</div>`
+                        : '';
+                    const card = document.createElement('div');
+                    card.className = 'date-proposal-item';
+                    card.dataset.confirmed = date.confirmed ? 'true' : 'false';
+                    card.dataset.startTime = date.startTime;
+                    card.dataset.endTime = date.endTime;
+                    card.style.border = `2px solid ${availability.available ? 'green' : 'red'}`;
+                    card.innerHTML = `
+                        <div class="confirmed-proposal-display">
+                            <span class="confirmed-date">📅 ${dateStr}, ${timeStr}</span>
+                            <span class="confirmed-availability ${availability.available ? 'is-available' : 'has-conflict'}">${availability.available ? '✓ Ort ist frei' : '⚠️ Raum belegt'}</span>
+                        </div>
+                        ${conflictDetails}
+                        <button type="button" class="btn-icon remove-confirmed">🗑️</button>
+                    `;
+                    card.querySelector('.remove-confirmed').addEventListener('click', () => {
+                        card.remove();
+                        this.updateRemoveButtons();
+                    });
+                    container.appendChild(card);
+                }
+            }
+        })();
+        // Event-Handler für Bestätigen-Buttons neu setzen
+        this.attachVoteHandlers(container);
+
+        // Attach remove handlers und Availability
         container.querySelectorAll('.remove-date').forEach(btn => {
             btn.addEventListener('click', () => {
                 btn.closest('.date-proposal-item').remove();
                 this.updateRemoveButtons();
             });
         });
-
         this.updateRemoveButtons();
-
-        // Attach availability listeners and trigger initial check
         if (typeof App !== 'undefined') {
             this.attachAvailabilityListeners();
-            // Initial check to show status immediately, with loader if slow
             UI.showLoading('Kalender wird geladen…');
             Promise.resolve(this.updateAvailabilityIndicators())
                 .finally(() => UI.hideLoading());
@@ -1281,55 +1330,11 @@ const Rehearsals = {
                     indicator.textContent = `⚠️ ${conflictCount} Konflikt${conflictCount > 1 ? 'e' : ''}`;
                     indicator.style.color = 'red';
                     indicator.style.fontWeight = '600';
-
-                    // Create conflict details box
-                    if (availability.conflicts && availability.conflicts.length > 0) {
-                        const detailsBox = document.createElement('div');
-                        detailsBox.className = 'conflict-details-box';
-                        detailsBox.innerHTML = `
-                            <div class="conflict-details-header">Konflikte:</div>
-                            ${availability.conflicts.map(c => {
-                            const start = new Date(c.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                            const end = new Date(c.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                            return `<div class="conflict-item">• ${Bands.escapeHtml(c.summary)} (${start}-${end})</div>`;
-                        }).join('')}
-                        `;
-
-                        // Insert after the date-time-range div
-                        const dateTimeRange = item.querySelector('.date-time-range');
-                        if (dateTimeRange) {
-                            dateTimeRange.insertAdjacentElement('afterend', detailsBox);
-                        } else {
-                            // Fallback if .date-time-range is not found, append to item
-                            item.appendChild(detailsBox);
-                        }
-                    }
                 }
             }
         }
-    },
-
-    attachAvailabilityListeners() {
-        const locSelect = document.getElementById('rehearsalLocation');
-        if (locSelect && !locSelect._availabilityBound) {
-            locSelect.addEventListener('change', () => this.updateAvailabilityIndicators());
-            locSelect._availabilityBound = true;
-        }
-
-        // Attach listeners to all date, start time, and end time inputs
-        const dateInputs = document.querySelectorAll('#dateProposals .date-input-date');
-        const startInputs = document.querySelectorAll('#dateProposals .date-input-start');
-        const endInputs = document.querySelectorAll('#dateProposals .date-input-end');
-
-        [...dateInputs, ...startInputs, ...endInputs].forEach(input => {
-            if (!input._availabilityBound) {
-                input.addEventListener('change', () => this.updateAvailabilityIndicators());
-                input._availabilityBound = true;
-            }
-        });
 
         // Add time validation listeners
-        const items = document.querySelectorAll('#dateProposals .date-proposal-item');
         items.forEach(item => {
             const startInput = item.querySelector('.date-input-start');
             const endInput = item.querySelector('.date-input-end');
@@ -1420,6 +1425,7 @@ const Rehearsals = {
         const container = document.getElementById('dateProposals');
         if (!container) return;
 
+        // Neues Feld als zusätzlicher Vorschlag, ohne bestehende zu überschreiben
         const newItem = document.createElement('div');
         newItem.className = 'date-proposal-item';
         newItem.dataset.confirmed = 'false';
@@ -1467,22 +1473,31 @@ const Rehearsals = {
 
     // Get dates from form
     getDatesFromForm() {
-        // Neue Logik: bestätigte Vorschläge (Kärtchen) und ggf. offene Inputs
-        const confirmedItems = document.querySelectorAll('#dateProposals .date-proposal-item[data-confirmed="true"]');
+        // Sammle alle Kärtchen und offenen Inputs
+        const items = document.querySelectorAll('#dateProposals .date-proposal-item');
         const dates = [];
-
-        confirmedItems.forEach(item => {
-            const start = item.dataset.startTime;
-            const end = item.dataset.endTime;
-            if (start && end) {
-                dates.push({ startTime: start, endTime: end });
+        items.forEach(item => {
+            if (item.dataset.confirmed === 'true') {
+                // Kärtchen: confirmed
+                const start = item.dataset.startTime;
+                const end = item.dataset.endTime;
+                if (start && end) {
+                    dates.push({ startTime: start, endTime: end, confirmed: true });
+                }
+            } else {
+                // Offene Inputs
+                const dateInput = item.querySelector('.date-input-date');
+                const startInput = item.querySelector('.date-input-start');
+                const endInput = item.querySelector('.date-input-end');
+                if (dateInput && startInput && endInput && dateInput.value && startInput.value && endInput.value) {
+                    const startTime = `${dateInput.value}T${startInput.value}`;
+                    const endTime = `${dateInput.value}T${endInput.value}`;
+                    dates.push({ startTime, endTime, confirmed: false });
+                }
             }
         });
-
-        // Optional: auch noch nicht bestätigte Inputs berücksichtigen (falls gewünscht)
-        // const unconfirmedInputs = document.querySelectorAll('#dateProposals .date-proposal-item[data-confirmed="false"]');
-        // ...
-
         return dates;
     }
 };
+
+window.Rehearsals = Rehearsals;
