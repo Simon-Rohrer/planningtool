@@ -2268,7 +2268,23 @@ input:checked+.slider:before {
 }
 /*Buttons Simon*/
 
+/* Profil */
 #profileUsername, #profilePassword, #donateLink, #profileEmail, #profileCurrentPassword, #profileNewPassword, #profileConfirmNewPassword{
+    width: auto;
+}
+
+/* Band*/
+#bandFilter, #eventBandFilter, #rehearsalBandFilter, #memberBandFilter, #profileInstrument{
+   width: auto;
+}
+
+/* Abwesenheit*/
+#absenceStartSettings, #absenceEndSettings, #absenceReasonSettings{
+    width: 250px;
+}
+
+/* Probeort*/
+#newLocationName, #newLocationAddress, #newLocationLinkedCalendar {
     width: auto;
 }
 
@@ -2279,9 +2295,6 @@ input:checked+.slider:before {
 #themeToggleIcon{
     padding: 0px;
 }
- #bandFilter, #eventBandFilter, #rehearsalBandFilter, #memberBandFilter{
-    width: auto;
- }
 
  #rehearsalBand, #rehearsalLocation, #rehearsalEvent{
     width: auto;
