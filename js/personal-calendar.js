@@ -18,6 +18,7 @@ const PersonalCalendar = {
 
         container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Termine...</p></div>';
 
+        let overlay = document.getElementById('globalLoadingOverlay');
         try {
             const user = Auth.getCurrentUser();
             console.log('[PersonalCalendar] Current user:', user);
@@ -71,6 +72,12 @@ const PersonalCalendar = {
                     </button>
                 </div>
             `;
+        } finally {
+            // Lade-Overlay immer ausblenden
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
         }
     },
 

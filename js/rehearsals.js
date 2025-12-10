@@ -20,6 +20,12 @@ const Rehearsals = {
 
     // Render all rehearsals
     async renderRehearsals(filterBandId = '') {
+                // Show loading overlay if present
+                const overlay = document.getElementById('globalLoadingOverlay');
+                if (overlay) {
+                    overlay.style.display = 'flex';
+                    overlay.style.opacity = '1';
+                }
         const container = document.getElementById('rehearsalsList');
         const user = Auth.getCurrentUser();
 
@@ -37,6 +43,10 @@ const Rehearsals = {
 
         if (rehearsals.length === 0) {
             UI.showEmptyState(container, '📅', 'Noch keine Probetermine vorhanden');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             return;
         }
 
@@ -46,6 +56,12 @@ const Rehearsals = {
 
         // Add vote handlers
         this.attachVoteHandlers(container);
+
+        // Hide loading overlay after all data/UI is ready
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 400);
+        }
     },
 
     // Render single rehearsal card
@@ -180,11 +196,14 @@ const Rehearsals = {
         const endTimeString = typeof date === 'object' && date.endTime ? date.endTime : null;
 
         // Format date display
-        let dateDisplay = UI.formatDate(dateString);
+        let dateDisplay;
         if (endTimeString) {
+            const datePart = UI.formatDate(dateString).replace(/ um .*/, '');
             const startTime = new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
             const endTime = new Date(endTimeString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-            dateDisplay += ` (${startTime} - ${endTime})`;
+            dateDisplay = `${datePart} von ${startTime} bis ${endTime} Uhr`;
+        } else {
+            dateDisplay = UI.formatDate(dateString);
         }
 
         return `
@@ -324,14 +343,12 @@ const Rehearsals = {
 
                 // Format date and time for display
                 const date = new Date(dateInput.value);
-                const dateStr = date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+                const dateStr = date.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
                 const timeStr = `${startInput.value} - ${endInput.value}`;
-
-                // Create confirmed display
                 const confirmedDisplay = document.createElement('div');
                 confirmedDisplay.className = 'confirmed-proposal-display';
                 confirmedDisplay.innerHTML = `
-                    <span class="confirmed-date">📅 ${dateStr}, ${timeStr}</span>
+                    <span class="confirmed-date">📅 ${dateStr} von ${timeStr} Uhr</span>
                     <span class="confirmed-availability ${hasConflict ? 'has-conflict' : 'is-available'}">${availabilityText}</span>
                 `;
 
@@ -354,7 +371,8 @@ const Rehearsals = {
                         ${conflictDetails.map(c => {
                         const start = new Date(c.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
                         const end = new Date(c.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                        return `<div class="conflict-item">• ${Bands.escapeHtml(c.summary)} (${start}-${end})</div>`;
+                        const datePart = new Date(c.startDate).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+                        return `<div class="conflict-item">• ${Bands.escapeHtml(c.summary)} (${datePart} von ${start} - ${end} Uhr)</div>`;
                     }).join('')}
                     `;
                     item.appendChild(detailsBox);
@@ -1389,6 +1407,12 @@ const Rehearsals = {
 
     // Populate statistics rehearsal select
     async populateStatsSelect() {
+                // Show loading overlay if present
+                const overlay = document.getElementById('globalLoadingOverlay');
+                if (overlay) {
+                    overlay.style.display = 'flex';
+                    overlay.style.opacity = '1';
+                }
         const select = document.getElementById('statsRehearsalSelect');
         const user = Auth.getCurrentUser();
 
@@ -1402,6 +1426,12 @@ const Rehearsals = {
         }));
 
         select.innerHTML = '<option value="">Probetermin auswählen</option>' + options.join('');
+
+        // Hide loading overlay after all data/UI is ready
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 400);
+        }
     },
 
     // Populate band select for statistics

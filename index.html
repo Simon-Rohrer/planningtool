@@ -30,6 +30,48 @@
 </head>
 
 <body>
+        <!-- Global Loading Overlay -->
+        <div id="globalLoadingOverlay" style="position:fixed;z-index:99999;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;transition:opacity 0.3s;">
+            <div style="text-align:center;">
+                <div class="loader" style="margin-bottom:1.5rem;width:64px;height:64px;border:8px solid #eee;border-top:8px solid #6366f1;border-radius:50%;animation:spin 1s linear infinite;"></div>
+                <div style="font-size:1.2rem;color:#6366f1;">Lade Band Planning Tool ...</div>
+            </div>
+        </div>
+        <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        </style>
+        <script>
+        // Show loading overlay on first load, hide when app is ready
+        window.addEventListener('DOMContentLoaded', function() {
+            function hideOverlay() {
+                const overlay = document.getElementById('globalLoadingOverlay');
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 400);
+                }
+            }
+            // Hide overlay as soon as main app or landing page is visible
+            function checkAppReady() {
+                const app = document.getElementById('mainApp');
+                const landing = document.getElementById('landingPage');
+                if ((app && app.style.display !== 'none') || (landing && landing.classList.contains('active'))) {
+                    hideOverlay();
+                    return true;
+                }
+                return false;
+            }
+            // Observe DOM changes to detect when app is shown
+            const observer = new MutationObserver(() => {
+                if (checkAppReady()) observer.disconnect();
+            });
+            observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+            // Fallback: hide after 3s if not already hidden
+            setTimeout(hideOverlay, 3000);
+        });
+        </script>
     <!-- Landing Page with Split Layout -->
     <div id="landingPage" class="landing-page active">
         <div class="landing-container">
@@ -93,6 +135,20 @@
                         <div class="form-group">
                             <label for="registerUsername">Benutzername <span style="color:red;" title="Pflichtfeld">*</span></label>
                             <input type="text" id="registerUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerInstrument">Instrument (optional)</label>
+                            <select id="registerInstrument" class="form-select">
+                                <option value="">Kein Instrument</option>
+                                <option value="drums">Schlagzeug (🥁)</option>
+                                <option value="bass">Bass (🎸)</option>
+                                <option value="acoustic_guitar">Akustische Gitarre (🎸)</option>
+                                <option value="electric_guitar">Elektrische Gitarre (🎸)</option>
+                                <option value="keyboard">Keyboard (🎹)</option>
+                                <option value="synth">Synth (🎹)</option>
+                                <option value="violin">Geige (🎻)</option>
+                                <option value="vocals">Gesang (🎤)</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="registerPassword">Passwort <span style="color:red;" title="Pflichtfeld">*</span></label>
@@ -509,10 +565,6 @@
             <div id="musikpoolView" class="view">
                 <div class="view-header">
                     <h2>Musikerpool</h2>
-                    <button id="refreshMusikpoolBtn" class="btn btn-secondary"
-                        style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                        🔄 Aktualisieren
-                    </button>
                 </div>
 
                 <!-- Eigene Mitglieder Section -->
@@ -538,6 +590,10 @@
                 <!-- ChurchTools Pool Section -->
                 <div class="section">
                     <h3>ChurchTools Musikpool</h3>
+                    <button id="refreshMusikpoolBtn" class="btn btn-secondary"
+                        style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                        🔄 Aktualisieren
+                    </button>
                     <div id="musikpoolContainer">
                         <!-- ChurchTools members will be rendered here -->
                     </div>
@@ -675,7 +731,7 @@
                                 <div id="deleteAccountModal" class="modal">
                                     <div class="modal-content" style="max-width: 400px;">
                                         <h2 style="color:#c00;">Account wirklich löschen?</h2>
-                                        <p style="margin:1rem 0; color:#c00; font-weight:600;">Achtung: Wenn du deinen Account löschst, werden <u>alle deine Daten unwiderruflich entfernt</u> und können nicht wiederhergestellt werden!</p>
+                                        <p style="margin:1rem 0; color:#c00; font-weight:600">Achtung: Wenn du deinen Account löschst, werden <u>alle deine Daten unwiderruflich entfernt</u> und können nicht wiederhergestellt werden!</p>
                                         <div style="display:flex; gap:1rem; justify-content:flex-end;">
                                             <button id="cancelDeleteAccountBtn" class="btn">Abbrechen</button>
                                             <button id="confirmDeleteAccountBtn" class="btn btn-danger">Ja, endgültig löschen</button>
@@ -964,10 +1020,10 @@
                     <div class="section" id="bandSettingsSection">
                         <h3>Band-Einstellungen</h3>
                         <div class="settings-actions">
-                            <div style="margin-bottom:0.5em;color:#b91c1c;font-weight:bold;">
+                            <div style="margin-bottom:0.5em;color:#b91c1c;font-weight:bold;; font-size: smaller;">
                                 Achtung: Beim Löschen werden alle zugehörigen Songs, Probetermine und Auftritte <u>unwiderruflich</u> entfernt!
                             </div>
-                            <button id="deleteBandBtn" class="btn btn-danger">Band löschen</button>
+                            <button id="deleteBandBtn" class="btn btn-danger" style="width: 150px;">Band löschen</button>
                         </div>
                     </div>
                 </div>
@@ -1087,13 +1143,13 @@
                 </div>
                 <div class="form-group">
                     <label>Terminvorschläge</label>
-                    <div id="dateProposals" class="date-proposals">
+                    <div id="dateProposals" class="date-proposals" >
                         <div class="date-proposal-item" data-confirmed="false">
                             <div class="date-time-range">
-                                <input type="date" class="date-input-date">
-                                <input type="time" class="date-input-start">
+                                <input type="date" class="date-input-date" id="dateInputDate">
+                                <input type="time" class="date-input-start" id="dateInputStart">
                                 <span class="time-separator">bis</span>
-                                <input type="time" class="date-input-end">
+                                <input type="time" class="date-input-end" id="dateInputEnd">
                             </div>
                             <span class="date-availability" style="margin-left:8px"></span>
                             <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>

@@ -4,6 +4,25 @@
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
     App.setupDashboardFeatures();
+
+    // Song form submit handler: ensure only one handler is registered
+    const songForm = document.getElementById('songForm');
+    if (songForm) {
+        // Remove all previous submit event listeners by replacing the node
+        const newSongForm = songForm.cloneNode(true);
+        songForm.parentNode.replaceChild(newSongForm, songForm);
+        let songFormSubmitting = false;
+        newSongForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (songFormSubmitting) return;
+            songFormSubmitting = true;
+            try {
+                await App.handleSaveSong();
+            } finally {
+                songFormSubmitting = false;
+            }
+        });
+    }
 });
 // Main Application Controller
 
@@ -535,36 +554,7 @@ setupQuickAccessEdit() {
                             });
                         }
                 // Band löschen Button
-                const deleteBandBtn = document.getElementById('deleteBandBtn');
-                if (deleteBandBtn) {
-                    deleteBandBtn.addEventListener('click', async () => {
-                        const bandId = App.getCurrentBandId && App.getCurrentBandId();
-                        if (!bandId) {
-                            UI.showToast('Fehler: Keine Band ausgewählt!', 'error');
-                            return;
-                        }
-                        if (!confirm('Willst du diese Band wirklich löschen? Alle zugehörigen Songs, Probetermine und Auftritte werden unwiderruflich entfernt! Diese Aktion kann nicht rückgängig gemacht werden.')) return;
-                        try {
-                            await Storage.deleteBand(bandId);
-                            UI.showToast('Band und alle zugehörigen Daten wurden gelöscht.', 'success');
-                            // UI aktualisieren: z.B. zurück zur Bandübersicht
-                            App.navigateTo('bands');
-                            // Force visibility of 'Auftritte' and 'Planung' navigation tabs (desktop & mobile)
-                            document.querySelectorAll('.nav-item[data-view="events"], .nav-item[data-view="rehearsals"], .nav-subitem[data-view="events"], .nav-subitem[data-view="rehearsals"], .nav-subitem[data-view="probeorte"], .nav-subitem[data-view="kalender"]').forEach(item => {
-                                item.style.display = '';
-                            });
-                            // Hide 'Neuen Probetermin' button if user is not in a band
-                            Storage.getUserBands(Auth.getCurrentUser().id).then(bands => {
-                                const createRehearsalBtn = document.getElementById('createRehearsalBtn');
-                                if (createRehearsalBtn) {
-                                    createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
-                                }
-                            });
-                        } catch (err) {
-                            UI.showToast('Fehler beim Löschen: ' + (err.message || err), 'error');
-                        }
-                    });
-                }
+                // (Removed duplicate deleteBandBtn handler; handled below with Bands.currentBandId)
         // Show/hide extra event fields in modal
         const extrasCheckbox = document.getElementById('eventShowExtras');
         const extrasFields = document.getElementById('eventExtrasFields');
@@ -1274,14 +1264,7 @@ setupQuickAccessEdit() {
             });
         }
 
-        // Song form
-        const songForm = document.getElementById('songForm');
-        if (songForm) {
-            songForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleSaveSong();
-            });
-        }
+        // Song form (Handler wird nur im DOMContentLoaded-Block registriert)
 
         // Calendar refresh button
         const refreshCalendarBtn = document.getElementById('refreshCalendarBtn');
@@ -1425,6 +1408,7 @@ setupQuickAccessEdit() {
 
     // Navigate to a specific view
     async navigateTo(view) {
+        // Lade-Overlay wird nur noch in den jeweiligen Datenladefunktionen angezeigt
         try {
             console.log('[navigateTo] called with view:', view);
             const viewMap = {
@@ -1521,6 +1505,12 @@ setupQuickAccessEdit() {
                         createNewsBtn.style.display = canCreate ? 'inline-flex' : 'none';
                     }
 
+                    // Hide loading overlay after view/data is loaded (immer, egal ob admin oder nicht)
+                    if (overlay && shouldShowLoading) {
+                        overlay.style.opacity = '0';
+                        setTimeout(() => overlay.style.display = 'none', 400);
+                    }
+
                     // Update donate button visibility and link
                     this.updateDonateButton();
                 } else if (view === 'probeorte' || view === 'tonstudio') {
@@ -1547,9 +1537,32 @@ setupQuickAccessEdit() {
                         }
                     }, 50);
                 } else if (view === 'musikpool') {
-                    // Load Musikpool members when navigating to view
+                    // Musikerpool mit Timeout und garantiertem Ausblenden des Overlays laden
                     if (typeof Musikpool !== 'undefined' && Musikpool.loadGroupData) {
-                        Musikpool.loadGroupData();
+                        let overlayTimeout;
+                        let overlay = document.getElementById('globalLoadingOverlay');
+                        let shouldShowLoading = true;
+                        let finished = false;
+                        // Timeout nach 15 Sekunden
+                        overlayTimeout = setTimeout(() => {
+                            if (!finished && overlay && shouldShowLoading) {
+                                overlay.style.opacity = '0';
+                                setTimeout(() => overlay.style.display = 'none', 400);
+                                UI.showToast('Musikerpool-Daten konnten nicht geladen werden (Timeout).', 'error');
+                            }
+                        }, 15000);
+                        try {
+                            await Musikpool.loadGroupData();
+                        } catch (err) {
+                            UI.showToast('Musikerpool-Daten konnten nicht geladen werden.', 'error');
+                        } finally {
+                            finished = true;
+                            clearTimeout(overlayTimeout);
+                            if (overlay && shouldShowLoading) {
+                                overlay.style.opacity = '0';
+                                setTimeout(() => overlay.style.display = 'none', 400);
+                            }
+                        }
                     } else {
                         console.error('Musikpool object not found!');
                     }
@@ -1665,7 +1678,8 @@ setupQuickAccessEdit() {
 
         try {
             UI.showLoading('Registriere Benutzer...');
-            await Auth.register(registrationCode, name, email, username, password);
+            const instrument = document.getElementById('registerInstrument').value;
+            await Auth.register(registrationCode, name, email, username, password, instrument);
             // Supabase Auth automatically signs in after registration
 
             UI.hideLoading();
@@ -1770,6 +1784,12 @@ setupQuickAccessEdit() {
 
     // News Management
     async renderNewsView() {
+                // Show loading overlay if present
+                const overlay = document.getElementById('globalLoadingOverlay');
+                if (overlay) {
+                    overlay.style.display = 'flex';
+                    overlay.style.opacity = '1';
+                }
         console.log('[renderNewsView] Starting to render news...');
         const container = document.getElementById('newsContainer');
         const newsItems = await Storage.getAllNews();
@@ -1786,6 +1806,10 @@ setupQuickAccessEdit() {
                     <p>Hier wirst du auf dem laufenden gehalten.</p>
                 </div>
             `;
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             return;
         }
 
@@ -2045,6 +2069,7 @@ setupQuickAccessEdit() {
         if (submitBtn) submitBtn.textContent = 'Speichern';
 
         UI.openModal('createNewsModal');
+
     },
 
     // Update the news nav item with an unread indicator for the current user
@@ -2431,6 +2456,12 @@ setupQuickAccessEdit() {
         // Close on overlay click
         tempModal.addEventListener('click', (e) => {
             if (e.target === tempModal) {
+
+        // Hide loading overlay after all data/UI is ready
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 400);
+        }
                 tempModal.remove();
             }
         });
@@ -3480,18 +3511,7 @@ setupQuickAccessEdit() {
         container.innerHTML = await Promise.all(users.map(async user => {
             // Get user's bands
             const userBands = await Storage.getUserBands(user.id);
-            const bandDetails = (await Promise.all(
-                userBands.map(async ub => {
-                    const band = await Storage.getBand(ub.bandId);
-                    if (!band) return null; // Band existiert nicht mehr
-                    return {
-                        name: band.name,
-                        role: ub.role,
-                        color: band.color || '#6366f1'
-                    };
-                })
-            )).filter(bd => bd !== null); // Filtere gelöschte Bands heraus
-
+            // userBands is an array of band objects with .name, .role, .color
             const currentUser = Auth.getCurrentUser();
             const isCurrentUser = currentUser ? currentUser.id === user.id : false;
 
@@ -3526,14 +3546,14 @@ setupQuickAccessEdit() {
                             ` : ''}
                         </div>
                     </div>
-                    ${bandDetails.length > 0 ? `
+                    ${userBands.length > 0 ? `
                         <div class="user-bands-list">
-                            <h5>Bands (${bandDetails.length})</h5>
+                            <h5>Bands (${userBands.length})</h5>
                             <div class="user-band-tags">
-                                ${bandDetails.map(bd => `
-                                    <span class="user-band-tag" style="border-left: 3px solid ${bd.color}">
-                                        ${Bands.escapeHtml(bd.name)}
-                                        <span class="role-badge role-${bd.role}">${UI.getRoleDisplayName(bd.role)}</span>
+                                ${userBands.map(band => `
+                                    <span class="user-band-tag" style="border-left: 3px solid ${band.color || '#6366f1'}">
+                                        ${Bands.escapeHtml(band.name)}
+                                        <span class="role-badge role-${band.role}">${UI.getRoleDisplayName(band.role)}</span>
                                     </span>
                                 `).join('')}
                             </div>
@@ -3954,16 +3974,29 @@ setupQuickAccessEdit() {
         // Pending votes logic (unchanged)
         const rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
         const pendingRehearsals = rehearsals.filter(r => r.status === 'pending');
-        let pendingVotesCount = 0;
+        let openPollsCount = 0;
+        const nowTs = Date.now();
         for (const rehearsal of pendingRehearsals) {
-            for (let index = 0; index < rehearsal.proposedDates.length; index++) {
-                const vote = await Storage.getUserVoteForDate(user.id, rehearsal.id, index);
-                if (!vote) {
-                    pendingVotesCount++;
+            // Prüfe, ob mindestens ein Vorschlag noch offen ist (Endzeit in der Zukunft)
+            const hasOpenProposal = rehearsal.proposedDates && rehearsal.proposedDates.some(p => {
+                // Endzeit kann je nach Datenmodell unterschiedlich heißen
+                // Versuche endTime, ansonsten fallback auf startTime + 2h
+                let endTs = null;
+                if (p.endTime) {
+                    endTs = new Date(p.endTime).getTime();
+                } else if (p.startTime) {
+                    endTs = new Date(p.startTime).getTime() + 2 * 60 * 60 * 1000; // 2h default
                 }
+                return endTs && endTs > nowTs;
+            });
+            if (hasOpenProposal) {
+                openPollsCount++;
+                console.log('[DEBUG]   Counted as open poll (Abstimmung läuft noch)', rehearsal.id, rehearsal.title);
+            } else {
+                console.log('[DEBUG]   Not counted as open poll (Abstimmung vorbei)', rehearsal.id, rehearsal.title);
             }
         }
-        document.getElementById('pendingVotes').textContent = pendingVotesCount;
+        document.getElementById('pendingVotes').textContent = openPollsCount;
 
         // Confirmed rehearsals logic (unchanged)
         const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');

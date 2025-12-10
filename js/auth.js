@@ -71,7 +71,7 @@ const Auth = {
         }
     },
 
-    async register(registrationCode, name, email, username, password) {
+    async register(registrationCode, name, email, username, password, instrument = "") {
         // Validate registration code first
         if (!registrationCode) {
             throw new Error('Registrierungscode ist erforderlich');
@@ -111,7 +111,8 @@ const Auth = {
             options: {
                 data: {
                     username,
-                    name
+                    name,
+                    instrument
                 }
             }
         });
@@ -144,10 +145,13 @@ const Auth = {
                 throw new Error('Profil konnte nicht erstellt werden. Bitte lade die Seite neu und versuche dich einzuloggen.');
             }
             
-            // Update the profile with username if needed
-            if (profile.username !== username) {
-                await Storage.update('users', data.user.id, { username });
-                profile.username = username;
+            // Update the profile with username/instrument if needed
+            const updateObj = {};
+            if (profile.username !== username) updateObj.username = username;
+            if (profile.instrument !== instrument) updateObj.instrument = instrument;
+            if (Object.keys(updateObj).length > 0) {
+                await Storage.update('users', data.user.id, updateObj);
+                Object.assign(profile, updateObj);
             }
             
             await this.setCurrentUser(data.user);

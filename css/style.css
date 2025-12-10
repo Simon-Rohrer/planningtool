@@ -696,7 +696,7 @@ input:checked+.slider:before {
 
 .btn-danger {
     background: var(--color-danger);
-    width: 150px;
+    width: auto;
     color: white;
 }
 
@@ -2266,7 +2266,7 @@ input:checked+.slider:before {
 .toast.error {
     background: var(--color-danger);
 }
-/*Buttons*/
+/*Buttons Simon*/
 
 #profileUsername, #profilePassword, #donateLink, #profileEmail, #profileCurrentPassword, #profileNewPassword, #profileConfirmNewPassword{
     width: auto;
@@ -2283,6 +2283,54 @@ input:checked+.slider:before {
     width: auto;
  }
 
+ #rehearsalBand, #rehearsalLocation, #rehearsalEvent{
+    width: auto;
+ }
+ #rehearsalTitle, #rehearsalLocation, #rehearsalDescription {
+    width: 450px;
+ }
+
+.date-proposal-item {
+    display: flex;
+    flex-wrap: wrap; 
+    padding: 10px; 
+    width: auto;
+
+}
+
+.date-time-range {
+    /* Hält Datum und Uhrzeiten als Gruppe zusammen */
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Optional: Damit die Inputs nicht zu breit sind */
+.date-proposal-item input[type="date"], 
+.date-proposal-item input[type="time"] {
+    width: auto;
+    max-width: 150px; /* Beispiel-Maximalbreite */
+}
+.remove-date {
+    /* Setzt die Breite automatisch auf den Inhalt (das Icon) */
+    width: auto;
+    /* Optional: Fügt ein bisschen Polsterung hinzu, damit das Icon nicht am Rand klebt */
+    padding: 4px 8px; 
+    /* Stellt sicher, dass er sich wie ein Inline-Element verhält (obwohl er in Flexbox ist, ist das eine gute Praxis) */
+    display: inline-block;
+    /* Optional: Entfernt den Standard-Hintergrund/Rahmen, falls er nur ein Icon sein soll */
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+/* Wenn Sie die Klasse .btn-icon für alle Icon-Buttons verwenden, 
+   können Sie diese Stile dort definieren: */
+.btn-icon {
+    width: auto;
+    padding: 4px 8px;
+    /* ... weitere Stile für Icon-Buttons ... */
+}
 /* ===== Loading Spinner ===== */
 .loader-overlay {
     position: fixed;

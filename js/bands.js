@@ -30,6 +30,12 @@ const Bands = {
 
     // Render all user's bands
     async renderBands() {
+                // Show loading overlay if present
+                const overlay = document.getElementById('globalLoadingOverlay');
+                if (overlay) {
+                    overlay.style.display = 'flex';
+                    overlay.style.opacity = '1';
+                }
         const container = document.getElementById('bandsList');
         const user = Auth.getCurrentUser();
 
@@ -49,6 +55,10 @@ const Bands = {
 
         if (bands.length === 0) {
             UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             return;
         }
 
@@ -85,6 +95,12 @@ const Bands = {
 
         // Update nav visibility based on current membership
         this.updateNavVisibility();
+
+        // Hide loading overlay after all data/UI is ready
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 400);
+        }
     },
 
     // Show band details modal

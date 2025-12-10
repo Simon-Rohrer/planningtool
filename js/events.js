@@ -37,6 +37,11 @@ const Events = {
             if (createBtn) createBtn.addEventListener('click', () => UI.openModal('createBandModal'));
             return;
         }
+                const overlay = document.getElementById('globalLoadingOverlay');
+                if (overlay) {
+                    overlay.style.display = 'flex';
+                    overlay.style.opacity = '1';
+                }
 
         let events = (await Storage.getUserEvents(user.id)) || [];
 
@@ -59,6 +64,12 @@ const Events = {
 
         // Add click handlers
         this.attachEventHandlers();
+
+        // Hide loading overlay after all data/UI is ready
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 400);
+        }
     },
 
     // Render single event card
