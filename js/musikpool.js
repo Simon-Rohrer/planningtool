@@ -12,27 +12,26 @@ const Musikpool = {
     },
 
     async loadGroupData() {
+        // Nur laden, wenn noch keine Mitglieder im Speicher
+        if (this.members && Array.isArray(this.members) && this.members.length > 0) {
+            this.renderMembers();
+            return;
+        }
         const container = document.getElementById('musikpoolContainer');
         if (!container) return;
-
         container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Musikerpool-Mitglieder...</p></div>';
-
         try {
             // Fetch group details and members
             const [groupResult, membersResult] = await Promise.all([
                 ChurchToolsAPI.fetchGroupDetails(this.groupId),
                 ChurchToolsAPI.fetchGroupMembers(this.groupId)
             ]);
-
             if (!membersResult.success) {
                 throw new Error(membersResult.error || 'Fehler beim Laden der Mitglieder');
             }
-
             this.groupInfo = groupResult.success ? groupResult.group : null;
             this.members = membersResult.members;
-
             this.renderMembers();
-
         } catch (error) {
             console.error('Error loading Musikerpool:', error);
             container.innerHTML = `

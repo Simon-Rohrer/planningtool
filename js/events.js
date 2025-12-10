@@ -6,17 +6,23 @@ const Events = {
     expandedEventId: null,
 
     // Render all events
-    async renderEvents(filterBandId = '') {
+    async renderEvents(filterBandId = '', forceReload = false) {
+        // Nur laden, wenn noch keine Events im Speicher und kein forceReload
+        if (!forceReload && this.events && Array.isArray(this.events) && this.events.length > 0 && !filterBandId) {
+            this.renderEventsList(this.events);
+            return;
+        }
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
         const container = document.getElementById('eventsList');
         const user = Auth.getCurrentUser();
-
         if (!user) return;
-
         // Check if user is member of any band
         const userBands = await Storage.getUserBands(user.id);
         const hasBands = Array.isArray(userBands) && userBands.length > 0;
-
-        // If user has no bands, show a helpful CTA to join or create a band
         if (!hasBands) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -29,32 +35,31 @@ const Events = {
                     </div>
                 </div>
             `;
-
             // Wire CTAs
             const joinBtn = document.getElementById('events_join_band_btn');
             const createBtn = document.getElementById('events_create_band_btn');
             if (joinBtn) joinBtn.addEventListener('click', () => UI.openModal('joinBandModal'));
             if (createBtn) createBtn.addEventListener('click', () => UI.openModal('createBandModal'));
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             return;
         }
-                const overlay = document.getElementById('globalLoadingOverlay');
-                if (overlay) {
-                    overlay.style.display = 'flex';
-                    overlay.style.opacity = '1';
-                }
-
         let events = (await Storage.getUserEvents(user.id)) || [];
-
+        this.events = events;
         // Apply filter
         if (filterBandId) {
             events = events.filter(e => e.bandId === filterBandId);
         }
-
         // Sort by date (nearest first)
         events.sort((a, b) => new Date(a.date) - new Date(b.date));
-
         if (events.length === 0) {
             UI.showEmptyState(container, '🎤', 'Noch keine Auftritte vorhanden');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             return;
         }
 
@@ -99,6 +104,109 @@ const Events = {
         // get event songs to show inside expanded card
         const eventSongs = await Storage.getEventSongs(event.id);
 
+        // Dynamisch Felder nur anzeigen, wenn sie befüllt sind
+        let detailsHtml = '';
+        // Datum (immer anzeigen)
+        detailsHtml += `
+            <div class="detail-row">
+                <div class="detail-label">📅 Datum:</div>
+                <div class="detail-value">${UI.formatDate(event.date)}</div>
+            </div>
+        `;
+        // Ort
+        if (event.location && event.location.trim() !== '') {
+            detailsHtml += `
+                <div class="detail-row">
+                    <div class="detail-label">📍 Ort:</div>
+                    <div class="detail-value">${Bands.escapeHtml(event.location)}</div>
+                </div>
+            `;
+        }
+        // Info
+        if (event.info && event.info.trim() !== '') {
+            detailsHtml += `
+                <div class="detail-row">
+                    <div class="detail-label">ℹ️ Event-Infos:</div>
+                    <div class="detail-value">${Bands.escapeHtml(event.info)}</div>
+                </div>
+            `;
+        }
+        // Technik
+        if (event.techInfo && event.techInfo.trim() !== '') {
+            detailsHtml += `
+                <div class="detail-row">
+                    <div class="detail-label">🔧 Technik:</div>
+                    <div class="detail-value">${Bands.escapeHtml(event.techInfo)}</div>
+                </div>
+            `;
+        }
+        // Mitglieder (immer anzeigen)
+        detailsHtml += `
+            <div class="detail-row">
+                <div class="detail-label">👥 Bandmitglieder (${members.length}):</div>
+                <div class="detail-value">
+                    ${members.map(m => `
+                        <span class="member-tag" style="margin-right: 0.5em;">
+                            ${Bands.escapeHtml(m.name)}
+                            ${m.absence ? `<span style="color: orange; font-weight: bold; margin-left: 0.5em;">Abwesenheit: ${Bands.escapeHtml(m.absence.reason || '')} (${UI.formatDateOnly(m.absence.startDate)} - ${UI.formatDateOnly(m.absence.endDate)})</span>` : ''}
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        // Gäste
+        if (guests.length > 0) {
+            detailsHtml += `
+                <div class="detail-row">
+                    <div class="detail-label">🎭 Gäste (${guests.length}):</div>
+                    <div class="detail-value">
+                        ${guests.map(guest => `<span class="guest-tag">${Bands.escapeHtml(guest)}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        // Soundcheck
+        if (event.soundcheckLocation && event.soundcheckLocation.trim() !== '') {
+            detailsHtml += `
+                <div class="detail-row">
+                    <div class="detail-label">🎚️ Infos zum Soundcheck:</div>
+                    <div class="detail-value">${Bands.escapeHtml(event.soundcheckLocation)}</div>
+                </div>
+            `;
+        }
+        // Setlist
+        if (Array.isArray(eventSongs) && eventSongs.length > 0) {
+            detailsHtml += `
+                <div class="detail-row">
+                    <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
+                    <div class="detail-value">
+                        <div style="display: flex; align-items: center; gap: 1.5rem; font-weight: bold; color: var(--color-text-secondary); font-size: 0.97em; border-bottom: 2px solid var(--color-border); padding-bottom: 0.3rem; margin-bottom: 0.2rem;">
+                            <span style="min-width: 120px;">Titel</span>
+                            <span style="min-width: 100px;">Interpret</span>
+                            <span style="min-width: 70px;">BPM</span>
+                            <span style="min-width: 70px;">Tonart</span>
+                            <span style="min-width: 100px;">Lead Vocal</span>
+                        </div>
+                        <ol class="event-songs-list" style="padding:0; margin:0;">
+                            ${eventSongs.map((s, idx) => `
+                                <li style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: ${idx < eventSongs.length - 1 ? '1px solid var(--color-border)' : 'none'};">
+                                    <span style="min-width: 120px; font-weight: bold;">${Bands.escapeHtml(s.title)}</span>
+                                    <span style="min-width: 100px;">${s.artist ? Bands.escapeHtml(s.artist) : ''}</span>
+                                    <span style="min-width: 70px;">${s.bpm ? Bands.escapeHtml(s.bpm) : ''}</span>
+                                    <span style="min-width: 70px;">${s.key ? Bands.escapeHtml(s.key) : ''}</span>
+                                    <span style="min-width: 100px;">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : ''}</span>
+                                    <span style="display: flex; gap: 1rem; flex-wrap: wrap; color: var(--color-text-secondary); font-size: 0.95em;">
+                                        ${s.ccli ? `<span>CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
+                                        ${s.notes ? `<span style='font-style:italic;'>📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
+                                    </span>
+                                </li>
+                            `).join('')}
+                        </ol>
+                    </div>
+                </div>
+            `;
+        }
+
         return `
             <div class="event-card accordion-card ${isPast ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}">
                 <div class="accordion-header" data-event-id="${event.id}">
@@ -111,7 +219,7 @@ const Events = {
                     <div class="accordion-actions">
                         <div class="event-quick-info">
                             <span class="quick-info-item">📅 ${UI.formatDateShort(event.date)}</span>
-                            <span class="quick-info-item">📍 ${event.location ? Bands.escapeHtml(event.location) : '-'}</span>
+                            ${event.location && event.location.trim() !== '' ? `<span class="quick-info-item">📍 ${Bands.escapeHtml(event.location)}</span>` : ''}
                         </div>
                         ${canManage ? `
                             <button class="btn-icon edit-event-icon" data-event-id="${event.id}" title="Bearbeiten">✏️</button>
@@ -121,91 +229,11 @@ const Events = {
                         </button>
                     </div>
                 </div>
-                
                 <div class="accordion-content" style="display: ${isExpanded ? 'block' : 'none'};">
                     <div class="accordion-body">
                         <div class="event-details-expanded">
-                            <div class="detail-row">
-                                <div class="detail-label">📅 Datum:</div>
-                                <div class="detail-value">${UI.formatDate(event.date)}</div>
-                            </div>
-                            
-                            <div class="detail-row">
-                                <div class="detail-label">📍 Ort:</div>
-                                <div class="detail-value">${event.location ? Bands.escapeHtml(event.location) : '-'}</div>
-                            </div>
-
-                            ${event.info ? `
-                                <div class="detail-row">
-                                    <div class="detail-label">ℹ️ Event-Infos:</div>
-                                    <div class="detail-value">${Bands.escapeHtml(event.info)}</div>
-                                </div>
-                            ` : ''}
-
-                            ${event.techInfo ? `
-                                <div class="detail-row">
-                                    <div class="detail-label">🔧 Technik:</div>
-                                    <div class="detail-value">${Bands.escapeHtml(event.techInfo)}</div>
-                                </div>
-                            ` : ''}
-
-                            <div class="detail-row">
-                                <div class="detail-label">👥 Bandmitglieder (${members.length}):</div>
-                                <div class="detail-value">
-                                    ${members.map(m => `
-                                        <span class="member-tag" style="margin-right: 0.5em;">
-                                            ${Bands.escapeHtml(m.name)}
-                                            ${m.absence ? `<span style="color: orange; font-weight: bold; margin-left: 0.5em;">Abwesenheit: ${Bands.escapeHtml(m.absence.reason || '')} (${UI.formatDateOnly(m.absence.startDate)} - ${UI.formatDateOnly(m.absence.endDate)})</span>` : ''}
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            </div>
-
-                            ${guests.length > 0 ? `
-                                <div class="detail-row">
-                                    <div class="detail-label">🎭 Gäste (${guests.length}):</div>
-                                    <div class="detail-value">
-                                        ${guests.map(guest => `<span class="guest-tag">${Bands.escapeHtml(guest)}</span>`).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-
-                            <div class="detail-row">
-                                <div class="detail-label">🎚️ Infos zum Soundcheck:</div>
-                                <div class="detail-value">${event.soundcheckLocation ? Bands.escapeHtml(event.soundcheckLocation) : '-'}</div>
-                            </div>
-
-                            ${Array.isArray(eventSongs) && eventSongs.length > 0 ? `
-                                <div class="detail-row">
-                                    <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
-                                    <div class="detail-value">
-                                        <div style="display: flex; align-items: center; gap: 1.5rem; font-weight: bold; color: var(--color-text-secondary); font-size: 0.97em; border-bottom: 2px solid var(--color-border); padding-bottom: 0.3rem; margin-bottom: 0.2rem;">
-                                            <span style="min-width: 120px;">Titel</span>
-                                            <span style="min-width: 100px;">Interpret</span>
-                                            <span style="min-width: 70px;">BPM</span>
-                                            <span style="min-width: 70px;">Tonart</span>
-                                            <span style="min-width: 100px;">Lead Vocal</span>
-                                        </div>
-                                        <ol class="event-songs-list" style="padding:0; margin:0;">
-                                            ${eventSongs.map((s, idx) => `
-                                                <li style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: ${idx < eventSongs.length - 1 ? '1px solid var(--color-border)' : 'none'};">
-                                                    <span style="min-width: 120px; font-weight: bold;">${Bands.escapeHtml(s.title)}</span>
-                                                    <span style="min-width: 100px;">${s.artist ? Bands.escapeHtml(s.artist) : ''}</span>
-                                                    <span style="min-width: 70px;">${s.bpm ? Bands.escapeHtml(s.bpm) : ''}</span>
-                                                    <span style="min-width: 70px;">${s.key ? Bands.escapeHtml(s.key) : ''}</span>
-                                                    <span style="min-width: 100px;">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : ''}</span>
-                                                    <span style="display: flex; gap: 1rem; flex-wrap: wrap; color: var(--color-text-secondary); font-size: 0.95em;">
-                                                        ${s.ccli ? `<span>CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
-                                                        ${s.notes ? `<span style='font-style:italic;'>📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
-                                                    </span>
-                                                </li>
-                                            `).join('')}
-                                        </ol>
-                                    </div>
-                                </div>
-                            ` : ''}
+                            ${detailsHtml}
                         </div>
-
                         ${canManage ? `
                             <div class="event-action-buttons">
                                 <button class="btn btn-secondary edit-event" data-event-id="${event.id}">
@@ -315,7 +343,7 @@ const Events = {
         const savedEvent = Storage.createEvent(event);
         UI.showToast('Auftritt erstellt', 'success');
         UI.closeModal('createEventModal');
-        this.renderEvents(this.currentFilter);
+        this.renderEvents(this.currentFilter, true);
         return savedEvent;
     },
 
@@ -395,7 +423,7 @@ const Events = {
         
         // Remember which event was expanded
         const wasExpanded = this.expandedEventId;
-        this.renderEvents(this.currentFilter);
+        this.renderEvents(this.currentFilter, true);
         
         // Re-expand the event after rendering
         if (wasExpanded === eventId) {
@@ -461,6 +489,15 @@ const Events = {
                     <label for="member_${user.id}">${Bands.escapeHtml(user.name)}${absenceHtml}</label>
                 </div>
             `;
+        // Checkboxen für Extras/Gäste korrekt setzen
+        const showExtras = (event.soundcheckLocation && event.soundcheckLocation.trim() !== '') || (event.info && event.info.trim() !== '') || (event.techInfo && event.techInfo.trim() !== '');
+        document.getElementById('eventShowExtras').checked = !!showExtras;
+        // Zeige/Verstecke die Felder entsprechend
+        document.getElementById('eventExtrasFields').style.display = showExtras ? '' : 'none';
+
+        const showGuests = Array.isArray(event.guests) && event.guests.length > 0;
+        document.getElementById('eventShowGuests').checked = !!showGuests;
+        document.getElementById('eventGuestsField').style.display = showGuests ? '' : 'none';
         })).then(items => items.join(''));
         // Add event listener for date change to update absences live
         const eventDateInput = document.getElementById('eventDate');

@@ -30,29 +30,28 @@ const Bands = {
 
     // Render all user's bands
     async renderBands() {
-                // Show loading overlay if present
-                const overlay = document.getElementById('globalLoadingOverlay');
-                if (overlay) {
-                    overlay.style.display = 'flex';
-                    overlay.style.opacity = '1';
-                }
+        // Nur laden, wenn noch keine Bands im Speicher
+        if (this.bands && Array.isArray(this.bands) && this.bands.length > 0) {
+            this.renderBandsList(this.bands);
+            return;
+        }
+        // Show loading overlay if present
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
         const container = document.getElementById('bandsList');
         const user = Auth.getCurrentUser();
-
         if (!user) return;
-
         // Hide create button if not allowed
         const createBtn = document.getElementById('createBandBtn');
         if (createBtn) {
             createBtn.style.display = Auth.canCreateBand() ? 'block' : 'none';
         }
-
         let bands = await Storage.getUserBands(user.id);
-        // Defensive: ensure array
-        if (!Array.isArray(bands)) {
-            bands = [];
-        }
-
+        if (!Array.isArray(bands)) bands = [];
+        this.bands = bands;
         if (bands.length === 0) {
             UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');
             if (overlay) {
@@ -606,7 +605,6 @@ const Bands = {
             UI.showLoading('Füge dich als Bandleiter hinzu...');
 
             // Debug: Log userId
-            console.log('Creating band membership with userId:', userId);
             if (!userId) {
                 throw new Error('Benutzer-ID ist undefined - bitte neu anmelden');
             }

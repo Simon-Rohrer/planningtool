@@ -24,25 +24,17 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/calendar.css">
+    <link rel="stylesheet" href="css/loader.css">
 
     <!-- Supabase JS (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
-        <!-- Global Loading Overlay -->
-        <div id="globalLoadingOverlay" style="position:fixed;z-index:99999;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;transition:opacity 0.3s;">
-            <div style="text-align:center;">
-                <div class="loader" style="margin-bottom:1.5rem;width:64px;height:64px;border:8px solid #eee;border-top:8px solid #6366f1;border-radius:50%;animation:spin 1s linear infinite;"></div>
-                <div style="font-size:1.2rem;color:#6366f1;">Lade Band Planning Tool ...</div>
-            </div>
-        </div>
-        <style>
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        </style>
+                <!-- Global Loading Overlay -->
+                <div class="loader-container" id="globalLoadingOverlay">
+                    <span class="guitar-spinner">&#127928;</span>
+                </div>
         <script>
         // Show loading overlay on first load, hide when app is ready
         window.addEventListener('DOMContentLoaded', function() {
@@ -71,6 +63,32 @@
             // Fallback: hide after 3s if not already hidden
             setTimeout(hideOverlay, 3000);
         });
+                // Ensure loading overlay stays visible for at least one animation cycle
+                (function() {
+                    const overlay = document.getElementById('globalLoadingOverlay');
+                    if (!overlay) return;
+                    let minTime = 2000; // 2s = one animation cycle
+                    let hideRequested = false;
+                    let shownAt = Date.now();
+                    // Patch hide logic if present
+                    window.hideGlobalLoadingOverlay = function() {
+                        let elapsed = Date.now() - shownAt;
+                        if (elapsed >= minTime) {
+                            overlay.style.display = 'none';
+                        } else {
+                            hideRequested = true;
+                            setTimeout(() => {
+                                if (hideRequested) overlay.style.display = 'none';
+                            }, minTime - elapsed);
+                        }
+                    };
+                    // Patch show logic if present
+                    window.showGlobalLoadingOverlay = function() {
+                        overlay.style.display = 'flex';
+                        shownAt = Date.now();
+                        hideRequested = false;
+                    };
+                })();
         </script>
     <!-- Landing Page with Split Layout -->
     <div id="landingPage" class="landing-page active">
@@ -1357,9 +1375,7 @@
                         <label>Setlist</label>
                         <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">Neuen Song
                             erstellen</button>
-                    </div><button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm">
-                        📋 Songs aus Band-Pool übernehmen
-                    </button>
+                    </div>
                     <div id="eventSongsList"></div>
                 </div>
                 <div class="modal-actions">

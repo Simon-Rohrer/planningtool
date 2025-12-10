@@ -20,28 +20,35 @@ const Rehearsals = {
 
     // Render all rehearsals
     async renderRehearsals(filterBandId = '') {
-                // Show loading overlay if present
-                const overlay = document.getElementById('globalLoadingOverlay');
-                if (overlay) {
-                    overlay.style.display = 'flex';
-                    overlay.style.opacity = '1';
-                }
-        const container = document.getElementById('rehearsalsList');
+        // Nur laden, wenn noch keine Rehearsals im Speicher
+        if (this.rehearsals && Array.isArray(this.rehearsals) && this.rehearsals.length > 0 && !filterBandId) {
+            this.renderRehearsalsList(this.rehearsals);
+            return;
+        }
+        // Show loading overlay if present
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
         const user = Auth.getCurrentUser();
-
         if (!user) return;
-
         let rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
-
+        this.rehearsals = rehearsals;
         // Apply filter
         if (filterBandId) {
             rehearsals = rehearsals.filter(r => r.bandId === filterBandId);
         }
-
         // Sort by creation date (newest first)
         rehearsals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        this.renderRehearsalsList(rehearsals);
+    },
 
-        if (rehearsals.length === 0) {
+    // Rendering der Proben-Liste (inkl. Overlay-Ausblendung und Event-Handler)
+    async renderRehearsalsList(rehearsals) {
+        const overlay = document.getElementById('globalLoadingOverlay');
+        const container = document.getElementById('rehearsalsList');
+        if (!rehearsals || rehearsals.length === 0) {
             UI.showEmptyState(container, '📅', 'Noch keine Probetermine vorhanden');
             if (overlay) {
                 overlay.style.opacity = '0';
@@ -49,14 +56,11 @@ const Rehearsals = {
             }
             return;
         }
-
         container.innerHTML = await Promise.all(rehearsals.map(rehearsal =>
             this.renderRehearsalCard(rehearsal)
         )).then(cards => cards.join(''));
-
         // Add vote handlers
         this.attachVoteHandlers(container);
-
         // Hide loading overlay after all data/UI is ready
         if (overlay) {
             overlay.style.opacity = '0';

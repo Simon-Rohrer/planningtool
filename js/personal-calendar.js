@@ -9,15 +9,18 @@ const PersonalCalendar = {
     currentMonth: new Date(),
 
     async loadPersonalCalendar() {
+        // Nur laden, wenn noch keine Daten im Speicher
+        if (this.events && this.events.length > 0 && this.rehearsals && this.rehearsals.length > 0 && this.userBands && this.userBands.length > 0) {
+            this.renderCalendar();
+            return;
+        }
         console.log('[PersonalCalendar] loadPersonalCalendar called');
         const container = document.getElementById('personalCalendarContainer');
         if (!container) {
             console.error('[PersonalCalendar] Container not found!');
             return;
         }
-
         container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Termine...</p></div>';
-
         let overlay = document.getElementById('globalLoadingOverlay');
         try {
             const user = Auth.getCurrentUser();
@@ -25,7 +28,6 @@ const PersonalCalendar = {
             if (!user) {
                 throw new Error('Benutzer nicht angemeldet');
             }
-
             // Load user's bands to filter relevant data
             const userBands = await Storage.getUserBands(user.id);
             console.log('[PersonalCalendar] User bands:', userBands);
@@ -42,20 +44,16 @@ const PersonalCalendar = {
             }
             const bandIds = userBands.map(b => b.id || b.band_id || b.bandId);
             console.log('[PersonalCalendar] Band IDs:', bandIds);
-
             // Load all events and rehearsals
             const [allEvents, allRehearsals] = await Promise.all([
                 this.loadUserEvents(bandIds),
                 this.loadUserRehearsals(bandIds)
             ]);
-
             console.log('[PersonalCalendar] Loaded events:', allEvents.length);
             console.log('[PersonalCalendar] Loaded rehearsals:', allRehearsals.length);
-
             this.events = allEvents;
             this.rehearsals = allRehearsals;
             this.userBands = userBands;
-
             this.renderCalendar();
 
         } catch (error) {

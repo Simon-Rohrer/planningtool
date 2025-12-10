@@ -1784,21 +1784,30 @@ setupQuickAccessEdit() {
 
     // News Management
     async renderNewsView() {
-                // Show loading overlay if present
-                const overlay = document.getElementById('globalLoadingOverlay');
-                if (overlay) {
-                    overlay.style.display = 'flex';
-                    overlay.style.opacity = '1';
-                }
+        // Nur laden, wenn noch keine News im Speicher
+        if (this.newsItems && Array.isArray(this.newsItems) && this.newsItems.length > 0) {
+            this.renderNewsList(this.newsItems);
+            return;
+        }
+        // Show loading overlay if present
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
         console.log('[renderNewsView] Starting to render news...');
-        const container = document.getElementById('newsContainer');
         const newsItems = await Storage.getAllNews();
-        console.log('[renderNewsView] Fetched news items:', newsItems.length, newsItems);
+        this.newsItems = newsItems;
+        this.renderNewsList(newsItems);
+    },
+
+    renderNewsList(newsItems) {
+        const overlay = document.getElementById('globalLoadingOverlay');
+        const container = document.getElementById('newsContainer');
         const isAdmin = Auth.isAdmin();
         const currentUser = Auth.getCurrentUser();
 
-        if (newsItems.length === 0) {
-            console.log('[renderNewsView] No news items found, showing empty state');
+        if (!newsItems || newsItems.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">📰</div>
@@ -1813,7 +1822,6 @@ setupQuickAccessEdit() {
             return;
         }
 
-        console.log('[renderNewsView] Rendering', newsItems.length, 'news items');
         container.innerHTML = newsItems.map(news => {
             const date = new Date(news.createdAt).toLocaleDateString('de-DE', {
                 year: 'numeric',
@@ -1896,6 +1904,11 @@ setupQuickAccessEdit() {
                 }
             });
         });
+        // Overlay ausblenden, wenn alles fertig
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 400);
+        }
     },
 
     async handleCreateNews() {
@@ -3989,12 +4002,6 @@ setupQuickAccessEdit() {
                 }
                 return endTs && endTs > nowTs;
             });
-            if (hasOpenProposal) {
-                openPollsCount++;
-                console.log('[DEBUG]   Counted as open poll (Abstimmung läuft noch)', rehearsal.id, rehearsal.title);
-            } else {
-                console.log('[DEBUG]   Not counted as open poll (Abstimmung vorbei)', rehearsal.id, rehearsal.title);
-            }
         }
         document.getElementById('pendingVotes').textContent = openPollsCount;
 
