@@ -4364,8 +4364,14 @@ setupQuickAccessEdit() {
                 await Bands.showBandDetails(bandId);
             }
 
-            // Refresh band cards in "Meine Bands" view
+            // Band-Cache leeren, damit die Übersicht neu geladen wird
+            Bands.bands = null;
             await Bands.renderBands();
+
+            // Wenn die aktuelle Ansicht "bands" ist, Ansicht neu laden
+            if (this.currentView === 'bands') {
+                await this.navigateTo('bands');
+            }
 
             // Refresh band management list if admin
             if (Auth.isAdmin()) {
