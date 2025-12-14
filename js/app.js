@@ -32,22 +32,34 @@ const App = {
     deletedEventSongs: [],
 
     // Account löschen Logik
+    // Account löschen Logik
+    // Account löschen Logik
     async handleDeleteAccount() {
+        // Double check confirmation
+        const confirmed = await UI.confirmDelete('Bist du sicher? Alle deine Daten werden unwiderruflich gelöscht.');
+        if (!confirmed) {
+            return;
+        }
+
         try {
             UI.showToast('Account wird gelöscht...', 'error');
-            // 1. User aus Supabase Auth löschen
-            await Auth.deleteCurrentUser();
-            // 2. User aus eigener Datenbank löschen
             const user = Auth.getCurrentUser();
+
             if (user) {
+                // 1. User aus eigener Datenbank löschen ZUERST, solange wir noch Rechte haben
                 await Storage.deleteUser(user.id);
             }
+
+            // 2. User aus Supabase Auth löschen
+            await Auth.deleteCurrentUser();
+
             UI.showToast('Account und alle Daten wurden gelöscht.', 'success');
-            UI.closeModal('deleteAccountModal');
+
             // 3. Logout und zurück zur Landing-Page
             await Auth.logout();
             this.showAuth();
         } catch (err) {
+            console.error('Delete account error:', err);
             UI.showToast('Fehler beim Löschen: ' + (err.message || err), 'error');
         }
     },
@@ -1674,6 +1686,7 @@ const App = {
         const username = document.getElementById('registerUsername').value;
         const password = document.getElementById('registerPassword').value;
         const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+        const imageInput = document.getElementById('registerProfileImage');
 
         if (password !== passwordConfirm) {
             UI.showToast('Passwörter stimmen nicht überein', 'error');
@@ -1684,7 +1697,56 @@ const App = {
             UI.showLoading('Registriere Benutzer...');
             const instrument = document.getElementById('registerInstrument').value;
             await Auth.register(registrationCode, name, email, username, password, instrument);
+
             // Supabase Auth automatically signs in after registration
+            // Now handle image upload if present
+            if (imageInput && imageInput.files && imageInput.files[0]) {
+                try {
+                    UI.showLoading('Lade Profilbild hoch...');
+                    const user = Auth.getCurrentUser();
+                    if (user) {
+                        let file = imageInput.files[0];
+
+                        // Compress image
+                        try {
+                            const compressionPromise = this.compressImage(file);
+                            const timeoutPromise = new Promise((_, reject) =>
+                                setTimeout(() => reject(new Error('Timeout')), 5000)
+                            );
+                            file = await Promise.race([compressionPromise, timeoutPromise]);
+                        } catch (cErr) {
+                            console.warn('Image compression failed, using original', cErr);
+                        }
+
+                        // Upload to Supabase
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+                        const sb = SupabaseClient.getClient();
+
+                        const { error: uploadError } = await sb.storage
+                            .from('profile-images')
+                            .upload(fileName, file, { upsert: true });
+
+                        if (!uploadError) {
+                            const { data: { publicUrl } } = sb.storage
+                                .from('profile-images')
+                                .getPublicUrl(fileName);
+
+                            if (publicUrl) {
+                                // Update user profile with image URL
+                                await Storage.updateUser(user.id, { profile_image_url: publicUrl });
+                                // Update local user object
+                                user.profile_image_url = publicUrl;
+                            }
+                        } else {
+                            console.error('Profile image upload failed:', uploadError);
+                        }
+                    }
+                } catch (imgErr) {
+                    console.error('Error handling profile image:', imgErr);
+                    // Continue anyway, registration was successful
+                }
+            }
 
             UI.hideLoading();
             UI.showToast('Registrierung erfolgreich!', 'success');
@@ -2961,6 +3023,19 @@ const App = {
             }
         } catch (err) {
             console.error('Error initializing admin tutorial button:', err);
+        }
+
+        // Account delete button (scoped to settings view)
+        const deleteAccountBtn = root.querySelector('#deleteAccountBtn');
+        if (deleteAccountBtn) {
+            // Remove existing listeners to avoid duplicates if re-initialized (cloning hack)
+            const newBtn = deleteAccountBtn.cloneNode(true);
+            deleteAccountBtn.parentNode.replaceChild(newBtn, deleteAccountBtn);
+
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                App.handleDeleteAccount();
+            });
         }
 
         // Donate link (scoped)

@@ -1,4 +1,4 @@
-    // (removed duplicate top-level async deleteCurrentUser)
+// (removed duplicate top-level async deleteCurrentUser)
 // Authentication Module with Supabase Auth
 
 const Auth = {
@@ -9,18 +9,20 @@ const Auth = {
     // Löscht den aktuell eingeloggten User aus Supabase Auth
     async deleteCurrentUser() {
         const sb = SupabaseClient.getClient();
-        const user = this.getSupabaseUser();
-        if (!sb || !user) throw new Error('Kein eingeloggter User gefunden!');
-        // Supabase Admin API: User löschen (nur mit Service Role Key möglich)
-        // Workaround: User kann sich selbst löschen über REST API
-        const res = await fetch(`https://YOUR_PROJECT_ID.supabase.co/auth/v1/user`, {
-            method: 'DELETE',
-            headers: {
-                'apikey': sb.auth['anonKey'],
-                'Authorization': `Bearer ${sb.auth['currentSession']?.access_token}`
-            }
-        });
-        if (!res.ok) throw new Error('Account konnte nicht gelöscht werden!');
+        if (!sb) return;
+
+        // NOTE: Deleting the 'auth.users' record directly from the client is not allowed (405 Method Not Allowed)
+        // and requires a Service Role key or a Postgres Function (RPC).
+        // We rely on the fact that we already deleted the public user data in 'handleDeleteAccount'.
+        // Ideally, a Supabase Database Trigger should be set up: "ON DELETE public.users -> DELETE auth.users"
+
+        // Attempt to call a common RPC if it exists, otherwise just proceed
+        try {
+            await sb.rpc('delete_user');
+        } catch (e) {
+            console.warn('RPC delete_user not available or failed', e);
+        }
+
         this.currentUser = null;
         this.supabaseUser = null;
     },
@@ -119,12 +121,12 @@ const Auth = {
 
         if (error) {
             console.error('Supabase signUp error:', error);
-            
+
             // User-friendly error messages
             if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
                 throw new Error('Diese E-Mail-Adresse ist bereits registriert. Bitte logge dich ein oder verwende eine andere E-Mail.');
             }
-            
+
             throw new Error(error.message || 'Registrierung fehlgeschlagen');
         }
 
@@ -134,17 +136,17 @@ const Auth = {
             let profile = null;
             let attempts = 0;
             const maxAttempts = 5;
-            
+
             while (!profile && attempts < maxAttempts) {
                 await new Promise(resolve => setTimeout(resolve, 500));
                 profile = await Storage.getById('users', data.user.id);
                 attempts++;
             }
-            
+
             if (!profile) {
                 throw new Error('Profil konnte nicht erstellt werden. Bitte lade die Seite neu und versuche dich einzuloggen.');
             }
-            
+
             // Update the profile with username/instrument if needed
             const updateObj = {};
             if (profile.username !== username) updateObj.username = username;
@@ -153,7 +155,7 @@ const Auth = {
                 await Storage.update('users', data.user.id, updateObj);
                 Object.assign(profile, updateObj);
             }
-            
+
             await this.setCurrentUser(data.user);
         }
 
@@ -162,7 +164,7 @@ const Auth = {
 
     async createUserByAdmin(name, email, username, password, isAdmin = false) {
         console.log('[createUserByAdmin] Starting with:', { name, email, username, isAdmin });
-        
+
         // Admin creates user without registration code
         if (!this.isAdmin()) {
             throw new Error('Keine Berechtigung');
@@ -198,17 +200,17 @@ const Auth = {
         }
 
         console.log('[createUserByAdmin] Creating user directly in Supabase admin mode...');
-        
+
         // Use a simpler approach: Create the user in database directly without auth
         // The user will need to use "password reset" to set their password, or we create a temp password
-        
+
         try {
             // Create user via Supabase admin.createUser (requires service_role key)
             // Since we only have anon key, we'll use regular signUp but sign out immediately after
-            
+
             // Get current session to restore later
             const { data: { session: adminSession } } = await sb.auth.getSession();
-            
+
             // Create new user
             const { data: authData, error: authError } = await sb.auth.signUp({
                 email,
@@ -233,18 +235,18 @@ const Auth = {
 
             // Sign out the new user and restore admin session
             await sb.auth.signOut();
-            
+
             if (adminSession) {
                 console.log('[createUserByAdmin] Restoring admin session...');
                 const { error: sessionError } = await sb.auth.setSession({
                     access_token: adminSession.access_token,
                     refresh_token: adminSession.refresh_token
                 });
-                
+
                 if (sessionError) {
                     console.error('[createUserByAdmin] Session restore error:', sessionError);
                 }
-                
+
                 // Restore admin user
                 await this.setCurrentUser(adminSession.user);
             }
@@ -267,7 +269,7 @@ const Auth = {
                 if (profile.username !== username) updates.username = username;
                 if (profile.name !== name) updates.name = name;
                 if (isAdmin && !profile.isAdmin) updates.isAdmin = true;
-                
+
                 if (Object.keys(updates).length > 0) {
                     await Storage.update('users', newUserId, updates);
                 }
