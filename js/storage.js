@@ -1,4 +1,4 @@
-    // (removed duplicate top-level async deleteUser)
+// (removed duplicate top-level async deleteUser)
 // Storage Module - Supabase-only (no localStorage fallback)
 
 const Storage = {
@@ -439,7 +439,7 @@ const Storage = {
             images,
             createdBy,
             createdAt: new Date().toISOString(),
-            readBy: [createdBy]
+            readBy: [] // Empty array so creator also sees "NEU" badge initially
         };
         return await this.save('news', newsItem);
     },

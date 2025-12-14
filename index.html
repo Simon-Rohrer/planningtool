@@ -1634,6 +1634,27 @@
             </div>
         </div>
 
+        <!-- News Detail Modal -->
+        <div id="newsDetailModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="newsDetailTitle">News Details</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="newsDetailDate"
+                        style="font-size: 0.875rem; color: var(--color-text-light); margin-bottom: var(--spacing-md);">
+                    </p>
+                    <div id="newsDetailImages"
+                        style="display:flex; gap:0.5rem; margin-bottom: var(--spacing-lg); flex-wrap:wrap;"></div>
+                    <p id="newsDetailContent" style="color: var(--color-text-secondary); white-space: pre-wrap;"></p>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel">Schließen</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast Notification -->
         <div id="toast" class="toast"></div>
 

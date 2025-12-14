@@ -1233,10 +1233,12 @@ const App = {
             });
         }
 
-        // Create news form
+        // Create news form (clone to remove old listeners)
         const createNewsForm = document.getElementById('createNewsForm');
         if (createNewsForm) {
-            createNewsForm.addEventListener('submit', (e) => {
+            const newForm = createNewsForm.cloneNode(true);
+            createNewsForm.parentNode.replaceChild(newForm, createNewsForm);
+            newForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleCreateNews();
             });
@@ -1860,11 +1862,17 @@ const App = {
             // mark unread for this user
             const isReadForUser = currentUser && Array.isArray(news.readBy) && news.readBy.includes(currentUser.id);
 
+            // Truncate content to 3 lines
+            const truncatedContent = this.truncateText(news.content, 150);
+
             return `
-                <div class="news-card" data-id="${news.id}" style="background: var(--color-surface); padding: var(--spacing-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: var(--spacing-lg); border-left: 4px solid var(--color-primary);">
+                <div class="news-card" data-id="${news.id}" 
+                     style="background: var(--color-surface); padding: var(--spacing-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: var(--spacing-lg); border-left: 4px solid var(--color-primary); cursor: pointer; transition: all 0.2s ease;"
+                     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-lg)';"
+                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-md)';">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md);">
                         <div style="flex: 1;">
-                            <h3 style="margin-bottom: var(--spacing-xs); color: var(--color-text);">${this.escapeHtml(news.title)} ${!isReadForUser ? '<span style="color: #e11d48; font-size:0.75rem; margin-left:0.5rem;">NEU</span>' : ''}</h3>
+                            <h3 style="margin-bottom: var(--spacing-xs); color: var(--color-text);">${this.escapeHtml(news.title)} ${!isReadForUser ? '<span class="news-unread-badge" style="color: #e11d48; font-size:0.75rem; margin-left:0.5rem;">NEU</span>' : ''}</h3>
                             <p style="font-size: 0.875rem; color: var(--color-text-light);">📅 ${date}</p>
                         </div>
                         <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -1873,7 +1881,7 @@ const App = {
                         </div>
                     </div>
                     ${imagesHtml}
-                    <p style="color: var(--color-text-secondary); white-space: pre-wrap;">${this.escapeHtml(news.content)}</p>
+                    <p style="color: var(--color-text-secondary); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">${this.escapeHtml(truncatedContent)}</p>
                 </div>
             `;
         }).join('');
@@ -1894,16 +1902,12 @@ const App = {
             });
         });
 
-        // Mark news read on card click (when user explicitly clicks a news card)
+        // Open detail modal on card click
         container.querySelectorAll('.news-card').forEach(card => {
             card.addEventListener('click', async (e) => {
                 // Ignore clicks on interactive buttons (they stopPropagation above)
                 const id = card.dataset.id;
-                const user = Auth.getCurrentUser();
-                if (user) {
-                    await Storage.markNewsRead(id, user.id);
-                    await this.updateNewsNavBadge();
-                }
+                await this.openNewsDetail(id);
             });
         });
         // Overlay ausblenden, wenn alles fertig
@@ -2009,6 +2013,9 @@ const App = {
 
         UI.closeModal('createNewsModal');
 
+        // Clear cache to force refresh
+        this.newsItems = null;
+
         // Navigate to news view (this will automatically call renderNewsView)
         await this.navigateTo('news');
 
@@ -2021,6 +2028,8 @@ const App = {
         if (confirmed) {
             await Storage.deleteNewsItem(newsId);
             UI.showToast('News gelöscht', 'success');
+            // Clear cache to force refresh
+            this.newsItems = null;
             await this.renderNewsView();
             await this.updateNewsNavBadge();
         }
@@ -2085,6 +2094,64 @@ const App = {
 
         UI.openModal('createNewsModal');
 
+    },
+
+    // Truncate text to a maximum length
+    truncateText(text, maxLength) {
+        if (!text || text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+    },
+
+    // Open news detail modal
+    async openNewsDetail(newsId) {
+        const news = await Storage.getById('news', newsId);
+        if (!news) {
+            UI.showToast('News nicht gefunden', 'error');
+            return;
+        }
+
+        // Populate modal
+        document.getElementById('newsDetailTitle').textContent = news.title || '';
+
+        const date = new Date(news.createdAt).toLocaleDateString('de-DE', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        document.getElementById('newsDetailDate').textContent = `📅 ${date}`;
+
+        document.getElementById('newsDetailContent').textContent = news.content || '';
+
+        // Render images
+        const imagesContainer = document.getElementById('newsDetailImages');
+        imagesContainer.innerHTML = '';
+        if (news.images && Array.isArray(news.images) && news.images.length > 0) {
+            news.images.forEach(imgSrc => {
+                const img = document.createElement('img');
+                img.src = imgSrc;
+                img.style.width = '150px';
+                img.style.height = '150px';
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '6px';
+                imagesContainer.appendChild(img);
+            });
+        }
+
+        // Mark as read
+        const user = Auth.getCurrentUser();
+        if (user) {
+            await Storage.markNewsRead(newsId, user.id);
+
+            // Update badge and banner
+            await this.updateNewsNavBadge();
+
+            // Refresh the news list to remove "NEU" badge
+            this.newsItems = null;
+            await this.renderNewsView();
+        }
+
+        // Open modal
+        UI.openModal('newsDetailModal');
     },
 
     // Update the news nav item with an unread indicator for the current user
