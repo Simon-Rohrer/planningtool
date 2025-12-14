@@ -1363,14 +1363,30 @@ const App = {
         // Add User Form (Admin only)
         const addUserForm = document.getElementById('addUserForm');
         if (addUserForm) {
-            addUserForm.addEventListener('submit', async (e) => {
+            // Remove existing listeners to avoid duplicates if setupEventListeners is called multiple times
+            const newForm = addUserForm.cloneNode(true);
+            addUserForm.parentNode.replaceChild(newForm, addUserForm);
+
+            newForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (this.isProcessingAddUser) return; // Prevent double submission
+
+                // Define button outside try so it's visible in finally
+                const submitBtn = newForm.querySelector('button[type="submit"]') || newForm.querySelector('.btn-primary');
+
                 try {
+                    this.isProcessingAddUser = true;
+                    // Disable submit button
+                    if (submitBtn) submitBtn.disabled = true;
+
                     await this.handleAddUser();
                 } catch (error) {
                     console.error('[addUserForm] Fehler beim Hinzufügen:', error);
                     UI.hideLoading();
                     UI.showToast('Fehler: ' + error.message, 'error');
+                } finally {
+                    this.isProcessingAddUser = false;
+                    if (submitBtn) submitBtn.disabled = false;
                 }
             });
         }
@@ -1821,8 +1837,30 @@ const App = {
 
             console.log('[handleAddUser] Creating user via Auth.createUserByAdmin...');
             // Create user via Auth module (without registration code check)
-            const userId = await Auth.createUserByAdmin(name, email, username, password, isAdmin);
+            // Note: createUserByAdmin handles temporary signOut/signIn to avoid session conflicts
+            const userId = await Auth.createUserByAdmin(name, email, username, password);
             console.log('[handleAddUser] User created with ID:', userId);
+
+            // If Admin role requested, apply it now (since we are back in Admin session)
+            if (isAdmin) {
+                // Wait for profile to be created by trigger
+                console.log('[handleAddUser] Waiting for profile creation to apply Admin role...');
+                let profile = null;
+                let attempts = 0;
+                while (!profile && attempts < 10) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    profile = await Storage.getById('users', userId);
+                    attempts++;
+                }
+
+                if (profile) {
+                    await Storage.updateUser(userId, { isAdmin: true });
+                    console.log('[handleAddUser] Admin role applied.');
+                } else {
+                    console.warn('[handleAddUser] Profile not found after timeout, could not apply Admin role.');
+                    UI.showToast('Benutzer erstellt, aber Admin-Rechte konnten nicht gesetzt werden (Timeout).', 'warning');
+                }
+            }
 
             clearTimeout(loadingTimeout);
             UI.hideLoading();

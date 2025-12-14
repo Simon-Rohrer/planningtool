@@ -162,12 +162,12 @@ const Auth = {
         return data.user;
     },
 
-    async createUserByAdmin(name, email, username, password, isAdmin = false) {
-        console.log('[createUserByAdmin] Starting with:', { name, email, username, isAdmin });
+    async createUserByAdmin(name, email, username, password, instrument = "") {
+        console.log('[createUserByAdmin] Starting with:', { name, email, username, instrument });
 
         // Admin creates user without registration code
         if (!this.isAdmin()) {
-            throw new Error('Keine Berechtigung');
+            throw new Error('Nur Administratoren können neue Benutzer anlegen');
         }
 
         // Validate inputs
@@ -180,10 +180,10 @@ const Auth = {
             throw new Error('Passwort muss mindestens 6 Zeichen lang sein');
         }
 
-        // Check if username already exists
         console.log('[createUserByAdmin] Checking if username exists...');
         const existingUser = await Storage.getUserByUsername(username);
         if (existingUser) {
+            console.warn('[createUserByAdmin] Username exists:', existingUser);
             throw new Error('Benutzername bereits vergeben');
         }
 
@@ -192,34 +192,38 @@ const Auth = {
             throw new Error('Supabase nicht konfiguriert');
         }
 
-        // Check if email already exists in auth
-        const existingUsers = await Storage.getAll('users');
-        const emailExists = existingUsers.some(u => u.email.toLowerCase() === email.toLowerCase());
-        if (emailExists) {
-            throw new Error('Diese E-Mail-Adresse ist bereits registriert');
-        }
-
-        console.log('[createUserByAdmin] Creating user directly in Supabase admin mode...');
-
-        // Use a simpler approach: Create the user in database directly without auth
-        // The user will need to use "password reset" to set their password, or we create a temp password
+        console.log('[createUserByAdmin] Creating user via isolated client...');
 
         try {
-            // Create user via Supabase admin.createUser (requires service_role key)
-            // Since we only have anon key, we'll use regular signUp but sign out immediately after
+            // CRITICAL FIX: Use a separate, isolated Supabase client for the new user creation.
+            // This prevents the main Admin session from being overwritten or cleared.
+            // We configure it with NO storage persistence preventing side effects.
 
-            // Get current session to restore later
-            const { data: { session: adminSession } } = await sb.auth.getSession();
+            const supabaseUrl = localStorage.getItem('supabase.url');
+            const anonKey = localStorage.getItem('supabase.anonKey');
 
-            // Create new user
-            const { data: authData, error: authError } = await sb.auth.signUp({
+            if (!supabaseUrl || !anonKey || !window.supabase) {
+                throw new Error('Supabase Configuration Missing');
+            }
+
+            // Create temporary client
+            const tempClient = window.supabase.createClient(supabaseUrl, anonKey, {
+                auth: {
+                    persistSession: false, // Do not save session to localStorage
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                }
+            });
+
+            // Sign up the new user on the isolated client
+            const { data: authData, error: authError } = await tempClient.auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
                         username,
                         name,
-                        isAdmin
+                        instrument
                     },
                     emailRedirectTo: undefined // Don't send confirmation email
                 }
@@ -233,49 +237,9 @@ const Auth = {
             const newUserId = authData.user?.id;
             console.log('[createUserByAdmin] User created with ID:', newUserId);
 
-            // Sign out the new user and restore admin session
-            await sb.auth.signOut();
+            // Clean up: Sign out variable client (just to be safe, though it's not persisted)
+            await tempClient.auth.signOut();
 
-            if (adminSession) {
-                console.log('[createUserByAdmin] Restoring admin session...');
-                const { error: sessionError } = await sb.auth.setSession({
-                    access_token: adminSession.access_token,
-                    refresh_token: adminSession.refresh_token
-                });
-
-                if (sessionError) {
-                    console.error('[createUserByAdmin] Session restore error:', sessionError);
-                }
-
-                // Restore admin user
-                await this.setCurrentUser(adminSession.user);
-            }
-
-            // Wait for profile to be created by trigger
-            let profile = null;
-            let attempts = 0;
-            while (!profile && attempts < 10) {
-                await new Promise(resolve => setTimeout(resolve, 300));
-                profile = await Storage.getById('users', newUserId);
-                attempts++;
-                console.log('[createUserByAdmin] Waiting for profile... attempt', attempts);
-            }
-
-            if (!profile) {
-                console.warn('[createUserByAdmin] Profile not found after 10 attempts, but user was created');
-            } else {
-                // Update profile with correct data
-                const updates = {};
-                if (profile.username !== username) updates.username = username;
-                if (profile.name !== name) updates.name = name;
-                if (isAdmin && !profile.isAdmin) updates.isAdmin = true;
-
-                if (Object.keys(updates).length > 0) {
-                    await Storage.update('users', newUserId, updates);
-                }
-            }
-
-            console.log('[createUserByAdmin] Success!');
             return newUserId;
 
         } catch (error) {
