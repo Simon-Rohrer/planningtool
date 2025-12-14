@@ -35,70 +35,86 @@ const Bands = {
             this.renderBandsList(this.bands);
             return;
         }
-        // Show loading overlay if present
+
         const overlay = document.getElementById('globalLoadingOverlay');
-        if (overlay) {
-            overlay.style.display = 'flex';
-            overlay.style.opacity = '1';
-        }
         const container = document.getElementById('bandsList');
-        const user = Auth.getCurrentUser();
-        if (!user) return;
-        // Hide create button if not allowed
-        const createBtn = document.getElementById('createBandBtn');
-        if (createBtn) {
-            createBtn.style.display = Auth.canCreateBand() ? 'block' : 'none';
-        }
-        let bands = await Storage.getUserBands(user.id);
-        if (!Array.isArray(bands)) bands = [];
-        this.bands = bands;
-        if (bands.length === 0) {
-            UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');
+
+        try {
+            // Show loading overlay if present
+            if (overlay) {
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
+            }
+
+            const user = Auth.getCurrentUser();
+            if (!user) {
+                // If no user, we shouldn't be here, but just in case
+                if (overlay) overlay.style.display = 'none';
+                return;
+            }
+
+            // Hide create button if not allowed
+            const createBtn = document.getElementById('createBandBtn');
+            if (createBtn) {
+                createBtn.style.display = Auth.canCreateBand() ? 'block' : 'none';
+            }
+
+            let bands = await Storage.getUserBands(user.id);
+            if (!Array.isArray(bands)) bands = [];
+            this.bands = bands;
+
+            if (bands.length === 0) {
+                UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');
+                return;
+            }
+
+            // Render bands list logic moved here to support try/catch
+            container.innerHTML = await Promise.all(bands.map(async band => {
+                const members = await Storage.getBandMembers(band.id);
+                const memberCount = members.length;
+
+                return `
+                    <div class="band-card" data-band-id="${band.id}" style="border-left: 4px solid ${band.color || '#6366f1'}">
+                        <div class="band-card-header">
+                            <div>
+                                <h3>${this.escapeHtml(band.name)}</h3>
+                            </div>
+                            <span class="band-role-badge ${UI.getRoleClass(band.role)}">
+                                ${UI.getRoleDisplayName(band.role)}
+                            </span>
+                        </div>
+                        <p>${this.escapeHtml(band.description || 'Keine Beschreibung')}</p>
+                        <div class="band-card-footer">
+                            <span>👥 ${memberCount} Mitglied${memberCount !== 1 ? 'er' : ''}</span>
+                            <span>${UI.formatRelativeTime(band.createdAt)}</span>
+                        </div>
+                    </div>
+                `;
+            })).then(results => results.join(''));
+
+            // Add click handlers
+            container.querySelectorAll('.band-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const bandId = card.dataset.bandId;
+                    this.showBandDetails(bandId);
+                });
+            });
+
+            // Update nav visibility based on current membership
+            this.updateNavVisibility();
+
+        } catch (error) {
+            console.error('Error rendering bands:', error);
+            UI.showToast('Fehler beim Laden der Bands', 'error');
+            if (container) {
+                container.innerHTML = '<p class="error-text">Fehler beim Laden der Daten. Bitte versuchen Sie es später erneut.</p>';
+            }
+        } finally {
+            // Hide loading overlay after all data/UI is ready OR if error occurred
             if (overlay) {
                 overlay.style.opacity = '0';
                 setTimeout(() => overlay.style.display = 'none', 400);
             }
-            return;
-        }
-
-        container.innerHTML = await Promise.all(bands.map(async band => {
-            const members = await Storage.getBandMembers(band.id);
-            const memberCount = members.length;
-
-            return `
-                <div class="band-card" data-band-id="${band.id}" style="border-left: 4px solid ${band.color || '#6366f1'}">
-                    <div class="band-card-header">
-                        <div>
-                            <h3>${this.escapeHtml(band.name)}</h3>
-                        </div>
-                        <span class="band-role-badge ${UI.getRoleClass(band.role)}">
-                            ${UI.getRoleDisplayName(band.role)}
-                        </span>
-                    </div>
-                    <p>${this.escapeHtml(band.description || 'Keine Beschreibung')}</p>
-                    <div class="band-card-footer">
-                        <span>👥 ${memberCount} Mitglied${memberCount !== 1 ? 'er' : ''}</span>
-                        <span>${UI.formatRelativeTime(band.createdAt)}</span>
-                    </div>
-                </div>
-            `;
-        })).then(results => results.join(''));
-
-        // Add click handlers
-        container.querySelectorAll('.band-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const bandId = card.dataset.bandId;
-                this.showBandDetails(bandId);
-            });
-        });
-
-        // Update nav visibility based on current membership
-        this.updateNavVisibility();
-
-        // Hide loading overlay after all data/UI is ready
-        if (overlay) {
-            overlay.style.opacity = '0';
-            setTimeout(() => overlay.style.display = 'none', 400);
         }
     },
 
@@ -158,7 +174,7 @@ const Bands = {
         // Remove old code section first
         const oldCodeSection = settingsTab.querySelector('.join-code-section');
         if (oldCodeSection) oldCodeSection.remove();
-        
+
         // Always show join code (all members can see and copy it)
         const existingCode = settingsTab.querySelector('.join-code-section');
         if (!existingCode) {
@@ -177,7 +193,7 @@ const Bands = {
                 </div>
             `;
             settingsTab.insertBefore(codeSection, settingsTab.firstChild);
-            
+
             // Add copy handler
             const copyBtn = codeSection.querySelector('#copyJoinCodeBtn');
             copyBtn.addEventListener('click', () => {
@@ -326,7 +342,7 @@ const Bands = {
                         <div class="absence-member">
                             <strong>${this.escapeHtml(u.name)}</strong>
                             <ul>
-                                ${abs.sort((a,b)=> new Date(b.startDate)-new Date(a.startDate)).map(a => `<li>${UI.formatDateOnly(a.startDate)} — ${UI.formatDateOnly(a.endDate)}${a.reason ? ' — ' + this.escapeHtml(a.reason) : ''}</li>`).join('')}
+                                ${abs.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)).map(a => `<li>${UI.formatDateOnly(a.startDate)} — ${UI.formatDateOnly(a.endDate)}${a.reason ? ' — ' + this.escapeHtml(a.reason) : ''}</li>`).join('')}
                             </ul>
                         </div>
                     `;
@@ -354,7 +370,7 @@ const Bands = {
 
         // Close band details modal first, then open edit modal
         UI.closeModal('bandDetailsModal');
-        
+
         // Small delay to ensure smooth transition
         setTimeout(() => {
             UI.openModal('editBandModal');
@@ -385,7 +401,7 @@ const Bands = {
         // Add as member or leader
         await Storage.addBandMember(band.id, user.id, role);
         await Auth.updateCurrentUser();
-        
+
         // Update header to reflect current user
         const updatedUser = Auth.getCurrentUser();
         const userNameElement = document.getElementById('currentUserName');
@@ -394,11 +410,11 @@ const Bands = {
         }
 
         UI.showToast(`Erfolgreich der Band "${band.name}" beigetreten!`, 'success');
-        
+
         // Clear the input field
         const joinCodeInput = document.getElementById('joinBandCode');
         if (joinCodeInput) joinCodeInput.value = '';
-        
+
         UI.closeModal('joinBandModal');
         await this.renderBands();
 
@@ -407,7 +423,7 @@ const Bands = {
             if (App.updateDashboard) await App.updateDashboard();
             if (App.updateNavigationVisibility) App.updateNavigationVisibility();
         }
-        
+
         // Update nav visibility
         await this.updateNavVisibility();
     },
@@ -464,8 +480,10 @@ const Bands = {
             return `
                 <div class="member-item">
                     <div class="member-info">
-                        <div class="member-avatar">
-                            ${UI.getUserInitials(user.name)}
+                        <div class="member-avatar" style="${user.profile_image_url ? 'background: none;' : ''}">
+                            ${user.profile_image_url ?
+                    `<img src="${user.profile_image_url}" alt="${this.escapeHtml(user.name)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` :
+                    UI.getUserInitials(user.name)}
                         </div>
                         <div class="member-details">
                             <h4>${this.escapeHtml(user.name)} ${isCurrentUser ? '(Du)' : ''}</h4>
@@ -532,7 +550,7 @@ const Bands = {
 
         // Render only members who have absences
         const rows = membersWithAbs.filter(m => m.absences && m.absences.length > 0).map(m => {
-            const list = m.absences.sort((a,b)=> new Date(b.startDate)-new Date(a.startDate)).map(a => `
+            const list = m.absences.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)).map(a => `
                 <div style="padding:6px 0;">
                     <div><strong>${UI.formatDateOnly(a.startDate)} — ${UI.formatDateOnly(a.endDate)}</strong></div>
                     ${a.reason ? `<div class="help-text">${this.escapeHtml(a.reason)}</div>` : ''}
@@ -566,14 +584,14 @@ const Bands = {
     async createBand(name, description) {
         const user = Auth.getCurrentUser();
         const supabaseUser = Auth.getSupabaseUser();
-        
+
         // Use Supabase auth ID as fallback
         const userId = user?.id || supabaseUser?.id;
-        
+
         console.log('createBand - user:', user);
         console.log('createBand - supabaseUser:', supabaseUser);
         console.log('createBand - userId:', userId);
-        
+
         if (!userId) {
             UI.showToast('Fehler: Benutzer nicht korrekt geladen. Bitte lade die Seite neu und melde dich erneut an.', 'error');
             return;
@@ -624,7 +642,7 @@ const Bands = {
             }
             UI.closeModal('createBandModal');
             await this.renderBands();
-            
+
             // Update navigation visibility to show band tabs
             await this.updateNavVisibility();
 
@@ -697,12 +715,12 @@ const Bands = {
             UI.showToast('Band gelöscht', 'success');
             UI.closeModal('bandDetailsModal');
             await this.renderBands();
-            
+
             // Update admin band management list
             if (typeof App !== 'undefined' && typeof App.renderAllBandsList === 'function') {
                 await App.renderAllBandsList();
             }
-            
+
             // Update dashboard if needed
             if (typeof App !== 'undefined' && App.updateDashboard) {
                 await App.updateDashboard();
@@ -823,7 +841,7 @@ const Bands = {
                 bands.map(band =>
                     `<option value="${band.id}">${this.escapeHtml(band.name)}</option>`
                 ).join('');
-                // Vorauswahl: wenn genau eine Band vorhanden ist
+            // Vorauswahl: wenn genau eine Band vorhanden ist
             if (bands.length === 1) {
                 statsBandSelect.value = bands[0].id;
                 statsBandSelect.dispatchEvent(new Event('change'));

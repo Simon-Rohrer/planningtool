@@ -5,6 +5,7 @@
         z-index: 10001;
     }
 }
+
 /* Dashboard Section Header & Drag Handle */
 .dashboard-section-header {
     display: flex;
@@ -13,6 +14,7 @@
     gap: 0.5em;
     margin-bottom: 0.5em;
 }
+
 .dashboard-drag-handle {
     font-size: 1.3em;
     color: var(--color-text-secondary, #888);
@@ -23,9 +25,11 @@
     opacity: 0.7;
     transition: opacity 0.2s;
 }
+
 .dashboard-drag-handle:active {
     opacity: 1;
 }
+
 /* Dashboard new sections */
 .dashboard-sections {
     display: flex;
@@ -33,39 +37,44 @@
     gap: 1.5rem;
     margin-top: 2rem;
 }
+
 .dashboard-section {
     flex: 1 1 250px;
     background: var(--color-bg-secondary, #f8f9fa);
     border-radius: 12px;
     padding: 1rem 1.2rem;
     min-width: 220px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     border: 2px solid var(--color-primary, #6366f1);
     transition: border-color 0.2s;
 }
+
 .dashboard-section h3 {
     margin-top: 0;
     font-size: 1.1rem;
     margin-bottom: 0.7rem;
 }
-.dashboard-news-list, .dashboard-activity-list {
+
+.dashboard-news-list,
+.dashboard-activity-list {
     display: flex;
     flex-direction: column;
     cursor: grab;
     user-select: none;
     gap: 0.5rem;
 
-.dashboard-section.dragging {
-    opacity: 0.6;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.10);
-    border-color: var(--color-secondary, #888);
+    .dashboard-section.dragging {
+        opacity: 0.6;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+        border-color: var(--color-secondary, #888);
+    }
+
+    .dashboard-section.drag-over {
+        border-color: var(--color-accent, #007bff);
+        box-shadow: 0 0 0 2px var(--color-accent, #007bff);
+    }
 }
 
-.dashboard-section.drag-over {
-    border-color: var(--color-accent, #007bff);
-    box-shadow: 0 0 0 2px var(--color-accent, #007bff);
-}
-}
 .dashboard-news-item {
     background: var(--color-surface);
     border-radius: 10px;
@@ -100,13 +109,15 @@
     cursor: pointer;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
+
 .dashboard-news-item.clickable:hover,
 .dashboard-activity-item.clickable:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-md);
 }
 
-.news-heading, .activity-heading {
+.news-heading,
+.activity-heading {
     font-size: 0.9rem;
     color: var(--color-primary);
     font-weight: 600;
@@ -114,7 +125,9 @@
 }
 
 /* Logo visible on all screen sizes (kept intentionally) */
-.app-header .logo { display: inline-block; }
+.app-header .logo {
+    display: inline-block;
+}
 
 /* Make header logo significantly smaller on mobile */
 @media (max-width: 768px) {
@@ -158,47 +171,57 @@
     #rehearsalsView .view-controls .btn {
         flex: 0 0 auto;
     }
+
     /* Right-align the last action/create button so selects stay left */
     #eventsView .view-controls .btn:last-child,
     #rehearsalsView .view-controls .btn:last-child {
         margin-left: auto;
     }
+
     /* Hide top view titles (e.g. 'Dashboard', 'Auftritte') on narrow screens */
     .view-header h2,
     .view-header .page-title {
         display: none;
     }
 }
+
 .dashboard-news-item .news-title {
     font-weight: 600;
     color: var(--color-primary, #6366f1);
 }
+
 .dashboard-news-item .news-date {
     font-size: 0.85em;
     color: var(--color-text-secondary, #888);
 }
+
 .dashboard-news-item .news-content {
     font-size: 0.95em;
     color: #444;
 }
+
 .dashboard-activity-item {
     flex-direction: row;
     align-items: center;
     gap: 0.5rem;
 }
+
 .dashboard-activity-item .activity-title {
     font-weight: 500;
 }
+
 .dashboard-activity-item .activity-date {
     font-size: 0.85em;
     color: var(--color-text-secondary, #888);
 }
+
 .dashboard-quick-links {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
     margin-bottom: 0.5rem;
 }
+
 /* ===== CSS Variables ===== */
 :root {
     /* Light Theme Colors */
@@ -263,7 +286,7 @@
 .theme-dark .dashboard-section {
     background: var(--color-surface);
     color: var(--color-text);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
 }
 
 
@@ -780,11 +803,18 @@ input:checked+.slider:before {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    white-space: nowrap; /* keep single-line on desktop */
+    white-space: nowrap;
+    /* keep single-line on desktop */
 }
 
-.logo-emoji { margin-right: 0.25rem; }
-.logo-part { display: inline; margin-right: 0.25rem; }
+.logo-emoji {
+    margin-right: 0.25rem;
+}
+
+.logo-part {
+    display: inline;
+    margin-right: 0.25rem;
+}
 
 .header-actions {
     display: flex;
@@ -793,6 +823,7 @@ input:checked+.slider:before {
 }
 
 @media (max-width: 768px) {
+
     /* keep logo left and user actions right on first row */
     .header-content {
         padding: var(--spacing-md) var(--spacing-lg);
@@ -810,7 +841,11 @@ input:checked+.slider:before {
     }
 
     /* On mobile, stack the logo words but keep emoji + first word on the same line */
-    .logo-part { display: block; margin: 0; }
+    .logo-part {
+        display: block;
+        margin: 0;
+    }
+
     .logo-emoji,
     .logo-part:first-of-type {
         display: inline-block;
@@ -838,9 +873,9 @@ input:checked+.slider:before {
     }
 
     /* Ensure action buttons remain compact */
-    .header-actions > #currentUserName,
-    .header-actions > #themeToggleHeader,
-    .header-actions > #logoutBtn {
+    .header-actions>#currentUserName,
+    .header-actions>#themeToggleHeader,
+    .header-actions>#logoutBtn {
         margin: 0 0.25rem;
     }
 }
@@ -931,9 +966,11 @@ input:checked+.slider:before {
     .nav-submenu {
         display: none;
     }
+
     .nav-group.submenu-open .nav-submenu {
         display: flex !important;
     }
+
     .nav-item.nav-main[data-view="rehearsals"] {
         display: flex !important;
     }
@@ -1045,7 +1082,8 @@ input:checked+.slider:before {
     .nav-submenu {
         /* display: none; wird vom globalen @media (max-width: 769px) Block übernommen */
         position: absolute;
-        bottom: 100%; /* Startet an der Oberkante des Elternelements */
+        bottom: 100%;
+        /* Startet an der Oberkante des Elternelements */
         left: 50%;
         transform: translateX(-50%);
         background: var(--color-surface);
@@ -1055,7 +1093,8 @@ input:checked+.slider:before {
         padding: var(--spacing-md);
         min-width: 200px;
         max-width: 90vw;
-        z-index: 1001; /* Wichtig: Liegt über der Nav-Bar (1000) */
+        z-index: 1001;
+        /* Wichtig: Liegt über der Nav-Bar (1000) */
     }
 
     .nav-group.submenu-open .nav-submenu {
@@ -1063,7 +1102,7 @@ input:checked+.slider:before {
         flex-direction: column;
         gap: var(--spacing-xs);
         /* FINALE POSITION: bottom: 100% plus der gewünschte Abstand zur nav-group */
-        bottom: calc(100% + var(--spacing-sm)); 
+        bottom: calc(100% + var(--spacing-sm));
         animation: slideUpMobile 0.2s ease-out forwards;
     }
 
@@ -1071,13 +1110,13 @@ input:checked+.slider:before {
         from {
             opacity: 0;
             /* Startet leicht unter der finalen Position */
-            transform: translateX(-50%) translateY(20px); 
+            transform: translateX(-50%) translateY(20px);
         }
 
         to {
             opacity: 1;
             /* Endet an der durch 'bottom' definierten finalen Position */
-            transform: translateX(-50%) translateY(0); 
+            transform: translateX(-50%) translateY(0);
         }
     }
 
@@ -1112,6 +1151,7 @@ input:checked+.slider:before {
 
     /* Remove small submenu arrow for specific main items on very small screens */
     @media (max-width: 768px) {
+
         .nav-item.nav-main[data-view="dashboard"]::after,
         .nav-item.nav-main[data-view="rehearsals"]::after,
         .nav-item.nav-main[data-view="statistics"]::after,
@@ -1868,6 +1908,7 @@ input:checked+.slider:before {
         padding-right: 10px;
         padding: var(--spacing-sm) var(--spacing-md);
     }
+
     #probeorteBtn {
         font-size: 0.8rem;
         border-radius: 6px;
@@ -1972,7 +2013,7 @@ input:checked+.slider:before {
     }
 
     /* Ensure the header buttons don't wrap and keep consistent spacing */
-    .header-actions > * {
+    .header-actions>* {
         flex: 0 0 auto;
     }
 }
@@ -2266,47 +2307,67 @@ input:checked+.slider:before {
 .toast.error {
     background: var(--color-danger);
 }
+
 /*Buttons Simon*/
 
 /* Profil */
-#profileUsername, #profilePassword, #donateLink, #profileEmail, #profileCurrentPassword, #profileNewPassword, #profileConfirmNewPassword{
+#profileUsername,
+#profilePassword,
+#donateLink,
+#profileEmail,
+#profileCurrentPassword,
+#profileNewPassword,
+#profileConfirmNewPassword {
     width: auto;
 }
 
 /* Band*/
-#bandFilter, #eventBandFilter, #rehearsalBandFilter, #memberBandFilter, #profileInstrument{
-   width: auto;
+#bandFilter,
+#eventBandFilter,
+#rehearsalBandFilter,
+#memberBandFilter,
+#profileInstrument {
+    width: auto;
 }
 
 /* Abwesenheit*/
-#absenceStartSettings, #absenceEndSettings, #absenceReasonSettings{
+#absenceStartSettings,
+#absenceEndSettings,
+#absenceReasonSettings {
     width: 250px;
 }
 
 /* Probeort*/
-#newLocationName, #newLocationAddress, #newLocationLinkedCalendar {
+#newLocationName,
+#newLocationAddress,
+#newLocationLinkedCalendar {
     width: auto;
 }
 
-#deleteAccountBtn{
+#deleteAccountBtn {
     width: auto;
 }
 
-#themeToggleIcon{
+#themeToggleIcon {
     padding: 0px;
 }
 
- #rehearsalBand, #rehearsalLocation, #rehearsalEvent{
+#rehearsalBand,
+#rehearsalLocation,
+#rehearsalEvent {
     width: auto;
- }
- #rehearsalTitle, #rehearsalLocation, #rehearsalDescription {
+}
+
+#rehearsalTitle,
+#rehearsalLocation,
+#rehearsalDescription {
     width: 450px;
- }
+}
 
 .date-proposal-item {
     display: flex;
-    flex-wrap: wrap; 
-    padding: 10px; 
+    flex-wrap: wrap;
+    padding: 10px;
     width: auto;
 
 }
@@ -2319,16 +2380,22 @@ input:checked+.slider:before {
 }
 
 /* Optional: Damit die Inputs nicht zu breit sind */
-.date-proposal-item input[type="date"], 
+.date-proposal-item input[type="date"],
 .date-proposal-item input[type="time"] {
     width: auto;
-    max-width: 150px; /* Beispiel-Maximalbreite */
+    max-width: 150px;
+    /* Beispiel-Maximalbreite */
 }
+
+#profileImageInput {
+    width: auto;
+}
+
 .remove-date {
     /* Setzt die Breite automatisch auf den Inhalt (das Icon) */
     width: auto;
     /* Optional: Fügt ein bisschen Polsterung hinzu, damit das Icon nicht am Rand klebt */
-    padding: 4px 8px; 
+    padding: 4px 8px;
     /* Stellt sicher, dass er sich wie ein Inline-Element verhält (obwohl er in Flexbox ist, ist das eine gute Praxis) */
     display: inline-block;
     /* Optional: Entfernt den Standard-Hintergrund/Rahmen, falls er nur ein Icon sein soll */
@@ -2344,6 +2411,7 @@ input:checked+.slider:before {
     padding: 4px 8px;
     /* ... weitere Stile für Icon-Buttons ... */
 }
+
 /* ===== Loading Spinner ===== */
 .loader-overlay {
     position: fixed;
@@ -2437,7 +2505,7 @@ input:checked+.slider:before {
     flex-wrap: nowrap;
 }
 
-.header-actions > * {
+.header-actions>* {
     flex: 0 0 auto;
 }
 
@@ -2454,7 +2522,8 @@ input:checked+.slider:before {
 
 /* Make header container allow overlays and keep layout stable */
 .header-content {
-    overflow: visible; /* allow tooltips/overlays to be visible without shifting layout */
+    overflow: visible;
+    /* allow tooltips/overlays to be visible without shifting layout */
 }
 
 /* Force consistent box model and fixed size for logout button so it doesn't push neighbors */
@@ -2965,7 +3034,8 @@ input:checked+.slider:before {
 .event-card.event-past {
     opacity: 0.7;
     /* Verhindere Grautöne als border-left-color */
-    border-left-color: var(--event-past-border-color, #10b981); /* Standard: grün, kann überschrieben werden */
+    border-left-color: var(--event-past-border-color, #10b981);
+    /* Standard: grün, kann überschrieben werden */
 }
 
 /* Falls irgendwo explizit grau gesetzt wird, überschreibe es für vergangene Events */
@@ -3131,8 +3201,7 @@ input:checked+.slider:before {
     margin-top: var(--spacing-md);
 }
 
-s
-.time-suggestions-compact {
+s .time-suggestions-compact {
     margin-top: var(--spacing-sm);
     padding: var(--spacing-sm);
     background: var(--color-bg);
@@ -3282,6 +3351,7 @@ s
     justify-content: center;
     margin-left: 0.5rem;
 }
+
 .header-submenu-btn {
     background: var(--color-primary);
     color: #fff;
@@ -3293,19 +3363,31 @@ s
     width: 105px;
     margin-left: 12px;
     margin-right: 12px;
-    
+
     /* NEU: Zentrierung des Textes */
-    display: flex; /* Button als Flex-Container definieren */
-    justify-content: center; /* Horizontale Zentrierung */
-    align-items: center; /* Vertikale Zentrierung */
-    text-align: center; /* Fallback, primär für Text, falls der Button kein Flex-Container wäre, schadet hier aber nicht */
+    display: flex;
+    /* Button als Flex-Container definieren */
+    justify-content: center;
+    /* Horizontale Zentrierung */
+    align-items: center;
+    /* Vertikale Zentrierung */
+    text-align: center;
+    /* Fallback, primär für Text, falls der Button kein Flex-Container wäre, schadet hier aber nicht */
 }
 
-.header-submenu-btn:hover { background: var(--color-primary-dark); }
+.header-submenu-btn:hover {
+    background: var(--color-primary-dark);
+}
 
 @media (max-width: 768px) {
-    .header-submenu-nav { gap: 0.2rem; }
-    .header-submenu-btn { font-size: 0.82rem; padding: 0.18rem 0.45rem; }
+    .header-submenu-nav {
+        gap: 0.2rem;
+    }
+
+    .header-submenu-btn {
+        font-size: 0.82rem;
+        padding: 0.18rem 0.45rem;
+    }
 }
 
 /* Make header submenu buttons look like the Settings 'Abwesenheiten' tabs
@@ -3349,7 +3431,8 @@ s
     .header-submenu-nav {
         display: flex;
         justify-content: center;
-        flex-wrap: nowrap; /* keep buttons in a single row; allow horizontal scroll */
+        flex-wrap: nowrap;
+        /* keep buttons in a single row; allow horizontal scroll */
         overflow-x: auto;
     }
 
@@ -3868,6 +3951,7 @@ s
 
 /* ===== Extra: Header compact rules for very small screens (<=380px) ===== */
 @media (max-width: 768px) {
+
     /* hide icons in the header submenu (header area) */
     #headerSubmenu .nav-icon,
     #headerSubmenu .icon-img {
@@ -3903,9 +3987,15 @@ s
     }
 
     /* Logo: show only emoji, hide textual parts */
-    .logo-text { display: none !important; }
-    .logo-emoji { display: inline-block; margin-right: 0.25rem; }
-    
+    .logo-text {
+        display: none !important;
+    }
+
+    .logo-emoji {
+        display: inline-block;
+        margin-right: 0.25rem;
+    }
+
     /* dashboard card icons: force 15px size for very small screens */
     .dashboard-card .card-icon {
         width: 35px !important;
@@ -3919,6 +4009,7 @@ s
         justify-content: center !important;
         padding: 0 !important;
     }
+
     /* Dashboard cards: show icon, title and stat in one row for touch screens */
     .dashboard-card {
         display: flex !important;
@@ -3955,7 +4046,7 @@ s
         max-width: none !important;
         min-width: 0 !important;
     }
-    
+
     .dashboard-card {
         width: auto;
         height: auto;
@@ -3979,18 +4070,21 @@ s
     z-index: 99999;
     pointer-events: none;
 }
+
 .tour-overlay.active {
     pointer-events: auto;
 }
+
 .tour-highlight {
     position: absolute;
-    border: 3px solid rgba(99,102,241,0.95);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    border: 3px solid rgba(99, 102, 241, 0.95);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     border-radius: 8px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
     transition: all 0.18s ease;
     pointer-events: none;
 }
+
 .tour-tooltip {
     position: absolute;
     max-width: 340px;
@@ -3998,17 +4092,32 @@ s
     color: var(--color-text, #111827);
     border-radius: 8px;
     padding: 0.75rem;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     border: 1px solid var(--color-border, #e5e7eb);
     pointer-events: auto;
 }
-.tour-tooltip h3 { margin: 0 0 0.25rem 0; font-size: 1rem; }
-.tour-tooltip p { margin: 0; font-size: 0.95rem; color: var(--color-text-secondary); }
-.tour-tooltip .btn { font-size: 0.9rem; }
+
+.tour-tooltip h3 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+}
+
+.tour-tooltip p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+}
+
+.tour-tooltip .btn {
+    font-size: 0.9rem;
+}
 
 /* Small responsive adjustments */
 @media (max-width: 768px) {
-    .tour-tooltip { max-width: 90%; font-size: 0.95rem; }
+    .tour-tooltip {
+        max-width: 90%;
+        font-size: 0.95rem;
+    }
 }
 
 /* Apply mobile calendar/button rules between 390px and 580px
@@ -4031,7 +4140,7 @@ s
         text-overflow: ellipsis !important;
     }
 
-    .calendar-header > div {
+    .calendar-header>div {
         display: flex !important;
         align-items: center !important;
         gap: 0.4rem !important;
@@ -4044,8 +4153,13 @@ s
         line-height: 1 !important;
     }
 
-    .calendar-header .btn.btn-icon:first-child { margin-right: 0.25rem !important; }
-    .calendar-header .btn.btn-icon:last-child  { margin-left: 0.25rem !important; }
+    .calendar-header .btn.btn-icon:first-child {
+        margin-right: 0.25rem !important;
+    }
+
+    .calendar-header .btn.btn-icon:last-child {
+        margin-left: 0.25rem !important;
+    }
 
     .btn {
         padding: 0.12rem 0.28rem !important;

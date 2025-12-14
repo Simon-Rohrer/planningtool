@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Band Management Tool</title>
-    
+
     <!-- PWA Meta Tags -->
     <meta name="description" content="Organisiere deine Bandproben effizient">
     <meta name="theme-color" content="#6366f1">
@@ -31,13 +31,13 @@
 </head>
 
 <body>
-                <!-- Global Loading Overlay -->
-                <div class="loader-container" id="globalLoadingOverlay">
-                    <span class="guitar-spinner">&#127928;</span>
-                </div>
-        <script>
+    <!-- Global Loading Overlay -->
+    <div class="loader-container" id="globalLoadingOverlay">
+        <span class="guitar-spinner">&#127928;</span>
+    </div>
+    <script>
         // Show loading overlay on first load, hide when app is ready
-        window.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', function () {
             function hideOverlay() {
                 const overlay = document.getElementById('globalLoadingOverlay');
                 if (overlay) {
@@ -63,33 +63,33 @@
             // Fallback: hide after 3s if not already hidden
             setTimeout(hideOverlay, 3000);
         });
-                // Ensure loading overlay stays visible for at least one animation cycle
-                (function() {
-                    const overlay = document.getElementById('globalLoadingOverlay');
-                    if (!overlay) return;
-                    let minTime = 2000; // 2s = one animation cycle
-                    let hideRequested = false;
-                    let shownAt = Date.now();
-                    // Patch hide logic if present
-                    window.hideGlobalLoadingOverlay = function() {
-                        let elapsed = Date.now() - shownAt;
-                        if (elapsed >= minTime) {
-                            overlay.style.display = 'none';
-                        } else {
-                            hideRequested = true;
-                            setTimeout(() => {
-                                if (hideRequested) overlay.style.display = 'none';
-                            }, minTime - elapsed);
-                        }
-                    };
-                    // Patch show logic if present
-                    window.showGlobalLoadingOverlay = function() {
-                        overlay.style.display = 'flex';
-                        shownAt = Date.now();
-                        hideRequested = false;
-                    };
-                })();
-        </script>
+        // Ensure loading overlay stays visible for at least one animation cycle
+        (function () {
+            const overlay = document.getElementById('globalLoadingOverlay');
+            if (!overlay) return;
+            let minTime = 2000; // 2s = one animation cycle
+            let hideRequested = false;
+            let shownAt = Date.now();
+            // Patch hide logic if present
+            window.hideGlobalLoadingOverlay = function () {
+                let elapsed = Date.now() - shownAt;
+                if (elapsed >= minTime) {
+                    overlay.style.display = 'none';
+                } else {
+                    hideRequested = true;
+                    setTimeout(() => {
+                        if (hideRequested) overlay.style.display = 'none';
+                    }, minTime - elapsed);
+                }
+            };
+            // Patch show logic if present
+            window.showGlobalLoadingOverlay = function () {
+                overlay.style.display = 'flex';
+                shownAt = Date.now();
+                hideRequested = false;
+            };
+        })();
+    </script>
     <!-- Landing Page with Split Layout -->
     <div id="landingPage" class="landing-page active">
         <div class="landing-container">
@@ -137,9 +137,11 @@
                     <!-- Register Form -->
                     <form id="registerForm" class="auth-form">
                         <div class="form-group">
-                            <label for="registerCode">Registrierungscode <span style="color:red;" title="Pflichtfeld">*</span></label>
+                            <label for="registerCode">Registrierungscode <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
                             <input type="text" id="registerCode" placeholder="Code eingeben" required>
-                            <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Bitte gib den gültigen
+                            <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Bitte gib den
+                                gültigen
                                 Registrierungscode ein</small>
                         </div>
                         <div class="form-group">
@@ -147,11 +149,13 @@
                             <input type="text" id="registerName" required>
                         </div>
                         <div class="form-group">
-                            <label for="registerEmail">E-Mail <span style="color:red;" title="Pflichtfeld">*</span></label>
+                            <label for="registerEmail">E-Mail <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
                             <input type="email" id="registerEmail" required>
                         </div>
                         <div class="form-group">
-                            <label for="registerUsername">Benutzername <span style="color:red;" title="Pflichtfeld">*</span></label>
+                            <label for="registerUsername">Benutzername <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
                             <input type="text" id="registerUsername" required>
                         </div>
                         <div class="form-group">
@@ -169,12 +173,20 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="registerPassword">Passwort <span style="color:red;" title="Pflichtfeld">*</span></label>
+                            <label for="registerPassword">Passwort <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
                             <input type="password" id="registerPassword" required>
                         </div>
                         <div class="form-group">
-                            <label for="registerPasswordConfirm">Passwort bestätigen <span style="color:red;" title="Pflichtfeld">*</span></label>
+                            <label for="registerPasswordConfirm">Passwort bestätigen <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
                             <input type="password" id="registerPasswordConfirm" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerProfileImage">Profilbild (optional, max. 100kb)</label>
+                            <input type="file" id="registerProfileImage" accept="image/*">
+                            <small style="color: var(--color-text-secondary);">Falls das Bild größer als 100kb ist, wird
+                                es automatisch komprimiert.</small>
                         </div>
                         <button type="submit" class="btn btn-primary">Registrieren</button>
                     </form>
@@ -186,614 +198,1395 @@
     <!-- Main Dashboard (hidden initially) -->
     <div id="mainApp" class="main-app" style="display: none;">
 
-    <!-- Onboarding Modal -->
-    <div id="onboardingModal" class="modal">
-        <div class="modal-content auth-modal">
-            <h1>Willkommen! 🎉</h1>
-            <p class="subtitle">Schön, dass du da bist! Wie möchtest du starten?</p>
+        <!-- Onboarding Modal -->
+        <div id="onboardingModal" class="modal">
+            <div class="modal-content auth-modal">
+                <h1>Willkommen! 🎉</h1>
+                <p class="subtitle">Schön, dass du da bist! Wie möchtest du starten?</p>
 
-            <div class="onboarding-actions" style="display: flex; flex-direction: column; gap: 1rem;">
-                <button id="onboardingCreateBandBtn" class="btn btn-primary" style="justify-content: center;">
-                    🎸 Neue Band gründen
-                </button>
-                <button id="onboardingJoinBandBtn" class="btn btn-secondary" style="justify-content: center;">
-                    👋 Bestehender Band beitreten
-                </button>
-                <button id="onboardingSkipBtn" class="btn btn-secondary"
-                    style="border: none; color: var(--color-text-secondary);">
-                    Erstmal nur umschauen
-                </button>
+                <div class="onboarding-actions" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <button id="onboardingCreateBandBtn" class="btn btn-primary" style="justify-content: center;">
+                        🎸 Neue Band gründen
+                    </button>
+                    <button id="onboardingJoinBandBtn" class="btn btn-secondary" style="justify-content: center;">
+                        👋 Bestehender Band beitreten
+                    </button>
+                    <button id="onboardingSkipBtn" class="btn btn-secondary"
+                        style="border: none; color: var(--color-text-secondary);">
+                        Erstmal nur umschauen
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Main Application -->
-    <div id="app" class="app-container" style="display: none;">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="header-content">
-                <h1 class="logo">
-                    <span class="logo-emoji">🎸</span>
-                    <span class="logo-text">
-                        <span class="logo-part">Band</span>
-                        <span class="logo-part">Management</span>
-                        <span class="logo-part">Tool</span>
-                    </span>
-                </h1>
-                <div class="header-actions">
-                    <span id="currentUserName" class="user-name">User</span>
-                    <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten" style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-left: 0.5em;">
-                        <span id="themeToggleIcon">🌙</span>
-                    </button>
-                    <button id="logoutBtn" class="btn btn-secondary">
-                        <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
-                    </button>
+        <!-- Main Application -->
+        <div id="app" class="app-container" style="display: none;">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-content">
+                    <h1 class="logo">
+                        <span class="logo-emoji">🎸</span>
+                        <span class="logo-text">
+                            <span class="logo-part">Band</span>
+                            <span class="logo-part">Management</span>
+                            <span class="logo-part">Tool</span>
+                        </span>
+                    </h1>
+                    <div class="header-actions">
+                        <span id="headerProfileImage" class="profile-avatar"
+                            style="display:inline-block;vertical-align:middle;margin-right:0.5em;width:36px;height:36px;border-radius:50%;background:#e5e7eb;overflow:hidden;text-align:center;line-height:36px;font-weight:600;font-size:1.1em;color:#444;"></span>
+                        <span id="currentUserName" class="user-name">User</span>
+                        <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten"
+                            style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-left: 0.5em;">
+                            <span id="themeToggleIcon">🌙</span>
+                        </button>
+                        <button id="logoutBtn" class="btn btn-secondary">
+                            <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <!-- Header container for submenu buttons (populated by JS) -->
-            <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
-        </header>
+                <!-- Header container for submenu buttons (populated by JS) -->
+                <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
+            </header>
 
-        <!-- Navigation -->
-        <nav class="app-nav" id="appNav">
-            <!-- Home (Hauptreiter) -->
-            <div class="nav-group">
-                <button class="nav-item nav-main active" data-view="dashboard">
-                    <span class="nav-icon">🎙️</span>
-                    <span class="nav-label">Home</span>
-                </button>
-                <div class="nav-submenu">
-                    <button class="nav-subitem active" data-view="dashboard">
-                        <span class="nav-icon">🏠</span>
-                        <span class="nav-label">Dashboard</span>
-                    </button>
-                    <button class="nav-subitem" data-view="bands">
-                        <span class="nav-icon">🎸</span>
-                        <span class="nav-label">Meine Bands</span>
-                    </button>
-                    <button class="nav-subitem" data-view="musikpool">
-                        <span class="nav-icon">🎵</span>
-                        <span class="nav-label">Musikerpool</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Planung (Hauptreiter) -->
-            <div class="nav-group">
-                <button class="nav-item nav-main" data-view="rehearsals">
-                    <span class="nav-icon">🗓️</span>
-                    <span class="nav-label">Planung</span>
-                </button>
-                <div class="nav-submenu">
-                    <button class="nav-subitem" data-view="rehearsals">
-                        <span class="nav-icon">📅</span>
-                        <span class="nav-label">Probetermine</span>
-                    </button>
-                    <button class="nav-subitem" data-view="probeorte">
+            <!-- Navigation -->
+            <nav class="app-nav" id="appNav">
+                <!-- Home (Hauptreiter) -->
+                <div class="nav-group">
+                    <button class="nav-item nav-main active" data-view="dashboard">
                         <span class="nav-icon">🎙️</span>
-                        <span class="nav-label">Probeorte</span>
+                        <span class="nav-label">Home</span>
                     </button>
-                    <button class="nav-subitem" data-view="kalender">
-                        <span class="nav-icon">📆</span>
-                        <span class="nav-label">Mein Kalender</span>
+                    <div class="nav-submenu">
+                        <button class="nav-subitem active" data-view="dashboard">
+                            <span class="nav-icon">🏠</span>
+                            <span class="nav-label">Dashboard</span>
+                        </button>
+                        <button class="nav-subitem" data-view="bands">
+                            <span class="nav-icon">🎸</span>
+                            <span class="nav-label">Meine Bands</span>
+                        </button>
+                        <button class="nav-subitem" data-view="musikpool">
+                            <span class="nav-icon">🎵</span>
+                            <span class="nav-label">Musikerpool</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Planung (Hauptreiter) -->
+                <div class="nav-group">
+                    <button class="nav-item nav-main" data-view="rehearsals">
+                        <span class="nav-icon">🗓️</span>
+                        <span class="nav-label">Planung</span>
+                    </button>
+                    <div class="nav-submenu">
+                        <button class="nav-subitem" data-view="rehearsals">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-label">Probetermine</span>
+                        </button>
+                        <button class="nav-subitem" data-view="probeorte">
+                            <span class="nav-icon">🎙️</span>
+                            <span class="nav-label">Probeorte</span>
+                        </button>
+                        <button class="nav-subitem" data-view="kalender">
+                            <span class="nav-icon">📆</span>
+                            <span class="nav-label">Mein Kalender</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gigs -->
+                <div class="nav-group">
+                    <button class="nav-item nav-main" data-view="events">
+                        <span class="nav-icon">🎸</span>
+                        <span class="nav-label">Auftritte</span>
                     </button>
                 </div>
-            </div>
 
-            <!-- Gigs -->
-            <div class="nav-group">
-                <button class="nav-item nav-main" data-view="events">
-                    <span class="nav-icon">🎸</span>
-                    <span class="nav-label">Auftritte</span>
-                </button>
-            </div>
-
-            <!-- Analyse (Hauptreiter) -->
-            <div class="nav-group">
-                <button class="nav-item nav-main" data-view="statistics">
-                    <span class="nav-icon">📊</span>
-                    <span class="nav-label">Analyse</span>
-                </button>
-                <div class="nav-submenu">
-                    <button class="nav-subitem" data-view="statistics">
+                <!-- Analyse (Hauptreiter) -->
+                <div class="nav-group">
+                    <button class="nav-item nav-main" data-view="statistics">
                         <span class="nav-icon">📊</span>
-                        <span class="nav-label">Statistiken</span>
+                        <span class="nav-label">Analyse</span>
                     </button>
-                    <button class="nav-subitem" data-view="news">
-                        <span class="nav-icon">📰</span>
-                        <span class="nav-label">News & Updates</span>
+                    <div class="nav-submenu">
+                        <button class="nav-subitem" data-view="statistics">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-label">Statistiken</span>
+                        </button>
+                        <button class="nav-subitem" data-view="news">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-label">News & Updates</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div class="nav-group">
+                    <button class="nav-item nav-main" data-view="settings">
+                        <span class="nav-icon">⚙️</span>
+                        <span class="nav-label">Settings</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- News Banner (appears when there are unread news) -->
+            <div id="newsBanner" class="news-banner" style="display: none;">
+                <div class="news-banner-content">
+                    <span class="news-banner-icon">📰</span>
+                    <div class="news-banner-text">
+                        <strong>Neue News verfügbar!</strong>
+                        <span id="newsBannerMessage">Es gibt ungelesene Updates</span>
+                    </div>
+                    <button id="newsBannerButton" class="btn btn-sm btn-primary">
+                        Mehr Infos
+                    </button>
+                    <button id="newsBannerClose" class="news-banner-close" title="Schließen">
+                        ×
                     </button>
                 </div>
             </div>
 
-            <!-- Settings -->
-            <div class="nav-group">
-                <button class="nav-item nav-main" data-view="settings">
-                    <span class="nav-icon">⚙️</span>
-                    <span class="nav-label">Settings</span>
-                </button>
+            <!-- Tutorial Suggest Banner (for admins) -->
+            <div id="tutorialSuggestBanner" class="news-banner"
+                style="display: none; background: linear-gradient(90deg,#f0f7ff,#e8f4ff); border: 1px solid var(--color-border);">
+                <div class="news-banner-content">
+                    <span class="news-banner-icon">🎓</span>
+                    <div class="news-banner-text">
+                        <strong>Tutorial verfügbar</strong>
+                        <span id="tutorialBannerMessage">Möchtest du eine kurze Tour durch die App starten?</span>
+                    </div>
+                    <button id="tutorialStartBannerBtn" class="btn btn-primary">Tour starten</button>
+                    <button id="tutorialDismissBannerBtn" class="news-banner-close" title="Schließen">×</button>
+                </div>
             </div>
-        </nav>
 
-        <!-- News Banner (appears when there are unread news) -->
-        <div id="newsBanner" class="news-banner" style="display: none;">
-            <div class="news-banner-content">
-                <span class="news-banner-icon">📰</span>
-                <div class="news-banner-text">
-                    <strong>Neue News verfügbar!</strong>
-                    <span id="newsBannerMessage">Es gibt ungelesene Updates</span>
-                </div>
-                <button id="newsBannerButton" class="btn btn-sm btn-primary">
-                    Mehr Infos
-                </button>
-                <button id="newsBannerClose" class="news-banner-close" title="Schließen">
-                    ×
-                </button>
-            </div>
-        </div>
+            <!-- Main Content -->
+            <main class="app-main">
+                <!-- Dashboard View -->
+                <div id="dashboardView" class="view active">
+                    <div class="view-header">
+                        <h2>Dashboard</h2>
+                    </div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-icon">🎸</div>
+                            <div class="card-content">
+                                <h3>Meine Bands</h3>
+                                <p class="card-stat" id="bandCount">0</p>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="card-icon">🎤</div>
+                            <div class="card-content">
+                                <h3>Nächste Auftritte</h3>
+                                <p class="card-stat" id="upcomingEvents">0</p>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="card-icon">📅</div>
+                            <div class="card-content">
+                                <h3>Abstimmungen</h3>
+                                <p class="card-stat" id="pendingVotes">0</p>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="card-icon">✅</div>
+                            <div class="card-content">
+                                <h3>Geplante Proben</h3>
+                                <p class="card-stat" id="confirmedRehearsals">0</p>
+                            </div>
+                        </div>
+                    </div>
 
-        <!-- Tutorial Suggest Banner (for admins) -->
-        <div id="tutorialSuggestBanner" class="news-banner" style="display: none; background: linear-gradient(90deg,#f0f7ff,#e8f4ff); border: 1px solid var(--color-border);">
-            <div class="news-banner-content">
-                <span class="news-banner-icon">🎓</span>
-                <div class="news-banner-text">
-                    <strong>Tutorial verfügbar</strong>
-                    <span id="tutorialBannerMessage">Möchtest du eine kurze Tour durch die App starten?</span>
-                </div>
-                <button id="tutorialStartBannerBtn" class="btn btn-primary">Tour starten</button>
-                <button id="tutorialDismissBannerBtn" class="news-banner-close" title="Schließen">×</button>
-            </div>
-        </div>
+                    <!-- Neue Dashboard-Abschnitte -->
+                    <div class="dashboard-sections">
+                        <div class="dashboard-section" id="dashboardNewsSection">
+                            <div class="dashboard-section-header">
+                                <h3>📰 Letzte News</h3>
+                                <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                            </div>
+                            <div id="dashboardNewsList" class="dashboard-news-list"></div>
+                        </div>
+                        <div class="dashboard-section" id="dashboardQuickAccessSection">
+                            <div class="dashboard-section-header">
+                                <h3 style="margin: 0;">⚡ Schnellzugriff</h3>
+                                <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                                <button id="editQuickAccessBtn" class="btn btn-icon" title="Schnellzugriff bearbeiten"
+                                    style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                                    ✏️
+                                </button>
+                            </div>
+                            <div class="dashboard-quick-links" id="dashboardQuickLinks"></div>
+                        </div>
+                        <div class="dashboard-section" id="dashboardCalendarSection">
+                            <div class="dashboard-section-header">
+                                <h3>📅 Eigener Kalender</h3>
+                                <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-primary" onclick="App.navigateTo('kalender')">Zum Kalender &
+                                    Export</button>
+                            </div>
+                        </div>
+                        <div class="dashboard-section" id="dashboardActivitySection">
+                            <div class="dashboard-section-header">
+                                <h3>✨ Neue Aktivität</h3>
+                                <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                            </div>
+                            <div id="dashboardActivityList" class="dashboard-activity-list"></div>
+                        </div>
+                    </div>
 
-        <!-- Main Content -->
-        <main class="app-main">
-            <!-- Dashboard View -->
-            <div id="dashboardView" class="view active">
-                <div class="view-header">
-                    <h2>Dashboard</h2>
-                </div>
-                <div class="dashboard-grid">
-                    <div class="dashboard-card">
-                        <div class="card-icon">🎸</div>
-                        <div class="card-content">
-                            <h3>Meine Bands</h3>
-                            <p class="card-stat" id="bandCount">0</p>
-                        </div>
-                    </div>
-                    <div class="dashboard-card">
-                        <div class="card-icon">🎤</div>
-                        <div class="card-content">
-                            <h3>Nächste Auftritte</h3>
-                            <p class="card-stat" id="upcomingEvents">0</p>
-                        </div>
-                    </div>
-                    <div class="dashboard-card">
-                        <div class="card-icon">📅</div>
-                        <div class="card-content">
-                            <h3>Abstimmungen</h3>
-                            <p class="card-stat" id="pendingVotes">0</p>
-                        </div>
-                    </div>
-                    <div class="dashboard-card">
-                        <div class="card-icon">✅</div>
-                        <div class="card-content">
-                            <h3>Geplante Proben</h3>
-                            <p class="card-stat" id="confirmedRehearsals">0</p>
-                        </div>
+                    <div class="section">
+                        <br>
+                        <h3>Nächste Termine</h3>
+                        <div id="upcomingList" class="rehearsal-list"></div>
                     </div>
                 </div>
 
-                <!-- Neue Dashboard-Abschnitte -->
-                <div class="dashboard-sections">
-                    <div class="dashboard-section" id="dashboardNewsSection">
-                        <div class="dashboard-section-header">
-                            <h3>📰 Letzte News</h3>
-                            <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
-                        </div>
-                        <div id="dashboardNewsList" class="dashboard-news-list"></div>
-                    </div>
-                    <div class="dashboard-section" id="dashboardQuickAccessSection">
-                        <div class="dashboard-section-header">
-                            <h3 style="margin: 0;">⚡ Schnellzugriff</h3>
-                            <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
-                            <button id="editQuickAccessBtn" class="btn btn-icon" title="Schnellzugriff bearbeiten" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-                                ✏️
+                <!-- Bands View -->
+                <div id="bandsView" class="view">
+                    <div class="view-header">
+                        <h2>Meine Bands</h2>
+                        <div class="view-controls">
+                            <button id="createBandBtnView" class="btn btn-primary">
+                                + Band erstellen
+                            </button>
+                            <button id="joinBandBtn" class="btn btn-secondary btn-bands-join-modal">
+                                Band beitreten
                             </button>
                         </div>
-                        <div class="dashboard-quick-links" id="dashboardQuickLinks"></div>
                     </div>
-                    <div class="dashboard-section" id="dashboardCalendarSection">
-                        <div class="dashboard-section-header">
-                            <h3>📅 Eigener Kalender</h3>
-                            <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                    <div id="bandsList" class="bands-grid"></div>
+                </div>
+
+                <!-- Events View -->
+                <div id="eventsView" class="view">
+                    <div class="view-header">
+                        <h2>Auftritte</h2>
+                        <div class="view-controls">
+                            <select id="eventBandFilter" class="form-select">
+                                <option value="">Alle Bands</option>
+                            </select>
+                            <button id="createEventBtn" class="btn btn-primary">+ Neuer Auftritt</button>
+                        </div>
+                    </div>
+                    <div id="eventsList" class="events-list"></div>
+                </div>
+
+                <!-- Rehearsals View -->
+                <div id="rehearsalsView" class="view">
+                    <div class="view-header">
+                        <h2>Probetermine</h2>
+                        <div class="view-controls">
+                            <select id="bandFilter" class="form-select">
+                                <option value="">Alle Bands</option>
+                            </select>
+                            <button id="createRehearsalBtn" class="btn btn-primary">+ Neuer Probetermin</button>
+                        </div>
+                    </div>
+                    <div id="rehearsalsList" class="rehearsal-list"></div>
+                </div>
+
+                <!-- Statistics View -->
+                <div id="statisticsView" class="view">
+                    <div class="view-header">
+                        <h2>Statistiken</h2>
+                        <div style="display:flex; gap: 0.5rem; align-items:center;">
+                            <select id="statsBandSelect" class="form-select">
+                                <option value="">Band auswählen</option>
+                            </select>
+                            <select id="statsRehearsalSelect" class="form-select">
+                                <option value="">Probetermin auswählen</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="statisticsContent" class="statistics-content">
+                        <div class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <p>Wähle einen Probetermin aus, um die Statistiken zu sehen</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- News & Updates View -->
+                <div id="newsView" class="view">
+                    <div class="view-header">
+                        <h2>News & Updates</h2>
+                        <div class="view-controls">
+                            <a href="#" id="donateBtn" class="btn btn-secondary"
+                                style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                                💖 Spenden
+                            </a>
+                            <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News
+                                erstellen</button>
+                        </div>
+                    </div>
+                    <div id="newsContainer" class="news-content">
+                        <div class="empty-state">
+                            <div class="empty-icon">📰</div>
+                            <p>Noch keine News oder Updates vorhanden.</p>
+                            <p>Hier wirst du auf dem laufenden gehalten.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Probeorte View -->
+                <div id="probeorteView" class="view">
+                    <div class="view-header">
+                        <h2>Probeorte Kalender</h2>
+                    </div>
+
+                    <!-- Submenu for calendar selection -->
+                    <div class="calendar-submenu">
+                        <button id="probeorteBtn" class="calendar-tab active" data-calendar="tonstudio">
+                            🎙️ Tonstudio
+                        </button>
+                        <button id="probeorteBtn" class="calendar-tab" data-calendar="festhalle">
+                            🏛️ JMS Festhalle
+                        </button>
+                        <button id="probeorteBtn" class="calendar-tab" data-calendar="ankersaal">
+                            ⚓ Ankersaal
+                        </button>
+                        <!-- refresh button removed per request -->
+                    </div>
+
+                    <div class="section">
+                        <!-- Tonstudio Calendar -->
+                        <div id="tonstudioCalendar" class="calendar-container active">
+                            <div id="tonstudioEventsContainer" style="min-height: 400px;">
+                                <!-- Events will be rendered here -->
+                            </div>
+                        </div>
+
+                        <!-- Festhalle Calendar -->
+                        <div id="festhalleCalendar" class="calendar-container">
+                            <div id="festhalleEventsContainer" style="min-height: 400px;">
+                                <!-- Events will be rendered here -->
+                            </div>
+                        </div>
+
+                        <!-- Ankersaal Calendar -->
+                        <div id="ankersaalCalendar" class="calendar-container">
+                            <div id="ankersaalEventsContainer" style="min-height: 400px;">
+                                <!-- Events will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kalender View -->
+                <div id="kalenderView" class="view">
+                    <div class="view-header">
+                        <h2>📅 Mein Kalender</h2>
+                    </div>
+                    <div class="section">
+                        <div id="personalCalendarContainer">
+                            <!-- Personal calendar will be rendered here -->
                         </div>
                         <div>
-                            <button class="btn btn-primary" onclick="App.navigateTo('kalender')">Zum Kalender & Export</button>
-                        </div>
-                    </div>
-                    <div class="dashboard-section" id="dashboardActivitySection">
-                        <div class="dashboard-section-header">
-                            <h3>✨ Neue Aktivität</h3>
-                            <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
-                        </div>
-                        <div id="dashboardActivityList" class="dashboard-activity-list"></div>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <br>
-                    <h3>Nächste Termine</h3>
-                    <div id="upcomingList" class="rehearsal-list"></div>
-                </div>
-            </div>
-
-            <!-- Bands View -->
-            <div id="bandsView" class="view">
-                <div class="view-header">
-                    <h2>Meine Bands</h2>
-                    <div class="view-controls">
-                        <button id="createBandBtnView" class="btn btn-primary">
-                            + Band erstellen
-                        </button>
-                        <button id="joinBandBtn" class="btn btn-secondary btn-bands-join-modal">
-                            Band beitreten
-                        </button>
-                    </div>
-                </div>
-                <div id="bandsList" class="bands-grid"></div>
-            </div>
-
-            <!-- Events View -->
-            <div id="eventsView" class="view">
-                <div class="view-header">
-                    <h2>Auftritte</h2>
-                    <div class="view-controls">
-                        <select id="eventBandFilter" class="form-select">
-                            <option value="">Alle Bands</option>
-                        </select>
-                        <button id="createEventBtn" class="btn btn-primary">+ Neuer Auftritt</button>
-                    </div>
-                </div>
-                <div id="eventsList" class="events-list"></div>
-            </div>
-
-            <!-- Rehearsals View -->
-            <div id="rehearsalsView" class="view">
-                <div class="view-header">
-                    <h2>Probetermine</h2>
-                    <div class="view-controls">
-                        <select id="bandFilter" class="form-select">
-                            <option value="">Alle Bands</option>
-                        </select>
-                        <button id="createRehearsalBtn" class="btn btn-primary">+ Neuer Probetermin</button>
-                    </div>
-                </div>
-                <div id="rehearsalsList" class="rehearsal-list"></div>
-            </div>
-
-            <!-- Statistics View -->
-            <div id="statisticsView" class="view">
-                <div class="view-header">
-                    <h2>Statistiken</h2>
-                    <div style="display:flex; gap: 0.5rem; align-items:center;">
-                        <select id="statsBandSelect" class="form-select">
-                            <option value="">Band auswählen</option>
-                        </select>
-                        <select id="statsRehearsalSelect" class="form-select">
-                            <option value="">Probetermin auswählen</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="statisticsContent" class="statistics-content">
-                    <div class="empty-state">
-                        <div class="empty-icon">📊</div>
-                        <p>Wähle einen Probetermin aus, um die Statistiken zu sehen</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- News & Updates View -->
-            <div id="newsView" class="view">
-                <div class="view-header">
-                    <h2>News & Updates</h2>
-                    <div class="view-controls">
-                        <a href="#" id="donateBtn" class="btn btn-secondary"
-                            style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
-                            💖 Spenden
-                        </a>
-                        <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News
-                            erstellen</button>
-                    </div>
-                </div>
-                <div id="newsContainer" class="news-content">
-                    <div class="empty-state">
-                        <div class="empty-icon">📰</div>
-                        <p>Noch keine News oder Updates vorhanden.</p>
-                        <p>Hier wirst du auf dem laufenden gehalten.</p>
-                    </div>
-                </div>
-            </div>
-            <!-- Probeorte View -->
-            <div id="probeorteView" class="view">
-                <div class="view-header">
-                    <h2>Probeorte Kalender</h2>
-                </div>
-
-                <!-- Submenu for calendar selection -->
-                <div class="calendar-submenu">
-                    <button id="probeorteBtn" class="calendar-tab active" data-calendar="tonstudio">
-                        🎙️ Tonstudio
-                    </button>
-                    <button id="probeorteBtn" class="calendar-tab" data-calendar="festhalle">
-                        🏛️ JMS Festhalle
-                    </button>
-                    <button id="probeorteBtn" class="calendar-tab" data-calendar="ankersaal">
-                        ⚓ Ankersaal
-                    </button>
-                    <!-- refresh button removed per request -->
-                </div>
-
-                <div class="section">
-                    <!-- Tonstudio Calendar -->
-                    <div id="tonstudioCalendar" class="calendar-container active">
-                        <div id="tonstudioEventsContainer" style="min-height: 400px;">
-                            <!-- Events will be rendered here -->
-                        </div>
-                    </div>
-
-                    <!-- Festhalle Calendar -->
-                    <div id="festhalleCalendar" class="calendar-container">
-                        <div id="festhalleEventsContainer" style="min-height: 400px;">
-                            <!-- Events will be rendered here -->
-                        </div>
-                    </div>
-
-                    <!-- Ankersaal Calendar -->
-                    <div id="ankersaalCalendar" class="calendar-container">
-                        <div id="ankersaalEventsContainer" style="min-height: 400px;">
-                            <!-- Events will be rendered here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Kalender View -->
-            <div id="kalenderView" class="view">
-                <div class="view-header">
-                    <h2>📅 Mein Kalender</h2>
-                </div>
-                <div class="section">
-                    <div id="personalCalendarContainer">
-                        <!-- Personal calendar will be rendered here -->
-                    </div>
-                    <div>
-                        <br>
-                        <span style="font-size:0.9rem; color:var(--color-text-secondary); line-height:1.4;">
-                            Abonniere jetzt deinen Kalender in deinem Apple- oder Samsung-Kalender, um nichts mehr zu verpassen!
-                            <br></span>
-                        <button id="subscribeCalendarBtn" class="btn btn-secondary"
-                            style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                            🔗 Kalender abonnieren
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Musikerpool View -->
-            <div id="musikpoolView" class="view">
-                <div class="view-header">
-                    <h2>Musikerpool</h2>
-                </div>
-
-                <!-- Eigene Mitglieder Section -->
-                <div class="section">
-                    <div class="section-header">
-                        <h3>Eigene Mitglieder</h3>
-                        <button id="addOwnMemberBtn" class="btn btn-primary"
-                            style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                            ➕ Mitglied hinzufügen
-                        </button>
-                    </div>
-                    <div id="ownMembersContainer">
-                        <div class="empty-state">
-                            <div class="empty-icon">👥</div>
-                            <p>Noch keine eigenen Mitglieder angelegt</p>
-                            <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
-                                Hier können Sie eigene Musiker und Kontakte hinzufügen.
-                            </p>
+                            <br>
+                            <span style="font-size:0.9rem; color:var(--color-text-secondary); line-height:1.4;">
+                                Abonniere jetzt deinen Kalender in deinem Apple- oder Samsung-Kalender, um nichts mehr
+                                zu verpassen!
+                                <br></span>
+                            <button id="subscribeCalendarBtn" class="btn btn-secondary"
+                                style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                🔗 Kalender abonnieren
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- ChurchTools Pool Section -->
-                <div class="section">
-                    <h3>ChurchTools Musikpool</h3>
-                    <button id="refreshMusikpoolBtn" class="btn btn-secondary"
-                        style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                        🔄 Aktualisieren
-                    </button>
-                    <div id="musikpoolContainer">
-                        <!-- ChurchTools members will be rendered here -->
+                <!-- Musikerpool View -->
+                <div id="musikpoolView" class="view">
+                    <div class="view-header">
+                        <h2>Musikerpool</h2>
                     </div>
-                </div>
-            </div>
 
-            <!-- Settings View -->
-            <div id="settingsView" class="view">
-                <div class="view-header">
-                    <h2>⚙️ Settings</h2>
-                </div>
-                <div id="settingsViewContent" class="settings-view-content">
-                    <!-- Settings content will be rendered here from modal -->
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Modal: Schnellzugriff bearbeiten -->
-    <div id="quickAccessModal" class="modal">
-        <div class="modal-content" style="max-width: 420px;">
-            <h2>Schnellzugriff bearbeiten</h2>
-            <form id="quickAccessForm">
-                <div id="quickAccessOptions" style="display: flex; flex-direction: column; gap: 0.7rem; margin: 1rem 0;"></div>
-                <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
-                    <button type="button" class="btn btn-secondary" id="cancelQuickAccessBtn">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Speichern</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Absences Content (for inclusion in Settings) -->
-    <div id="absencesSettingsContent" style="display: none;">
-        <!-- Create Absence Section -->
-        <div class="section">
-            <h3>Neue Abwesenheit eintragen</h3>
-            <form id="createAbsenceForm">
-                <input type="hidden" id="editAbsenceId">
-                <div class="form-group">
-                    <label for="absenceStart">Von (Datum)</label>
-                    <input type="date" id="absenceStart" required>
-                </div>
-                <div class="form-group">
-                    <label for="absenceEnd">Bis (Datum)</label>
-                    <input type="date" id="absenceEnd" required>
-                </div>
-                <div class="form-group">
-                    <label for="absenceReason">Grund (optional)</label>
-                    <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
-                </div>
-                <div style="display:flex; gap:0.5rem; align-items:center;">
-                    <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit hinzufügen</button>
-                    <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
-                        style="display:none;">Abbrechen</button>
-                </div>
-            </form>
-        </div>
-
-        <!-- List Absences Section -->
-        <div class="section">
-            <h3>Meine eingetragenen Abwesenheiten</h3>
-            <div id="absencesList"></div>
-        </div>
-    </div>
-
-    <!-- Hidden container end -->
-    <div style="display: none;">
-    </div>
-
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2>Settings</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="settings-tabs">
-                    <button id="settingsTabProfile" class="settings-tab-btn active" data-tab="profile">Profil</button>
-                    <button id="settingsTabAbsences" class="settings-tab-btn" data-tab="absences">Abwesenheiten</button>
-                    <button id="settingsTabLocations" class="settings-tab-btn" data-tab="locations">Probeorte</button>
-                    <button id="settingsTabBands" class="settings-tab-btn" data-tab="bands">Bandmanagement</button>
-                    <button id="settingsTabUsers" class="settings-tab-btn" data-tab="users"
-                        style="display: none;">Benutzerverwaltung</button>
-                </div>
-
-                <!-- Profile Tab -->
-                <div id="profileSettingsTab" class="settings-tab-content active">
+                    <!-- Eigene Mitglieder Section -->
                     <div class="section">
-                        <h3>Mein Profil bearbeiten</h3>
-                        <form id="updateProfileForm">
-                            <div class="form-group">
-                                <label for="profileUsername">Benutzername</label>
-                                <input type="text" id="profileUsername" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="profileEmail">E-Mail</label>
-                                <input type="email" id="profileEmail" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="profileInstrument">Instrument</label>
-                                <select id="profileInstrument" class="form-select">
-                                    <option value="">Kein Instrument</option>
-                                    <option value="drums">Schlagzeug (🥁)</option>
-                                    <option value="bass">Bass (🎸)</option>
-                                    <option value="acoustic_guitar">Akustische Gitarre (🎸)</option>
-                                    <option value="electric_guitar">Elektrische Gitarre (🎸)</option>
-                                    <option value="keyboard">Keyboard (🎹)</option>
-                                    <option value="synth">Synth (🎹)</option>
-                                    <option value="violin">Geige (🎻)</option>
-                                    <option value="vocals">Gesang (🎤)</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="profilePassword">Neues Passwort (leer lassen für keine Änderung)</label>
-                                <input type="password" id="profilePassword" placeholder="Neues Passwort">
-                            </div>
-                            <div class="form-group" id="profilePasswordConfirmGroup" style="display: none;">
-                                <label for="profilePasswordConfirm">Passwort bestätigen</label>
-                                <input type="password" id="profilePasswordConfirm" placeholder="Passwort wiederholen">
-                            </div>
-                            <button type="submit" class="btn btn-primary">Speichern</button>
-                        </form>
-                        <!-- Admin: Tutorial anzeigen / testen (sichtbar nur für Admins, wird per JS gesteuert) -->
-                        <div id="adminTutorialSection" style="margin-top: 1rem; display: none;">
-                            <h4>Tutorial</h4>
-                            <p style="color: var(--color-text-secondary); margin-top: 0.25rem;">Als Admin kannst du das Onboarding/Tutorial anzeigen und testen.</p>
-                            <button id="adminShowTutorialBtn" class="btn btn-secondary">Tutorial anzeigen / testen</button>
+                        <div class="section-header">
+                            <h3>Eigene Mitglieder</h3>
+                            <button id="addOwnMemberBtn" class="btn btn-primary"
+                                style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                ➕ Mitglied hinzufügen
+                            </button>
                         </div>
-                        <div class="section" style="margin-top: 1rem;">
+                        <div id="ownMembersContainer">
+                            <div class="empty-state">
+                                <div class="empty-icon">👥</div>
+                                <p>Noch keine eigenen Mitglieder angelegt</p>
+                                <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                                    Hier können Sie eigene Musiker und Kontakte hinzufügen.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ChurchTools Pool Section -->
+                    <div class="section">
+                        <h3>ChurchTools Musikpool</h3>
+                        <button id="refreshMusikpoolBtn" class="btn btn-secondary"
+                            style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                            🔄 Aktualisieren
+                        </button>
+                        <div id="musikpoolContainer">
+                            <!-- ChurchTools members will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings View -->
+                <div id="settingsView" class="view">
+                    <div class="view-header">
+                        <h2>⚙️ Settings</h2>
+                    </div>
+                    <div id="settingsViewContent" class="settings-view-content">
+                        <!-- Settings content will be rendered here from modal -->
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Modal: Schnellzugriff bearbeiten -->
+        <div id="quickAccessModal" class="modal">
+            <div class="modal-content" style="max-width: 420px;">
+                <h2>Schnellzugriff bearbeiten</h2>
+                <form id="quickAccessForm">
+                    <div id="quickAccessOptions"
+                        style="display: flex; flex-direction: column; gap: 0.7rem; margin: 1rem 0;"></div>
+                    <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                        <button type="button" class="btn btn-secondary" id="cancelQuickAccessBtn">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Speichern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Absences Content (for inclusion in Settings) -->
+        <div id="absencesSettingsContent" style="display: none;">
+            <!-- Create Absence Section -->
+            <div class="section">
+                <h3>Neue Abwesenheit eintragen</h3>
+                <form id="createAbsenceForm">
+                    <input type="hidden" id="editAbsenceId">
+                    <div class="form-group">
+                        <label for="absenceStart">Von (Datum)</label>
+                        <input type="date" id="absenceStart" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="absenceEnd">Bis (Datum)</label>
+                        <input type="date" id="absenceEnd" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="absenceReason">Grund (optional)</label>
+                        <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
+                    </div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit
+                            hinzufügen</button>
+                        <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
+                            style="display:none;">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- List Absences Section -->
+            <div class="section">
+                <h3>Meine eingetragenen Abwesenheiten</h3>
+                <div id="absencesList"></div>
+            </div>
+        </div>
+
+        <!-- Hidden container end -->
+        <div style="display: none;">
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-tabs">
+                        <button id="settingsTabProfile" class="settings-tab-btn active"
+                            data-tab="profile">Profil</button>
+                        <button id="settingsTabAbsences" class="settings-tab-btn"
+                            data-tab="absences">Abwesenheiten</button>
+                        <button id="settingsTabLocations" class="settings-tab-btn"
+                            data-tab="locations">Probeorte</button>
+                        <button id="settingsTabBands" class="settings-tab-btn" data-tab="bands">Bandmanagement</button>
+                        <button id="settingsTabUsers" class="settings-tab-btn" data-tab="users"
+                            style="display: none;">Benutzerverwaltung</button>
+                    </div>
+
+                    <!-- Profile Tab -->
+                    <div id="profileSettingsTab" class="settings-tab-content active">
+                        <div class="section">
+                            <h3>Mein Profil bearbeiten</h3>
+                            <form id="updateProfileForm">
+                                <div class="form-group" style="display:flex;align-items:center;gap:1.5rem;">
+                                    <div id="profileImageSettingsContainer"
+                                        style="display:flex;flex-direction:column;align-items:center;gap:0.5rem;">
+                                        <!-- Profilbild/Initialen werden per JS gerendert -->
+                                    </div>
+                                    <div style="flex:1;">
+                                        <label for="profileImageInput" style="font-weight:600;">Profilbild
+                                            ändern</label>
+                                        <input type="file" id="profileImageInput" accept="image/*"
+                                            style="margin-bottom:0.5rem;">
+                                        <button type="button" id="deleteProfileImageBtn" class="btn btn-danger btn-sm"
+                                            style="margin-top:0.2rem;">Profilbild entfernen</button>
+                                        <small style="display:block;color:#888;">Max. 100kb. Größere Bilder werden
+                                            komprimiert.</small>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileUsername">Benutzername</label>
+                                    <input type="text" id="profileUsername" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileEmail">E-Mail</label>
+                                    <input type="email" id="profileEmail" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileInstrument">Instrument</label>
+                                    <select id="profileInstrument" class="form-select">
+                                        <option value="">Kein Instrument</option>
+                                        <option value="drums">Schlagzeug (🥁)</option>
+                                        <option value="bass">Bass (🎸)</option>
+                                        <option value="acoustic_guitar">Akustische Gitarre (🎸)</option>
+                                        <option value="electric_guitar">Elektrische Gitarre (🎸)</option>
+                                        <option value="keyboard">Keyboard (🎹)</option>
+                                        <option value="synth">Synth (🎹)</option>
+                                        <option value="violin">Geige (🎻)</option>
+                                        <option value="vocals">Gesang (🎤)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profilePassword">Neues Passwort (leer lassen für keine Änderung)</label>
+                                    <input type="password" id="profilePassword" placeholder="Neues Passwort">
+                                </div>
+                                <div class="form-group" id="profilePasswordConfirmGroup" style="display: none;">
+                                    <label for="profilePasswordConfirm">Passwort bestätigen</label>
+                                    <input type="password" id="profilePasswordConfirm"
+                                        placeholder="Passwort wiederholen">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Speichern</button>
+                            </form>
+                            <!-- Admin: Tutorial anzeigen / testen (sichtbar nur für Admins, wird per JS gesteuert) -->
+                            <div id="adminTutorialSection" style="margin-top: 1rem; display: none;">
+                                <h4>Tutorial</h4>
+                                <p style="color: var(--color-text-secondary); margin-top: 0.25rem;">Als Admin kannst du
+                                    das Onboarding/Tutorial anzeigen und testen.</p>
+                                <button id="adminShowTutorialBtn" class="btn btn-secondary">Tutorial anzeigen /
+                                    testen</button>
+                            </div>
+                            <div class="section" style="margin-top: 1rem;">
                                 <!-- Account löschen Button -->
-                                <button id="deleteAccountBtn" class="btn btn-danger" style="margin-top:2rem;">Account löschen</button>
+                                <button id="deleteAccountBtn" class="btn btn-danger" style="margin-top:2rem;">Account
+                                    löschen</button>
                                 <!-- Account-Löschen Modal -->
                                 <div id="deleteAccountModal" class="modal">
                                     <div class="modal-content" style="max-width: 400px;">
                                         <h2 style="color:#c00;">Account wirklich löschen?</h2>
-                                        <p style="margin:1rem 0; color:#c00; font-weight:600">Achtung: Wenn du deinen Account löschst, werden <u>alle deine Daten unwiderruflich entfernt</u> und können nicht wiederhergestellt werden!</p>
+                                        <p style="margin:1rem 0; color:#c00; font-weight:600">Achtung: Wenn du deinen
+                                            Account löschst, werden <u>alle deine Daten unwiderruflich entfernt</u> und
+                                            können nicht wiederhergestellt werden!</p>
                                         <div style="display:flex; gap:1rem; justify-content:flex-end;">
                                             <button id="cancelDeleteAccountBtn" class="btn">Abbrechen</button>
-                                            <button id="confirmDeleteAccountBtn" class="btn btn-danger">Ja, endgültig löschen</button>
+                                            <button id="confirmDeleteAccountBtn" class="btn btn-danger">Ja, endgültig
+                                                löschen</button>
                                         </div>
                                     </div>
                                 </div>
-                        </div>
-                        <div class="section" style="margin-top: 1rem;">
-                            <h3>Spenden-Link</h3>
-                            <div class="form-group">
-                                <label for="donateLink">PayPal-Link</label>
-                                <input type="url" id="donateLink" placeholder="https://paypal.me/deinusername" value="">
-                                <small style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
-                                    Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich angezeigt.
-                                </small>
                             </div>
-                            <button id="saveDonateLink" class="btn btn-primary">Spenden-Link speichern</button>
+                            <div class="section" style="margin-top: 1rem;">
+                                <h3>Spenden-Link</h3>
+                                <div class="form-group">
+                                    <label for="donateLink">PayPal-Link</label>
+                                    <input type="url" id="donateLink" placeholder="https://paypal.me/deinusername"
+                                        value="">
+                                    <small
+                                        style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
+                                        Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich angezeigt.
+                                    </small>
+                                </div>
+                                <button id="saveDonateLink" class="btn btn-primary">Spenden-Link speichern</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Absences Tab -->
+                    <div id="absencesSettingsTab" class="settings-tab-content">
+                        <!-- Create Absence Section -->
+                        <div class="section">
+                            <h3>Neue Abwesenheit eintragen</h3>
+                            <form id="createAbsenceFormSettings">
+                                <input type="hidden" id="editAbsenceIdSettings">
+                                <div class="form-group">
+                                    <label for="absenceStartSettings">Von (Datum)</label>
+                                    <input type="date" id="absenceStartSettings" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="absenceEndSettings">Bis (Datum)</label>
+                                    <input type="date" id="absenceEndSettings" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="absenceReasonSettings">Grund (optional)</label>
+                                    <input type="text" id="absenceReasonSettings"
+                                        placeholder="z.B. Urlaub, Krankheit...">
+                                </div>
+                                <div style="display:flex; gap:0.5rem; align-items:center;">
+                                    <button type="submit" id="saveAbsenceBtnSettings"
+                                        class="btn btn-primary">Abwesenheit
+                                        hinzufügen</button>
+                                    <button type="button" id="cancelEditAbsenceBtnSettings" class="btn cancel"
+                                        style="display:none;">Abbrechen</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- List Absences Section -->
+                        <div class="section">
+                            <h3>Meine eingetragenen Abwesenheiten</h3>
+                            <div id="absencesListSettings"></div>
+                        </div>
+                    </div>
+
+                    <!-- Locations Tab -->
+                    <div id="locationsSettingsTab" class="settings-tab-content">
+                        <div class="section">
+                            <h3>Neuen Probeort hinzufügen</h3>
+                            <form id="createLocationForm" class="inline-form">
+                                <div class="form-group">
+                                    <label for="newLocationName" class="sr-only">Name</label>
+                                    <input type="text" id="newLocationName" placeholder="Name (z.B. Proberaum A)"
+                                        required>
+
+                                    <label for="newLocationAddress" class="sr-only">Adresse</label>
+                                    <input type="text" id="newLocationAddress" placeholder="Adresse (Optional)">
+                                </div>
+                                <div class="form-group">
+                                    <label for="newLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
+                                    <select id="newLocationLinkedCalendar" class="form-select">
+                                        <option value="">Nicht verknüpft</option>
+                                        <option value="tonstudio">🎙️ Tonstudio</option>
+                                        <option value="festhalle">🏛️ JMS Festhalle</option>
+                                        <option value="ankersaal">⚓ Ankersaal</option>
+                                    </select>
+                                    <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die
+                                        Verfügbarkeit
+                                        zu prüfen.</p>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                            </form>
+                        </div>
+                        <div class="section">
+                            <h3>Vorhandene Probeorte</h3>
+                            <div id="locationsList" class="locations-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Bands Management Tab -->
+                    <div id="bandsSettingsTab" class="settings-tab-content">
+                        <div class="section">
+                            <div>
+                                <h3>Alle Bands</h3>
+                                <button id="createBandBtn" class="btn btn-primary">+ Neue Band erstellen</button>
+
+                            </div>
+                            <div id="allBandsList" class="bands-management-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- User Management Tab (Admin Only) -->
+                    <div id="usersSettingsTab" class="settings-tab-content">
+                        <div class="section">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div>
+                                    <h3>Benutzerverwaltung</h3>
+                                    <p class="help-text">Verwalte alle registrierten Benutzer</p>
+                                </div>
+                                <button id="addUserBtn" class="btn btn-primary" style="white-space: nowrap;">
+                                    ➕ Mitglied hinzufügen
+                                </button>
+                            </div>
+                            <div id="usersList" class="users-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Supabase Settings Tab -->
+                    <div id="supabaseSettingsTab" class="settings-tab-content">
+                        <div class="section">
+                            <h3>Supabase Konfiguration</h3>
+                            <form id="supabaseSettingsForm">
+                                <div class="form-group">
+                                    <label for="supabaseUrl">Supabase URL</label>
+                                    <input type="url" id="supabaseUrl" placeholder="https://your-project.supabase.co">
+                                </div>
+                                <div class="form-group">
+                                    <label for="supabaseAnonKey">Supabase Anon Key</label>
+                                    <input type="text" id="supabaseAnonKey" placeholder="ey...">
+                                </div>
+                                <small style="color: var(--color-text-secondary);">Diese Daten werden lokal gespeichert
+                                    und
+                                    für die Datenbankverbindung genutzt.</small>
+                                <div class="modal-actions" style="margin-top: 0.5rem;">
+                                    <button type="submit" class="btn btn-primary">Speichern</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Absences Tab -->
-                <div id="absencesSettingsTab" class="settings-tab-content">
+        <!-- Tutorial Overlay (step-by-step) -->
+        <div id="tutorialOverlay" class="tour-overlay" style="display:none;">
+            <div id="tourHighlight" class="tour-highlight" aria-hidden="true"></div>
+            <div id="tourTooltip" class="tour-tooltip" role="dialog" aria-modal="true">
+                <div id="tourTooltipContent">
+                    <h3 id="tourTitle">Tutorial</h3>
+                    <p id="tourBody">Schritt</p>
+                    <div class="tour-controls"
+                        style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem;">
+                        <button id="tourPrevBtn" class="btn">Zurück</button>
+                        <button id="tourNextBtn" class="btn btn-primary">Weiter</button>
+                        <button id="tourEndBtn" class="btn">Beenden</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Band Modal -->
+        <div id="createBandModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Neue Band erstellen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="createBandForm">
+                    <div class="form-group">
+                        <label for="bandName">Bandname</label>
+                        <input type="text" id="bandName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bandDescription">Beschreibung</label>
+                        <textarea id="bandDescription" rows="3"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Band erstellen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Band Modal -->
+        <div id="editBandModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Band bearbeiten</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="editBandForm">
+                    <input type="hidden" id="editBandId">
+                    <div class="form-group">
+                        <label for="editBandName">Bandname</label>
+                        <input type="text" id="editBandName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editBandDescription">Beschreibung</label>
+                        <textarea id="editBandDescription" rows="3"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Speichern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Location Modal -->
+        <div id="editLocationModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Probeort bearbeiten</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="editLocationForm">
+                    <input type="hidden" id="editLocationId">
+                    <div class="form-group">
+                        <label for="editLocationName">Name</label>
+                        <input type="text" id="editLocationName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editLocationAddress">Adresse</label>
+                        <input type="text" id="editLocationAddress">
+                    </div>
+                    <div class="form-group">
+                        <label for="editLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
+                        <select id="editLocationLinkedCalendar" class="form-select">
+                            <option value="">Nicht verknüpft</option>
+                            <option value="tonstudio">🎙️ Tonstudio</option>
+                            <option value="festhalle">🏛️ JMS Festhalle</option>
+                            <option value="ankersaal">⚓ Ankersaal</option>
+                        </select>
+                        <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu
+                            prüfen.
+                        </p>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Speichern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Band Details Modal -->
+        <div id="bandDetailsModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2 id="bandDetailsName"></h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" data-tab="members">Mitglieder</button>
+                        <button class="tab-btn" data-tab="setlist">Setlist</button>
+                        <!-- Abwesenheiten-Tab (sichtbar für Leiter/Co-Leiter) -->
+                        <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn"
+                            style="display: none;">Abwesenheiten</button>
+                        <button class="tab-btn" data-tab="settings">Settings</button>
+                    </div>
+
+                    <!-- Members Tab -->
+                    <div id="membersTab" class="tab-content active">
+                        <div class="section">
+                            <div class="section-header">
+                                <h3>Bandmitglieder</h3>
+                                <button id="addMemberBtn" class="btn btn-primary btn-sm">+ Mitglied hinzufügen</button>
+                            </div>
+                            <div id="membersList" class="members-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Setlist Tab -->
+                    <div id="setlistTab" class="tab-content">
+                        <div class="section">
+                            <div class="section-header">
+                                <h3>Songs</h3>
+                                <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song hinzufügen</button>
+                            </div>
+                            <div id="bandSongsList"></div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div id="settingsTab" class="tab-content">
+                        <div class="section" id="bandSettingsSection">
+                            <h3>Band-Einstellungen</h3>
+                            <div class="settings-actions">
+                                <div style="margin-bottom:0.5em;color:#b91c1c;font-weight:bold;; font-size: smaller;">
+                                    Achtung: Beim Löschen werden alle zugehörigen Songs, Probetermine und Auftritte
+                                    <u>unwiderruflich</u> entfernt!
+                                </div>
+                                <button id="deleteBandBtn" class="btn btn-danger" style="width: 150px;">Band
+                                    löschen</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Absences Tab (for leaders/co-leaders) -->
+                    <div id="absencesTab" class="tab-content">
+                        <div class="section">
+                            <h3>Abwesenheiten der Mitglieder</h3>
+                            <div id="bandAbsencesList">Keine Abwesenheiten vorhanden.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Member Modal -->
+        <div id="addMemberModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Mitglied hinzufügen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="addMemberForm">
+                    <div class="form-group">
+                        <label for="memberUsername">Benutzername</label>
+                        <input type="text" id="memberUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="memberRole">Rolle</label>
+                        <select id="memberRole" required>
+                            <option value="member">Mitglied</option>
+                            <option value="co-leader">Co-Leiter</option>
+                            <option value="leader">Leiter</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add User Modal (Admin Only) -->
+        <div id="addUserModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Neues Mitglied anlegen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="addUserForm">
+                    <div class="form-group">
+                        <label for="newUserName">Name</label>
+                        <input type="text" id="newUserName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newUserEmail">E-Mail</label>
+                        <input type="email" id="newUserEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newUserUsername">Benutzername</label>
+                        <input type="text" id="newUserUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newUserPassword">Passwort</label>
+                        <input type="password" id="newUserPassword" required minlength="6">
+                        <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Mindestens 6
+                            Zeichen</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="newUserIsAdmin">
+                            Als Admin anlegen
+                        </label>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Mitglied anlegen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Create Rehearsal Modal -->
+        <div id="createRehearsalModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2 id="rehearsalModalTitle">Neuen Probetermin vorschlagen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="createRehearsalForm">
+                    <input type="hidden" id="editRehearsalId">
+                    <div class="form-group">
+                        <label for="rehearsalBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
+                        <select id="rehearsalBand" required>
+                            <option value="">Band auswählen</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rehearsalTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
+                        <input type="text" id="rehearsalTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rehearsalLocation">Ort (Optional)</label>
+                        <select id="rehearsalLocation">
+                            <option value="">Kein Ort ausgewählt</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rehearsalDescription">Beschreibung</label>
+                        <textarea id="rehearsalDescription" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="rehearsalEvent">Zugewiesener Auftritt (Optional)</label>
+                        <select id="rehearsalEvent">
+                            <option value="">Kein Auftritt ausgewählt</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Terminvorschläge</label>
+                        <div id="dateProposals" class="date-proposals">
+                            <div class="date-proposal-item" data-confirmed="false">
+                                <div class="date-time-range">
+                                    <input type="date" class="date-input-date" id="dateInputDate">
+                                    <input type="time" class="date-input-start" id="dateInputStart">
+                                    <span class="time-separator">bis</span>
+                                    <input type="time" class="date-input-end" id="dateInputEnd">
+                                </div>
+                                <span class="date-availability" style="margin-left:8px"></span>
+                                <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
+                                <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
+                            </div>
+                        </div>
+                        <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin
+                            hinzufügen</button>
+                    </div>
+                    <div class="form-group checkbox-group" id="notifyMembersGroup" style="display: none;">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="notifyMembersOnUpdate">
+                            <label for="notifyMembersOnUpdate">Update-E-Mail an alle Beteiligten senden</label>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="button" class="btn btn-danger" id="deleteRehearsalBtn"
+                            style="display:none; margin-right: auto;">🗑️ Löschen</button>
+                        <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag erstellen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Rehearsal Details Modal -->
+        <div id="rehearsalDetailsModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2 id="rehearsalDetailsTitle"></h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="rehearsalDetailsContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Rehearsal Modal -->
+        <!-- Time Suggestion Modal -->
+        <div id="timeSuggestionModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Uhrzeit vorschlagen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="suggestTimeRehearsalId">
+                    <input type="hidden" id="suggestTimeDateIndex">
+
+                    <div class="form-group">
+                        <label for="suggestedTimeInput">Welche Uhrzeit würdest du vorschlagen?</label>
+                        <input type="time" id="suggestedTimeInput" class="form-control" required>
+                        <small class="help-text">Wähle eine Uhrzeit aus, die besser für dich passt</small>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="button" id="deleteTimeSuggestionBtn" class="btn btn-secondary"
+                            style="display: none;">🗑️ Vorschlag löschen</button>
+                        <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">💾 Speichern</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Rehearsal Modal -->
+        <div id="confirmRehearsalModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>Probe bestätigen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="confirmRehearsalId">
+                    <input type="hidden" id="confirmDateIndex">
+
+                    <div class="section">
+                        <h3>Probendetails bearbeiten</h3>
+                        <div class="form-group">
+                            <label for="confirmRehearsalTitle">Titel <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
+                            <input type="text" id="confirmRehearsalTitle" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmRehearsalDescription">Beschreibung (optional)</label>
+                            <textarea id="confirmRehearsalDescription" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmRehearsalStartTime">Von (Start) <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
+                            <input type="datetime-local" id="confirmRehearsalStartTime" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmRehearsalEndTime">Bis (Ende) <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
+                            <input type="datetime-local" id="confirmRehearsalEndTime" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Probeort auswählen</h3>
+                        <select id="confirmRehearsalLocation" class="form-select">
+                            <option value="">Kein Ort ausgewählt</option>
+                        </select>
+                    </div>
+
+                    <div class="section">
+                        <h3>Bandmitglieder benachrichtigen</h3>
+                        <p class="help-text">Wähle aus, welche Bandmitglieder eine Bestätigungs-E-Mail erhalten sollen:
+                        </p>
+                        <div id="confirmMembersList" class="confirm-members-list"></div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="button" id="sendConfirmationBtn" class="btn btn-primary">✅ Probe bestätigen &
+                            E-Mail
+                            senden</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Conflict Warning Modal -->
+        <div id="locationConflictModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>⚠️ Probeort belegt</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 1rem;">
+                        <strong>Der gewählte Probeort ist zu dieser Zeit bereits belegt!</strong>
+                    </p>
+
+                    <div id="conflictDetails" class="conflict-details"></div>
+
+                    <p style="margin-top: 1rem; color: var(--color-text-secondary);">
+                        Möchtest du trotzdem fortfahren?
+                    </p>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel" id="abortConfirmationBtn">Abbrechen</button>
+                        <button type="button" class="btn btn-primary" id="proceedAnywayBtn">Trotzdem fortfahren</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Event Modal -->
+        <div id="createEventModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2 id="eventModalTitle">Neuen Auftritt erstellen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="createEventForm">
+                    <input type="hidden" id="editEventId">
+                    <div class="form-group">
+                        <label for="eventBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
+                        <select id="eventBand" required>
+                            <option value="">Band auswählen</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
+                        <input type="text" id="eventTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDate">Datum und Uhrzeit <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
+                        <input type="datetime-local" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventLocation">Ort</label>
+                        <input type="text" id="eventLocation">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventShowExtras" style="display:inline;">Gibt es weitere Infos zum Soundcheck, Event
+                            oder zur Technik?</label>
+                        <input type="checkbox" id="eventShowExtras">
+                    </div>
+                    <div id="eventExtrasFields" style="display:none;">
+                        <div class="form-group">
+                            <label for="eventSoundcheckLocation">Infos zum Soundcheck</label>
+                            <input type="text" id="eventSoundcheckLocation" placeholder="Uhrzeit, Datum...">
+                        </div>
+                        <div class="form-group">
+                            <label for="eventInfo">Infos zum Event</label>
+                            <textarea id="eventInfo" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventTechInfo">Infos zur Technik</label>
+                            <textarea id="eventTechInfo" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Folgende Bandmitglieder sind mit dabei</label>
+                        <div id="eventBandMembers" class="checkbox-list"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventShowGuests" style="display:inline;">Sind Gäste mit dabei?</label>
+                        <input type="checkbox" id="eventShowGuests">
+                    </div>
+                    <div class="form-group" id="eventGuestsField" style="display:none;">
+                        <label>Gästeliste</label>
+                        <textarea id="eventGuests" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="section-header">
+                            <label>Setlist</label>
+                            <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">Neuen Song
+                                erstellen</button>
+                        </div>
+                        <div id="eventSongsList"></div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt erstellen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Song Management Modal -->
+        <div id="songModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="song ModalTitle">Song hinzufügen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="songForm">
+                    <input type="hidden" id="songId">
+                    <input type="hidden" id="songEventId">
+                    <input type="hidden" id="songBandId">
+                    <div class="form-group">
+                        <label for="songTitle">Titel</label>
+                        <input type="text" id="songTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="songArtist">Interpret</label>
+                        <input type="text" id="songArtist" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="songBPM">BPM</label>
+                        <input type="number" id="songBPM" min="1" placeholder="z.B. 120">
+                    </div>
+                    <div class="form-group">
+                        <label for="songKey">Tonart</label>
+                        <select id="songKey">
+                            <option value="">— Auswahl —</option>
+                            <!-- Major keys -->
+                            <option value="C">C</option>
+                            <option value="C#">C# / Db</option>
+                            <option value="D">D</option>
+                            <option value="D#">D# / Eb</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="F#">F# / Gb</option>
+                            <option value="G">G</option>
+                            <option value="G#">G# / Ab</option>
+                            <option value="A">A</option>
+                            <option value="A#">A# / Bb</option>
+                            <option value="B">B</option>
+                            <!-- Minor keys -->
+                            <option value="Cm">Cm</option>
+                            <option value="C#m">C#m / Dbm</option>
+                            <option value="Dm">Dm</option>
+                            <option value="D#m">D#m / Ebm</option>
+                            <option value="Em">Em</option>
+                            <option value="Fm">Fm</option>
+                            <option value="F#m">F#m / Gbm</option>
+                            <option value="Gm">Gm</option>
+                            <option value="G#m">G#m / Abm</option>
+                            <option value="Am">Am</option>
+                            <option value="A#m">A#m / Bbm</option>
+                            <option value="Bm">Bm</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="songCcli">Songselect CCLI Nummer (optional)</label>
+                        <input type="text" id="songCcli" placeholder="CCLI Nummer">
+                    </div>
+                    <div class="form-group">
+                        <label for="songLeadVocal">Lead Vocal</label>
+                        <input type="text" id="songLeadVocal" placeholder="Name des Lead-Sängers">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Speichern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Event Details Modal -->
+        <div id="eventDetailsModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2 id="eventDetailsTitle"></h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="eventDetailsContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Band Modal -->
+        <div id="joinBandModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Band beitreten</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="joinBandForm">
+                    <div class="form-group">
+                        <label for="joinBandCode">Band-Beitrittscode</label>
+                        <input type="text" id="joinBandCode" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="XXXXXX"
+                            required style="text-transform: uppercase;">
+                        <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem 6-stelligen
+                            Code</small>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Beitreten</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Absence Management Modal -->
+        <div id="absenceModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>Meine Abwesenheiten</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
                     <!-- Create Absence Section -->
                     <div class="section">
                         <h3>Neue Abwesenheit eintragen</h3>
-                        <form id="createAbsenceFormSettings">
-                            <input type="hidden" id="editAbsenceIdSettings">
+                        <form id="createAbsenceForm">
+                            <input type="hidden" id="editAbsenceId">
                             <div class="form-group">
-                                <label for="absenceStartSettings">Von (Datum)</label>
-                                <input type="date" id="absenceStartSettings" required>
+                                <label for="absenceStart">Von (Datum)</label>
+                                <input type="date" id="absenceStart" required>
                             </div>
                             <div class="form-group">
-                                <label for="absenceEndSettings">Bis (Datum)</label>
-                                <input type="date" id="absenceEndSettings" required>
+                                <label for="absenceEnd">Bis (Datum)</label>
+                                <input type="date" id="absenceEnd" required>
                             </div>
                             <div class="form-group">
-                                <label for="absenceReasonSettings">Grund (optional)</label>
-                                <input type="text" id="absenceReasonSettings" placeholder="z.B. Urlaub, Krankheit...">
+                                <label for="absenceReason">Grund (optional)</label>
+                                <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
                             </div>
                             <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <button type="submit" id="saveAbsenceBtnSettings" class="btn btn-primary">Abwesenheit
+                                <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit
                                     hinzufügen</button>
-                                <button type="button" id="cancelEditAbsenceBtnSettings" class="btn cancel"
+                                <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
                                     style="display:none;">Abbrechen</button>
                             </div>
                         </form>
@@ -802,822 +1595,96 @@
                     <!-- List Absences Section -->
                     <div class="section">
                         <h3>Meine eingetragenen Abwesenheiten</h3>
-                        <div id="absencesListSettings"></div>
+                        <div id="absencesList"></div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Locations Tab -->
-                <div id="locationsSettingsTab" class="settings-tab-content">
-                    <div class="section">
-                        <h3>Neuen Probeort hinzufügen</h3>
-                        <form id="createLocationForm" class="inline-form">
-                            <div class="form-group">
-                                <label for="newLocationName" class="sr-only">Name</label>
-                                <input type="text" id="newLocationName" placeholder="Name (z.B. Proberaum A)" required>
-                            
-                                <label for="newLocationAddress" class="sr-only">Adresse</label>
-                                <input type="text" id="newLocationAddress" placeholder="Adresse (Optional)">
-                            </div>
-                            <div class="form-group">
-                                <label for="newLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
-                                <select id="newLocationLinkedCalendar" class="form-select">
-                                    <option value="">Nicht verknüpft</option>
-                                    <option value="tonstudio">🎙️ Tonstudio</option>
-                                    <option value="festhalle">🏛️ JMS Festhalle</option>
-                                    <option value="ankersaal">⚓ Ankersaal</option>
-                                </select>
-                                <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit
-                                    zu prüfen.</p>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Hinzufügen</button>
-                        </form>
-                    </div>
-                    <div class="section">
-                        <h3>Vorhandene Probeorte</h3>
-                        <div id="locationsList" class="locations-list"></div>
-                    </div>
+        <!-- Create News Modal -->
+        <div id="createNewsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>News erstellen</h2>
+                    <button class="modal-close">&times;</button>
                 </div>
-
-                <!-- Bands Management Tab -->
-                <div id="bandsSettingsTab" class="settings-tab-content">
-                    <div class="section">
-                        <div>
-                            <h3>Alle Bands</h3>
-                            <button id="createBandBtn" class="btn btn-primary">+ Neue Band erstellen</button>
-
+                <form id="createNewsForm">
+                    <input type="hidden" id="editNewsId">
+                    <div class="form-group">
+                        <label for="newsTitle">Titel</label>
+                        <input type="text" id="newsTitle" required placeholder="z.B. Neue Feature: Abwesenheiten">
+                    </div>
+                    <div class="form-group">
+                        <label for="newsContent">Inhalt</label>
+                        <textarea id="newsContent" rows="5" required
+                            placeholder="Beschreibe das Update oder Feature..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="newsImages">Bilder (optional)</label>
+                        <input type="file" id="newsImages" accept="image/*" multiple>
+                        <div id="newsImagesPreview"
+                            style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
                         </div>
-                        <div id="allBandsList" class="bands-management-list"></div>
                     </div>
-                </div>
-
-                <!-- User Management Tab (Admin Only) -->
-                <div id="usersSettingsTab" class="settings-tab-content">
-                    <div class="section">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <div>
-                                <h3>Benutzerverwaltung</h3>
-                                <p class="help-text">Verwalte alle registrierten Benutzer</p>
-                            </div>
-                            <button id="addUserBtn" class="btn btn-primary" style="white-space: nowrap;">
-                                ➕ Mitglied hinzufügen
-                            </button>
-                        </div>
-                        <div id="usersList" class="users-list"></div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Veröffentlichen</button>
                     </div>
-                </div>
-
-                <!-- Supabase Settings Tab -->
-                <div id="supabaseSettingsTab" class="settings-tab-content">
-                    <div class="section">
-                        <h3>Supabase Konfiguration</h3>
-                        <form id="supabaseSettingsForm">
-                            <div class="form-group">
-                                <label for="supabaseUrl">Supabase URL</label>
-                                <input type="url" id="supabaseUrl" placeholder="https://your-project.supabase.co">
-                            </div>
-                            <div class="form-group">
-                                <label for="supabaseAnonKey">Supabase Anon Key</label>
-                                <input type="text" id="supabaseAnonKey" placeholder="ey...">
-                            </div>
-                            <small style="color: var(--color-text-secondary);">Diese Daten werden lokal gespeichert und
-                                für die Datenbankverbindung genutzt.</small>
-                            <div class="modal-actions" style="margin-top: 0.5rem;">
-                                <button type="submit" class="btn btn-primary">Speichern</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
-    </div>
 
-    <!-- Tutorial Overlay (step-by-step) -->
-    <div id="tutorialOverlay" class="tour-overlay" style="display:none;">
-        <div id="tourHighlight" class="tour-highlight" aria-hidden="true"></div>
-        <div id="tourTooltip" class="tour-tooltip" role="dialog" aria-modal="true">
-            <div id="tourTooltipContent">
-                <h3 id="tourTitle">Tutorial</h3>
-                <p id="tourBody">Schritt</p>
-                <div class="tour-controls" style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem;">
-                    <button id="tourPrevBtn" class="btn">Zurück</button>
-                    <button id="tourNextBtn" class="btn btn-primary">Weiter</button>
-                    <button id="tourEndBtn" class="btn">Beenden</button>
-                </div>
-            </div>
-        </div>
-    </div>
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
 
-    <!-- Create Band Modal -->
-    <div id="createBandModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Neue Band erstellen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="createBandForm">
-                <div class="form-group">
-                    <label for="bandName">Bandname</label>
-                    <input type="text" id="bandName" required>
+        <!-- Confirm Delete Modal -->
+        <div id="confirmDeleteModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h2 id="confirmDeleteTitle">Wirklich löschen?</h2>
+                    <button class="modal-close">&times;</button>
                 </div>
-                <div class="form-group">
-                    <label for="bandDescription">Beschreibung</label>
-                    <textarea id="bandDescription" rows="3"></textarea>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Band erstellen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Edit Band Modal -->
-    <div id="editBandModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Band bearbeiten</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="editBandForm">
-                <input type="hidden" id="editBandId">
-                <div class="form-group">
-                    <label for="editBandName">Bandname</label>
-                    <input type="text" id="editBandName" required>
-                </div>
-                <div class="form-group">
-                    <label for="editBandDescription">Beschreibung</label>
-                    <textarea id="editBandDescription" rows="3"></textarea>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Speichern</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Edit Location Modal -->
-    <div id="editLocationModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Probeort bearbeiten</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="editLocationForm">
-                <input type="hidden" id="editLocationId">
-                <div class="form-group">
-                    <label for="editLocationName">Name</label>
-                    <input type="text" id="editLocationName" required>
-                </div>
-                <div class="form-group">
-                    <label for="editLocationAddress">Adresse</label>
-                    <input type="text" id="editLocationAddress">
-                </div>
-                <div class="form-group">
-                    <label for="editLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
-                    <select id="editLocationLinkedCalendar" class="form-select">
-                        <option value="">Nicht verknüpft</option>
-                        <option value="tonstudio">🎙️ Tonstudio</option>
-                        <option value="festhalle">🏛️ JMS Festhalle</option>
-                        <option value="ankersaal">⚓ Ankersaal</option>
-                    </select>
-                    <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu prüfen.
+                <div class="modal-body">
+                    <p id="confirmDeleteMessage" style="margin: 0; color: var(--color-text-secondary);">
+                        Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
                     </p>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Speichern</button>
+                    <button type="button" class="btn cancel" id="confirmDeleteCancel">Abbrechen</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteConfirm">Löschen</button>
                 </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Band Details Modal -->
-    <div id="bandDetailsModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 id="bandDetailsName"></h2>
-                <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="tab-buttons">
-                    <button class="tab-btn active" data-tab="members">Mitglieder</button>
-                    <button class="tab-btn" data-tab="setlist">Setlist</button>
-                    <!-- Abwesenheiten-Tab (sichtbar für Leiter/Co-Leiter) -->
-                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn"
-                        style="display: none;">Abwesenheiten</button>
-                    <button class="tab-btn" data-tab="settings">Settings</button>
-                </div>
+        </div>
 
-                <!-- Members Tab -->
-                <div id="membersTab" class="tab-content active">
-                    <div class="section">
-                        <div class="section-header">
-                            <h3>Bandmitglieder</h3>
-                            <button id="addMemberBtn" class="btn btn-primary btn-sm">+ Mitglied hinzufügen</button>
+        <!-- Calendar Event Detail Modal -->
+        <div id="calendarEventModal" class="modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2 id="eventModalTitle">Event Details</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <strong style="color: var(--color-text-secondary);">Titel:</strong>
+                            <p id="eventModalSummary" style="margin: 0.25rem 0 0 0;"></p>
                         </div>
-                        <div id="membersList" class="members-list"></div>
-                    </div>
-                </div>
-
-                <!-- Setlist Tab -->
-                <div id="setlistTab" class="tab-content">
-                    <div class="section">
-                        <div class="section-header">
-                            <h3>Songs</h3>
-                            <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song hinzufügen</button>
+                        <div>
+                            <strong style="color: var(--color-text-secondary);">Zeit:</strong>
+                            <p id="eventModalTime" style="margin: 0.25rem 0 0 0;"></p>
                         </div>
-                        <div id="bandSongsList"></div>
-                    </div>
-                </div>
-
-                <!-- Settings Tab -->
-                <div id="settingsTab" class="tab-content">
-                    <div class="section" id="bandSettingsSection">
-                        <h3>Band-Einstellungen</h3>
-                        <div class="settings-actions">
-                            <div style="margin-bottom:0.5em;color:#b91c1c;font-weight:bold;; font-size: smaller;">
-                                Achtung: Beim Löschen werden alle zugehörigen Songs, Probetermine und Auftritte <u>unwiderruflich</u> entfernt!
-                            </div>
-                            <button id="deleteBandBtn" class="btn btn-danger" style="width: 150px;">Band löschen</button>
+                        <div id="eventModalLocationContainer" style="display: none;">
+                            <strong style="color: var(--color-text-secondary);">Ort:</strong>
+                            <p id="eventModalLocation" style="margin: 0.25rem 0 0 0;"></p>
+                        </div>
+                        <div id="eventModalDescriptionContainer" style="display: none;">
+                            <strong style="color: var(--color-text-secondary);">Beschreibung:</strong>
+                            <p id="eventModalDescription" style="margin: 0.25rem 0 0 0; white-space: pre-wrap;"></p>
                         </div>
                     </div>
                 </div>
-
-                <!-- Absences Tab (for leaders/co-leaders) -->
-                <div id="absencesTab" class="tab-content">
-                    <div class="section">
-                        <h3>Abwesenheiten der Mitglieder</h3>
-                        <div id="bandAbsencesList">Keine Abwesenheiten vorhanden.</div>
-                    </div>
-                </div>
             </div>
         </div>
-    </div>
-
-    <!-- Add Member Modal -->
-    <div id="addMemberModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Mitglied hinzufügen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="addMemberForm">
-                <div class="form-group">
-                    <label for="memberUsername">Benutzername</label>
-                    <input type="text" id="memberUsername" required>
-                </div>
-                <div class="form-group">
-                    <label for="memberRole">Rolle</label>
-                    <select id="memberRole" required>
-                        <option value="member">Mitglied</option>
-                        <option value="co-leader">Co-Leiter</option>
-                        <option value="leader">Leiter</option>
-                    </select>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Hinzufügen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Add User Modal (Admin Only) -->
-    <div id="addUserModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Neues Mitglied anlegen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="addUserForm">
-                <div class="form-group">
-                    <label for="newUserName">Name</label>
-                    <input type="text" id="newUserName" required>
-                </div>
-                <div class="form-group">
-                    <label for="newUserEmail">E-Mail</label>
-                    <input type="email" id="newUserEmail" required>
-                </div>
-                <div class="form-group">
-                    <label for="newUserUsername">Benutzername</label>
-                    <input type="text" id="newUserUsername" required>
-                </div>
-                <div class="form-group">
-                    <label for="newUserPassword">Passwort</label>
-                    <input type="password" id="newUserPassword" required minlength="6">
-                    <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Mindestens 6 Zeichen</small>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="newUserIsAdmin">
-                        Als Admin anlegen
-                    </label>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Mitglied anlegen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Create Rehearsal Modal -->
-    <div id="createRehearsalModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 id="rehearsalModalTitle">Neuen Probetermin vorschlagen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="createRehearsalForm">
-                <input type="hidden" id="editRehearsalId">
-                <div class="form-group">
-                    <label for="rehearsalBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
-                    <select id="rehearsalBand" required>
-                        <option value="">Band auswählen</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="rehearsalTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
-                    <input type="text" id="rehearsalTitle" required>
-                </div>
-                <div class="form-group">
-                    <label for="rehearsalLocation">Ort (Optional)</label>
-                    <select id="rehearsalLocation">
-                        <option value="">Kein Ort ausgewählt</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="rehearsalDescription">Beschreibung</label>
-                    <textarea id="rehearsalDescription" rows="3"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="rehearsalEvent">Zugewiesener Auftritt (Optional)</label>
-                    <select id="rehearsalEvent">
-                        <option value="">Kein Auftritt ausgewählt</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Terminvorschläge</label>
-                    <div id="dateProposals" class="date-proposals" >
-                        <div class="date-proposal-item" data-confirmed="false">
-                            <div class="date-time-range">
-                                <input type="date" class="date-input-date" id="dateInputDate">
-                                <input type="time" class="date-input-start" id="dateInputStart">
-                                <span class="time-separator">bis</span>
-                                <input type="time" class="date-input-end" id="dateInputEnd">
-                            </div>
-                            <span class="date-availability" style="margin-left:8px"></span>
-                            <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
-                            <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
-                        </div>
-                    </div>
-                    <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin
-                        hinzufügen</button>
-                </div>
-                <div class="form-group checkbox-group" id="notifyMembersGroup" style="display: none;">
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="notifyMembersOnUpdate">
-                        <label for="notifyMembersOnUpdate">Update-E-Mail an alle Beteiligten senden</label>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="button" class="btn btn-danger" id="deleteRehearsalBtn"
-                        style="display:none; margin-right: auto;">🗑️ Löschen</button>
-                    <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag erstellen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Rehearsal Details Modal -->
-    <div id="rehearsalDetailsModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 id="rehearsalDetailsTitle"></h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="rehearsalDetailsContent"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Confirm Rehearsal Modal -->
-    <!-- Time Suggestion Modal -->
-    <div id="timeSuggestionModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Uhrzeit vorschlagen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="suggestTimeRehearsalId">
-                <input type="hidden" id="suggestTimeDateIndex">
-
-                <div class="form-group">
-                    <label for="suggestedTimeInput">Welche Uhrzeit würdest du vorschlagen?</label>
-                    <input type="time" id="suggestedTimeInput" class="form-control" required>
-                    <small class="help-text">Wähle eine Uhrzeit aus, die besser für dich passt</small>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="button" id="deleteTimeSuggestionBtn" class="btn btn-secondary"
-                        style="display: none;">🗑️ Vorschlag löschen</button>
-                    <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">💾 Speichern</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Confirm Rehearsal Modal -->
-    <div id="confirmRehearsalModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2>Probe bestätigen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="confirmRehearsalId">
-                <input type="hidden" id="confirmDateIndex">
-
-                <div class="section">
-                    <h3>Probendetails bearbeiten</h3>
-                    <div class="form-group">
-                        <label for="confirmRehearsalTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <input type="text" id="confirmRehearsalTitle" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmRehearsalDescription">Beschreibung (optional)</label>
-                        <textarea id="confirmRehearsalDescription" class="form-control" rows="2"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmRehearsalStartTime">Von (Start) <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <input type="datetime-local" id="confirmRehearsalStartTime" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmRehearsalEndTime">Bis (Ende) <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <input type="datetime-local" id="confirmRehearsalEndTime" class="form-control" required>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <h3>Probeort auswählen</h3>
-                    <select id="confirmRehearsalLocation" class="form-select">
-                        <option value="">Kein Ort ausgewählt</option>
-                    </select>
-                </div>
-
-                <div class="section">
-                    <h3>Bandmitglieder benachrichtigen</h3>
-                    <p class="help-text">Wähle aus, welche Bandmitglieder eine Bestätigungs-E-Mail erhalten sollen:</p>
-                    <div id="confirmMembersList" class="confirm-members-list"></div>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="button" id="sendConfirmationBtn" class="btn btn-primary">✅ Probe bestätigen & E-Mail
-                        senden</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Location Conflict Warning Modal -->
-    <div id="locationConflictModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>⚠️ Probeort belegt</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 1rem;">
-                    <strong>Der gewählte Probeort ist zu dieser Zeit bereits belegt!</strong>
-                </p>
-
-                <div id="conflictDetails" class="conflict-details"></div>
-
-                <p style="margin-top: 1rem; color: var(--color-text-secondary);">
-                    Möchtest du trotzdem fortfahren?
-                </p>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel" id="abortConfirmationBtn">Abbrechen</button>
-                    <button type="button" class="btn btn-primary" id="proceedAnywayBtn">Trotzdem fortfahren</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create Event Modal -->
-    <div id="createEventModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 id="eventModalTitle">Neuen Auftritt erstellen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="createEventForm">
-                <input type="hidden" id="editEventId">
-                <div class="form-group">
-                    <label for="eventBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
-                    <select id="eventBand" required>
-                        <option value="">Band auswählen</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="eventTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
-                    <input type="text" id="eventTitle" required>
-                </div>
-                <div class="form-group">
-                    <label for="eventDate">Datum und Uhrzeit <span style="color:red;" title="Pflichtfeld">*</span></label>
-                    <input type="datetime-local" id="eventDate" required>
-                </div>
-                <div class="form-group">
-                    <label for="eventLocation">Ort</label>
-                    <input type="text" id="eventLocation">
-                </div>
-                <div class="form-group">
-                    <label for="eventShowExtras" style="display:inline;">Gibt es weitere Infos zum Soundcheck, Event oder zur Technik?</label>
-                    <input type="checkbox" id="eventShowExtras">
-                </div>
-                <div id="eventExtrasFields" style="display:none;">
-                    <div class="form-group">
-                        <label for="eventSoundcheckLocation">Infos zum Soundcheck</label>
-                        <input type="text" id="eventSoundcheckLocation" placeholder="Uhrzeit, Datum...">
-                    </div>
-                    <div class="form-group">
-                        <label for="eventInfo">Infos zum Event</label>
-                        <textarea id="eventInfo" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="eventTechInfo">Infos zur Technik</label>
-                        <textarea id="eventTechInfo" rows="3"></textarea>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Folgende Bandmitglieder sind mit dabei</label>
-                    <div id="eventBandMembers" class="checkbox-list"></div>
-                </div>
-                <div class="form-group">
-                    <label for="eventShowGuests" style="display:inline;">Sind Gäste mit dabei?</label>
-                    <input type="checkbox" id="eventShowGuests">
-                </div>
-                <div class="form-group" id="eventGuestsField" style="display:none;">
-                    <label>Gästeliste</label>
-                    <textarea id="eventGuests" rows="2"></textarea>
-                </div>
-                <div class="form-group">
-                    <div class="section-header">
-                        <label>Setlist</label>
-                        <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">Neuen Song
-                            erstellen</button>
-                    </div>
-                    <div id="eventSongsList"></div>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt erstellen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Song Management Modal -->
-    <div id="songModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="song ModalTitle">Song hinzufügen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="songForm">
-                <input type="hidden" id="songId">
-                <input type="hidden" id="songEventId">
-                <input type="hidden" id="songBandId">
-                <div class="form-group">
-                    <label for="songTitle">Titel</label>
-                    <input type="text" id="songTitle" required>
-                </div>
-                <div class="form-group">
-                    <label for="songArtist">Interpret</label>
-                    <input type="text" id="songArtist" required>
-                </div>
-                <div class="form-group">
-                    <label for="songBPM">BPM</label>
-                    <input type="number" id="songBPM" min="1" placeholder="z.B. 120">
-                </div>
-                <div class="form-group">
-                    <label for="songKey">Tonart</label>
-                    <select id="songKey">
-                        <option value="">— Auswahl —</option>
-                        <!-- Major keys -->
-                        <option value="C">C</option>
-                        <option value="C#">C# / Db</option>
-                        <option value="D">D</option>
-                        <option value="D#">D# / Eb</option>
-                        <option value="E">E</option>
-                        <option value="F">F</option>
-                        <option value="F#">F# / Gb</option>
-                        <option value="G">G</option>
-                        <option value="G#">G# / Ab</option>
-                        <option value="A">A</option>
-                        <option value="A#">A# / Bb</option>
-                        <option value="B">B</option>
-                        <!-- Minor keys -->
-                        <option value="Cm">Cm</option>
-                        <option value="C#m">C#m / Dbm</option>
-                        <option value="Dm">Dm</option>
-                        <option value="D#m">D#m / Ebm</option>
-                        <option value="Em">Em</option>
-                        <option value="Fm">Fm</option>
-                        <option value="F#m">F#m / Gbm</option>
-                        <option value="Gm">Gm</option>
-                        <option value="G#m">G#m / Abm</option>
-                        <option value="Am">Am</option>
-                        <option value="A#m">A#m / Bbm</option>
-                        <option value="Bm">Bm</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="songCcli">Songselect CCLI Nummer (optional)</label>
-                    <input type="text" id="songCcli" placeholder="CCLI Nummer">
-                </div>
-                <div class="form-group">
-                    <label for="songLeadVocal">Lead Vocal</label>
-                    <input type="text" id="songLeadVocal" placeholder="Name des Lead-Sängers">
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Speichern</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Event Details Modal -->
-    <div id="eventDetailsModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 id="eventDetailsTitle"></h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="eventDetailsContent"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Join Band Modal -->
-    <div id="joinBandModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Band beitreten</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="joinBandForm">
-                <div class="form-group">
-                    <label for="joinBandCode">Band-Beitrittscode</label>
-                    <input type="text" id="joinBandCode" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="XXXXXX"
-                        required style="text-transform: uppercase;">
-                    <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem 6-stelligen
-                        Code</small>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Beitreten</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Absence Management Modal -->
-    <div id="absenceModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2>Meine Abwesenheiten</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <!-- Create Absence Section -->
-                <div class="section">
-                    <h3>Neue Abwesenheit eintragen</h3>
-                    <form id="createAbsenceForm">
-                        <input type="hidden" id="editAbsenceId">
-                        <div class="form-group">
-                            <label for="absenceStart">Von (Datum)</label>
-                            <input type="date" id="absenceStart" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="absenceEnd">Bis (Datum)</label>
-                            <input type="date" id="absenceEnd" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="absenceReason">Grund (optional)</label>
-                            <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
-                        </div>
-                        <div style="display:flex; gap:0.5rem; align-items:center;">
-                            <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit
-                                hinzufügen</button>
-                            <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
-                                style="display:none;">Abbrechen</button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- List Absences Section -->
-                <div class="section">
-                    <h3>Meine eingetragenen Abwesenheiten</h3>
-                    <div id="absencesList"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create News Modal -->
-    <div id="createNewsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>News erstellen</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="createNewsForm">
-                <input type="hidden" id="editNewsId">
-                <div class="form-group">
-                    <label for="newsTitle">Titel</label>
-                    <input type="text" id="newsTitle" required placeholder="z.B. Neue Feature: Abwesenheiten">
-                </div>
-                <div class="form-group">
-                    <label for="newsContent">Inhalt</label>
-                    <textarea id="newsContent" rows="5" required
-                        placeholder="Beschreibe das Update oder Feature..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="newsImages">Bilder (optional)</label>
-                    <input type="file" id="newsImages" accept="image/*" multiple>
-                    <div id="newsImagesPreview" style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Veröffentlichen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
-
-    <!-- Confirm Delete Modal -->
-    <div id="confirmDeleteModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2 id="confirmDeleteTitle">Wirklich löschen?</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="confirmDeleteMessage" style="margin: 0; color: var(--color-text-secondary);">
-                    Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
-                </p>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn cancel" id="confirmDeleteCancel">Abbrechen</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteConfirm">Löschen</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Calendar Event Detail Modal -->
-    <div id="calendarEventModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2 id="eventModalTitle">Event Details</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <div>
-                        <strong style="color: var(--color-text-secondary);">Titel:</strong>
-                        <p id="eventModalSummary" style="margin: 0.25rem 0 0 0;"></p>
-                    </div>
-                    <div>
-                        <strong style="color: var(--color-text-secondary);">Zeit:</strong>
-                        <p id="eventModalTime" style="margin: 0.25rem 0 0 0;"></p>
-                    </div>
-                    <div id="eventModalLocationContainer" style="display: none;">
-                        <strong style="color: var(--color-text-secondary);">Ort:</strong>
-                        <p id="eventModalLocation" style="margin: 0.25rem 0 0 0;"></p>
-                    </div>
-                    <div id="eventModalDescriptionContainer" style="display: none;">
-                        <strong style="color: var(--color-text-secondary);">Beschreibung:</strong>
-                        <p id="eventModalDescription" style="margin: 0.25rem 0 0 0; white-space: pre-wrap;"></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     </div> <!-- End of mainApp -->
 

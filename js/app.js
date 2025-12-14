@@ -51,7 +51,7 @@ const App = {
             UI.showToast('Fehler beim Löschen: ' + (err.message || err), 'error');
         }
     },
-setupQuickAccessEdit() {
+    setupQuickAccessEdit() {
         const editBtn = document.getElementById('editQuickAccessBtn');
         const modal = document.getElementById('quickAccessModal');
         const form = document.getElementById('quickAccessForm');
@@ -72,7 +72,7 @@ setupQuickAccessEdit() {
             let selected = [];
             try {
                 selected = JSON.parse(localStorage.getItem('quickAccessLinks') || 'null');
-            } catch {}
+            } catch { }
             if (!Array.isArray(selected) || selected.length === 0) {
                 selected = ['kalender', 'news', 'musikpool'];
             }
@@ -136,7 +136,7 @@ setupQuickAccessEdit() {
         const container = document.getElementById('headerSubmenu');
         if (!container) return;
         container.innerHTML = items.map(i => `<button type="button" class="header-submenu-btn" data-view="${i.key}" onclick="App.navigateTo('${i.key}')"><span class=\"nav-icon\">${i.icon}</span><span class=\"header-submenu-label\">${i.label}</span></button>`).join('');
-        console.log('[updateHeaderSubmenu] populated for', view, 'items:', items.map(i=>i.key));
+        console.log('[updateHeaderSubmenu] populated for', view, 'items:', items.map(i => i.key));
 
         // After rendering submenu buttons, set underline widths to match label+icon
         setTimeout(() => {
@@ -268,7 +268,7 @@ setupQuickAccessEdit() {
         // Update tooltip text
         const titleEl = document.getElementById('tourTitle');
         const bodyEl = document.getElementById('tourBody');
-        titleEl.textContent = step.title || 'Schritt ' + (idx+1);
+        titleEl.textContent = step.title || 'Schritt ' + (idx + 1);
         bodyEl.textContent = step.body || '';
 
         // Update buttons
@@ -283,7 +283,7 @@ setupQuickAccessEdit() {
 
         // Try to find a visible/fallback element if the target is hidden or tiny
         let target = el;
-        const getRect = (node) => node ? node.getBoundingClientRect() : { width: 0, height: 0, top: 0, left: 0, bottom: 0 }; 
+        const getRect = (node) => node ? node.getBoundingClientRect() : { width: 0, height: 0, top: 0, left: 0, bottom: 0 };
         let rect = getRect(target);
         if ((rect.width < 8 || rect.height < 8) && step.navigate) {
             const candidates = [
@@ -304,7 +304,7 @@ setupQuickAccessEdit() {
         }
 
         // Bring the chosen element into view
-        try { target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch {}
+        try { target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch { }
         // Recompute rect after scroll
         rect = getRect(target);
 
@@ -414,7 +414,7 @@ setupQuickAccessEdit() {
             if (!clickedItem) return;
 
             const navGroup = clickedItem.closest('.nav-group');
-            
+
             // Prüfen, ob das geklickte Element Teil einer Gruppe mit Submenü ist
             if (navGroup && navGroup.querySelector('.nav-submenu')) {
                 e.preventDefault(); // Verhindert, dass der Link (#) die Seite neu lädt oder springt
@@ -526,54 +526,54 @@ setupQuickAccessEdit() {
     },
 
     setupEventListeners() {
-                        // Zeige '+ Neuer Auftritt' nur, wenn User in mindestens einer Band ist
-                        const createEventBtn = document.getElementById('createEventBtn');
-                        const user = Auth.getCurrentUser();
-                        if (createEventBtn && user) {
-                            Storage.getUserBands(user.id).then(bands => {
-                                createEventBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
-                            });
-                        }
-                        // Ensure 'Auftritte' and 'Planung' main navigation tabs are always visible (desktop & mobile)
-                        document.querySelectorAll('.nav-item[data-view="events"], .nav-item[data-view="rehearsals"]').forEach(item => {
-                            item.style.display = '';
-                        });
-                        // Also ensure mobile tabs are always visible
-                        document.querySelectorAll('.nav-subitem[data-view="events"], .nav-subitem[data-view="rehearsals"], .nav-subitem[data-view="probeorte"], .nav-subitem[data-view="kalender"]').forEach(item => {
-                            item.style.display = '';
-                        });
+        // Zeige '+ Neuer Auftritt' nur, wenn User in mindestens einer Band ist
+        const createEventBtn = document.getElementById('createEventBtn');
+        const user = Auth.getCurrentUser();
+        if (createEventBtn && user) {
+            Storage.getUserBands(user.id).then(bands => {
+                createEventBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
+            });
+        }
+        // Ensure 'Auftritte' and 'Planung' main navigation tabs are always visible (desktop & mobile)
+        document.querySelectorAll('.nav-item[data-view="events"], .nav-item[data-view="rehearsals"]').forEach(item => {
+            item.style.display = '';
+        });
+        // Also ensure mobile tabs are always visible
+        document.querySelectorAll('.nav-subitem[data-view="events"], .nav-subitem[data-view="rehearsals"], .nav-subitem[data-view="probeorte"], .nav-subitem[data-view="kalender"]').forEach(item => {
+            item.style.display = '';
+        });
 
-                        // Hide 'Neuen Probetermin' button if user is not in a band
-                        const user2 = Auth.getCurrentUser();
-                        if (user2) {
-                            Storage.getUserBands(user2.id).then(bands => {
-                                const createRehearsalBtn = document.getElementById('createRehearsalBtn');
-                                if (createRehearsalBtn) {
-                                    createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
-                                }
-                            });
-                        }
-                // Band löschen Button
-                // (Removed duplicate deleteBandBtn handler; handled below with Bands.currentBandId)
+        // Hide 'Neuen Probetermin' button if user is not in a band
+        const user2 = Auth.getCurrentUser();
+        if (user2) {
+            Storage.getUserBands(user2.id).then(bands => {
+                const createRehearsalBtn = document.getElementById('createRehearsalBtn');
+                if (createRehearsalBtn) {
+                    createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
+                }
+            });
+        }
+        // Band löschen Button
+        // (Removed duplicate deleteBandBtn handler; handled below with Bands.currentBandId)
         // Show/hide extra event fields in modal
         const extrasCheckbox = document.getElementById('eventShowExtras');
         const extrasFields = document.getElementById('eventExtrasFields');
         const guestsCheckbox = document.getElementById('eventShowGuests');
         const guestsField = document.getElementById('eventGuestsField');
         if (extrasCheckbox && extrasFields) {
-            extrasCheckbox.addEventListener('change', function() {
+            extrasCheckbox.addEventListener('change', function () {
                 extrasFields.style.display = this.checked ? '' : 'none';
             });
         }
         if (guestsCheckbox && guestsField) {
-            guestsCheckbox.addEventListener('change', function() {
+            guestsCheckbox.addEventListener('change', function () {
                 guestsField.style.display = this.checked ? '' : 'none';
             });
         }
         // When opening the modal, reset extras and guest fields visibility
         const createEventModal = document.getElementById('createEventModal');
         if (createEventModal) {
-            createEventModal.addEventListener('show', function() {
+            createEventModal.addEventListener('show', function () {
                 if (extrasCheckbox && extrasFields) {
                     extrasFields.style.display = extrasCheckbox.checked ? '' : 'none';
                 }
@@ -590,21 +590,21 @@ setupQuickAccessEdit() {
             });
         }
 
-                // Modal: Abbrechen
-                const cancelDeleteAccountBtn = document.getElementById('cancelDeleteAccountBtn');
-                if (cancelDeleteAccountBtn) {
-                    cancelDeleteAccountBtn.addEventListener('click', () => {
-                        UI.closeModal('deleteAccountModal');
-                    });
-                }
+        // Modal: Abbrechen
+        const cancelDeleteAccountBtn = document.getElementById('cancelDeleteAccountBtn');
+        if (cancelDeleteAccountBtn) {
+            cancelDeleteAccountBtn.addEventListener('click', () => {
+                UI.closeModal('deleteAccountModal');
+            });
+        }
 
-                // Modal: Bestätigen
-                const confirmDeleteAccountBtn = document.getElementById('confirmDeleteAccountBtn');
-                if (confirmDeleteAccountBtn) {
-                    confirmDeleteAccountBtn.addEventListener('click', async () => {
-                        await App.handleDeleteAccount();
-                    });
-                }
+        // Modal: Bestätigen
+        const confirmDeleteAccountBtn = document.getElementById('confirmDeleteAccountBtn');
+        if (confirmDeleteAccountBtn) {
+            confirmDeleteAccountBtn.addEventListener('click', async () => {
+                await App.handleDeleteAccount();
+            });
+        }
         // Auth form tabs
         document.querySelectorAll('.auth-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -648,10 +648,10 @@ setupQuickAccessEdit() {
                         if (mainView) {
                             this.updateHeaderSubmenu(mainView);
                             const submenuMap = {
-                                dashboard: ['dashboard','bands','musikpool'],
-                                rehearsals: ['rehearsals','probeorte','kalender'],
+                                dashboard: ['dashboard', 'bands', 'musikpool'],
+                                rehearsals: ['rehearsals', 'probeorte', 'kalender'],
                                 events: ['events'],
-                                statistics: ['statistics','news'],
+                                statistics: ['statistics', 'news'],
                                 settings: ['settings']
                             };
                             const first = (submenuMap[mainView] && submenuMap[mainView][0]) || mainView;
@@ -1165,6 +1165,8 @@ setupQuickAccessEdit() {
             });
         }
 
+
+
         // Create absence form
         const createAbsenceForm = document.getElementById('createAbsenceForm');
         if (createAbsenceForm) {
@@ -1473,7 +1475,7 @@ setupQuickAccessEdit() {
                 }
 
                 // Recalculate underline widths in case layout changed
-                try { this.updateHeaderUnderlineWidths(); } catch (e) {}
+                try { this.updateHeaderUnderlineWidths(); } catch (e) { }
 
                 // Render specific views
                 if (view === 'bands') {
@@ -2470,11 +2472,11 @@ setupQuickAccessEdit() {
         tempModal.addEventListener('click', (e) => {
             if (e.target === tempModal) {
 
-        // Hide loading overlay after all data/UI is ready
-        if (overlay) {
-            overlay.style.opacity = '0';
-            setTimeout(() => overlay.style.display = 'none', 400);
-        }
+                // Hide loading overlay after all data/UI is ready
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 400);
+                }
                 tempModal.remove();
             }
         });
@@ -2665,10 +2667,10 @@ setupQuickAccessEdit() {
         // Show landing page instead of modal
         const landingPage = document.getElementById('landingPage');
         const mainApp = document.getElementById('mainApp');
-        
+
         if (landingPage) landingPage.classList.add('active');
         if (mainApp) mainApp.style.display = 'none';
-        
+
         document.getElementById('app').style.display = 'none';
     },
 
@@ -2677,14 +2679,17 @@ setupQuickAccessEdit() {
         // Hide landing page and show main app
         const landingPage = document.getElementById('landingPage');
         const mainApp = document.getElementById('mainApp');
-        
+
         if (landingPage) landingPage.classList.remove('active');
         if (mainApp) mainApp.style.display = 'block';
-        
+
         document.getElementById('app').style.display = 'flex';
 
         const user = Auth.getCurrentUser();
         document.getElementById('currentUserName').textContent = user.username || user.name;
+
+        // Render header profile image
+        this.renderProfileImageHeader(user);
 
         // Theme toggle header initialisieren (falls noch nicht gesetzt)
         const themeToggleHeader = document.getElementById('themeToggleHeader');
@@ -2922,7 +2927,7 @@ setupQuickAccessEdit() {
         if (updateProfileForm) {
             updateProfileForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
+
                 const username = (root.querySelector('#profileUsername') || {}).value;
                 const email = (root.querySelector('#profileEmail') || {}).value;
                 const instrument = (root.querySelector('#profileInstrument') || {}).value;
@@ -2947,6 +2952,47 @@ setupQuickAccessEdit() {
                         instrument
                     };
 
+                    // Handle Image Upload (scoped to view)
+                    const imageInput = root.querySelector('#profileImageInput');
+                    if (imageInput && imageInput.files && imageInput.files[0]) {
+                        let file = imageInput.files[0];
+                        // Compress with timeout safety
+                        try {
+                            // Race compression with a 5s timeout
+                            const compressionPromise = this.compressImage(file);
+                            const timeoutPromise = new Promise((_, reject) =>
+                                setTimeout(() => reject(new Error('Bildkomprimierung Zeitüberschreitung')), 5000)
+                            );
+                            file = await Promise.race([compressionPromise, timeoutPromise]);
+                        } catch (cErr) {
+                            console.warn('Compression failed or timed out, using original file', cErr);
+                        }
+
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+                        const filePath = `${fileName}`;
+
+                        const sb = SupabaseClient.getClient();
+
+                        const { error: uploadError } = await sb.storage
+                            .from('profile-images')
+                            .upload(filePath, file, {
+                                upsert: true
+                            });
+
+                        if (uploadError) {
+                            throw new Error('Fehler beim Bilder-Upload: ' + uploadError.message);
+                        }
+
+                        const { data } = sb.storage
+                            .from('profile-images')
+                            .getPublicUrl(filePath);
+
+                        if (data && data.publicUrl) {
+                            updates.profile_image_url = data.publicUrl;
+                        }
+                    }
+
                     console.log('Updating user profile with:', updates);
 
                     if (password && password.trim() !== '') {
@@ -2962,6 +3008,7 @@ setupQuickAccessEdit() {
                         const { error } = await sb.auth.updateUser({ email });
                         if (error) {
                             console.error('Error updating auth email:', error);
+                            UI.showToast('Hinweis: E-Mail für Login konnte nicht geändert werden.', 'warning');
                         }
                     }
 
@@ -2980,7 +3027,9 @@ setupQuickAccessEdit() {
                     console.log('Updated user:', updatedUser);
 
                     // Update header
-                    document.getElementById('currentUserName').textContent = updatedUser.username;
+                    const currentUserElem = document.getElementById('currentUserName');
+                    if (currentUserElem) currentUserElem.textContent = updatedUser.username;
+                    this.renderProfileImageHeader(updatedUser);
 
                     // Clear password field (scoped to settings view)
                     const pwdEl = root.querySelector('#profilePassword');
@@ -2998,12 +3047,15 @@ setupQuickAccessEdit() {
                     if (emailEl) emailEl.value = updatedUser.email;
                     if (instrumentEl) instrumentEl.value = updatedUser.instrument || '';
 
-                    UI.hideLoading();
                     UI.showToast('Profil erfolgreich aktualisiert!', 'success');
+
+                    // Render updated profile image
+                    this.renderProfileImageSettings(updatedUser);
                 } catch (error) {
                     console.error('Error updating profile:', error);
-                    UI.hideLoading();
                     UI.showToast('Fehler beim Aktualisieren: ' + error.message, 'error');
+                } finally {
+                    UI.hideLoading();
                 }
             });
         }
@@ -3011,6 +3063,54 @@ setupQuickAccessEdit() {
         if (isAdmin) {
             this.renderLocationsList();
             this.renderAllBandsList();
+        }
+
+        // Render profile image initially
+        this.renderProfileImageSettings(user);
+
+        // Delete profile image button (scoped)
+        const deleteImgBtn = root.querySelector('#deleteProfileImageBtn');
+        if (deleteImgBtn) {
+            // Clone to remove old listeners
+            const newBtn = deleteImgBtn.cloneNode(true);
+            deleteImgBtn.parentNode.replaceChild(newBtn, deleteImgBtn);
+
+            newBtn.addEventListener('click', async () => {
+                if (confirm('Möchtest du dein Profilbild wirklich entfernen?')) {
+                    try {
+                        UI.showLoading('Profilbild wird entfernt...');
+
+                        // Try to remove file from storage if URL exists
+                        if (user.profile_image_url) {
+                            try {
+                                const urlPart = user.profile_image_url.split('/profile-images/')[1];
+                                if (urlPart) {
+                                    const sb = SupabaseClient.getClient();
+                                    await sb.storage.from('profile-images').remove([urlPart]);
+                                }
+                            } catch (e) {
+                                console.warn('Could not remove file from storage:', e);
+                            }
+                        }
+
+                        await Storage.updateUser(user.id, { profile_image_url: null });
+                        await Auth.updateCurrentUser();
+                        const updatedUser = Auth.getCurrentUser();
+                        this.renderProfileImageSettings(updatedUser);
+                        this.renderProfileImageHeader(updatedUser);
+
+                        const imageInput = root.querySelector('#profileImageInput');
+                        if (imageInput) imageInput.value = '';
+
+                        UI.hideLoading();
+                        UI.showToast('Profilbild entfernt', 'success');
+                    } catch (err) {
+                        UI.hideLoading();
+                        console.error(err);
+                        UI.showToast('Fehler beim Entfernen: ' + err.message, 'error');
+                    }
+                }
+            });
         }
 
         // Setup absences form in settings
@@ -3240,6 +3340,78 @@ setupQuickAccessEdit() {
             await this.renderLocationsList();
             await this.renderAllBandsList();
             await this.renderUsersList();
+        }
+
+        // Render profile image for all users
+        this.renderProfileImageSettings(user);
+    },
+
+    // Render profile image in settings
+    renderProfileImageSettings(user) {
+        const containers = document.querySelectorAll('#profileImageSettingsContainer');
+        containers.forEach(container => {
+            container.innerHTML = '';
+
+            if (user.profile_image_url) {
+                const img = document.createElement('img');
+                img.src = user.profile_image_url;
+                img.alt = 'Profilbild';
+                img.style.width = '100px';
+                img.style.height = '100px';
+                img.style.borderRadius = '50%';
+                img.style.objectFit = 'cover';
+                img.style.border = '2px solid var(--color-border)';
+                container.appendChild(img);
+            } else {
+                // Render initials
+                const initials = UI.getUserInitials(user.name || user.username);
+                const placeholder = document.createElement('div');
+                placeholder.className = 'profile-initials-large';
+                placeholder.style.width = '100px';
+                placeholder.style.height = '100px';
+                placeholder.style.borderRadius = '50%';
+                placeholder.style.backgroundColor = 'var(--color-primary)';
+                placeholder.style.color = '#fff';
+                placeholder.style.display = 'flex';
+                placeholder.style.alignItems = 'center';
+                placeholder.style.justifyContent = 'center';
+                placeholder.style.fontSize = '2.5rem';
+                placeholder.style.fontWeight = 'bold';
+                placeholder.textContent = initials;
+                container.appendChild(placeholder);
+            }
+        });
+    },
+
+    // Render profile image in header
+    renderProfileImageHeader(user) {
+        const container = document.getElementById('headerProfileImage');
+        if (!container) return;
+
+        container.innerHTML = '';
+        container.style.display = 'inline-block';
+
+        if (user.profile_image_url) {
+            const img = document.createElement('img');
+            img.src = user.profile_image_url;
+            img.alt = 'Profilbild';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.borderRadius = '50%';
+            img.style.objectFit = 'cover';
+            container.appendChild(img);
+        } else {
+            // Render initials
+            const initials = UI.getUserInitials(user.name || user.username);
+            container.style.backgroundColor = '#e5e7eb'; // Default light
+            container.style.color = '#444';
+            container.textContent = initials;
+
+            // Adjust styles for text
+            container.style.lineHeight = '36px';
+            container.style.fontSize = '1.1em';
+            container.style.fontWeight = '600';
+            container.style.textAlign = 'center';
         }
     },
 
@@ -3746,12 +3918,69 @@ setupQuickAccessEdit() {
         }
     },
 
+    // Helper: Compress image if larger than 100KB
+    async compressImage(file) {
+        const MAX_SIZE = 100 * 1024; // 100KB
+        if (file.size <= MAX_SIZE) return file;
+
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Max dimensions
+                const MAX_DIMENSION = 1200;
+                if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                    if (width > height) {
+                        height = Math.round((height * MAX_DIMENSION) / width);
+                        width = MAX_DIMENSION;
+                    } else {
+                        width = Math.round((width * MAX_DIMENSION) / height);
+                        height = MAX_DIMENSION;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Reduce quality
+                let quality = 0.9;
+                const tryCompress = () => {
+                    canvas.toBlob(blob => {
+                        if (!blob) {
+                            reject(new Error('Compression failed'));
+                            return;
+                        }
+                        if (blob.size <= MAX_SIZE || quality <= 0.1) {
+                            const compressedFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now(),
+                            });
+                            resolve(compressedFile);
+                        } else {
+                            quality -= 0.1;
+                            tryCompress();
+                        }
+                    }, 'image/jpeg', quality);
+                };
+                tryCompress();
+            };
+            img.onerror = (err) => reject(err);
+        });
+    },
+
     // Handle profile update
     async handleUpdateProfile() {
         const username = document.getElementById('profileUsername').value;
         const email = document.getElementById('profileEmail').value;
         const instrument = document.getElementById('profileInstrument').value;
         const password = document.getElementById('profilePassword').value;
+        const imageInput = document.getElementById('profileImageInput');
 
         const user = Auth.getCurrentUser();
         if (!user) return;
@@ -3766,11 +3995,52 @@ setupQuickAccessEdit() {
                 instrument
             };
 
+            // Handle Image Upload
+            if (imageInput && imageInput.files && imageInput.files[0]) {
+                let file = imageInput.files[0];
+
+                // Compress if needed with timeout
+                try {
+                    const compressionPromise = this.compressImage(file);
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Bildkomprimierung Zeitüberschreitung')), 5000)
+                    );
+                    file = await Promise.race([compressionPromise, timeoutPromise]);
+                } catch (cErr) {
+                    console.warn('Image compression failed or timed out, trying original file', cErr);
+                }
+
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                const sb = SupabaseClient.getClient();
+
+                const { error: uploadError } = await sb.storage
+                    .from('profile-images')
+                    .upload(filePath, file, {
+                        upsert: true
+                    });
+
+                if (uploadError) {
+                    throw new Error('Fehler beim Bilder-Upload: ' + uploadError.message);
+                }
+
+                const { data } = sb.storage
+                    .from('profile-images')
+                    .getPublicUrl(filePath);
+
+                if (data && data.publicUrl) {
+                    updates.profile_image_url = data.publicUrl;
+                }
+            }
+
             // Update password if provided
             if (password && password.trim() !== '') {
                 updates.password = password;
             }
 
+            // Update in DB
             await Storage.updateUser(user.id, updates);
 
             // Update email in Supabase Auth if changed
@@ -3779,7 +4049,7 @@ setupQuickAccessEdit() {
                 const { error } = await sb.auth.updateUser({ email });
                 if (error) {
                     console.error('Error updating auth email:', error);
-                    UI.showToast('E-Mail in Benutzertabelle aktualisiert, aber Auth-Update fehlgeschlagen', 'warning');
+                    UI.showToast('E-Mail aktualisiert, aber Login-Email bleibt alt (Auth-Fehler)', 'warning');
                 }
             }
 
@@ -3798,24 +4068,30 @@ setupQuickAccessEdit() {
 
             // Update header
             document.getElementById('currentUserName').textContent = updatedUser.username;
+            this.renderProfileImageHeader(updatedUser);
 
             // Clear password field after successful update
             document.getElementById('profilePassword').value = '';
 
-            // Reload profile form with updated values
+            // Update inputs
             document.getElementById('profileUsername').value = updatedUser.username;
             document.getElementById('profileEmail').value = updatedUser.email;
             document.getElementById('profileInstrument').value = updatedUser.instrument || '';
 
-            UI.hideLoading();
             UI.showToast('Profil erfolgreich aktualisiert', 'success');
-            
-            // Refresh settings view to show updated values
-            await this.renderSettingsView();
+
+            // Refresh settings view to show updated values if open
+            // but handleUpdateProfile is often used from modal which might not be settings view
+            // If this is used, we might want to also re-render settings list
+            if (document.getElementById('settingsView').classList.contains('active')) {
+                await this.renderSettingsView();
+            }
+
         } catch (error) {
             console.error('Error updating profile:', error);
-            UI.hideLoading();
             UI.showToast('Fehler beim Aktualisieren: ' + error.message, 'error');
+        } finally {
+            UI.hideLoading();
         }
     },
 
@@ -4022,7 +4298,7 @@ setupQuickAccessEdit() {
             let order = [];
             try {
                 order = JSON.parse(localStorage.getItem('dashboardSectionOrder') || 'null');
-            } catch {}
+            } catch { }
             if (!Array.isArray(order) || order.length !== sectionIds.length) {
                 order = sectionIds;
             }
@@ -4118,7 +4394,7 @@ setupQuickAccessEdit() {
             let selected = [];
             try {
                 selected = JSON.parse(localStorage.getItem('quickAccessLinks') || 'null');
-            } catch {}
+            } catch { }
             if (!Array.isArray(selected) || selected.length === 0) {
                 selected = ['kalender', 'news', 'musikpool'];
             }
@@ -4471,30 +4747,30 @@ setupQuickAccessEdit() {
                         <p><strong>Ort:</strong> ${Bands.escapeHtml(location?.name || 'Unbekannt')}</p>
                         <p style="margin-top: 0.5rem;"><strong>${allConflicts.length} von ${dates.length} Terminen haben Konflikte:</strong></p>
                         ${allConflicts.map(dateConflict => {
-                            let dateLabel = '';
-                            if (dateConflict.date && typeof dateConflict.date === 'object' && dateConflict.date.startTime) {
-                                dateLabel = UI.formatDate(dateConflict.date.startTime);
-                                if (dateConflict.date.endTime) {
-                                    const start = new Date(dateConflict.date.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                    const end = new Date(dateConflict.date.endTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                    dateLabel += ` (${start} - ${end})`;
-                                }
-                            } else {
-                                dateLabel = UI.formatDate(dateConflict.date);
-                            }
-                            return `
+                    let dateLabel = '';
+                    if (dateConflict.date && typeof dateConflict.date === 'object' && dateConflict.date.startTime) {
+                        dateLabel = UI.formatDate(dateConflict.date.startTime);
+                        if (dateConflict.date.endTime) {
+                            const start = new Date(dateConflict.date.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                            const end = new Date(dateConflict.date.endTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                            dateLabel += ` (${start} - ${end})`;
+                        }
+                    } else {
+                        dateLabel = UI.formatDate(dateConflict.date);
+                    }
+                    return `
                                 <div style="margin-top: 1rem; padding: 0.75rem; background: var(--color-surface); border-radius: var(--radius-sm);">
                                     <p><strong>📅 ${dateLabel}</strong></p>
                                     <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
                                         ${dateConflict.conflicts.map(conflict => {
-                                            const start = new Date(conflict.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                            const end = new Date(conflict.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                            return `<li><strong>${Bands.escapeHtml(conflict.summary)}</strong><br><small>${start} - ${end}</small></li>`;
-                                        }).join('')}
+                        const start = new Date(conflict.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        const end = new Date(conflict.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        return `<li><strong>${Bands.escapeHtml(conflict.summary)}</strong><br><small>${start} - ${end}</small></li>`;
+                    }).join('')}
                                     </ul>
                                 </div>
                             `;
-                        }).join('')}
+                }).join('')}
                     </div>
                 `;
 
