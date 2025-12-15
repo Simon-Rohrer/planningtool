@@ -619,6 +619,32 @@ const Storage = {
             console.error('Error during cleanup:', error);
             return { deletedEventsCount: 0, deletedRehearsalsCount: 0 };
         }
+    },
+
+    // Calendar operations
+    async createCalendar(calendarData) {
+        const calendar = {
+            // Let Supabase generate the UUID
+            ...calendarData,
+            created_at: new Date().toISOString()
+        };
+        return await this.save('calendars', calendar);
+    },
+
+    async getAllCalendars() {
+        return await this.getAll('calendars');
+    },
+
+    async getCalendar(calendarId) {
+        return await this.getById('calendars', calendarId);
+    },
+
+    async updateCalendar(calendarId, updates) {
+        return await this.update('calendars', calendarId, updates);
+    },
+
+    async deleteCalendar(calendarId) {
+        return await this.delete('calendars', calendarId);
     }
 };
 

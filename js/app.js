@@ -715,6 +715,8 @@ const App = {
             this.handleLogout();
         });
 
+
+
         // Navigation - Main items and subitems
         // Remove any logic that hides the 'Planung' tab based on band membership.
         document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
@@ -1221,24 +1223,6 @@ const App = {
                 }
             });
         });
-
-        // Create location form
-        const createLocationForm = document.getElementById('createLocationForm');
-        if (createLocationForm) {
-            createLocationForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleCreateLocation();
-            });
-        }
-
-        // Edit location form
-        const editLocationForm = document.getElementById('editLocationForm');
-        if (editLocationForm) {
-            editLocationForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleEditLocation();
-            });
-        }
 
         // Update profile form
         const updateProfileForm = document.getElementById('updateProfileForm');
@@ -3409,8 +3393,35 @@ const App = {
             });
         }
 
+        // Create location form (scoped to settings view)
+        const createLocationForm = root.querySelector('#createLocationForm');
+        if (createLocationForm) {
+            // Clone to remove all old event listeners
+            const newForm = createLocationForm.cloneNode(true);
+            createLocationForm.parentNode.replaceChild(newForm, createLocationForm);
+
+            newForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleCreateLocation();
+            });
+        }
+
+        // Edit location form (scoped to settings view)
+        const editLocationForm = root.querySelector('#editLocationForm');
+        if (editLocationForm) {
+            // Clone to remove all old event listeners
+            const newEditForm = editLocationForm.cloneNode(true);
+            editLocationForm.parentNode.replaceChild(newEditForm, editLocationForm);
+
+            newEditForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleEditLocation();
+            });
+        }
+
         // Render absences list in settings
         this.renderAbsencesListSettings();
+
     },
 
     async handleCreateAbsenceFromSettings() {
@@ -3706,6 +3717,21 @@ const App = {
     async renderLocationsList() {
         const container = document.getElementById('locationsList');
         const locations = await Storage.getLocations();
+        const calendars = await Storage.getAllCalendars();
+
+        // Create map of calendar names
+        const calendarMap = {
+            'tonstudio': '🎙️ Tonstudio',
+            'festhalle': '🏛️ JMS Festhalle',
+            'ankersaal': '⚓ Ankersaal'
+        };
+
+        // Add dynamic calendars to map
+        if (calendars) {
+            calendars.forEach(cal => {
+                calendarMap[cal.id] = `📅 ${cal.name}`;
+            });
+        }
 
         console.log('[renderLocationsList] Locations:', locations);
 
@@ -3731,13 +3757,9 @@ const App = {
 
             console.log('[renderLocationsList] linkedCalendar for', loc.name, ':', linkedCalendar);
 
-            const calendarNames = {
-                'tonstudio': '🎙️ Tonstudio',
-                'festhalle': '🏛️ JMS Festhalle',
-                'ankersaal': '⚓ Ankersaal'
-            };
-
-            const linkedBadge = linkedCalendar ? `<br><span style="color: var(--color-primary); font-size: 0.875rem;">🔗 ${calendarNames[linkedCalendar]}</span>` : '';
+            const linkedBadge = linkedCalendar && calendarMap[linkedCalendar]
+                ? `<br><span style="color: var(--color-primary); font-size: 0.875rem;">🔗 ${calendarMap[linkedCalendar]}</span>`
+                : (linkedCalendar ? `<br><span class="text-muted" style="font-size: 0.875rem;">🔗 Unbekannter Kalender</span>` : '');
 
             console.log('[renderLocationsList] linkedBadge:', linkedBadge);
 
@@ -4392,7 +4414,7 @@ const App = {
 
         const name = nameInput.value;
         const address = addressInput.value;
-        const linkedCalendar = linkedCalendarSelect.value; // '' | 'tonstudio' | 'festhalle' | 'ankersaal'
+        const linkedCalendar = linkedCalendarSelect.value;
 
         if (name) {
             await Storage.createLocation({ name, address, linkedCalendar });
