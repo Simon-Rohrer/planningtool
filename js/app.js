@@ -633,8 +633,80 @@ const App = {
         });
 
         // Register form
+        const registerPasswordInput = document.getElementById('registerPassword');
+        const registerPasswordHint = document.getElementById('registerPasswordHint');
+
+        // Real-time password validation
+        if (registerPasswordInput && registerPasswordHint) {
+            registerPasswordInput.addEventListener('input', () => {
+                const password = registerPasswordInput.value;
+                if (password.length > 0 && password.length < 6) {
+                    registerPasswordHint.style.color = 'red';
+                    registerPasswordHint.textContent = 'Passwort muss mindestens 6 Zeichen haben';
+                } else if (password.length >= 6) {
+                    registerPasswordHint.style.color = 'green';
+                    registerPasswordHint.textContent = '✓ Passwort erfüllt die Anforderungen';
+                } else {
+                    registerPasswordHint.style.color = 'var(--color-text-secondary)';
+                    registerPasswordHint.textContent = 'Mindestens 6 Zeichen erforderlich';
+                }
+            });
+        }
+
+        // Real-time username validation
+        const registerUsernameInput = document.getElementById('registerUsername');
+        const usernameHint = document.getElementById('usernameHint');
+        let usernameCheckTimeout = null;
+
+        if (registerUsernameInput && usernameHint) {
+            registerUsernameInput.addEventListener('input', async () => {
+                const username = registerUsernameInput.value.trim();
+
+                // Clear previous timeout
+                if (usernameCheckTimeout) {
+                    clearTimeout(usernameCheckTimeout);
+                }
+
+                // Reset if empty
+                if (!username) {
+                    usernameHint.textContent = '';
+                    usernameHint.style.color = '#888';
+                    return;
+                }
+
+                // Show checking message
+                usernameHint.textContent = 'Prüfe Verfügbarkeit...';
+                usernameHint.style.color = '#888';
+
+                // Debounce: wait 500ms before checking
+                usernameCheckTimeout = setTimeout(async () => {
+                    try {
+                        const existingUser = await Storage.getUserByUsername(username);
+                        if (existingUser) {
+                            usernameHint.textContent = '✗ Benutzername bereits vergeben';
+                            usernameHint.style.color = 'red';
+                        } else {
+                            usernameHint.textContent = '✓ Benutzername verfügbar';
+                            usernameHint.style.color = 'green';
+                        }
+                    } catch (error) {
+                        console.error('Error checking username:', error);
+                        usernameHint.textContent = '';
+                    }
+                }, 500);
+            });
+        }
+
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // Validate password length before submitting
+            const password = document.getElementById('registerPassword').value;
+            if (password.length < 6) {
+                UI.showToast('Passwort muss mindestens 6 Zeichen lang sein', 'error');
+                return;
+            }
+
             await this.handleRegister();
         });
 
@@ -1685,11 +1757,26 @@ const App = {
         const password = document.getElementById('loginPassword').value;
         const rememberMe = arguments.length > 2 ? arguments[2] : false;
 
+        // Show the global loading overlay with guitar emoji
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
+
         try {
             await Auth.login(username, password, rememberMe);
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             UI.showToast('Erfolgreich angemeldet!', 'success');
             await this.showApp();
         } catch (error) {
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             UI.showToast(error.message, 'error');
         }
     },
@@ -1697,7 +1784,8 @@ const App = {
     // Handle registration
     async handleRegister() {
         const registrationCode = document.getElementById('registerCode').value;
-        const name = document.getElementById('registerName').value;
+        const firstName = document.getElementById('registerFirstName').value;
+        const lastName = document.getElementById('registerLastName').value;
         const email = document.getElementById('registerEmail').value;
         const username = document.getElementById('registerUsername').value;
         const password = document.getElementById('registerPassword').value;
@@ -1709,16 +1797,21 @@ const App = {
             return;
         }
 
+        // Show the global loading overlay with guitar emoji
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
+
         try {
-            UI.showLoading('Registriere Benutzer...');
             const instrument = document.getElementById('registerInstrument').value;
-            await Auth.register(registrationCode, name, email, username, password, instrument);
+            await Auth.register(registrationCode, firstName, lastName, email, username, password, instrument);
 
             // Supabase Auth automatically signs in after registration
             // Now handle image upload if present
             if (imageInput && imageInput.files && imageInput.files[0]) {
                 try {
-                    UI.showLoading('Lade Profilbild hoch...');
                     const user = Auth.getCurrentUser();
                     if (user) {
                         let file = imageInput.files[0];
@@ -1764,7 +1857,10 @@ const App = {
                 }
             }
 
-            UI.hideLoading();
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             UI.showToast('Registrierung erfolgreich!', 'success');
             UI.clearForm('registerForm');
 
@@ -1774,7 +1870,10 @@ const App = {
             // Then show onboarding modal
             UI.openModal('onboardingModal');
         } catch (error) {
-            UI.hideLoading();
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             UI.showToast(error.message, 'error');
         }
     },
@@ -1787,16 +1886,18 @@ const App = {
             return;
         }
 
-        const name = document.getElementById('newUserName').value.trim();
+        const firstName = document.getElementById('newUserFirstName').value.trim();
+        const lastName = document.getElementById('newUserLastName').value.trim();
         const email = document.getElementById('newUserEmail').value.trim();
         const username = document.getElementById('newUserUsername').value.trim();
         const password = document.getElementById('newUserPassword').value;
         const isAdmin = document.getElementById('newUserIsAdmin').checked;
 
-        console.log('[handleAddUser] Form values:', { name, email, username, passwordLength: password.length, isAdmin });
+        console.log('[handleAddUser] Form values:', { firstName, lastName, email, username, passwordLength: password.length, isAdmin });
 
-        if (!name || !email || !username || !password) {
-            UI.showToast('Bitte fülle alle Felder aus', 'error');
+        if (!firstName || !lastName || !email || !username || !password) {
+            UI.showToast('Bitte alle Felder ausfüllen', 'error');
+            console.warn('[handleAddUser] Missing fields');
             return;
         }
 
@@ -1836,25 +1937,23 @@ const App = {
             }
 
             console.log('[handleAddUser] Creating user via Auth.createUserByAdmin...');
-            // Create user via Auth module (without registration code check)
-            // Note: createUserByAdmin handles temporary signOut/signIn to avoid session conflicts
-            const userId = await Auth.createUserByAdmin(name, email, username, password);
-            console.log('[handleAddUser] User created with ID:', userId);
+            const newUserId = await Auth.createUserByAdmin(firstName, lastName, email, username, password, '');
+            console.log('[handleAddUser] User created, ID:', newUserId);
 
-            // If Admin role requested, apply it now (since we are back in Admin session)
+            // If admin checkbox was checked, update role
             if (isAdmin) {
+                console.log('[handleAddUser] Setting admin role...');
                 // Wait for profile to be created by trigger
-                console.log('[handleAddUser] Waiting for profile creation to apply Admin role...');
                 let profile = null;
                 let attempts = 0;
                 while (!profile && attempts < 10) {
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    profile = await Storage.getById('users', userId);
+                    profile = await Storage.getById('users', newUserId);
                     attempts++;
                 }
 
                 if (profile) {
-                    await Storage.updateUser(userId, { isAdmin: true });
+                    await Storage.updateUser(newUserId, { role: 'admin' });
                     console.log('[handleAddUser] Admin role applied.');
                 } else {
                     console.warn('[handleAddUser] Profile not found after timeout, could not apply Admin role.');
@@ -1864,7 +1963,7 @@ const App = {
 
             clearTimeout(loadingTimeout);
             UI.hideLoading();
-            UI.showToast(`Benutzer "${name}" erfolgreich angelegt!`, 'success');
+            UI.showToast(`Benutzer "${firstName} ${lastName}" erfolgreich angelegt!`, 'success');
             UI.closeModal('addUserModal');
             UI.clearForm('addUserForm');
 
@@ -1872,7 +1971,7 @@ const App = {
             await this.renderUsersList();
             console.log('[handleAddUser] Done!');
         } catch (error) {
-            clearTimeout(loadingTimeout);
+            if (loadingTimeout) clearTimeout(loadingTimeout);
             console.error('[handleAddUser] Error:', error);
             UI.hideLoading();
             UI.showToast(error.message, 'error');
@@ -3011,6 +3110,8 @@ const App = {
         if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
 
         // Pre-fill profile form (scoped)
+        const profileFirstName = root.querySelector('#profileFirstName');
+        const profileLastName = root.querySelector('#profileLastName');
         const profileUsername = root.querySelector('#profileUsername');
         const profileEmail = root.querySelector('#profileEmail');
         const profileInstrument = root.querySelector('#profileInstrument');
@@ -3018,6 +3119,8 @@ const App = {
         const profilePasswordConfirm = root.querySelector('#profilePasswordConfirm');
         const profilePasswordConfirmGroup = root.querySelector('#profilePasswordConfirmGroup');
 
+        if (profileFirstName) profileFirstName.value = user.first_name || '';
+        if (profileLastName) profileLastName.value = user.last_name || '';
         if (profileUsername) profileUsername.value = user.username || '';
         if (profileEmail) profileEmail.value = user.email || '';
         if (profileInstrument) profileInstrument.value = user.instrument || '';
@@ -3108,6 +3211,8 @@ const App = {
             updateProfileForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
+                const firstName = (root.querySelector('#profileFirstName') || {}).value;
+                const lastName = (root.querySelector('#profileLastName') || {}).value;
                 const username = (root.querySelector('#profileUsername') || {}).value;
                 const email = (root.querySelector('#profileEmail') || {}).value;
                 const instrument = (root.querySelector('#profileInstrument') || {}).value;
@@ -3127,6 +3232,8 @@ const App = {
                 try {
                     // Update in users table
                     const updates = {
+                        first_name: firstName,
+                        last_name: lastName,
                         username,
                         email,
                         instrument
@@ -3866,11 +3973,13 @@ const App = {
             return;
         }
 
-        // Sort users: admins first, then by name
+        // Sort users: admins first, then by last name
         users.sort((a, b) => {
             if (a.isAdmin && !b.isAdmin) return -1;
             if (!a.isAdmin && b.isAdmin) return 1;
-            return (a.name || a.username).localeCompare(b.name || b.username);
+            const aName = a.last_name || a.username;
+            const bName = b.last_name || b.username;
+            return aName.localeCompare(bName);
         });
 
         container.innerHTML = await Promise.all(users.map(async user => {
@@ -3885,7 +3994,7 @@ const App = {
                     <div class="user-card-header">
                         <div class="user-card-info">
                             <h4>
-                                ${Bands.escapeHtml(user.name || user.username)}
+                                ${Bands.escapeHtml((user.first_name && user.last_name) ? `${user.first_name} ${user.last_name}` : user.username)}
                                 ${user.isAdmin ? '<span class="admin-badge">👑 ADMIN</span>' : ''}
                             </h4>
                             <div class="user-meta">
@@ -3940,7 +4049,7 @@ const App = {
                     }
 
                     const confirmed = await UI.confirmAction(
-                        `Möchtest du ${user.name || user.username} wirklich zum Admin machen? Als Admin hat dieser Benutzer vollen Zugriff auf alle Funktionen.`,
+                        `Möchtest du ${(user.first_name && user.last_name) ? `${user.first_name} ${user.last_name}` : user.username} wirklich zum Admin machen? Als Admin hat dieser Benutzer vollen Zugriff auf alle Funktionen.`,
                         'Admin-Rechte erteilen?',
                         'Zum Admin machen',
                         'btn-primary'
@@ -3967,7 +4076,7 @@ const App = {
                     }
 
                     const confirmed = await UI.confirmAction(
-                        `Möchtest du die Admin-Rechte von ${user.name || user.username} wirklich entfernen?`,
+                        `Möchtest du die Admin-Rechte von ${(user.first_name && user.last_name) ? `${user.first_name} ${user.last_name}` : user.username} wirklich entfernen?`,
                         'Admin-Rechte entfernen?',
                         'Admin entfernen',
                         'btn-secondary'
@@ -3997,7 +4106,7 @@ const App = {
                         return;
                     }
 
-                    const confirmed = await UI.confirmDelete(`Möchtest du den Benutzer ${user.name || user.username} wirklich löschen? Dies kann nicht rückgängig gemacht werden!`);
+                    const confirmed = await UI.confirmDelete(`Möchtest du den Benutzer ${(user.first_name && user.last_name) ? `${user.first_name} ${user.last_name}` : user.username} wirklich löschen? Dies kann nicht rückgängig gemacht werden!`);
                     console.log('User confirmed deletion:', confirmed);
 
                     if (confirmed) {

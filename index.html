@@ -31,6 +31,9 @@
 </head>
 
 <body>
+    <!-- Toast Notification (must be directly under body for proper z-index) -->
+    <div id="toast" class="toast"></div>
+
     <!-- Global Loading Overlay -->
     <div class="loader-container" id="globalLoadingOverlay">
         <span class="guitar-spinner">&#127928;</span>
@@ -145,8 +148,14 @@
                                 Registrierungscode ein</small>
                         </div>
                         <div class="form-group">
-                            <label for="registerName">Name <span style="color:red;" title="Pflichtfeld">*</span></label>
-                            <input type="text" id="registerName" required>
+                            <label for="registerFirstName">Vorname <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
+                            <input type="text" id="registerFirstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerLastName">Nachname <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
+                            <input type="text" id="registerLastName" required>
                         </div>
                         <div class="form-group">
                             <label for="registerEmail">E-Mail <span style="color:red;"
@@ -157,6 +166,8 @@
                             <label for="registerUsername">Benutzername <span style="color:red;"
                                     title="Pflichtfeld">*</span></label>
                             <input type="text" id="registerUsername" required>
+                            <small id="usernameHint"
+                                style="display:block; margin-top:4px; font-size:0.875rem; color:#888;"></small>
                         </div>
                         <div class="form-group">
                             <label for="registerInstrument">Instrument (optional)</label>
@@ -176,6 +187,9 @@
                             <label for="registerPassword">Passwort <span style="color:red;"
                                     title="Pflichtfeld">*</span></label>
                             <input type="password" id="registerPassword" required>
+                            <small id="registerPasswordHint"
+                                style="color: var(--color-text-secondary); font-size: 0.875rem; display: block; margin-top: 0.25rem;">Mindestens
+                                6 Zeichen erforderlich</small>
                         </div>
                         <div class="form-group">
                             <label for="registerPasswordConfirm">Passwort bestätigen <span style="color:red;"
@@ -745,6 +759,14 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
+                                    <label for="profileFirstName">Vorname</label>
+                                    <input type="text" id="profileFirstName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileLastName">Nachname</label>
+                                    <input type="text" id="profileLastName" required>
+                                </div>
+                                <div class="form-group">
                                     <label for="profileUsername">Benutzername</label>
                                     <input type="text" id="profileUsername" required>
                                 </div>
@@ -1137,8 +1159,12 @@
                 </div>
                 <form id="addUserForm">
                     <div class="form-group">
-                        <label for="newUserName">Name</label>
-                        <input type="text" id="newUserName" required>
+                        <label for="newUserFirstName">Vorname</label>
+                        <input type="text" id="newUserFirstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newUserLastName">Nachname</label>
+                        <input type="text" id="newUserLastName" required>
                     </div>
                     <div class="form-group">
                         <label for="newUserEmail">E-Mail</label>
@@ -1641,9 +1667,6 @@
             </div>
         </div>
 
-        <!-- Toast Notification -->
-        <div id="toast" class="toast"></div>
-
         <!-- Confirm Delete Modal -->
         <div id="confirmDeleteModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
@@ -1701,20 +1724,21 @@
     <!-- iCal.js library for parsing calendar data -->
     <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
-    <script src="js/supabase.js"></script>
-    <script src="js/storage.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/email-service.js"></script>
-    <script src="js/bands.js"></script>
-    <script src="js/events.js"></script>
-    <script src="js/rehearsals.js"></script>
-    <script src="js/statistics.js"></script>
-    <script src="js/calendar.js"></script>
-    <script src="js/personal-calendar.js"></script>
-    <script src="js/churchtools-api.js"></script>
-    <script src="js/musikpool.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/supabase.js?v=1.0.1"></script>
+    <script src="js/storage.js?v=1.0.1"></script>
+    <script src="js/auth.js?v=1.0.1"></script>
+    <script src="js/email-service.js?v=1.0.1"></script>
+    <script src="js/bands.js?v=1.0.1"></script>
+    <script src="js/events.js?v=1.0.1"></script>
+    <script src="js/rehearsals.js?v=1.0.1"></script>
+    <script src="js/statistics.js?v=1.0.1"></script>
+    <script src="js/calendar.js?v=1.0.1"></script>
+    <script src="js/personal-calendar.js?v=1.0.1"></script>
+    <script src="js/churchtools-api.js?v=1.0.1"></script>
+    <script src="js/musikpool.js?v=1.0.1"></script>
+    <script src="js/ui.js?v=1.0.1"></script>
+    <script src="js/app.js?v=1.0.1"></script>
+
 
     <!-- Service Worker Registration -->
     <script>

@@ -73,7 +73,7 @@ const Auth = {
         }
     },
 
-    async register(registrationCode, name, email, username, password, instrument = "") {
+    async register(registrationCode, firstName, lastName, email, username, password, instrument = "") {
         // Validate registration code first
         if (!registrationCode) {
             throw new Error('Registrierungscode ist erforderlich');
@@ -86,7 +86,7 @@ const Auth = {
         }
 
         // Validate inputs
-        if (!name || !email || !username || !password) {
+        if (!firstName || !lastName || !email || !username || !password) {
             throw new Error('Alle Felder sind erforderlich');
         }
 
@@ -113,7 +113,8 @@ const Auth = {
             options: {
                 data: {
                     username,
-                    name,
+                    first_name: firstName,
+                    last_name: lastName,
                     instrument
                 }
             }
@@ -162,8 +163,8 @@ const Auth = {
         return data.user;
     },
 
-    async createUserByAdmin(name, email, username, password, instrument = "") {
-        console.log('[createUserByAdmin] Starting with:', { name, email, username, instrument });
+    async createUserByAdmin(firstName, lastName, email, username, password, instrument = "") {
+        console.log('[createUserByAdmin] Starting with:', { firstName, lastName, email, username, instrument });
 
         // Admin creates user without registration code
         if (!this.isAdmin()) {
@@ -171,7 +172,7 @@ const Auth = {
         }
 
         // Validate inputs
-        if (!name || !email || !username || !password) {
+        if (!firstName || !lastName || !email || !username || !password) {
             throw new Error('Alle Felder sind erforderlich');
         }
 
@@ -222,7 +223,8 @@ const Auth = {
                 options: {
                     data: {
                         username,
-                        name,
+                        first_name: firstName,
+                        last_name: lastName,
                         instrument
                     },
                     emailRedirectTo: undefined // Don't send confirmation email

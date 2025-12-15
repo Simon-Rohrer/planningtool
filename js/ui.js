@@ -6,7 +6,7 @@ const UI = {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.add('active');
-            
+
             // Add click outside to close (only if not already added)
             if (!modal.dataset.hasClickOutside) {
                 modal.addEventListener('click', (e) => {
@@ -16,7 +16,7 @@ const UI = {
                 });
                 modal.dataset.hasClickOutside = 'true';
             }
-            
+
             // Add ESC key listener
             if (!modal.dataset.hasEscListener) {
                 const escHandler = (e) => {
@@ -36,7 +36,7 @@ const UI = {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('active');
-            
+
             // Remove ESC listener if exists
             if (modal._escHandler) {
                 document.removeEventListener('keydown', modal._escHandler);
@@ -79,7 +79,7 @@ const UI = {
             if (titleEl) {
                 titleEl.textContent = title;
             }
-            
+
             if (messageEl) {
                 messageEl.textContent = message;
             }
@@ -88,11 +88,11 @@ const UI = {
             const newConfirmBtn = confirmBtn.cloneNode(true);
             const newCancelBtn = cancelBtn.cloneNode(true);
             const newCloseBtn = closeBtn.cloneNode(true);
-            
+
             // Update button text and class
             newConfirmBtn.textContent = confirmText;
             newConfirmBtn.className = 'btn ' + confirmClass;
-            
+
             confirmBtn.replaceWith(newConfirmBtn);
             cancelBtn.replaceWith(newCancelBtn);
             closeBtn.replaceWith(newCloseBtn);
@@ -124,6 +124,12 @@ const UI = {
     // Toast notifications
     showToast(message, type = 'info') {
         const toast = document.getElementById('toast');
+
+        if (!toast) {
+            console.error('[UI.showToast] Toast element not found!');
+            return;
+        }
+
         toast.textContent = message;
         toast.className = 'toast show';
 
