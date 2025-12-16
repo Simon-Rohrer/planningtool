@@ -868,6 +868,20 @@
                     <!-- Locations Tab -->
                     <div id="locationsSettingsTab" class="settings-tab-content">
                         <div class="section">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div>
+                                    <h3>Kalender verwalten</h3>
+                                    <p class="help-text">Verwalte iCal-Kalender für die Verfügbarkeitsprüfung von
+                                        Probeorten</p>
+                                </div>
+                                <button id="addCalendarBtn" class="btn btn-primary" style="white-space: nowrap;">
+                                    ➕ Neuen Kalender hinzufügen
+                                </button>
+                            </div>
+                            <div id="calendarsList" class="calendars-list"></div>
+                        </div>
+                        <div class="section">
                             <h3>Neuen Probeort hinzufügen</h3>
                             <form id="createLocationForm" class="inline-form">
                                 <div class="form-group">
@@ -1385,6 +1399,76 @@
                         <button type="button" class="btn btn-primary" id="proceedAnywayBtn">Trotzdem fortfahren</button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Calendar Modal -->
+        <div id="calendarModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="calendarModalTitle">Neuen Kalender hinzufügen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="calendarForm">
+                    <input type="hidden" id="editCalendarId">
+                    <div class="form-group">
+                        <label for="calendarName">Name <span style="color:red;" title="Pflichtfeld">*</span></label>
+                        <input type="text" id="calendarName" placeholder="z.B. Mein Proberaum" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="calendarIcon">Icon (Emoji)</label>
+                        <input type="text" id="calendarIcon" placeholder="📅" maxlength="2"
+                            style="font-size: 1.5rem; text-align: center;">
+                        <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
+                            Optional: Ein Emoji zur visuellen Kennzeichnung
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="calendarUrl">iCal URL <span style="color:red;" title="Pflichtfeld">*</span></label>
+                        <input type="url" id="calendarUrl" placeholder="https://..." required>
+                        <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
+                            Die öffentliche iCal-URL des Kalenders (z.B. von Google Calendar, Outlook, etc.)
+                        </small>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Speichern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Add Calendar Modal (from location form) -->
+        <div id="quickAddCalendarModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>➕ Neuen Kalender hinzufügen</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="quickAddCalendarForm">
+                    <div class="form-group">
+                        <label for="quickCalendarName">Name <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
+                        <input type="text" id="quickCalendarName" placeholder="z.B. Mein Proberaum" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="quickCalendarIcon">Icon (Emoji)</label>
+                        <input type="text" id="quickCalendarIcon" placeholder="📅" maxlength="2"
+                            style="font-size: 1.5rem; text-align: center;">
+                    </div>
+                    <div class="form-group">
+                        <label for="quickCalendarUrl">iCal URL <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
+                        <input type="url" id="quickCalendarUrl" placeholder="https://..." required>
+                        <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
+                            Die öffentliche iCal-URL des Kalenders
+                        </small>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Kalender erstellen & verknüpfen</button>
+                    </div>
+                </form>
             </div>
         </div>
 

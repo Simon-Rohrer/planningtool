@@ -232,6 +232,11 @@ const App = {
         document.getElementById('tourPrevBtn').onclick = () => this.prevTutorialStep();
         document.getElementById('tourEndBtn').onclick = () => this.endTutorial();
 
+        // Initialize calendar module
+        if (typeof Calendar !== 'undefined' && Calendar.initCalendars) {
+            await Calendar.initCalendars();
+        }
+
         // Keyboard navigation
         this._tourKeyHandler = (e) => {
             if (e.key === 'Escape') this.endTutorial();
@@ -1602,6 +1607,9 @@ const App = {
                     // Update donate button visibility and link
                     this.updateDonateButton();
                 } else if (view === 'probeorte' || view === 'tonstudio') {
+                    // Render dynamic calendar tabs first
+                    await this.renderProbeorteCalendarTabs();
+
                     // Ensure tonstudio tab and container are active first
                     setTimeout(() => {
                         const tonstudioTab = document.querySelector('.calendar-tab[data-calendar="tonstudio"]');
@@ -1713,25 +1721,28 @@ const App = {
 
     // Settings tab switching
     switchSettingsTab(tabName) {
-        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
-            if (btn.dataset.tab === tabName) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
+        console.log('[switchSettingsTab] Switching to:', tabName);
+        const tabs = document.querySelectorAll('.settings-tab-content');
+        const btns = document.querySelectorAll('.settings-tab-btn');
 
-        document.querySelectorAll('.settings-tab-content').forEach(content => {
-            if (content.id === `${tabName}SettingsTab`) {
-                content.classList.add('active');
-            } else {
-                content.classList.remove('active');
-            }
-        });
+        tabs.forEach(tab => tab.classList.remove('active'));
+        btns.forEach(btn => btn.classList.remove('active'));
+
+        const targetTab = document.getElementById(`${tabName}SettingsTab`); // Corrected ID for tab content
+        const targetBtn = document.querySelector(`.settings-tab-btn[data-tab="${tabName}"]`); // Corrected selector for button
+
+        if (targetTab) targetTab.classList.add('active');
+        if (targetBtn) targetBtn.classList.add('active');
 
         // Load users list when switching to users tab
         if (tabName === 'users' && Auth.isAdmin()) {
             this.renderUsersList();
+        }
+
+        // Load calendars list when switching to locations tab
+        if (tabName === 'locations' && Auth.isAdmin()) {
+            console.log('[switchSettingsTab] Loading calendars for locations tab...');
+            this.renderCalendarsList();
         }
     },
 
@@ -3419,6 +3430,37 @@ const App = {
             });
         }
 
+        // Calendar form event listeners (only register once)
+        if (!this._calendarListenersRegistered) {
+            console.log('[setupEventListeners] Registering calendar form listeners...');
+
+            const calendarForm = document.getElementById('calendarForm');
+            if (calendarForm) {
+                calendarForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await App.handleCalendarForm();
+                }, { once: false }); // Allow multiple submissions
+            }
+
+            const quickAddCalendarForm = document.getElementById('quickAddCalendarForm');
+            if (quickAddCalendarForm) {
+                quickAddCalendarForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await App.handleQuickAddCalendarForm();
+                }, { once: false });
+            }
+
+            const addCalendarBtn = document.getElementById('addCalendarBtn');
+            if (addCalendarBtn) {
+                addCalendarBtn.addEventListener('click', async () => {
+                    await App.openCalendarModal();
+                });
+            }
+
+            this._calendarListenersRegistered = true;
+            console.log('[setupEventListeners] Calendar form listeners registered');
+        }
+
         // Render absences list in settings
         this.renderAbsencesListSettings();
 
@@ -3557,13 +3599,19 @@ const App = {
                     <strong>In Google Calendar:</strong><br>
                     Einstellungen → Kalender hinzufügen → Über URL
                 </p>
-            </div>
         `, 'info', 8000);
     },
 
     async openSettingsModal() {
-        const user = Auth.getCurrentUser();
-        const isAdmin = Auth.isAdmin();
+        console.log('[openSettingsModal] Starting...');
+        const user = Auth.currentUser;
+        if (!user) {
+            console.warn('[openSettingsModal] No user found!');
+            return;
+        }
+
+        const isAdmin = user.isAdmin || false;
+        console.log('[openSettingsModal] User:', user.email, 'isAdmin:', isAdmin);
 
         // Show/Hide tabs based on role
         const locationsTab = document.getElementById('settingsTabLocations');
@@ -3628,16 +3676,26 @@ const App = {
                     // Update donate button visibility in news view
                     await this.updateDonateButton();
                 } catch (error) {
-                    console.error('Error saving donate link:', error);
                     UI.showToast('Fehler beim Speichern: ' + error.message, 'error');
                 }
             });
         }
 
         if (isAdmin) {
+            console.log('[openSettingsModal] Admin detected, rendering calendars list...');
+            await this.renderCalendarsList();
+            console.log('[openSettingsModal] renderCalendarsList completed');
             await this.renderLocationsList();
+            await this.populateCalendarDropdowns(); // Populate calendar dropdowns
             await this.renderAllBandsList();
             await this.renderUsersList();
+
+            // Populate donate link input
+            const donateLink = await Storage.getSetting('donateLink');
+            const donateLinkInput = document.getElementById('donateLinkInput');
+            if (donateLinkInput) {
+                donateLinkInput.value = donateLink || '';
+            }
         }
 
         // Render profile image for all users
@@ -3797,6 +3855,218 @@ const App = {
                 }
             });
         });
+    },
+
+    // Render calendars list in settings
+    async renderCalendarsList() {
+        console.log('[renderCalendarsList] Starting...');
+        const container = document.getElementById('calendarsList');
+        if (!container) {
+            console.warn('[renderCalendarsList] Container not found!');
+            return;
+        }
+
+        console.log('[renderCalendarsList] Fetching calendars...');
+        const calendars = await Storage.getAllCalendars();
+        console.log('[renderCalendarsList] Got calendars:', calendars);
+
+        if (!calendars || calendars.length === 0) {
+            container.innerHTML = '<p class="text-muted">Keine Kalender vorhanden. Füge einen neuen Kalender hinzu, um zu beginnen.</p>';
+            return;
+        }
+
+        console.log('[renderCalendarsList] Rendering', calendars.length, 'calendars...');
+        container.innerHTML = calendars.map(cal => {
+            const icon = cal.icon || '📅';
+            const isSystem = cal.is_system || false;
+
+            return `
+                <div class="calendar-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);">
+                    <div>
+                        <strong>${icon} ${Bands.escapeHtml(cal.name)}</strong>
+                        ${isSystem ? '<span style="color: var(--color-text-secondary); font-size: 0.75rem; margin-left: 0.5rem;">🔒 System</span>' : ''}
+                        <br><small style="color: var(--color-text-secondary); font-size: 0.875rem; word-break: break-all;">${Bands.escapeHtml(cal.ical_url || '')}</small>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn-icon edit-calendar" data-id="${cal.id}" title="Bearbeiten">✏️</button>
+                        <button class="btn-icon delete-calendar" data-id="${cal.id}" title="Löschen" ${isSystem ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>🗑️</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        console.log('[renderCalendarsList] Adding event listeners...');
+        // Edit handlers
+        container.querySelectorAll('.edit-calendar').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const calendarId = btn.dataset.id;
+                await this.openCalendarModal(calendarId);
+            });
+        });
+
+        // Delete handlers
+        container.querySelectorAll('.delete-calendar:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const calendarId = btn.dataset.id;
+                await this.deleteCalendar(calendarId);
+            });
+        });
+
+        console.log('[renderCalendarsList] Completed!');
+    },
+
+    // Open calendar modal for add or edit
+    async openCalendarModal(calendarId = null) {
+        const modal = document.getElementById('calendarModal');
+        const form = document.getElementById('calendarForm');
+        const title = document.getElementById('calendarModalTitle');
+        const editIdInput = document.getElementById('editCalendarId');
+        const nameInput = document.getElementById('calendarName');
+        const iconInput = document.getElementById('calendarIcon');
+        const urlInput = document.getElementById('calendarUrl');
+
+        if (calendarId) {
+            // Edit mode
+            const calendar = await Storage.getCalendar(calendarId);
+            if (!calendar) {
+                UI.showToast('Kalender nicht gefunden', 'error');
+                return;
+            }
+
+            title.textContent = 'Kalender bearbeiten';
+            editIdInput.value = calendar.id;
+            nameInput.value = calendar.name;
+            iconInput.value = calendar.icon || '';
+            urlInput.value = calendar.ical_url || '';
+        } else {
+            // Add mode
+            title.textContent = 'Neuen Kalender hinzufügen';
+            editIdInput.value = '';
+            form.reset();
+        }
+
+        UI.openModal('calendarModal');
+    },
+
+    // Handle calendar form submission
+    async handleCalendarForm() {
+        console.log('[handleCalendarForm] Starting calendar form submission');
+        const editIdInput = document.getElementById('editCalendarId');
+        const nameInput = document.getElementById('calendarName');
+        const iconInput = document.getElementById('calendarIcon');
+        const urlInput = document.getElementById('calendarUrl');
+
+        const calendarId = editIdInput.value;
+        const name = nameInput.value.trim();
+        const icon = iconInput.value.trim() || '📅';
+        const icalUrl = urlInput.value.trim();
+
+        console.log('[handleCalendarForm] Form data:', { calendarId, name, icon, icalUrl });
+
+        if (!name || !icalUrl) {
+            UI.showToast('Bitte fülle alle Pflichtfelder aus', 'error');
+            return;
+        }
+
+        // Show loading indicator immediately (no delay)
+        UI.showLoading('Kalender wird gespeichert...', 0);
+
+        try {
+            console.log('[handleCalendarForm] Attempting to save calendar...');
+            let result;
+            if (calendarId) {
+                // Update existing calendar
+                console.log('[handleCalendarForm] Updating calendar with ID:', calendarId);
+                result = await Storage.updateCalendar(calendarId, {
+                    name,
+                    icon,
+                    ical_url: icalUrl
+                });
+                console.log('[handleCalendarForm] Calendar updated:', result);
+                UI.showToast('Kalender aktualisiert', 'success');
+            } else {
+                // Create new calendar
+                console.log('[handleCalendarForm] Creating new calendar...');
+                result = await Storage.createCalendar({
+                    name,
+                    icon,
+                    ical_url: icalUrl,
+                    is_system: false
+                });
+                console.log('[handleCalendarForm] Calendar created:', result);
+                UI.showToast('Kalender erstellt', 'success');
+            }
+
+            console.log('[handleCalendarForm] Closing modal and refreshing data...');
+            UI.closeModal('calendarModal');
+
+            // Refresh calendar data
+            console.log('[handleCalendarForm] Rendering calendars list...');
+            await this.renderCalendarsList();
+            console.log('[handleCalendarForm] Rendering locations list...');
+            await this.renderLocationsList();
+            console.log('[handleCalendarForm] Rendering calendar tabs...');
+            await this.renderProbeorteCalendarTabs();
+
+            // Reload Calendar module
+            console.log('[handleCalendarForm] Reinitializing Calendar module...');
+            if (typeof Calendar.initCalendars === 'function') {
+                await Calendar.initCalendars();
+            }
+
+            console.log('[handleCalendarForm] Calendar saved successfully!');
+        } catch (error) {
+            console.error('[handleCalendarForm] Error saving calendar:', error);
+            console.error('[handleCalendarForm] Error stack:', error.stack);
+            console.error('[handleCalendarForm] Error details:', {
+                message: error.message,
+                name: error.name,
+                code: error.code
+            });
+            UI.showToast('Fehler beim Speichern: ' + error.message, 'error');
+        } finally {
+            // Always hide loading indicator
+            UI.hideLoading();
+        }
+    },
+
+    // Delete calendar
+    async deleteCalendar(calendarId) {
+        const calendar = await Storage.getCalendar(calendarId);
+        if (!calendar) return;
+
+        if (calendar.is_system) {
+            UI.showToast('System-Kalender können nicht gelöscht werden', 'error');
+            return;
+        }
+
+        const confirmed = await UI.confirmDelete(`Möchtest du den Kalender "${calendar.name}" wirklich löschen? Probeorte, die mit diesem Kalender verknüpft sind, verlieren ihre Verknüpfung.`);
+
+        if (confirmed) {
+            try {
+                // Remove calendar from linked locations
+                const locations = await Storage.getLocations();
+                for (const loc of locations) {
+                    if (loc.linkedCalendar === calendarId) {
+                        await Storage.updateLocation(loc.id, { linkedCalendar: '' });
+                    }
+                }
+
+                await Storage.deleteCalendar(calendarId);
+                UI.showToast('Kalender gelöscht', 'success');
+                await this.renderCalendarsList();
+                await this.renderLocationsList();
+                await this.renderProbeorteCalendarTabs(); // Refresh calendar tabs
+
+                // Reload Calendar module
+                if (typeof Calendar.initCalendars === 'function') {
+                    await Calendar.initCalendars();
+                }
+            } catch (error) {
+                console.error('Error deleting calendar:', error);
+                UI.showToast('Fehler beim Löschen: ' + error.message, 'error');
+            }
+        }
     },
 
     // Render all bands list for management
@@ -4416,15 +4686,219 @@ const App = {
         const address = addressInput.value;
         const linkedCalendar = linkedCalendarSelect.value;
 
+        // Check if user wants to add a new calendar
+        if (linkedCalendar === '__add_new__') {
+            await this.openQuickAddCalendarModal();
+            return;
+        }
+
         if (name) {
             await Storage.createLocation({ name, address, linkedCalendar });
             nameInput.value = '';
             addressInput.value = '';
             linkedCalendarSelect.value = '';
             await this.renderLocationsList();
+            await this.populateCalendarDropdowns(); // Refresh dropdowns
             UI.showToast('Probeort erstellt', 'success');
         }
     },
+
+    // Populate calendar dropdowns dynamically
+    async populateCalendarDropdowns() {
+        const dropdowns = [
+            document.getElementById('newLocationLinkedCalendar'),
+            document.getElementById('editLocationLinkedCalendar')
+        ];
+
+        const calendars = await Storage.getAllCalendars();
+
+        dropdowns.forEach(dropdown => {
+            if (!dropdown) return;
+
+            const currentValue = dropdown.value;
+            dropdown.innerHTML = `
+                <option value="">Nicht verknüpft</option>
+                <option value="__add_new__">➕ Neuen Kalender hinzufügen...</option>
+                <option disabled>──────────</option>
+            `;
+
+            // Add system calendars first (hardcoded IDs)
+            const systemCalendarIds = ['tonstudio', 'festhalle', 'ankersaal'];
+            const systemCalendars = calendars.filter(cal =>
+                systemCalendarIds.includes(cal.id) || cal.is_system
+            );
+            const userCalendars = calendars.filter(cal =>
+                !systemCalendarIds.includes(cal.id) && !cal.is_system
+            );
+
+            systemCalendars.forEach(cal => {
+                const icon = cal.icon || '📅';
+                const option = document.createElement('option');
+                option.value = cal.id;
+                option.textContent = `${icon} ${cal.name}`;
+                dropdown.appendChild(option);
+            });
+
+            if (userCalendars.length > 0) {
+                const separator = document.createElement('option');
+                separator.disabled = true;
+                separator.textContent = '──────────';
+                dropdown.appendChild(separator);
+
+                userCalendars.forEach(cal => {
+                    const icon = cal.icon || '📅';
+                    const option = document.createElement('option');
+                    option.value = cal.id;
+                    option.textContent = `${icon} ${cal.name}`;
+                    dropdown.appendChild(option);
+                });
+            }
+
+            // Restore previous value if it still exists
+            if (currentValue && dropdown.querySelector(`option[value="${currentValue}"]`)) {
+                dropdown.value = currentValue;
+            }
+        });
+    },
+
+    // Open quick add calendar modal (from location form)
+    async openQuickAddCalendarModal() {
+        const modal = document.getElementById('quickAddCalendarModal');
+        const form = document.getElementById('quickAddCalendarForm');
+        form.reset();
+        UI.openModal('quickAddCalendarModal');
+    },
+
+    // Handle quick add calendar form
+    async handleQuickAddCalendarForm() {
+        const nameInput = document.getElementById('quickCalendarName');
+        const iconInput = document.getElementById('quickCalendarIcon');
+        const urlInput = document.getElementById('quickCalendarUrl');
+
+        const name = nameInput.value.trim();
+        const icon = iconInput.value.trim() || '📅';
+        const icalUrl = urlInput.value.trim();
+
+        if (!name || !icalUrl) {
+            UI.showToast('Bitte fülle alle Pflichtfelder aus', 'error');
+            return;
+        }
+
+        try {
+            const newCalendar = await Storage.createCalendar({
+                name,
+                icon,
+                ical_url: icalUrl,
+                is_system: false
+            });
+
+            UI.showToast('Kalender erstellt', 'success');
+            UI.closeModal('quickAddCalendarModal');
+
+            // Reload calendars and populate dropdowns
+            if (typeof Calendar.initCalendars === 'function') {
+                await Calendar.initCalendars();
+            }
+            await this.populateCalendarDropdowns();
+            await this.renderCalendarsList();
+            await this.renderProbeorteCalendarTabs(); // Refresh calendar tabs
+
+            // Select the newly created calendar in the dropdown
+            const dropdown = document.getElementById('newLocationLinkedCalendar');
+            if (dropdown && newCalendar && newCalendar.id) {
+                dropdown.value = newCalendar.id;
+            }
+        } catch (error) {
+            console.error('Error creating calendar:', error);
+            UI.showToast('Fehler beim Erstellen: ' + error.message, 'error');
+        }
+    },
+
+    // Render dynamic calendar tabs for Probeorte view
+    async renderProbeorteCalendarTabs() {
+        const calendars = await Storage.getAllCalendars();
+
+        // Get submenu container
+        const submenu = document.querySelector('#probeorteView .calendar-submenu');
+        const calendarSection = document.querySelector('#probeorteView .section');
+
+        if (!submenu || !calendarSection) {
+            console.warn('[renderProbeorteCalendarTabs] Submenu or section container not found');
+            return;
+        }
+
+        // Clear existing tabs and containers
+        submenu.innerHTML = '';
+
+        // Remove old calendar containers
+        calendarSection.querySelectorAll('.calendar-container').forEach(container => {
+            container.remove();
+        });
+
+        if (!calendars || calendars.length === 0) {
+            submenu.innerHTML = '<p style="padding: 1rem; color: var(--color-text-secondary);">Keine Kalender vorhanden</p>';
+            return;
+        }
+
+        // Sort calendars: system calendars first
+        const systemCalendars = calendars.filter(cal => cal.is_system);
+        const userCalendars = calendars.filter(cal => !cal.is_system);
+        const sortedCalendars = [...systemCalendars, ...userCalendars];
+
+        let firstCalendarId = null;
+
+        // Create tabs and containers for each calendar
+        sortedCalendars.forEach((cal, index) => {
+            const calId = cal.id;
+            const icon = cal.icon || '📅';
+            const name = cal.name;
+
+            if (index === 0) firstCalendarId = calId;
+
+            // Create tab button
+            const button = document.createElement('button');
+            button.className = `calendar-tab ${index === 0 ? 'active' : ''}`;
+            button.dataset.calendar = calId;
+            button.innerHTML = `${icon} ${name}`;
+            button.addEventListener('click', async () => {
+                // Remove active class from all tabs and containers
+                submenu.querySelectorAll('.calendar-tab').forEach(tab => tab.classList.remove('active'));
+                calendarSection.querySelectorAll('.calendar-container').forEach(cont => cont.classList.remove('active'));
+
+                // Add active class to clicked tab and its container
+                button.classList.add('active');
+                const container = document.getElementById(`${calId}Calendar`);
+                if (container) {
+                    container.classList.add('active');
+                }
+
+                // Load calendar if not yet loaded
+                if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+                    await Calendar.loadCalendar(calId);
+                }
+            });
+            submenu.appendChild(button);
+
+            // Create calendar container
+            const containerDiv = document.createElement('div');
+            containerDiv.id = `${calId}Calendar`;
+            containerDiv.className = `calendar-container ${index === 0 ? 'active' : ''}`;
+            containerDiv.innerHTML = `
+                <div id="${calId}EventsContainer" style="min-height: 400px;">
+                    <!-- Events will be rendered here -->
+                </div>
+            `;
+            calendarSection.appendChild(containerDiv);
+        });
+
+        // Load first calendar automatically
+        if (firstCalendarId && typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
+            setTimeout(() => {
+                Calendar.loadCalendar(firstCalendarId);
+            }, 100);
+        }
+    },
+
 
     // Open edit location modal
     async openEditLocationModal(locationId) {

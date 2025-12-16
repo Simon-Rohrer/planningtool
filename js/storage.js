@@ -39,13 +39,27 @@ const Storage = {
     },
 
     async save(key, item) {
+        console.log('[Storage.save] Starting save to table:', key, 'Item:', item);
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from(key).insert(item).select('*').single();
+        console.log('[Storage.save] Supabase client obtained:', sb);
+        console.log('[Storage.save] Building query for table:', key);
+
+        // Remove .single() - it might be causing the hang
+        const query = sb.from(key).insert(item).select('*');
+        console.log('[Storage.save] Query built successfully, executing...');
+
+        const { data, error } = await query;
+        console.log('[Storage.save] Query execution completed. Data:', data, 'Error:', error);
+
         if (error) {
             console.error('Supabase save error', key, error);
             throw new Error(`Fehler beim Speichern in ${key}: ${error.message}`);
         }
-        return data || item;
+
+        // Return first item if array, or the item itself
+        const result = Array.isArray(data) ? data[0] : (data || item);
+        console.log('[Storage.save] Returning data:', result);
+        return result;
     },
 
     async update(key, id, updatedItem) {
@@ -623,29 +637,161 @@ const Storage = {
 
     // Calendar operations
     async createCalendar(calendarData) {
+        console.log('[Storage.createCalendar] Starting...', calendarData);
         const calendar = {
-            // Let Supabase generate the UUID
+            id: this.generateId(), // Generate ID for new calendars
             ...calendarData,
             created_at: new Date().toISOString()
         };
-        return await this.save('calendars', calendar);
+        console.log('[Storage.createCalendar] Calendar object created:', calendar);
+
+        // Use direct fetch for calendars to avoid Supabase JS hanging issue
+        console.log('[Storage.createCalendar] Using direct REST API call...');
+        try {
+            // Get credentials from SupabaseClient
+            const sb = SupabaseClient.getClient();
+            const supabaseUrl = sb.supabaseUrl;
+            const supabaseKey = sb.supabaseKey;
+
+            console.log('[Storage.createCalendar] Using URL:', supabaseUrl);
+
+            const response = await fetch(`${supabaseUrl}/rest/v1/calendars`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(calendar)
+            });
+
+            console.log('[Storage.createCalendar] Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[Storage.createCalendar] Error response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('[Storage.createCalendar] Created successfully:', result);
+
+            return Array.isArray(result) ? result[0] : result;
+        } catch (error) {
+            console.error('[Storage.createCalendar] Fetch error:', error);
+            throw error;
+        }
     },
 
     async getAllCalendars() {
-        return await this.getAll('calendars');
+        console.log('[Storage.getAllCalendars] Using direct REST API call...');
+        try {
+            const sb = SupabaseClient.getClient();
+            const supabaseUrl = sb.supabaseUrl;
+            const supabaseKey = sb.supabaseKey;
+
+            const response = await fetch(`${supabaseUrl}/rest/v1/calendars?select=*`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`
+                },
+                cache: 'no-store'  // Prevent caching
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[Storage.getAllCalendars] Error:', errorText);
+                return [];
+            }
+
+            const data = await response.json();
+            console.log('[Storage.getAllCalendars] Loaded calendars:', data);
+            return data;
+        } catch (error) {
+            console.error('[Storage.getAllCalendars] Fetch error:', error);
+            return [];
+        }
     },
 
     async getCalendar(calendarId) {
-        return await this.getById('calendars', calendarId);
+        console.log('[Storage.getCalendar] Using direct REST API call for:', calendarId);
+        try {
+            const sb = SupabaseClient.getClient();
+            const response = await fetch(`${sb.supabaseUrl}/rest/v1/calendars?id=eq.${calendarId}&select=*`, {
+                headers: {
+                    'apikey': sb.supabaseKey,
+                    'Authorization': `Bearer ${sb.supabaseKey}`
+                }
+            });
+            const data = await response.json();
+            return Array.isArray(data) ? data[0] : data;
+        } catch (error) {
+            console.error('[Storage.getCalendar] Error:', error);
+            return null;
+        }
     },
 
     async updateCalendar(calendarId, updates) {
-        return await this.update('calendars', calendarId, updates);
+        console.log('[Storage.updateCalendar] Using direct REST API call for:', calendarId);
+        console.log('[Storage.updateCalendar] Updates:', updates);
+        try {
+            const sb = SupabaseClient.getClient();
+            const response = await fetch(`${sb.supabaseUrl}/rest/v1/calendars?id=eq.${calendarId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': sb.supabaseKey,
+                    'Authorization': `Bearer ${sb.supabaseKey}`,
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(updates)
+            });
+            console.log('[Storage.updateCalendar] Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[Storage.updateCalendar] Error response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log('[Storage.updateCalendar] Updated calendar:', data);
+            return Array.isArray(data) ? data[0] : data;
+        } catch (error) {
+            console.error('[Storage.updateCalendar] Error:', error);
+            throw error;
+        }
     },
 
     async deleteCalendar(calendarId) {
-        return await this.delete('calendars', calendarId);
-    }
+        console.log('[Storage.deleteCalendar] Using direct REST API call for:', calendarId);
+        try {
+            const sb = SupabaseClient.getClient();
+            const response = await fetch(`${sb.supabaseUrl}/rest/v1/calendars?id=eq.${calendarId}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': sb.supabaseKey,
+                    'Authorization': `Bearer ${sb.supabaseKey}`
+                }
+            });
+            console.log('[Storage.deleteCalendar] Response status:', response.status, 'OK:', response.ok);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[Storage.deleteCalendar] Error response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            console.log('[Storage.deleteCalendar] Calendar deleted successfully');
+            return response.ok;
+        } catch (error) {
+            console.error('[Storage.deleteCalendar] Error:', error);
+            throw error;
+        }
+    },
 };
 
 // Initialize storage on load

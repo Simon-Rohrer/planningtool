@@ -40,6 +40,74 @@ const Calendar = {
         this.calendars[this.currentCalendar].currentMonth = value;
     },
 
+    // Initialize calendars from database
+    async initCalendars() {
+        console.log('[Calendar] Initializing calendars from database...');
+
+        // Keep hardcoded system calendars as fallback
+        const systemCalendars = {
+            tonstudio: {
+                url: 'https://jms-altensteig.church.tools/?q=public/cr_ical&security=NfxmtRVaX40wkMxvfbpH9PRMKdJu9VDI&id=19',
+                name: 'Tonstudio',
+                icon: '🎙️',
+                events: [],
+                currentMonth: new Date(),
+                containerId: 'tonstudioEventsContainer',
+                isSystem: true
+            },
+            festhalle: {
+                url: 'https://jms-altensteig.church.tools/?q=public/cr_ical&security=bOv5OpXv4gXaRK4K9An9&id=3',
+                name: 'JMS Festhalle',
+                icon: '🏛️',
+                events: [],
+                currentMonth: new Date(),
+                containerId: 'festhalleEventsContainer',
+                isSystem: true
+            },
+            ankersaal: {
+                url: 'https://jms-altensteig.church.tools/?q=public/cr_ical&security=x135fXCcu1pJAo1xQfwfmeLuemeBfqUV&id=9',
+                name: 'Ankersaal',
+                icon: '⚓',
+                events: [],
+                currentMonth: new Date(),
+                containerId: 'ankersaalEventsContainer',
+                isSystem: true
+            }
+        };
+
+        // Load calendars from database
+        try {
+            if (typeof Storage !== 'undefined' && Storage.getAllCalendars) {
+                const dbCalendars = await Storage.getAllCalendars();
+                console.log('[Calendar] Loaded calendars from database:', dbCalendars);
+
+                // Update calendars object with DB data
+                this.calendars = { ...systemCalendars };
+
+                if (dbCalendars && dbCalendars.length > 0) {
+                    dbCalendars.forEach(cal => {
+                        const calId = cal.id;
+                        this.calendars[calId] = {
+                            url: cal.ical_url,
+                            name: cal.name,
+                            icon: cal.icon || '📅',
+                            events: [],
+                            currentMonth: new Date(),
+                            containerId: `${calId}EventsContainer`,
+                            isSystem: cal.is_system || false
+                        };
+                    });
+                }
+
+                console.log('[Calendar] Calendars initialized:', Object.keys(this.calendars));
+            }
+        } catch (error) {
+            console.error('[Calendar] Error loading calendars from database:', error);
+            // Fallback to system calendars
+            this.calendars = systemCalendars;
+        }
+    },
+
     async loadCalendar(calendarType = 'tonstudio') {
         const calendar = this.calendars[calendarType];
         if (!calendar) {
@@ -79,7 +147,7 @@ const Calendar = {
             // Use CORS proxy to fetch iCal data
             const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(calendar.url)}`;
             console.log('Fetching via proxy:', proxyUrl);
-            
+
             const response = await fetch(proxyUrl);
 
             if (!response.ok) {
@@ -140,9 +208,9 @@ const Calendar = {
     renderMonthView() {
         const calendar = this.calendars[this.currentCalendar];
         const container = document.getElementById(calendar.containerId);
-        
+
         console.log(`renderMonthView called for ${this.currentCalendar}, container:`, container);
-        
+
         if (!container) {
             console.error(`Container "${calendar.containerId}" not found in DOM!`);
             return;
@@ -219,7 +287,7 @@ const Calendar = {
         console.log(`Setting innerHTML for ${this.currentCalendar}, HTML length: ${html.length}`);
         container.innerHTML = html;
         console.log(`Container updated, new innerHTML length: ${container.innerHTML.length}`);
-        
+
         // Add click listeners to all calendar events
         container.querySelectorAll('.calendar-event').forEach(eventElement => {
             eventElement.addEventListener('click', (e) => {
@@ -244,14 +312,14 @@ const Calendar = {
             hour: '2-digit',
             minute: '2-digit'
         });
-        
+
         const endTime = event.endDate ? event.endDate.toLocaleTimeString('de-DE', {
             hour: '2-digit',
             minute: '2-digit'
         }) : null;
-        
+
         const timeDisplay = endTime ? `${startTime} - ${endTime}` : startTime;
-        
+
         // Truncate title at 15 characters
         const truncateTitle = (text, maxLength = 15) => {
             const escaped = this.escapeHtml(text);
@@ -332,7 +400,7 @@ const Calendar = {
     // Ensure a calendar is loaded (for availability checking)
     async ensureLocationCalendar(calendarId, locationName) {
         console.log(`[Calendar] ensureLocationCalendar called for: ${calendarId}, ${locationName}`);
-        
+
         // Map calendar IDs to internal calendar types
         const calendarMap = {
             'tonstudio': 'tonstudio',
@@ -340,21 +408,21 @@ const Calendar = {
             'festhalle': 'festhalle',
             'ankersaal': 'ankersaal'
         };
-        
+
         const calendarType = calendarMap[calendarId] || calendarId;
         const calendar = this.calendars[calendarType];
-        
+
         if (!calendar) {
             console.warn(`[Calendar] Unknown calendar type: ${calendarType}`);
             return;
         }
-        
+
         // Check if calendar already has events loaded
         if (calendar.events && calendar.events.length > 0) {
             console.log(`[Calendar] ${calendarType} already loaded with ${calendar.events.length} events`);
             return;
         }
-        
+
         // Load the calendar
         console.log(`[Calendar] Loading ${calendarType} calendar...`);
         try {
@@ -363,12 +431,12 @@ const Calendar = {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const icalData = await response.text();
             const jcalData = ICAL.parse(icalData);
             const comp = new ICAL.Component(jcalData);
             const vevents = comp.getAllSubcomponents('vevent');
-            
+
             calendar.events = vevents.map(vevent => {
                 const event = new ICAL.Event(vevent);
                 return {
@@ -380,7 +448,7 @@ const Calendar = {
                     uid: event.uid
                 };
             }).filter(event => event.startDate);
-            
+
             calendar.events.sort((a, b) => a.startDate - b.startDate);
             console.log(`[Calendar] ${calendarType} loaded successfully with ${calendar.events.length} events`);
         } catch (error) {
