@@ -81,7 +81,7 @@ const PersonalCalendar = {
 
     async loadUserEvents(bandIds) {
         if (!bandIds || bandIds.length === 0) return [];
-        
+
         try {
             // Try to get from Supabase
             if (SupabaseClient.client) {
@@ -90,7 +90,7 @@ const PersonalCalendar = {
                     .select('*')
                     .in('bandId', bandIds)
                     .order('date', { ascending: true });
-                
+
                 if (error) throw error;
                 return data || [];
             } else {
@@ -106,7 +106,7 @@ const PersonalCalendar = {
 
     async loadUserRehearsals(bandIds) {
         if (!bandIds || bandIds.length === 0) return [];
-        
+
         try {
             // Try to get from Supabase
             if (SupabaseClient.client) {
@@ -116,7 +116,7 @@ const PersonalCalendar = {
                     .in('bandId', bandIds)
                     .eq('status', 'confirmed')
                     .order('confirmedDate', { ascending: true });
-                
+
                 if (error) throw error;
                 return data || [];
             } else {
@@ -126,7 +126,7 @@ const PersonalCalendar = {
             console.error('[PersonalCalendar] Error loading rehearsals:', error);
             // Fallback to storage
             const allRehearsals = await Storage.getAllRehearsals() || [];
-            return allRehearsals.filter(rehearsal => 
+            return allRehearsals.filter(rehearsal =>
                 bandIds.includes(rehearsal.bandId) && rehearsal.status === 'confirmed'
             );
         }
@@ -323,7 +323,7 @@ const PersonalCalendar = {
 
     getItemsForDate(date) {
         const items = [];
-        
+
         // Add events for this date
         this.events.forEach(event => {
             const eventDate = new Date(event.date);
@@ -350,7 +350,7 @@ const PersonalCalendar = {
             const band = this.userBands.find(b => b.id === item.bandId);
             const bandName = band ? band.name : 'Unbekannte Band';
             const eventName = item.title || 'Auftritt';
-            
+
             return `
                 <div class="calendar-event event-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'event')" style="cursor: pointer;">
                     <div class="calendar-event-type">🎤 Auftritt</div>
@@ -362,7 +362,7 @@ const PersonalCalendar = {
             const band = this.userBands.find(b => b.id === item.bandId);
             const bandName = band ? band.name : 'Unbekannte Band';
             const title = item.title || 'Probe';
-            
+
             return `
                 <div class="calendar-event rehearsal-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'rehearsal')" style="cursor: pointer;">
                     <div class="calendar-event-type">📅 Probe</div>
@@ -390,7 +390,7 @@ const PersonalCalendar = {
 
     async showItemDetails(itemId, itemType) {
         let item;
-        
+
 
         if (itemType === 'event') {
             item = this.events.find(e => e.id === itemId);
@@ -410,11 +410,11 @@ const PersonalCalendar = {
 
         if (itemType === 'event') {
             const date = new Date(item.date);
-            const dateStr = date.toLocaleDateString('de-DE', { 
-                weekday: 'long', 
-                day: '2-digit', 
-                month: 'long', 
-                year: 'numeric' 
+            const dateStr = date.toLocaleDateString('de-DE', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
             });
 
             // Get band members for this event, fetch user names
@@ -492,11 +492,11 @@ const PersonalCalendar = {
             `;
         } else {
             const date = new Date(item.confirmedDate);
-            const dateStr = date.toLocaleDateString('de-DE', { 
-                weekday: 'long', 
-                day: '2-digit', 
-                month: 'long', 
-                year: 'numeric' 
+            const dateStr = date.toLocaleDateString('de-DE', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
             });
 
             // Get location details
@@ -545,7 +545,7 @@ const PersonalCalendar = {
                 const accepted = Object.values(item.responses).filter(r => r === 'accepted').length;
                 const declined = Object.values(item.responses).filter(r => r === 'declined').length;
                 const maybe = Object.values(item.responses).filter(r => r === 'maybe').length;
-                
+
                 attendanceHTML = `
                     <div style="margin-top: 1rem;">
                         <strong style="color: var(--color-text);">Zusagen:</strong>
