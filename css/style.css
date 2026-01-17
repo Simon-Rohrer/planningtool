@@ -903,6 +903,16 @@ input:checked+.slider:before {
     overflow: visible;
 }
 
+/* Desktop: move navigation into header area (no longer sidebar) */
+@media (min-width: 770px) {
+    .app-nav {
+        border-bottom: none;
+        padding: var(--spacing-sm) var(--spacing-xl);
+        position: relative;
+    }
+}
+
+
 .nav-group {
     display: flex;
     flex-direction: column;
@@ -1036,11 +1046,12 @@ input:checked+.slider:before {
     }
 
     .app-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        z-index: 1000 !important;
         padding: var(--spacing-sm) var(--spacing-xs);
         border-top: 1px solid var(--color-border);
         border-bottom: none;
@@ -1176,6 +1187,16 @@ input:checked+.slider:before {
     .nav-icon {
         font-size: 1.2rem;
         /* slightly larger icons */
+        display: inline-block !important;
+        /* ensure icons are always visible */
+        visibility: visible !important;
+    }
+
+    /* Ensure bottom nav icons are visible */
+    .app-nav .nav-icon {
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 
     /* Tap feedback */
@@ -3344,7 +3365,7 @@ s .time-suggestions-compact {
 }
 
 .header-submenu-nav {
-    /* hidden by default on desktop; enabled for <=1024px via media query below */
+    /* hidden by default on desktop; enabled for <=769px via media query below */
     display: none;
     gap: 0.4rem;
     align-items: center;
@@ -3425,8 +3446,7 @@ s .time-suggestions-compact {
     background: var(--color-bg);
 }
 
-/* Show header submenu (buttons) on mobile sizes only (<=769px).
-   Hidden for widths between 770px and 1025px. */
+/* Show header submenu (buttons) on mobile sizes only (<=769px). */
 @media (max-width: 769px) {
     .header-submenu-nav {
         display: flex;
@@ -3444,6 +3464,8 @@ s .time-suggestions-compact {
 .header-submenu-btn .nav-icon {
     margin-right: 0.35em;
     font-size: 1.05em;
+    display: inline-block !important;
+    /* Ensure icons are always visible, even on mobile */
 }
 
 /* Füge diese Styles zu deiner bestehenden style.css hinzu */
@@ -3949,14 +3971,9 @@ s .time-suggestions-compact {
     box-shadow: var(--shadow-md);
 }
 
+
 /* ===== Extra: Header compact rules for very small screens (<=380px) ===== */
 @media (max-width: 768px) {
-
-    /* hide icons in the header submenu (header area) */
-    #headerSubmenu .nav-icon,
-    #headerSubmenu .icon-img {
-        display: none !important;
-    }
 
     /* tighten spacing for header submenu buttons */
     #headerSubmenu {

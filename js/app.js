@@ -622,6 +622,45 @@ const App = {
                 await App.handleDeleteAccount();
             });
         }
+
+        // Profile image click handlers - open preview modal
+        const setupProfileImageClick = () => {
+            // Header profile image
+            const headerProfileImg = document.getElementById('headerProfileImage');
+            if (headerProfileImg) {
+                headerProfileImg.style.cursor = 'pointer';
+                headerProfileImg.addEventListener('click', () => {
+                    const user = Auth.getCurrentUser();
+                    if (user && user.profile_image_url) {
+                        const modal = document.getElementById('profileImageModal');
+                        const img = document.getElementById('profileImagePreview');
+                        img.src = user.profile_image_url;
+                        modal.classList.add('active');
+                    }
+                });
+            }
+
+            // Settings profile image
+            const observer = new MutationObserver(() => {
+                const settingsProfileImg = document.querySelector('#profileImageSettingsContainer img, #profileImageSettingsContainer span');
+                if (settingsProfileImg && !settingsProfileImg.dataset.clickHandlerAdded) {
+                    settingsProfileImg.style.cursor = 'pointer';
+                    settingsProfileImg.dataset.clickHandlerAdded = 'true';
+                    settingsProfileImg.addEventListener('click', () => {
+                        const user = Auth.getCurrentUser();
+                        if (user && user.profile_image_url) {
+                            const modal = document.getElementById('profileImageModal');
+                            const img = document.getElementById('profileImagePreview');
+                            img.src = user.profile_image_url;
+                            modal.classList.add('active');
+                        }
+                    });
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        };
+        setupProfileImageClick();
+
         // Auth form tabs
         document.querySelectorAll('.auth-tab').forEach(tab => {
             tab.addEventListener('click', () => {

@@ -261,88 +261,88 @@
                 </div>
                 <!-- Header container for submenu buttons (populated by JS) -->
                 <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
-            </header>
 
-            <!-- Navigation -->
-            <nav class="app-nav" id="appNav">
-                <!-- Home (Hauptreiter) -->
-                <div class="nav-group">
-                    <button class="nav-item nav-main active" data-view="dashboard">
-                        <span class="nav-icon">🎙️</span>
-                        <span class="nav-label">Home</span>
-                    </button>
-                    <div class="nav-submenu">
-                        <button class="nav-subitem active" data-view="dashboard">
-                            <span class="nav-icon">🏠</span>
-                            <span class="nav-label">Dashboard</span>
-                        </button>
-                        <button class="nav-subitem" data-view="bands">
-                            <span class="nav-icon">🎸</span>
-                            <span class="nav-label">Meine Bands</span>
-                        </button>
-                        <button class="nav-subitem" data-view="musikpool">
-                            <span class="nav-icon">🎵</span>
-                            <span class="nav-label">Musikerpool</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Planung (Hauptreiter) -->
-                <div class="nav-group">
-                    <button class="nav-item nav-main" data-view="rehearsals">
-                        <span class="nav-icon">🗓️</span>
-                        <span class="nav-label">Planung</span>
-                    </button>
-                    <div class="nav-submenu">
-                        <button class="nav-subitem" data-view="rehearsals">
-                            <span class="nav-icon">📅</span>
-                            <span class="nav-label">Probetermine</span>
-                        </button>
-                        <button class="nav-subitem" data-view="probeorte">
+                <!-- Navigation (now inside header on desktop) -->
+                <nav class="app-nav" id="appNav">
+                    <!-- Home (Hauptreiter) -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main active" data-view="dashboard">
                             <span class="nav-icon">🎙️</span>
-                            <span class="nav-label">Probeorte</span>
+                            <span class="nav-label">Home</span>
                         </button>
-                        <button class="nav-subitem" data-view="kalender">
-                            <span class="nav-icon">📆</span>
-                            <span class="nav-label">Mein Kalender</span>
+                        <div class="nav-submenu">
+                            <button class="nav-subitem active" data-view="dashboard">
+                                <span class="nav-icon">🏠</span>
+                                <span class="nav-label">Dashboard</span>
+                            </button>
+                            <button class="nav-subitem" data-view="bands">
+                                <span class="nav-icon">🎸</span>
+                                <span class="nav-label">Meine Bands</span>
+                            </button>
+                            <button class="nav-subitem" data-view="musikpool">
+                                <span class="nav-icon">🎵</span>
+                                <span class="nav-label">Musikerpool</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Planung (Hauptreiter) -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main" data-view="rehearsals">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-label">Planung</span>
+                        </button>
+                        <div class="nav-submenu">
+                            <button class="nav-subitem" data-view="rehearsals">
+                                <span class="nav-icon">📅</span>
+                                <span class="nav-label">Probetermine</span>
+                            </button>
+                            <button class="nav-subitem" data-view="probeorte">
+                                <span class="nav-icon">🎙️</span>
+                                <span class="nav-label">Probeorte</span>
+                            </button>
+                            <button class="nav-subitem" data-view="kalender">
+                                <span class="nav-icon">📆</span>
+                                <span class="nav-label">Mein Kalender</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Gigs -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main" data-view="events">
+                            <span class="nav-icon">🎸</span>
+                            <span class="nav-label">Auftritte</span>
                         </button>
                     </div>
-                </div>
 
-                <!-- Gigs -->
-                <div class="nav-group">
-                    <button class="nav-item nav-main" data-view="events">
-                        <span class="nav-icon">🎸</span>
-                        <span class="nav-label">Auftritte</span>
-                    </button>
-                </div>
-
-                <!-- Analyse (Hauptreiter) -->
-                <div class="nav-group">
-                    <button class="nav-item nav-main" data-view="statistics">
-                        <span class="nav-icon">📊</span>
-                        <span class="nav-label">Analyse</span>
-                    </button>
-                    <div class="nav-submenu">
-                        <button class="nav-subitem" data-view="statistics">
+                    <!-- Analyse (Hauptreiter) -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main" data-view="statistics">
                             <span class="nav-icon">📊</span>
-                            <span class="nav-label">Statistiken</span>
+                            <span class="nav-label">Analyse</span>
                         </button>
-                        <button class="nav-subitem" data-view="news">
-                            <span class="nav-icon">📰</span>
-                            <span class="nav-label">News & Updates</span>
+                        <div class="nav-submenu">
+                            <button class="nav-subitem" data-view="statistics">
+                                <span class="nav-icon">📊</span>
+                                <span class="nav-label">Statistiken</span>
+                            </button>
+                            <button class="nav-subitem" data-view="news">
+                                <span class="nav-icon">📰</span>
+                                <span class="nav-label">News & Updates</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Settings -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main" data-view="settings">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-label">Settings</span>
                         </button>
                     </div>
-                </div>
-
-                <!-- Settings -->
-                <div class="nav-group">
-                    <button class="nav-item nav-main" data-view="settings">
-                        <span class="nav-icon">⚙️</span>
-                        <span class="nav-label">Settings</span>
-                    </button>
-                </div>
-            </nav>
+                </nav>
+            </header>
 
             <!-- News Banner (appears when there are unread news) -->
             <div id="newsBanner" class="news-banner" style="display: none;">
@@ -1789,18 +1789,36 @@
                             <strong style="color: var(--color-text-secondary);">Zeit:</strong>
                             <p id="eventModalTime" style="margin: 0.25rem 0 0 0;"></p>
                         </div>
-                        <div id="eventModalLocationContainer" style="display: none;">
-                            <strong style="color: var(--color-text-secondary);">Ort:</strong>
-                            <p id="eventModalLocation" style="margin: 0.25rem 0 0 0;"></p>
-                        </div>
                         <div id="eventModalDescriptionContainer" style="display: none;">
                             <strong style="color: var(--color-text-secondary);">Beschreibung:</strong>
                             <p id="eventModalDescription" style="margin: 0.25rem 0 0 0; white-space: pre-wrap;"></p>
+                        </div>
+                        <div id="eventModalLocationContainer" style="display: none;">
+                            <strong style="color: var(--color-text-secondary);">Ort:</strong>
+                            <p id="eventModalLocation" style="margin: 0.25rem 0 0 0;"></p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Profile Image Preview Modal -->
+        <div id="profileImageModal" class="modal">
+            <div class="modal-content" style="max-width: 600px; text-align: center;">
+                <div class="modal-header">
+                    <h2>Profilbild</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <img id="profileImagePreview" src="" alt="Profilbild"
+                        style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+    </div>
 
     </div> <!-- End of mainApp -->
 
