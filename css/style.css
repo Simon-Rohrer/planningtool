@@ -3468,6 +3468,28 @@ s .time-suggestions-compact {
     /* Ensure icons are always visible, even on mobile */
 }
 
+/* Fix for very small screens (e.g., 390px) - ensure icons don't disappear */
+@media (max-width: 420px) {
+    .header-submenu-btn {
+        min-width: auto;
+        padding: 0.4rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .header-submenu-btn .nav-icon {
+        margin-right: 0.25em;
+        font-size: 1.1em;
+        /* Icons should be slightly larger relative to the smaller text */
+    }
+
+    .header-submenu-label {
+        /* Ensure label text doesn't wrap or get cut off */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
 /* Füge diese Styles zu deiner bestehenden style.css hinzu */
 
 /* ===== Accordion Card Styles ===== */

@@ -79,10 +79,12 @@ const Storage = {
     // User operations
     async createUser(userData) {
         const user = {
-            id: this.generateId(),
+            // CRITICAL: Don't overwrite ID if already provided (e.g., from Supabase Auth)
+            // Only generate new ID if not provided
+            id: userData.id || this.generateId(),
             ...userData,
-            bandIds: [],
-            createdAt: new Date().toISOString()
+            bandIds: userData.bandIds || [],
+            createdAt: userData.createdAt || new Date().toISOString()
         };
         return await this.save('users', user);
     },

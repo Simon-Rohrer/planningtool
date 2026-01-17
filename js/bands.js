@@ -30,11 +30,9 @@ const Bands = {
 
     // Render all user's bands
     async renderBands() {
-        // Nur laden, wenn noch keine Bands im Speicher
-        if (this.bands && Array.isArray(this.bands) && this.bands.length > 0) {
-            this.renderBandsList(this.bands);
-            return;
-        }
+        // CRITICAL FIX: Always clear cached bands to force fresh data fetch
+        // This prevents seeing old bands after logout/re-register
+        this.bands = null;
 
         const overlay = document.getElementById('globalLoadingOverlay');
         const container = document.getElementById('bandsList');
@@ -62,6 +60,9 @@ const Bands = {
             let bands = await Storage.getUserBands(user.id);
             if (!Array.isArray(bands)) bands = [];
             this.bands = bands;
+
+            // Log which bands were loaded for debugging
+            console.log('[Bands.renderBands] Loaded', bands.length, 'bands for user', user.username || user.id);
 
             if (bands.length === 0) {
                 UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');

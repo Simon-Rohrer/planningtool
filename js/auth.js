@@ -123,40 +123,58 @@ const Auth = {
         if (error) {
             console.error('Supabase signUp error:', error);
 
-            // User-friendly error messages
-            if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
-                throw new Error('Diese E-Mail-Adresse ist bereits registriert. Bitte logge dich ein oder verwende eine andere E-Mail.');
+            // CRITICAL FIX: Supabase may throw "Database error saving new user" 
+            // but the user is still created successfully. Only fail if there's 
+            // no user data returned.
+            if (!data || !data.user) {
+                // User-friendly error messages
+                if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
+                    throw new Error('Diese E-Mail-Adresse ist bereits registriert. Bitte logge dich ein oder verwende eine andere E-Mail.');
+                }
+                throw new Error(error.message || 'Registrierung fehlgeschlagen');
             }
 
-            throw new Error(error.message || 'Registrierung fehlgeschlagen');
+            // If we have user data despite the error, log it but continue
+            console.warn('[Auth.register] Supabase reported error but user was created:', error.message);
         }
 
-        // The user profile is automatically created by the trigger
-        // Wait for the trigger to complete and retry if needed
+        // The user profile should be automatically created by the trigger
+        // Wait for the trigger to complete, but if it fails, create manually
         if (data.user) {
             let profile = null;
             let attempts = 0;
-            const maxAttempts = 5;
+            const maxAttempts = 3; // Reduced from 5 to fail faster
 
+            // Try to wait for trigger-created profile
             while (!profile && attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 400));
                 profile = await Storage.getById('users', data.user.id);
                 attempts++;
             }
 
+            // If trigger didn't create profile, create it manually as fallback
             if (!profile) {
-                throw new Error('Profil konnte nicht erstellt werden. Bitte lade die Seite neu und versuche dich einzuloggen.');
+                console.log('[Auth.register] Trigger did not create profile, creating manually...');
+                try {
+                    const fullName = `${firstName} ${lastName}`;
+                    profile = await Storage.createUser({
+                        id: data.user.id,
+                        email: email,
+                        username: username,
+                        name: fullName,
+                        instrument: instrument || '',
+                        isAdmin: false
+                    });
+                    console.log('[Auth.register] Profile created manually:', profile);
+                } catch (createError) {
+                    console.error('[Auth.register] Failed to create profile manually:', createError);
+                    throw new Error('Profil konnte nicht erstellt werden. Bitte lade die Seite neu und versuche dich einzuloggen.');
+                }
+            } else {
+                console.log('[Auth.register] Profile created by trigger');
             }
 
-            // Update the profile with username/instrument if needed
-            const updateObj = {};
-            if (profile.username !== username) updateObj.username = username;
-            if (profile.instrument !== instrument) updateObj.instrument = instrument;
-            if (Object.keys(updateObj).length > 0) {
-                await Storage.update('users', data.user.id, updateObj);
-                Object.assign(profile, updateObj);
-            }
-
+            // Set the current user
             await this.setCurrentUser(data.user);
         }
 
@@ -296,6 +314,14 @@ const Auth = {
     },
 
     async logout() {
+        // Clear user state first
+        this.currentUser = null;
+        this.supabaseUser = null;
+
+        // Clear any cached session data
+        sessionStorage.removeItem('currentUser');
+
+        // Sign out from Supabase
         const sb = SupabaseClient.getClient();
         if (sb) {
             const { error } = await sb.auth.signOut();
@@ -303,8 +329,8 @@ const Auth = {
                 console.error('Supabase signOut error:', error);
             }
         }
-        this.currentUser = null;
-        this.supabaseUser = null;
+
+        console.log('[Auth.logout] User logged out and cache cleared');
     },
 
     isAuthenticated() {
