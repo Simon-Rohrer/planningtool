@@ -1,19 +1,19 @@
 // Rehearsals Management Module
 
 const Rehearsals = {
-        // Attach listeners to date/time inputs for availability checks
-        attachAvailabilityListeners(context = document) {
-            const dateInputs = context.querySelectorAll('.date-input-date');
-            const startInputs = context.querySelectorAll('.date-input-start');
-            const endInputs = context.querySelectorAll('.date-input-end');
+    // Attach listeners to date/time inputs for availability checks
+    attachAvailabilityListeners(context = document) {
+        const dateInputs = context.querySelectorAll('.date-input-date');
+        const startInputs = context.querySelectorAll('.date-input-start');
+        const endInputs = context.querySelectorAll('.date-input-end');
 
-            [...dateInputs, ...startInputs, ...endInputs].forEach(input => {
-                if (!input._availabilityBound) {
-                    input.addEventListener('change', () => this.updateAvailabilityIndicators());
-                    input._availabilityBound = true;
-                }
-            });
-        },
+        [...dateInputs, ...startInputs, ...endInputs].forEach(input => {
+            if (!input._availabilityBound) {
+                input.addEventListener('change', () => this.updateAvailabilityIndicators());
+                input._availabilityBound = true;
+            }
+        });
+    },
     currentFilter: '',
     currentRehearsalId: null,
     expandedRehearsalId: null,
@@ -47,20 +47,63 @@ const Rehearsals = {
     // Rendering der Proben-Liste (inkl. Overlay-Ausblendung und Event-Handler)
     async renderRehearsalsList(rehearsals) {
         const overlay = document.getElementById('globalLoadingOverlay');
-        const container = document.getElementById('rehearsalsList');
-        if (!rehearsals || rehearsals.length === 0) {
-            UI.showEmptyState(container, '📅', 'Noch keine Probetermine vorhanden');
-            if (overlay) {
-                overlay.style.opacity = '0';
-                setTimeout(() => overlay.style.display = 'none', 400);
-            }
+        const containerPending = document.getElementById('rehearsalsListPending');
+        const containerVoted = document.getElementById('rehearsalsListVoted');
+
+        // Safety check for containers
+        if (!containerPending || !containerVoted) {
+            console.error('Rehearsal containers not found!');
+            if (overlay) overlay.style.display = 'none';
             return;
         }
-        container.innerHTML = await Promise.all(rehearsals.map(rehearsal =>
-            this.renderRehearsalCard(rehearsal)
-        )).then(cards => cards.join(''));
-        // Add vote handlers
-        this.attachVoteHandlers(container);
+
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        // Split rehearsals
+        const pendingRehearsals = [];
+        const votedRehearsals = [];
+
+        for (const rehearsal of rehearsals) {
+            // Check if user has voted on ANY date option for this rehearsal
+            const userVotes = await Storage.getUserVotesForRehearsal(user.id, rehearsal.id);
+            const hasVoted = userVotes && userVotes.length > 0;
+
+            // Also move confirmed/cancelled rehearsals to "Voted/Done" regardless of vote
+            const isDone = rehearsal.status === 'confirmed' || rehearsal.status === 'cancelled';
+
+            if (hasVoted || isDone) {
+                votedRehearsals.push(rehearsal);
+            } else {
+                pendingRehearsals.push(rehearsal);
+            }
+        }
+
+        // Render Pending List
+        if (pendingRehearsals.length === 0) {
+            containerPending.innerHTML = '<div class="empty-section-message">Keine offenen Abstimmungen 🎉</div>';
+        } else {
+            containerPending.innerHTML = await Promise.all(pendingRehearsals.map(rehearsal =>
+                this.renderRehearsalCard(rehearsal)
+            )).then(cards => cards.join(''));
+        }
+
+        // Render Voted List
+        if (votedRehearsals.length === 0) {
+            containerVoted.innerHTML = '<div class="empty-section-message">Noch keine erledigten Abstimmungen</div>';
+        } else {
+            containerVoted.innerHTML = await Promise.all(votedRehearsals.map(rehearsal =>
+                this.renderRehearsalCard(rehearsal)
+            )).then(cards => cards.join(''));
+        }
+
+        // Add vote handlers to BOTH containers (or just document/parent since we use robust selection)
+        // Note: attachVoteHandlers selects elements from 'context'. We should pass a common parent or call twice.
+        // Actually, let's call it on the main wrapper or just call it twice. 
+        // Better: The 'rehearsalsView' contains both.
+        const viewContainer = document.getElementById('rehearsalsView');
+        this.attachVoteHandlers(viewContainer);
+
         // Hide loading overlay after all data/UI is ready
         if (overlay) {
             overlay.style.opacity = '0';
@@ -97,8 +140,8 @@ const Rehearsals = {
             if (rehearsal.proposedDates && rehearsal.proposedDates.length > 0) {
                 dateOptionsHtml = `<div class="date-options">
                     ${(await Promise.all(rehearsal.proposedDates.map((date, index) =>
-                        this.renderDateOption(rehearsal.id, date, index, user.id)
-                    ))).join('')}
+                    this.renderDateOption(rehearsal.id, date, index, user.id)
+                ))).join('')}
                 </div>`;
             } else {
                 dateOptionsHtml = `<div class="date-options empty">
@@ -589,18 +632,18 @@ const Rehearsals = {
                             <div class="date-header">
                                 ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '📅'} 
                                 ${(() => {
-                                    if (stat.date && typeof stat.date === 'object' && stat.date.startTime) {
-                                        let label = UI.formatDate(stat.date.startTime);
-                                        if (stat.date.endTime) {
-                                            const start = new Date(stat.date.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                            const end = new Date(stat.date.endTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                            label += ` (${start} - ${end})`;
-                                        }
-                                        return label;
-                                    } else {
-                                        return UI.formatDate(stat.date);
-                                    }
-                                })()}
+                if (stat.date && typeof stat.date === 'object' && stat.date.startTime) {
+                    let label = UI.formatDate(stat.date.startTime);
+                    if (stat.date.endTime) {
+                        const start = new Date(stat.date.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        const end = new Date(stat.date.endTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        label += ` (${start} - ${end})`;
+                    }
+                    return label;
+                } else {
+                    return UI.formatDate(stat.date);
+                }
+            })()}
                             </div>
                             <div class="vote-breakdown">
                                 ✅ ${stat.yesCount} können • 
@@ -921,24 +964,17 @@ const Rehearsals = {
             UI.showToast('Abstimmung gespeichert!', 'success');
         }
 
-        // Update only this rehearsal card and scroll back to it
-        const rehearsal = await Storage.getRehearsal(rehearsalId);
-        if (rehearsal) {
-            const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
-            if (card) {
-                const previousScrollY = window.scrollY;
-                const newCardHtml = await this.renderRehearsalCard(rehearsal);
-                card.outerHTML = newCardHtml;
+        // Full re-render to move card between lists (Pending <-> Voted)
+        // Ensure the current card stays expanded
+        this.expandedRehearsalId = rehearsalId;
 
-                setTimeout(() => {
-                    window.scrollTo({ top: previousScrollY });
-                    const updatedCard = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
-                    if (updatedCard) {
-                        this.attachVoteHandlers(updatedCard);
-                    }
-                }, 50);
-            }
-        }
+        // Save scroll position
+        const scrollPos = window.scrollY;
+
+        await this.renderRehearsals(this.currentFilter);
+
+        // Restore scroll position
+        window.scrollTo(0, scrollPos);
 
         if (typeof App !== 'undefined' && App.updateDashboard) {
             App.updateDashboard();
@@ -1411,12 +1447,12 @@ const Rehearsals = {
 
     // Populate statistics rehearsal select
     async populateStatsSelect() {
-                // Show loading overlay if present
-                const overlay = document.getElementById('globalLoadingOverlay');
-                if (overlay) {
-                    overlay.style.display = 'flex';
-                    overlay.style.opacity = '1';
-                }
+        // Show loading overlay if present
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
         const select = document.getElementById('statsRehearsalSelect');
         const user = Auth.getCurrentUser();
 

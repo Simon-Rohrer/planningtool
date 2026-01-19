@@ -338,6 +338,13 @@ const Storage = {
         return data || null;
     },
 
+    async getUserVotesForRehearsal(userId, rehearsalId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('votes').select('*').eq('userId', userId).eq('rehearsalId', rehearsalId);
+        if (error) { console.error('Supabase getUserVotesForRehearsal error', error); return []; }
+        return data || [];
+    },
+
     async deleteVote(voteId) {
         return await this.delete('votes', voteId);
     },

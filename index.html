@@ -23,8 +23,10 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/sidebar.css">
     <link rel="stylesheet" href="css/calendar.css">
     <link rel="stylesheet" href="css/loader.css">
+    <link rel="stylesheet" href="css/settings_modal.css">
 
     <!-- Supabase JS (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -129,12 +131,15 @@
                             <label for="loginPassword">Passwort</label>
                             <input type="password" id="loginPassword" required>
                         </div>
-                        <div class="form-group" style="margin-bottom:0.5em;">
-                            <label for="loginRememberMe" style="display:inline;">Angemeldet bleiben</label>
-                            <input type="checkbox" id="loginRememberMe" style="margin-right:0.5em;">
+                        <div class="form-actions-row">
+                            <div class="form-check">
+                                <input type="checkbox" id="loginRememberMe">
+                                <label for="loginRememberMe">Angemeldet bleiben</label>
+                            </div>
+                            <button type="button" class="btn-link forgot-password">Passwort vergessen?</button>
                         </div>
-                        <button type="button" class="btn-link forgot-password">Passwort vergessen?</button>
-                        <button type="submit" class="btn btn-primary">Anmelden</button>
+                        <button type="submit" class="btn btn-primary"
+                            style="width: 100%; margin-top: 1rem;">Anmelden</button>
                     </form>
 
                     <!-- Register Form -->
@@ -235,433 +240,524 @@
 
         <!-- Main Application -->
         <div id="app" class="app-container" style="display: none;">
-            <!-- Header -->
-            <header class="app-header">
-                <div class="header-content">
-                    <h1 class="logo">
-                        <span class="logo-emoji">🎸</span>
-                        <span class="logo-text">
-                            <span class="logo-part">Band</span>
-                            <span class="logo-part">Management</span>
-                            <span class="logo-part">Tool</span>
-                        </span>
-                    </h1>
-                    <div class="header-actions">
-                        <span id="headerProfileImage" class="profile-avatar"
-                            style="display:inline-block;vertical-align:middle;margin-right:0.5em;width:36px;height:36px;border-radius:50%;background:#e5e7eb;overflow:hidden;text-align:center;line-height:36px;font-weight:600;font-size:1.1em;color:#444;"></span>
-                        <span id="currentUserName" class="user-name">User</span>
-                        <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten"
-                            style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-left: 0.5em;">
-                            <span id="themeToggleIcon">🌙</span>
-                        </button>
-                        <button id="logoutBtn" class="btn btn-secondary">
-                            <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
-                        </button>
+
+            <!-- Purple Sidebar (Desktop only) -->
+            <aside class="app-sidebar">
+                <!-- Sidebar Branding -->
+                <div class="sidebar-brand" style="padding: var(--spacing-xl); text-align: center; color: white;">
+                    <div style="font-size: 2.5rem; margin-bottom: var(--spacing-xs);">🎸</div>
+                    <div style="font-weight: 800; font-size: 1.25rem; line-height: 1.2;">
+                        <div>Band</div>
+                        <div style="color: rgba(255,255,255,0.7);">Manager</div>
                     </div>
                 </div>
-                <!-- Header container for submenu buttons (populated by JS) -->
-                <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
 
-                <!-- Navigation (now inside header on desktop) -->
-                <nav class="app-nav" id="appNav">
-                    <!-- Home (Hauptreiter) -->
-                    <div class="nav-group">
-                        <button class="nav-item nav-main active" data-view="dashboard">
-                            <span class="nav-icon">🎙️</span>
-                            <span class="nav-label">Home</span>
-                        </button>
-                        <div class="nav-submenu">
-                            <button class="nav-subitem active" data-view="dashboard">
-                                <span class="nav-icon">🏠</span>
-                                <span class="nav-label">Dashboard</span>
-                            </button>
-                            <button class="nav-subitem" data-view="bands">
-                                <span class="nav-icon">🎸</span>
-                                <span class="nav-label">Meine Bands</span>
-                            </button>
-                            <button class="nav-subitem" data-view="musikpool">
-                                <span class="nav-icon">🎵</span>
-                                <span class="nav-label">Musikerpool</span>
-                            </button>
-                        </div>
-                    </div>
+                <!-- Profile Section Removed (now in Header) -->
 
-                    <!-- Planung (Hauptreiter) -->
-                    <div class="nav-group">
-                        <button class="nav-item nav-main" data-view="rehearsals">
-                            <span class="nav-icon">🗓️</span>
-                            <span class="nav-label">Planung</span>
-                        </button>
-                        <div class="nav-submenu">
-                            <button class="nav-subitem" data-view="rehearsals">
-                                <span class="nav-icon">📅</span>
-                                <span class="nav-label">Probetermine</span>
-                            </button>
-                            <button class="nav-subitem" data-view="probeorte">
-                                <span class="nav-icon">🎙️</span>
-                                <span class="nav-label">Probeorte</span>
-                            </button>
-                            <button class="nav-subitem" data-view="kalender">
-                                <span class="nav-icon">📆</span>
-                                <span class="nav-label">Mein Kalender</span>
-                            </button>
-                        </div>
-                    </div>
+                <!-- Navigation -->
+                <!-- Navigation -->
+                <nav class="sidebar-nav">
+                    <!-- HOME -->
+                    <div class="sidebar-section-header">Home</div>
+                    <button class="sidebar-nav-item active" data-view="dashboard">
+                        <span class="sidebar-nav-icon">🏠</span>
+                        <span class="sidebar-nav-label">Dashboard</span>
+                    </button>
+                    <button class="sidebar-nav-item" data-view="bands">
+                        <span class="sidebar-nav-icon">🎸</span>
+                        <span class="sidebar-nav-label">Meine Bands</span>
+                    </button>
+                    <button class="sidebar-nav-item" data-view="musikpool">
+                        <span class="sidebar-nav-icon">🎵</span>
+                        <span class="sidebar-nav-label">Musikerpool</span>
+                    </button>
 
-                    <!-- Gigs -->
-                    <div class="nav-group">
-                        <button class="nav-item nav-main" data-view="events">
-                            <span class="nav-icon">🎸</span>
-                            <span class="nav-label">Auftritte</span>
-                        </button>
-                    </div>
+                    <!-- PLANUNG -->
+                    <div class="sidebar-section-header">Planung</div>
+                    <button class="sidebar-nav-item" data-view="rehearsals">
+                        <span class="sidebar-nav-icon">📅</span>
+                        <span class="sidebar-nav-label">Probetermine</span>
+                    </button>
+                    <button class="sidebar-nav-item" data-view="probeorte">
+                        <span class="sidebar-nav-icon">🎙️</span>
+                        <span class="sidebar-nav-label">Probeorte</span>
+                    </button>
+                    <button class="sidebar-nav-item" data-view="kalender">
+                        <span class="sidebar-nav-icon">📆</span>
+                        <span class="sidebar-nav-label">Mein Kalender</span>
+                    </button>
 
-                    <!-- Analyse (Hauptreiter) -->
-                    <div class="nav-group">
-                        <button class="nav-item nav-main" data-view="statistics">
-                            <span class="nav-icon">📊</span>
-                            <span class="nav-label">Analyse</span>
-                        </button>
-                        <div class="nav-submenu">
-                            <button class="nav-subitem" data-view="statistics">
-                                <span class="nav-icon">📊</span>
-                                <span class="nav-label">Statistiken</span>
-                            </button>
-                            <button class="nav-subitem" data-view="news">
-                                <span class="nav-icon">📰</span>
-                                <span class="nav-label">News & Updates</span>
-                            </button>
-                        </div>
-                    </div>
+                    <!-- GIGS -->
+                    <div class="sidebar-section-header">Gigs</div>
+                    <button class="sidebar-nav-item" data-view="events">
+                        <span class="sidebar-nav-icon">🎤</span>
+                        <span class="sidebar-nav-label">Auftritte</span>
+                    </button>
 
-                    <!-- Settings -->
-                    <div class="nav-group">
-                        <button class="nav-item nav-main" data-view="settings">
-                            <span class="nav-icon">⚙️</span>
-                            <span class="nav-label">Settings</span>
-                        </button>
-                    </div>
+                    <!-- ANALYSE -->
+                    <div class="sidebar-section-header">Analyse</div>
+                    <button class="sidebar-nav-item" data-view="statistics">
+                        <span class="sidebar-nav-icon">📊</span>
+                        <span class="sidebar-nav-label">Statistiken</span>
+                    </button>
+                    <button class="sidebar-nav-item" data-view="news">
+                        <span class="sidebar-nav-icon">📰</span>
+                        <span class="sidebar-nav-label">News & Updates</span>
+                    </button>
+
+                    <!-- SYSTEM -->
+                    <div class="sidebar-section-header">System</div>
+                    <button class="sidebar-nav-item" id="openSettingsBtn">
+                        <span class="sidebar-nav-icon">⚙️</span>
+                        <span class="sidebar-nav-label">Einstellungen</span>
+                    </button>
                 </nav>
-            </header>
 
-            <!-- News Banner (appears when there are unread news) -->
-            <div id="newsBanner" class="news-banner" style="display: none;">
-                <div class="news-banner-content">
-                    <span class="news-banner-icon">📰</span>
-                    <div class="news-banner-text">
-                        <strong>Neue News verfügbar!</strong>
-                        <span id="newsBannerMessage">Es gibt ungelesene Updates</span>
-                    </div>
-                    <button id="newsBannerButton" class="btn btn-sm btn-primary">
-                        Mehr Infos
-                    </button>
-                    <button id="newsBannerClose" class="news-banner-close" title="Schließen">
-                        ×
+                <!-- Logout Button at bottom of sidebar -->
+                <div style="padding: var(--spacing-md); margin-top: auto;">
+                    <button id="sidebarLogoutBtn" class="sidebar-nav-item"
+                        style="width: 100%; justify-content: center; background: rgba(255,255,255,0.1);">
+                        <span class="sidebar-nav-icon">🚪</span>
+                        <span class="sidebar-nav-label">Abmelden</span>
                     </button>
                 </div>
-            </div>
+            </aside>
 
-            <!-- Tutorial Suggest Banner (for admins) -->
-            <div id="tutorialSuggestBanner" class="news-banner"
-                style="display: none; background: linear-gradient(90deg,#f0f7ff,#e8f4ff); border: 1px solid var(--color-border);">
-                <div class="news-banner-content">
-                    <span class="news-banner-icon">🎓</span>
-                    <div class="news-banner-text">
-                        <strong>Tutorial verfügbar</strong>
-                        <span id="tutorialBannerMessage">Möchtest du eine kurze Tour durch die App starten?</span>
-                    </div>
-                    <button id="tutorialStartBannerBtn" class="btn btn-primary">Tour starten</button>
-                    <button id="tutorialDismissBannerBtn" class="news-banner-close" title="Schließen">×</button>
-                </div>
-            </div>
+            <!-- Main Content Wrapper (right of sidebar on desktop) -->
+            <div class="app-main-wrapper">
 
-            <!-- Main Content -->
-            <main class="app-main">
-                <!-- Dashboard View -->
-                <div id="dashboardView" class="view active">
-                    <div class="view-header">
-                        <h2>Dashboard</h2>
-                    </div>
-                    <div class="dashboard-grid">
-                        <div class="dashboard-card">
-                            <div class="card-icon">🎸</div>
-                            <div class="card-content">
-                                <h3>Meine Bands</h3>
-                                <p class="card-stat" id="bandCount">0</p>
-                            </div>
-                        </div>
-                        <div class="dashboard-card">
-                            <div class="card-icon">🎤</div>
-                            <div class="card-content">
-                                <h3>Nächste Auftritte</h3>
-                                <p class="card-stat" id="upcomingEvents">0</p>
-                            </div>
-                        </div>
-                        <div class="dashboard-card">
-                            <div class="card-icon">📅</div>
-                            <div class="card-content">
-                                <h3>Abstimmungen</h3>
-                                <p class="card-stat" id="pendingVotes">0</p>
-                            </div>
-                        </div>
-                        <div class="dashboard-card">
-                            <div class="card-icon">✅</div>
-                            <div class="card-content">
-                                <h3>Geplante Proben</h3>
-                                <p class="card-stat" id="confirmedRehearsals">0</p>
-                            </div>
+                <!-- Header -->
+                <header class="app-header">
+                    <div class="header-content">
+                        <h1 class="logo">
+                            <span class="logo-emoji">🎸</span>
+                            <span class="logo-text">
+                                <span class="logo-part">Band</span>
+                                <span class="logo-part">Management</span>
+                                <span class="logo-part">Tool</span>
+                            </span>
+                        </h1>
+                        <div class="header-actions">
+                            <span id="headerProfileImage" class="profile-avatar"
+                                style="display:inline-block;vertical-align:middle;margin-right:0.5em;width:36px;height:36px;border-radius:50%;background:#e5e7eb;overflow:hidden;text-align:center;line-height:36px;font-weight:600;font-size:1.1em;color:#444;"></span>
+                            <span id="currentUserName" class="user-name">User</span>
+                            <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten"
+                                style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-left: 0.5em;">
+                                <span id="themeToggleIcon">🌙</span>
+                            </button>
+                            <button id="logoutBtn" class="btn btn-secondary">
+                                <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
+                            </button>
                         </div>
                     </div>
+                    <!-- Header container for submenu buttons (populated by JS) -->
+                    <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
 
-                    <!-- Neue Dashboard-Abschnitte -->
-                    <div class="dashboard-sections">
-                        <div class="dashboard-section" id="dashboardNewsSection">
-                            <div class="dashboard-section-header">
-                                <h3>📰 Letzte News</h3>
-                                <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
-                            </div>
-                            <div id="dashboardNewsList" class="dashboard-news-list"></div>
-                        </div>
-                        <div class="dashboard-section" id="dashboardQuickAccessSection">
-                            <div class="dashboard-section-header">
-                                <h3 style="margin: 0;">⚡ Schnellzugriff</h3>
-                                <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
-                                <button id="editQuickAccessBtn" class="btn btn-icon" title="Schnellzugriff bearbeiten"
-                                    style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-                                    ✏️
+                    <!-- Navigation (now inside header on desktop) -->
+                    <nav class="app-nav" id="appNav">
+                        <!-- Home (Hauptreiter) -->
+                        <div class="nav-group">
+                            <button class="nav-item nav-main active" data-view="dashboard">
+                                <span class="nav-icon">🎙️</span>
+                                <span class="nav-label">Home</span>
+                            </button>
+                            <div class="nav-submenu">
+                                <button class="nav-subitem active" data-view="dashboard">
+                                    <span class="nav-icon">🏠</span>
+                                    <span class="nav-label">Dashboard</span>
+                                </button>
+                                <button class="nav-subitem" data-view="bands">
+                                    <span class="nav-icon">🎸</span>
+                                    <span class="nav-label">Meine Bands</span>
+                                </button>
+                                <button class="nav-subitem" data-view="musikpool">
+                                    <span class="nav-icon">🎵</span>
+                                    <span class="nav-label">Musikerpool</span>
                                 </button>
                             </div>
-                            <div class="dashboard-quick-links" id="dashboardQuickLinks"></div>
                         </div>
-                        <div class="dashboard-section" id="dashboardCalendarSection">
-                            <div class="dashboard-section-header">
-                                <h3>📅 Eigener Kalender</h3>
-                                <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+
+                        <!-- Planung (Hauptreiter) -->
+                        <div class="nav-group">
+                            <button class="nav-item nav-main" data-view="rehearsals">
+                                <span class="nav-icon">🗓️</span>
+                                <span class="nav-label">Planung</span>
+                            </button>
+                            <div class="nav-submenu">
+                                <button class="nav-subitem" data-view="rehearsals">
+                                    <span class="nav-icon">📅</span>
+                                    <span class="nav-label">Probetermine</span>
+                                </button>
+                                <button class="nav-subitem" data-view="probeorte">
+                                    <span class="nav-icon">🎙️</span>
+                                    <span class="nav-label">Probeorte</span>
+                                </button>
+                                <button class="nav-subitem" data-view="kalender">
+                                    <span class="nav-icon">📆</span>
+                                    <span class="nav-label">Mein Kalender</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Gigs -->
+                        <div class="nav-group">
+                            <button class="nav-item nav-main" data-view="events">
+                                <span class="nav-icon">🎸</span>
+                                <span class="nav-label">Auftritte</span>
+                            </button>
+                        </div>
+
+                        <!-- Analyse (Hauptreiter) -->
+                        <div class="nav-group">
+                            <button class="nav-item nav-main" data-view="statistics">
+                                <span class="nav-icon">📊</span>
+                                <span class="nav-label">Analyse</span>
+                            </button>
+                            <div class="nav-submenu">
+                                <button class="nav-subitem" data-view="statistics">
+                                    <span class="nav-icon">📊</span>
+                                    <span class="nav-label">Statistiken</span>
+                                </button>
+                                <button class="nav-subitem" data-view="news">
+                                    <span class="nav-icon">📰</span>
+                                    <span class="nav-label">News & Updates</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Settings -->
+                        <div class="nav-group">
+                            <button class="nav-item nav-main" data-view="settings">
+                                <span class="nav-icon">⚙️</span>
+                                <span class="nav-label">Settings</span>
+                            </button>
+                        </div>
+                    </nav>
+                </header>
+
+                <!-- News Banner (appears when there are unread news) -->
+                <div id="newsBanner" class="news-banner" style="display: none;">
+                    <div class="news-banner-content">
+                        <span class="news-banner-icon">📰</span>
+                        <div class="news-banner-text">
+                            <strong>Neue News verfügbar!</strong>
+                            <span id="newsBannerMessage">Es gibt ungelesene Updates</span>
+                        </div>
+                        <button id="newsBannerButton" class="btn btn-sm btn-primary">
+                            Mehr Infos
+                        </button>
+                        <button id="newsBannerClose" class="news-banner-close" title="Schließen">
+                            ×
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tutorial Suggest Banner (for admins) -->
+                <div id="tutorialSuggestBanner" class="news-banner"
+                    style="display: none; background: linear-gradient(90deg,#f0f7ff,#e8f4ff); border: 1px solid var(--color-border);">
+                    <div class="news-banner-content">
+                        <span class="news-banner-icon">🎓</span>
+                        <div class="news-banner-text">
+                            <strong>Tutorial verfügbar</strong>
+                            <span id="tutorialBannerMessage">Möchtest du eine kurze Tour durch die App starten?</span>
+                        </div>
+                        <button id="tutorialStartBannerBtn" class="btn btn-primary">Tour starten</button>
+                        <button id="tutorialDismissBannerBtn" class="news-banner-close" title="Schließen">×</button>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <main class="app-main">
+                    <!-- Dashboard View -->
+                    <div id="dashboardView" class="view active">
+                        <div class="view-header">
+                            <h2>Dashboard</h2>
+                        </div>
+                        <div class="dashboard-grid">
+                            <div class="dashboard-card">
+                                <div class="card-icon">🎸</div>
+                                <div class="card-content">
+                                    <h3>Meine Bands</h3>
+                                    <p class="card-stat" id="bandCount">0</p>
+                                </div>
+                            </div>
+                            <div class="dashboard-card">
+                                <div class="card-icon">🎤</div>
+                                <div class="card-content">
+                                    <h3>Nächste Auftritte</h3>
+                                    <p class="card-stat" id="upcomingEvents">0</p>
+                                </div>
+                            </div>
+                            <div class="dashboard-card">
+                                <div class="card-icon">📅</div>
+                                <div class="card-content">
+                                    <h3>Abstimmungen</h3>
+                                    <p class="card-stat" id="pendingVotes">0</p>
+                                </div>
+                            </div>
+                            <div class="dashboard-card">
+                                <div class="card-icon">✅</div>
+                                <div class="card-content">
+                                    <h3>Geplante Proben</h3>
+                                    <p class="card-stat" id="confirmedRehearsals">0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Neue Dashboard-Abschnitte -->
+                        <div class="dashboard-sections">
+                            <div class="dashboard-section" id="dashboardNewsSection">
+                                <div class="dashboard-section-header">
+                                    <h3>📰 Letzte News</h3>
+                                    <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                                </div>
+                                <div id="dashboardNewsList" class="dashboard-news-list"></div>
+                            </div>
+                            <div class="dashboard-section" id="dashboardQuickAccessSection">
+                                <div class="dashboard-section-header">
+                                    <h3 style="margin: 0;">⚡ Schnellzugriff</h3>
+                                    <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                                    <button id="editQuickAccessBtn" class="btn btn-icon"
+                                        title="Schnellzugriff bearbeiten"
+                                        style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                                        ✏️
+                                    </button>
+                                </div>
+                                <div class="dashboard-quick-links" id="dashboardQuickLinks"></div>
+                            </div>
+                            <div class="dashboard-section" id="dashboardCalendarSection">
+                                <div class="dashboard-section-header">
+                                    <h3>📅 Eigener Kalender</h3>
+                                    <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                                </div>
+                                <div>
+                                    <button class="btn btn-primary" onclick="App.navigateTo('kalender')">Zum Kalender &
+                                        Export</button>
+                                </div>
+                            </div>
+                            <div class="dashboard-section" id="dashboardActivitySection">
+                                <div class="dashboard-section-header">
+                                    <h3>✨ Neue Aktivität</h3>
+                                    <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                                </div>
+                                <div id="dashboardActivityList" class="dashboard-activity-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <br>
+                            <h3>Nächste Termine</h3>
+                            <div id="upcomingList" class="rehearsal-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Bands View -->
+                    <div id="bandsView" class="view">
+                        <div class="view-header">
+                            <h2>Meine Bands</h2>
+                            <div class="view-controls">
+                                <button id="createBandBtnView" class="btn btn-primary">
+                                    + Band erstellen
+                                </button>
+                                <button id="joinBandBtn" class="btn btn-secondary btn-bands-join-modal">
+                                    Band beitreten
+                                </button>
+                            </div>
+                        </div>
+                        <div id="bandsList" class="bands-grid"></div>
+                    </div>
+
+                    <!-- Events View -->
+                    <div id="eventsView" class="view">
+                        <div class="view-header">
+                            <h2>Auftritte</h2>
+                            <div class="view-controls">
+                                <select id="eventBandFilter" class="form-select">
+                                    <option value="">Alle Bands</option>
+                                </select>
+                                <button id="createEventBtn" class="btn btn-primary">+ Neuer Auftritt</button>
+                            </div>
+                        </div>
+                        <div id="eventsList" class="events-list"></div>
+                    </div>
+
+                    <!-- Rehearsals View -->
+                    <div id="rehearsalsView" class="view">
+                        <div class="view-header">
+                            <h2>Probetermine</h2>
+                            <div class="view-controls">
+                                <select id="bandFilter" class="form-select">
+                                    <option value="">Alle Bands</option>
+                                </select>
+                                <button id="createRehearsalBtn" class="btn btn-primary">+ Neuer Probetermin</button>
+                            </div>
+                        </div>
+                        <div id="rehearsalsListPendingHeader" class="rehearsal-section-header">
+                            <h3>👋 Offene Abstimmungen</h3>
+                        </div>
+                        <div id="rehearsalsListPending" class="rehearsal-list" style="margin-bottom: 2rem;"></div>
+
+                        <div id="rehearsalsListVotedHeader" class="rehearsal-section-header">
+                            <h3>✅ Bereits abgestimmt / Erledigt</h3>
+                        </div>
+                        <div id="rehearsalsListVoted" class="rehearsal-list"></div>
+                    </div>
+
+                    <!-- Statistics View -->
+                    <div id="statisticsView" class="view">
+                        <div class="view-header">
+                            <h2>Statistiken</h2>
+                            <div style="display:flex; gap: 0.5rem; align-items:center;">
+                                <select id="statsBandSelect" class="form-select">
+                                    <option value="">Band auswählen</option>
+                                </select>
+                                <select id="statsRehearsalSelect" class="form-select">
+                                    <option value="">Probetermin auswählen</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="statisticsContent" class="statistics-content">
+                            <div class="empty-state">
+                                <div class="empty-icon">📊</div>
+                                <p>Wähle einen Probetermin aus, um die Statistiken zu sehen</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- News & Updates View -->
+                    <div id="newsView" class="view">
+                        <div class="view-header">
+                            <h2>News & Updates</h2>
+                            <div class="view-controls">
+                                <a href="#" id="donateBtn" class="btn btn-secondary"
+                                    style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                                    💖 Spenden
+                                </a>
+                                <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News
+                                    erstellen</button>
+                            </div>
+                        </div>
+                        <div id="newsContainer" class="news-content">
+                            <div class="empty-state">
+                                <div class="empty-icon">📰</div>
+                                <p>Noch keine News oder Updates vorhanden.</p>
+                                <p>Hier wirst du auf dem laufenden gehalten.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Probeorte View -->
+                    <div id="probeorteView" class="view">
+                        <div class="view-header">
+                            <h2>Probeorte Kalender</h2>
+                        </div>
+
+                        <!-- Submenu for calendar selection -->
+                        <div class="calendar-submenu">
+                            <button id="probeorteBtn" class="calendar-tab active" data-calendar="tonstudio">
+                                🎙️ Tonstudio
+                            </button>
+                            <button id="probeorteBtn" class="calendar-tab" data-calendar="festhalle">
+                                🏛️ JMS Festhalle
+                            </button>
+                            <button id="probeorteBtn" class="calendar-tab" data-calendar="ankersaal">
+                                ⚓ Ankersaal
+                            </button>
+                            <!-- refresh button removed per request -->
+                        </div>
+
+                        <div class="section">
+                            <!-- Tonstudio Calendar -->
+                            <div id="tonstudioCalendar" class="calendar-container active">
+                                <div id="tonstudioEventsContainer" style="min-height: 400px;">
+                                    <!-- Events will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- Festhalle Calendar -->
+                            <div id="festhalleCalendar" class="calendar-container">
+                                <div id="festhalleEventsContainer" style="min-height: 400px;">
+                                    <!-- Events will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- Ankersaal Calendar -->
+                            <div id="ankersaalCalendar" class="calendar-container">
+                                <div id="ankersaalEventsContainer" style="min-height: 400px;">
+                                    <!-- Events will be rendered here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kalender View -->
+                    <div id="kalenderView" class="view">
+                        <div class="view-header">
+                            <h2>📅 Mein Kalender</h2>
+                        </div>
+                        <div class="section">
+                            <div id="personalCalendarContainer">
+                                <!-- Personal calendar will be rendered here -->
                             </div>
                             <div>
-                                <button class="btn btn-primary" onclick="App.navigateTo('kalender')">Zum Kalender &
-                                    Export</button>
-                            </div>
-                        </div>
-                        <div class="dashboard-section" id="dashboardActivitySection">
-                            <div class="dashboard-section-header">
-                                <h3>✨ Neue Aktivität</h3>
-                                <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
-                            </div>
-                            <div id="dashboardActivityList" class="dashboard-activity-list"></div>
-                        </div>
-                    </div>
-
-                    <div class="section">
-                        <br>
-                        <h3>Nächste Termine</h3>
-                        <div id="upcomingList" class="rehearsal-list"></div>
-                    </div>
-                </div>
-
-                <!-- Bands View -->
-                <div id="bandsView" class="view">
-                    <div class="view-header">
-                        <h2>Meine Bands</h2>
-                        <div class="view-controls">
-                            <button id="createBandBtnView" class="btn btn-primary">
-                                + Band erstellen
-                            </button>
-                            <button id="joinBandBtn" class="btn btn-secondary btn-bands-join-modal">
-                                Band beitreten
-                            </button>
-                        </div>
-                    </div>
-                    <div id="bandsList" class="bands-grid"></div>
-                </div>
-
-                <!-- Events View -->
-                <div id="eventsView" class="view">
-                    <div class="view-header">
-                        <h2>Auftritte</h2>
-                        <div class="view-controls">
-                            <select id="eventBandFilter" class="form-select">
-                                <option value="">Alle Bands</option>
-                            </select>
-                            <button id="createEventBtn" class="btn btn-primary">+ Neuer Auftritt</button>
-                        </div>
-                    </div>
-                    <div id="eventsList" class="events-list"></div>
-                </div>
-
-                <!-- Rehearsals View -->
-                <div id="rehearsalsView" class="view">
-                    <div class="view-header">
-                        <h2>Probetermine</h2>
-                        <div class="view-controls">
-                            <select id="bandFilter" class="form-select">
-                                <option value="">Alle Bands</option>
-                            </select>
-                            <button id="createRehearsalBtn" class="btn btn-primary">+ Neuer Probetermin</button>
-                        </div>
-                    </div>
-                    <div id="rehearsalsList" class="rehearsal-list"></div>
-                </div>
-
-                <!-- Statistics View -->
-                <div id="statisticsView" class="view">
-                    <div class="view-header">
-                        <h2>Statistiken</h2>
-                        <div style="display:flex; gap: 0.5rem; align-items:center;">
-                            <select id="statsBandSelect" class="form-select">
-                                <option value="">Band auswählen</option>
-                            </select>
-                            <select id="statsRehearsalSelect" class="form-select">
-                                <option value="">Probetermin auswählen</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="statisticsContent" class="statistics-content">
-                        <div class="empty-state">
-                            <div class="empty-icon">📊</div>
-                            <p>Wähle einen Probetermin aus, um die Statistiken zu sehen</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- News & Updates View -->
-                <div id="newsView" class="view">
-                    <div class="view-header">
-                        <h2>News & Updates</h2>
-                        <div class="view-controls">
-                            <a href="#" id="donateBtn" class="btn btn-secondary"
-                                style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
-                                💖 Spenden
-                            </a>
-                            <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News
-                                erstellen</button>
-                        </div>
-                    </div>
-                    <div id="newsContainer" class="news-content">
-                        <div class="empty-state">
-                            <div class="empty-icon">📰</div>
-                            <p>Noch keine News oder Updates vorhanden.</p>
-                            <p>Hier wirst du auf dem laufenden gehalten.</p>
-                        </div>
-                    </div>
-                </div>
-                <!-- Probeorte View -->
-                <div id="probeorteView" class="view">
-                    <div class="view-header">
-                        <h2>Probeorte Kalender</h2>
-                    </div>
-
-                    <!-- Submenu for calendar selection -->
-                    <div class="calendar-submenu">
-                        <button id="probeorteBtn" class="calendar-tab active" data-calendar="tonstudio">
-                            🎙️ Tonstudio
-                        </button>
-                        <button id="probeorteBtn" class="calendar-tab" data-calendar="festhalle">
-                            🏛️ JMS Festhalle
-                        </button>
-                        <button id="probeorteBtn" class="calendar-tab" data-calendar="ankersaal">
-                            ⚓ Ankersaal
-                        </button>
-                        <!-- refresh button removed per request -->
-                    </div>
-
-                    <div class="section">
-                        <!-- Tonstudio Calendar -->
-                        <div id="tonstudioCalendar" class="calendar-container active">
-                            <div id="tonstudioEventsContainer" style="min-height: 400px;">
-                                <!-- Events will be rendered here -->
-                            </div>
-                        </div>
-
-                        <!-- Festhalle Calendar -->
-                        <div id="festhalleCalendar" class="calendar-container">
-                            <div id="festhalleEventsContainer" style="min-height: 400px;">
-                                <!-- Events will be rendered here -->
-                            </div>
-                        </div>
-
-                        <!-- Ankersaal Calendar -->
-                        <div id="ankersaalCalendar" class="calendar-container">
-                            <div id="ankersaalEventsContainer" style="min-height: 400px;">
-                                <!-- Events will be rendered here -->
+                                <br>
+                                <span style="font-size:0.9rem; color:var(--color-text-secondary); line-height:1.4;">
+                                    Abonniere jetzt deinen Kalender in deinem Apple- oder Samsung-Kalender, um nichts
+                                    mehr
+                                    zu verpassen!
+                                    <br></span>
+                                <button id="subscribeCalendarBtn" class="btn btn-secondary"
+                                    style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                    🔗 Kalender abonnieren
+                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Kalender View -->
-                <div id="kalenderView" class="view">
-                    <div class="view-header">
-                        <h2>📅 Mein Kalender</h2>
-                    </div>
-                    <div class="section">
-                        <div id="personalCalendarContainer">
-                            <!-- Personal calendar will be rendered here -->
+                    <!-- Musikerpool View -->
+                    <div id="musikpoolView" class="view">
+                        <div class="view-header">
+                            <h2>Musikerpool</h2>
                         </div>
-                        <div>
-                            <br>
-                            <span style="font-size:0.9rem; color:var(--color-text-secondary); line-height:1.4;">
-                                Abonniere jetzt deinen Kalender in deinem Apple- oder Samsung-Kalender, um nichts mehr
-                                zu verpassen!
-                                <br></span>
-                            <button id="subscribeCalendarBtn" class="btn btn-secondary"
+
+                        <!-- Eigene Mitglieder Section -->
+                        <div class="section">
+                            <div class="section-header">
+                                <h3>Eigene Mitglieder</h3>
+                                <button id="addOwnMemberBtn" class="btn btn-primary"
+                                    style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                    ➕ Mitglied hinzufügen
+                                </button>
+                            </div>
+                            <div id="ownMembersContainer">
+                                <div class="empty-state">
+                                    <div class="empty-icon">👥</div>
+                                    <p>Noch keine eigenen Mitglieder angelegt</p>
+                                    <p
+                                        style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                                        Hier können Sie eigene Musiker und Kontakte hinzufügen.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ChurchTools Pool Section -->
+                        <div class="section">
+                            <h3>ChurchTools Musikpool</h3>
+                            <button id="refreshMusikpoolBtn" class="btn btn-secondary"
                                 style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                                🔗 Kalender abonnieren
+                                🔄 Aktualisieren
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Musikerpool View -->
-                <div id="musikpoolView" class="view">
-                    <div class="view-header">
-                        <h2>Musikerpool</h2>
-                    </div>
-
-                    <!-- Eigene Mitglieder Section -->
-                    <div class="section">
-                        <div class="section-header">
-                            <h3>Eigene Mitglieder</h3>
-                            <button id="addOwnMemberBtn" class="btn btn-primary"
-                                style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                                ➕ Mitglied hinzufügen
-                            </button>
-                        </div>
-                        <div id="ownMembersContainer">
-                            <div class="empty-state">
-                                <div class="empty-icon">👥</div>
-                                <p>Noch keine eigenen Mitglieder angelegt</p>
-                                <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
-                                    Hier können Sie eigene Musiker und Kontakte hinzufügen.
-                                </p>
+                            <div id="musikpoolContainer">
+                                <!-- ChurchTools members will be rendered here -->
                             </div>
                         </div>
                     </div>
 
-                    <!-- ChurchTools Pool Section -->
-                    <div class="section">
-                        <h3>ChurchTools Musikpool</h3>
-                        <button id="refreshMusikpoolBtn" class="btn btn-secondary"
-                            style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                            🔄 Aktualisieren
-                        </button>
-                        <div id="musikpoolContainer">
-                            <!-- ChurchTools members will be rendered here -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Settings View -->
-                <div id="settingsView" class="view">
-                    <div class="view-header">
-                        <h2>⚙️ Settings</h2>
-                    </div>
-                    <div id="settingsViewContent" class="settings-view-content">
-                        <!-- Settings content will be rendered here from modal -->
-                    </div>
-                </div>
-            </main>
-        </div>
+                    <!-- Settings View -->
+                    <!-- Settings View Removed -->
+                </main>
+            </div> <!-- End app-main-wrapper -->
+        </div> <!-- End app -->
 
         <!-- Modal: Schnellzugriff bearbeiten -->
         <div id="quickAccessModal" class="modal">
@@ -753,7 +849,8 @@
                                         <input type="file" id="profileImageInput" accept="image/*"
                                             style="margin-bottom:0.5rem;">
                                         <button type="button" id="deleteProfileImageBtn" class="btn btn-danger btn-sm"
-                                            style="margin-top:0.2rem;">Profilbild entfernen</button>
+                                            style="margin-top:0.2rem;">Profilbild
+                                            entfernen</button>
                                         <small style="display:block;color:#888;">Max. 100kb. Größere Bilder werden
                                             komprimiert.</small>
                                     </div>
@@ -789,7 +886,8 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label for="profilePassword">Neues Passwort (leer lassen für keine Änderung)</label>
+                                    <label for="profilePassword">Neues Passwort (leer lassen für keine
+                                        Änderung)</label>
                                     <input type="password" id="profilePassword" placeholder="Neues Passwort">
                                 </div>
                                 <div class="form-group" id="profilePasswordConfirmGroup" style="display: none;">
@@ -802,7 +900,8 @@
                             <!-- Admin: Tutorial anzeigen / testen (sichtbar nur für Admins, wird per JS gesteuert) -->
                             <div id="adminTutorialSection" style="margin-top: 1rem; display: none;">
                                 <h4>Tutorial</h4>
-                                <p style="color: var(--color-text-secondary); margin-top: 0.25rem;">Als Admin kannst du
+                                <p style="color: var(--color-text-secondary); margin-top: 0.25rem;">Als Admin kannst
+                                    du
                                     das Onboarding/Tutorial anzeigen und testen.</p>
                                 <button id="adminShowTutorialBtn" class="btn btn-secondary">Tutorial anzeigen /
                                     testen</button>
@@ -955,7 +1054,8 @@
                                     <label for="supabaseAnonKey">Supabase Anon Key</label>
                                     <input type="text" id="supabaseAnonKey" placeholder="ey...">
                                 </div>
-                                <small style="color: var(--color-text-secondary);">Diese Daten werden lokal gespeichert
+                                <small style="color: var(--color-text-secondary);">Diese Daten werden lokal
+                                    gespeichert
                                     und
                                     für die Datenbankverbindung genutzt.</small>
                                 <div class="modal-actions" style="margin-top: 0.5rem;">
@@ -1093,7 +1193,8 @@
                         <div class="section">
                             <div class="section-header">
                                 <h3>Bandmitglieder</h3>
-                                <button id="addMemberBtn" class="btn btn-primary btn-sm">+ Mitglied hinzufügen</button>
+                                <button id="addMemberBtn" class="btn btn-primary btn-sm">+ Mitglied
+                                    hinzufügen</button>
                             </div>
                             <div id="membersList" class="members-list"></div>
                         </div>
@@ -1104,7 +1205,8 @@
                         <div class="section">
                             <div class="section-header">
                                 <h3>Songs</h3>
-                                <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song hinzufügen</button>
+                                <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song
+                                    hinzufügen</button>
                             </div>
                             <div id="bandSongsList"></div>
                         </div>
@@ -1271,7 +1373,8 @@
                         <button type="button" class="btn cancel">Abbrechen</button>
                         <button type="button" class="btn btn-danger" id="deleteRehearsalBtn"
                             style="display:none; margin-right: auto;">🗑️ Löschen</button>
-                        <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag erstellen</button>
+                        <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag
+                            erstellen</button>
                     </div>
                 </form>
             </div>
@@ -1312,7 +1415,8 @@
                         <button type="button" class="btn cancel">Abbrechen</button>
                         <button type="button" id="deleteTimeSuggestionBtn" class="btn btn-secondary"
                             style="display: none;">🗑️ Vorschlag löschen</button>
-                        <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">💾 Speichern</button>
+                        <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">💾
+                            Speichern</button>
                     </div>
                 </div>
             </div>
@@ -1361,7 +1465,8 @@
 
                     <div class="section">
                         <h3>Bandmitglieder benachrichtigen</h3>
-                        <p class="help-text">Wähle aus, welche Bandmitglieder eine Bestätigungs-E-Mail erhalten sollen:
+                        <p class="help-text">Wähle aus, welche Bandmitglieder eine Bestätigungs-E-Mail erhalten
+                            sollen:
                         </p>
                         <div id="confirmMembersList" class="confirm-members-list"></div>
                     </div>
@@ -1396,7 +1501,8 @@
 
                     <div class="modal-actions">
                         <button type="button" class="btn cancel" id="abortConfirmationBtn">Abbrechen</button>
-                        <button type="button" class="btn btn-primary" id="proceedAnywayBtn">Trotzdem fortfahren</button>
+                        <button type="button" class="btn btn-primary" id="proceedAnywayBtn">Trotzdem
+                            fortfahren</button>
                     </div>
                 </div>
             </div>
@@ -1501,7 +1607,8 @@
                         <input type="text" id="eventLocation">
                     </div>
                     <div class="form-group">
-                        <label for="eventShowExtras" style="display:inline;">Gibt es weitere Infos zum Soundcheck, Event
+                        <label for="eventShowExtras" style="display:inline;">Gibt es weitere Infos zum Soundcheck,
+                            Event
                             oder zur Technik?</label>
                         <input type="checkbox" id="eventShowExtras">
                     </div>
@@ -1643,7 +1750,8 @@
                         <label for="joinBandCode">Band-Beitrittscode</label>
                         <input type="text" id="joinBandCode" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="XXXXXX"
                             required style="text-transform: uppercase;">
-                        <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem 6-stelligen
+                        <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem
+                            6-stelligen
                             Code</small>
                     </div>
                     <div class="modal-actions">
@@ -1743,7 +1851,8 @@
                     </p>
                     <div id="newsDetailImages"
                         style="display:flex; gap:0.5rem; margin-bottom: var(--spacing-lg); flex-wrap:wrap;"></div>
-                    <p id="newsDetailContent" style="color: var(--color-text-secondary); white-space: pre-wrap;"></p>
+                    <p id="newsDetailContent" style="color: var(--color-text-secondary); white-space: pre-wrap;">
+                    </p>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary cancel">Schließen</button>
@@ -1760,7 +1869,8 @@
                 </div>
                 <div class="modal-body">
                     <p id="confirmDeleteMessage" style="margin: 0; color: var(--color-text-secondary);">
-                        Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                        Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht
+                        werden.
                     </p>
                 </div>
                 <div class="modal-actions">

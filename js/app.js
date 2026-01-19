@@ -138,9 +138,6 @@ const App = {
             statistics: [
                 { key: 'statistics', label: 'Statistiken', icon: '📊' },
                 { key: 'news', label: 'News', icon: '📰' }
-            ],
-            settings: [
-                { key: 'settings', label: 'Einstellungen', icon: '⚙️' }
             ]
         };
 
@@ -463,10 +460,87 @@ const App = {
         });
     },
 
+    // Setup sidebar navigation (desktop)
+    setupSidebarNav() {
+        const sidebarNavItems = document.querySelectorAll('.sidebar-nav-item');
+        const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+
+        // Add click handlers to sidebar nav items
+        sidebarNavItems.forEach(item => {
+            item.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const view = item.dataset.view;
+                if (view) {
+                    // Update active state
+                    sidebarNavItems.forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+
+                    // Navigate to view
+                    await this.navigateTo(view);
+                }
+            });
+        });
+
+        // Sidebar logout button
+        sidebarLogoutBtn.addEventListener('click', () => {
+            this.handleLogout();
+        });
+
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
+        if (openSettingsBtn) {
+            openSettingsBtn.addEventListener('click', () => {
+                const settingsModal = document.getElementById('settingsModal');
+                if (settingsModal) {
+                    UI.openModal('settingsModal');
+                    // Initialize settings logic explicitly
+                    const modalBody = settingsModal.querySelector('.modal-body');
+                    const isAdmin = Auth.isAdmin();
+                    this.initializeSettingsViewListeners(isAdmin, modalBody);
+                }
+            });
+        }
+    },
+
+    // Update sidebar profile info
+    updateSidebarProfile() {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const avatarEl = document.getElementById('sidebarProfileAvatar');
+        const nameEl = document.getElementById('sidebarProfileName');
+
+        if (nameEl) {
+            const displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'User';
+            nameEl.textContent = displayName;
+        }
+
+        if (avatarEl) {
+            if (user.profile_image_url) {
+                avatarEl.innerHTML = `<img src="${user.profile_image_url}" alt="Profile" />`;
+            } else {
+                // Show initials
+                const initials = this.getInitials(user);
+                avatarEl.textContent = initials;
+            }
+        }
+    },
+
+    // Get user initials for avatar
+    getInitials(user) {
+        if (!user) return '?';
+        const first = (user.first_name || '').charAt(0).toUpperCase();
+        const last = (user.last_name || '').charAt(0).toUpperCase();
+        if (first && last) return first + last;
+        if (first) return first;
+        const username = (user.username || '').charAt(0).toUpperCase();
+        return username || '?';
+    },
+
     async init() {
         // Initialisierung
         // Initialize Supabase Auth first
         this.setupMobileSubmenuToggle();
+        this.setupSidebarNav();
 
         // NOTE: tutorial banner will be shown after auth initialization below
 
@@ -1537,6 +1611,7 @@ const App = {
             });
         }
     },
+
 
     // Navigate to a specific view
     async navigateTo(view) {
@@ -3051,6 +3126,9 @@ const App = {
             });
         }
 
+        // Update sidebar profile
+        this.updateSidebarProfile();
+
         await this.updateDashboard();
         await this.updateNavigationVisibility();
         this.navigateTo('dashboard');
@@ -3121,37 +3199,47 @@ const App = {
         }
     },
 
-    async initializeSettingsViewListeners(isAdmin) {
+    async initializeSettingsViewListeners(isAdmin, rootElement = null) {
         const user = Auth.getCurrentUser();
-        const root = document.getElementById('settingsViewContent');
-        if (!root) return;
+        const root = rootElement || document.getElementById('settingsViewContent');
+        // Fallback to settingsModal body if settingsViewContent is missing
+        const effectiveRoot = root || document.querySelector('#settingsModal .modal-body');
 
-        // Re-attach event listeners to settings tab buttons (scoped)
-        root.querySelectorAll('.settings-tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tabName = btn.dataset.tab;
-                this.switchSettingsTab(tabName);
+        if (!effectiveRoot) {
+            console.error('Settings view root element not found!');
+            return;
+        }
+
+        // Only attach event listeners once
+        if (!effectiveRoot.dataset.listenersAttached) {
+            // Re-attach event listeners to settings tab buttons (scoped)
+            effectiveRoot.querySelectorAll('.settings-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.dataset.tab;
+                    this.switchSettingsTab(tabName);
+                });
             });
-        });
+            effectiveRoot.dataset.listenersAttached = 'true';
+        }
 
-        // Show/Hide tabs based on role
-        const locationsTab = root.querySelector('#settingsTabLocations');
-        const bandsTab = root.querySelector('#settingsTabBands');
-        const usersTab = root.querySelector('#settingsTabUsers');
+        // Always update logic below (visibility, values, re-rendering lists)
+        const locationsTab = effectiveRoot.querySelector('#settingsTabLocations');
+        const bandsTab = effectiveRoot.querySelector('#settingsTabBands');
+        const usersTab = effectiveRoot.querySelector('#settingsTabUsers');
 
         if (locationsTab) locationsTab.style.display = isAdmin ? 'block' : 'none';
         if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
         if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
 
         // Pre-fill profile form (scoped)
-        const profileFirstName = root.querySelector('#profileFirstName');
-        const profileLastName = root.querySelector('#profileLastName');
-        const profileUsername = root.querySelector('#profileUsername');
-        const profileEmail = root.querySelector('#profileEmail');
-        const profileInstrument = root.querySelector('#profileInstrument');
-        const profilePassword = root.querySelector('#profilePassword');
-        const profilePasswordConfirm = root.querySelector('#profilePasswordConfirm');
-        const profilePasswordConfirmGroup = root.querySelector('#profilePasswordConfirmGroup');
+        const profileFirstName = effectiveRoot.querySelector('#profileFirstName');
+        const profileLastName = effectiveRoot.querySelector('#profileLastName');
+        const profileUsername = effectiveRoot.querySelector('#profileUsername');
+        const profileEmail = effectiveRoot.querySelector('#profileEmail');
+        const profileInstrument = effectiveRoot.querySelector('#profileInstrument');
+        const profilePassword = effectiveRoot.querySelector('#profilePassword');
+        const profilePasswordConfirm = effectiveRoot.querySelector('#profilePasswordConfirm');
+        const profilePasswordConfirmGroup = effectiveRoot.querySelector('#profilePasswordConfirmGroup');
 
         if (profileFirstName) profileFirstName.value = user.first_name || '';
         if (profileLastName) profileLastName.value = user.last_name || '';
@@ -3159,6 +3247,8 @@ const App = {
         if (profileEmail) profileEmail.value = user.email || '';
         if (profileInstrument) profileInstrument.value = user.instrument || '';
         if (profilePassword) profilePassword.value = '';
+
+        // Continue with existing logic...
 
         // Password confirmation field toggle
         if (profilePassword && profilePasswordConfirmGroup) {
@@ -3384,6 +3474,7 @@ const App = {
         if (isAdmin) {
             this.renderLocationsList();
             this.renderAllBandsList();
+            this.renderUsersList();
         }
 
         // Render profile image initially

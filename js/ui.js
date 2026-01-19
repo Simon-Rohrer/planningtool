@@ -6,6 +6,7 @@ const UI = {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.add('active');
+            document.body.classList.add('modal-open'); // Lock scroll
 
             // Add click outside to close (only if not already added)
             if (!modal.dataset.hasClickOutside) {
@@ -37,6 +38,12 @@ const UI = {
         if (modal) {
             modal.classList.remove('active');
 
+            // Check if any other modals are open before removing scroll lock
+            const activeModals = document.querySelectorAll('.modal.active');
+            if (activeModals.length === 0) {
+                document.body.classList.remove('modal-open');
+            }
+
             // Remove ESC listener if exists
             if (modal._escHandler) {
                 document.removeEventListener('keydown', modal._escHandler);
@@ -53,6 +60,13 @@ const UI = {
                 modal.classList.remove('active');
             }
         });
+        // Remove scroll lock if authModal is also not active (or if closing all means ALL)
+        // Adjust logic if authModal should stay open. Assuming authModal is a .modal too.
+        // If authModal stays open, we shouldn't remove lock.
+        const activeModals = document.querySelectorAll('.modal.active');
+        if (activeModals.length === 0) {
+            document.body.classList.remove('modal-open');
+        }
     },
 
     // Confirm delete dialog

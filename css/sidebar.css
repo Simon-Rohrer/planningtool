@@ -1,0 +1,203 @@
+/* ===== Modern Sidebar Layout ===== */
+
+/* App Container mit Sidebar */
+.app-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: row;
+    padding: 0;
+}
+
+/* Purple Sidebar - Left Side */
+.app-sidebar {
+    width: 240px;
+    background: var(--color-sidebar-solid);
+    background: var(--color-sidebar);
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-xl) 0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+/* Profile Section in Sidebar */
+.sidebar-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 var(--spacing-xl) var(--spacing-xl) var(--spacing-xl);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: var(--spacing-xl);
+}
+
+.sidebar-profile-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: var(--font-weight-bold);
+    color: white;
+    margin-bottom: var(--spacing-md);
+    overflow: hidden;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.sidebar-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sidebar-profile-name {
+    font-size: 1rem;
+    font-weight: var(--font-weight-semibold);
+    text-align: center;
+    color: white;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 var(--spacing-md);
+}
+
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
+    border-radius: var(--radius-lg);
+    color: rgba(255, 255, 255, 0.8);
+    background: transparent;
+    border: none;
+    font-size: 0.9375rem;
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    text-align: left;
+    width: 100%;
+}
+
+.sidebar-nav-item:hover {
+    background: var(--color-sidebar-hover);
+    color: white;
+}
+
+.sidebar-nav-item.active {
+    background: var(--color-sidebar-active);
+    color: white;
+    font-weight: var(--font-weight-semibold);
+}
+
+.sidebar-nav-icon {
+    font-size: 1.25rem;
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-nav-label {
+    flex: 1;
+}
+
+.sidebar-section-header {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.05em;
+    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xs) var(--spacing-lg);
+    margin-top: var(--spacing-xs);
+}
+
+/* Main Content Area - Adjusted for Sidebar */
+.app-main-wrapper {
+    flex: 1;
+    margin-left: 240px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-main);
+}
+
+/* Header - Simplified for sidebar layout */
+.app-header-sidebar {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--spacing-lg) var(--spacing-2xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title {
+    font-size: 1.75rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text);
+}
+
+/* Header Actions */
+.header-actions-sidebar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+/* Hide old navigation and header logo on desktop */
+@media (min-width: 769px) {
+
+    .app-nav,
+    .header-submenu-nav,
+    #headerSubmenu,
+    .app-header .logo {
+        display: none !important;
+    }
+
+    /* Ensure header doesn't look weird */
+    .app-header {
+        border-bottom: 1px solid var(--color-border);
+        box-shadow: none;
+        justify-content: flex-end;
+        /* Align remaining items (user profile) to right */
+    }
+
+    .app-header .header-content {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+    }
+}
+
+/* Ensure header doesn't look weird without nav */
+.app-header {
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: none;
+    /* Shadow handled by connection to content */
+
+}
+
+/* Mobile Responsive - Hide sidebar, show bottom nav */
+@media (max-width: 768px) {
+    .app-sidebar {
+        display: none;
+    }
+
+    .app-main-wrapper {
+        margin-left: 0;
+    }
+
+    /* Bottom nav should be used on mobile instead */
+}

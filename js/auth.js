@@ -60,17 +60,22 @@ const Auth = {
         this.supabaseUser = supabaseAuthUser;
         // Load profile from users table
         const profile = await Storage.getById('users', supabaseAuthUser.id);
+        console.log('[Auth.setCurrentUser] Profile from storage:', profile);
+
         if (profile) {
             this.currentUser = profile;
         } else {
-            // Fallback: use auth user data if profile not yet created
+            console.warn('[Auth.setCurrentUser] Profile not found in storage, using fallback');
             this.currentUser = {
                 id: supabaseAuthUser.id,
                 email: supabaseAuthUser.email,
                 username: supabaseAuthUser.user_metadata?.username || supabaseAuthUser.email.split('@')[0],
-                name: supabaseAuthUser.user_metadata?.name || supabaseAuthUser.email.split('@')[0]
+                name: supabaseAuthUser.user_metadata?.name || supabaseAuthUser.email.split('@')[0],
+                isAdmin: false // Explicitly set to false in fallback if unknown
             };
         }
+        console.log('[Auth.setCurrentUser] Final currentUser:', JSON.stringify(this.currentUser, null, 2));
+        console.log('[Auth.setCurrentUser] Is Admin?', this.currentUser.isAdmin);
     },
 
     async register(registrationCode, firstName, lastName, email, username, password, instrument = "") {
