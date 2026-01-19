@@ -5,6 +5,17 @@ const Events = {
     currentEventId: null,
     expandedEventId: null,
 
+    // Helper to get display name
+    _getUserName(user) {
+        if (!user) return 'Unbekannt';
+        // Try various name fields
+        if (user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`;
+        if (user.first_name) return user.first_name;
+        if (user.name) return user.name; // Legacy/fallback
+        if (user.username) return user.username;
+        return 'Unbekannt';
+    },
+
     // Render all events
     async renderEvents(filterBandId = '', forceReload = false) {
         // Nur laden, wenn noch keine Events im Speicher und kein forceReload
@@ -96,7 +107,7 @@ const Events = {
                 const end = new Date(a.endDate);
                 return eventDate >= start && eventDate <= end;
             });
-            return { name: member.name, absence };
+            return { name: this._getUserName(member), absence };
         }));
 
         const guests = event.guests || [];
@@ -353,7 +364,7 @@ const Events = {
         if (!event) return;
 
         this.currentEventId = eventId;
-        
+
         // Clear deleted songs list when opening edit modal
         if (window.App) {
             window.App.deletedEventSongs = [];
@@ -394,12 +405,12 @@ const Events = {
         // Then load band members and songs (in parallel)
         console.log('editEvent - loading songs and members for eventId:', eventId);
         console.log('window.App exists:', !!window.App, 'renderEventSongs exists:', !!(window.App && window.App.renderEventSongs));
-        
+
         await Promise.all([
             this.loadBandMembers(event.bandId, event.members),
             window.App && window.App.renderEventSongs ? window.App.renderEventSongs(eventId) : Promise.resolve()
         ]);
-        
+
         console.log('editEvent - finished loading');
     },
 
@@ -420,11 +431,11 @@ const Events = {
 
         UI.showToast('Auftritt aktualisiert', 'success');
         UI.closeModal('createEventModal');
-        
+
         // Remember which event was expanded
         const wasExpanded = this.expandedEventId;
         this.renderEvents(this.currentFilter, true);
-        
+
         // Re-expand the event after rendering
         if (wasExpanded === eventId) {
             // Use setTimeout to ensure DOM is updated
@@ -451,7 +462,7 @@ const Events = {
         if (!container || !bandId) return;
 
         const members = await Storage.getBandMembers(bandId);
-        
+
         // Defensive check
         if (!Array.isArray(members)) {
             container.innerHTML = '<p class="text-muted">Keine Mitglieder gefunden</p>';
@@ -464,7 +475,7 @@ const Events = {
         // Fetch all users in parallel
         const userPromises = members.map(m => Storage.getById('users', m.userId));
         const users = await Promise.all(userPromises);
-        
+
         container.innerHTML = await Promise.all(members.map(async (member, idx) => {
             const user = users[idx];
             if (!user) return '';
@@ -486,18 +497,18 @@ const Events = {
             return `
                 <div class="checkbox-item">
                     <input type="checkbox" id="member_${user.id}" value="${user.id}" ${isChecked ? 'checked' : ''}>
-                    <label for="member_${user.id}">${Bands.escapeHtml(user.name)}${absenceHtml}</label>
+                    <label for="member_${user.id}">${Bands.escapeHtml(this._getUserName(user))}${absenceHtml}</label>
                 </div>
             `;
-        // Checkboxen für Extras/Gäste korrekt setzen
-        const showExtras = (event.soundcheckLocation && event.soundcheckLocation.trim() !== '') || (event.info && event.info.trim() !== '') || (event.techInfo && event.techInfo.trim() !== '');
-        document.getElementById('eventShowExtras').checked = !!showExtras;
-        // Zeige/Verstecke die Felder entsprechend
-        document.getElementById('eventExtrasFields').style.display = showExtras ? '' : 'none';
+            // Checkboxen für Extras/Gäste korrekt setzen
+            const showExtras = (event.soundcheckLocation && event.soundcheckLocation.trim() !== '') || (event.info && event.info.trim() !== '') || (event.techInfo && event.techInfo.trim() !== '');
+            document.getElementById('eventShowExtras').checked = !!showExtras;
+            // Zeige/Verstecke die Felder entsprechend
+            document.getElementById('eventExtrasFields').style.display = showExtras ? '' : 'none';
 
-        const showGuests = Array.isArray(event.guests) && event.guests.length > 0;
-        document.getElementById('eventShowGuests').checked = !!showGuests;
-        document.getElementById('eventGuestsField').style.display = showGuests ? '' : 'none';
+            const showGuests = Array.isArray(event.guests) && event.guests.length > 0;
+            document.getElementById('eventShowGuests').checked = !!showGuests;
+            document.getElementById('eventGuestsField').style.display = showGuests ? '' : 'none';
         })).then(items => items.join(''));
         // Add event listener for date change to update absences live
         const eventDateInput = document.getElementById('eventDate');

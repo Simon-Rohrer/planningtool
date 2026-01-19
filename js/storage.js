@@ -32,6 +32,7 @@ const Storage = {
     },
 
     async getById(key, id) {
+        if (!id) return null;
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from(key).select('*').eq('id', id).limit(1).maybeSingle();
         if (error) { console.error('Supabase getById error', key, error); return null; }
