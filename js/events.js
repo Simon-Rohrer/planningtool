@@ -23,11 +23,6 @@ const Events = {
             this.renderEventsList(this.events);
             return;
         }
-        const overlay = document.getElementById('globalLoadingOverlay');
-        if (overlay) {
-            overlay.style.display = 'flex';
-            overlay.style.opacity = '1';
-        }
         const container = document.getElementById('eventsList');
         const user = Auth.getCurrentUser();
         if (!user) return;
@@ -232,9 +227,6 @@ const Events = {
                             <span class="quick-info-item">📅 ${UI.formatDateShort(event.date)}</span>
                             ${event.location && event.location.trim() !== '' ? `<span class="quick-info-item">📍 ${Bands.escapeHtml(event.location)}</span>` : ''}
                         </div>
-                        ${canManage ? `
-                            <button class="btn-icon edit-event-icon" data-event-id="${event.id}" title="Bearbeiten">✏️</button>
-                        ` : ''}
                         <button class="accordion-toggle" aria-label="Ausklappen">
                             <span class="toggle-icon">${isExpanded ? '▼' : '▶'}</span>
                         </button>

@@ -25,12 +25,6 @@ const Rehearsals = {
             this.renderRehearsalsList(this.rehearsals);
             return;
         }
-        // Show loading overlay if present
-        const overlay = document.getElementById('globalLoadingOverlay');
-        if (overlay) {
-            overlay.style.display = 'flex';
-            overlay.style.opacity = '1';
-        }
         const user = Auth.getCurrentUser();
         if (!user) return;
         let rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
@@ -458,7 +452,7 @@ const Rehearsals = {
 
                 // Clear item and add confirmed display
                 item.innerHTML = '';
-                item.appendChild(confirmedDisplay);
+                item.appendChild(displayDiv);
 
                 // Add conflict details if there are conflicts
                 if (hasConflict && conflictDetails) {
@@ -1150,7 +1144,7 @@ const Rehearsals = {
 
         const rehearsal = {
             bandId,
-            createdBy: user.id, // Changed from proposedBy to createdBy
+            proposedBy: user.id,
             title,
             description,
             locationId,

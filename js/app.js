@@ -1,29 +1,5 @@
 // Main Application Controller
 
-// Initialize app when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    App.init();
-    App.setupDashboardFeatures();
-
-    // Song form submit handler: ensure only one handler is registered
-    const songForm = document.getElementById('songForm');
-    if (songForm) {
-        // Remove all previous submit event listeners by replacing the node
-        const newSongForm = songForm.cloneNode(true);
-        songForm.parentNode.replaceChild(newSongForm, songForm);
-        let songFormSubmitting = false;
-        newSongForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (songFormSubmitting) return;
-            songFormSubmitting = true;
-            try {
-                await App.handleSaveSong();
-            } finally {
-                songFormSubmitting = false;
-            }
-        });
-    }
-});
 // Main Application Controller
 
 const App = {
@@ -538,6 +514,8 @@ const App = {
 
     async init() {
         // Initialisierung
+        this.setupDashboardFeatures();
+
         // Initialize Supabase Auth first
         this.setupMobileSubmenuToggle();
         this.setupSidebarNav();
@@ -617,7 +595,27 @@ const App = {
     },
 
     setupEventListeners() {
+        // Song form submit handler: ensure only one handler is registered
+        const songForm = document.getElementById('songForm');
+        if (songForm) {
+            // Remove all previous submit event listeners by replacing the node
+            const newSongForm = songForm.cloneNode(true);
+            songForm.parentNode.replaceChild(newSongForm, songForm);
+            let songFormSubmitting = false;
+            newSongForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (songFormSubmitting) return;
+                songFormSubmitting = true;
+                try {
+                    await App.handleSaveSong();
+                } finally {
+                    songFormSubmitting = false;
+                }
+            });
+        }
+
         // Zeige '+ Neuer Auftritt' nur, wenn User in mindestens einer Band ist
+
         const createEventBtn = document.getElementById('createEventBtn');
         const user = Auth.getCurrentUser();
         if (createEventBtn && user) {
@@ -642,6 +640,42 @@ const App = {
                 if (createRehearsalBtn) {
                     createRehearsalBtn.style.display = (bands && bands.length > 0) ? '' : 'none';
                 }
+            });
+        }
+        // Landing Hero Interactivity
+        const heroArea = document.getElementById('heroArea');
+        if (heroArea) {
+            heroArea.addEventListener('mousemove', (e) => {
+                const rect = heroArea.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                heroArea.style.setProperty('--mouse-x', `${x}%`);
+                heroArea.style.setProperty('--mouse-y', `${y}%`);
+            });
+        }
+
+        const soundCheckBtn = document.getElementById('soundCheckBtn');
+        if (soundCheckBtn) {
+            soundCheckBtn.addEventListener('click', () => {
+                const body = document.body;
+                const isActive = body.classList.toggle('global-stage-mode');
+
+                if (isActive) {
+                    soundCheckBtn.innerHTML = '🛑 Show stoppen';
+                    UI.showToast('ROCK ON! 🤘 Bühnen-Modus aktiviert.', 'success');
+                } else {
+                    soundCheckBtn.innerHTML = '⚡ Virtueller Soundcheck';
+                    UI.showToast('Show beendet. Danke fürs Kommen! 🙏', 'info');
+                }
+            });
+        }
+
+        // Donate button "coming soon" handler
+        const donateBtn = document.getElementById('donateBtn');
+        if (donateBtn) {
+            donateBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                UI.showToast('Diese Funktion ist in Kürze verfügbar. Vielen Dank für dein Interesse! 💖', 'info');
             });
         }
         // Band löschen Button
@@ -3057,6 +3091,13 @@ const App = {
 
         if (landingPage) landingPage.classList.remove('active');
         if (mainApp) mainApp.style.display = 'block';
+
+        // Stage Mode Cleanup
+        document.body.classList.remove('global-stage-mode');
+        const soundCheckBtn = document.getElementById('soundCheckBtn');
+        if (soundCheckBtn) {
+            soundCheckBtn.innerHTML = '⚡ Virtueller Soundcheck';
+        }
 
         document.getElementById('app').style.display = 'flex';
 

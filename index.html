@@ -99,17 +99,42 @@
     <div id="landingPage" class="landing-page active">
         <div class="landing-container">
             <!-- Left Side: Welcome Text -->
-            <div class="landing-left">
+            <div class="landing-left" id="heroArea">
                 <div class="welcome-content">
-                    <h1>🎵 Band Planning Tool</h1>
-                    <h2>Willkommen!</h2>
-                    <p>Organisiere deine Bandproben effizient und behalte den Überblick über alle wichtigen Termine.</p>
-                    <ul class="feature-list">
-                        <li>📅 Proben und Events planen</li>
-                        <li>👥 Band-Mitglieder verwalten</li>
-                        <li>📊 Statistiken und Übersichten</li>
-                        <li>📧 E-Mail-Benachrichtigungen</li>
-                    </ul>
+                    <div class="welcome-logo">🎸</div>
+                    <h1>Fokus auf die Musik, wir regeln den Rest</h1>
+                    <p class="hero-subtitle">Plane Proben, verwalte Gigs und bleib mit deinem Team in Verbindung – alles
+                        an einem Ort.</p>
+
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <span class="feature-icon">📅</span>
+                            <div class="feature-text">
+                                <strong>Smart Planning</strong>
+                                <p>Termine finden, die für alle passen.</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎤</span>
+                            <div class="feature-text">
+                                <strong>Gig Management</strong>
+                                <p>Alle Details zu deinen Auftritten im Blick.</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">📊</span>
+                            <div class="feature-text">
+                                <strong>Insights</strong>
+                                <p>Statistiken zu deiner Band-Aktivität.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hero-actions" style="margin-top: var(--spacing-xl);">
+                        <button id="soundCheckBtn" class="btn btn-secondary stage-btn">
+                            ⚡ Virtueller Soundcheck
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -152,27 +177,31 @@
                                 gültigen
                                 Registrierungscode ein</small>
                         </div>
-                        <div class="form-group">
-                            <label for="registerFirstName">Vorname <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="text" id="registerFirstName" required>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="registerFirstName">Vorname <span style="color:red;"
+                                        title="Pflichtfeld">*</span></label>
+                                <input type="text" id="registerFirstName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="registerLastName">Nachname <span style="color:red;"
+                                        title="Pflichtfeld">*</span></label>
+                                <input type="text" id="registerLastName" required>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="registerLastName">Nachname <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="text" id="registerLastName" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="registerEmail">E-Mail <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="email" id="registerEmail" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="registerUsername">Benutzername <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="text" id="registerUsername" required>
-                            <small id="usernameHint"
-                                style="display:block; margin-top:4px; font-size:0.875rem; color:#888;"></small>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="registerEmail">E-Mail <span style="color:red;"
+                                        title="Pflichtfeld">*</span></label>
+                                <input type="email" id="registerEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="registerUsername">Benutzername <span style="color:red;"
+                                        title="Pflichtfeld">*</span></label>
+                                <input type="text" id="registerUsername" required>
+                                <small id="usernameHint"
+                                    style="display:block; margin-top:4px; font-size:0.875rem; color:#888;"></small>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="registerInstrument">Instrument (optional)</label>
@@ -219,21 +248,33 @@
 
         <!-- Onboarding Modal -->
         <div id="onboardingModal" class="modal">
-            <div class="modal-content auth-modal">
-                <h1>Willkommen! 🎉</h1>
-                <p class="subtitle">Schön, dass du da bist! Wie möchtest du starten?</p>
+            <div class="modal-content modal-large onboarding-container">
+                <div class="onboarding-header">
+                    <h1>Willkommen an Bord! 🎸</h1>
+                    <p class="subtitle">Schön, dass du da bist! Wie möchtest du starten?</p>
+                </div>
 
-                <div class="onboarding-actions" style="display: flex; flex-direction: column; gap: 1rem;">
-                    <button id="onboardingCreateBandBtn" class="btn btn-primary" style="justify-content: center;">
-                        🎸 Neue Band gründen
-                    </button>
-                    <button id="onboardingJoinBandBtn" class="btn btn-secondary" style="justify-content: center;">
-                        👋 Bestehender Band beitreten
-                    </button>
-                    <button id="onboardingSkipBtn" class="btn btn-secondary"
-                        style="border: none; color: var(--color-text-secondary);">
-                        Erstmal nur umschauen
-                    </button>
+                <div class="onboarding-cards">
+                    <div class="onboarding-card" id="onboardingCreateBandCard">
+                        <div class="card-icon">🏗️</div>
+                        <h3>Band gründen</h3>
+                        <p>Werde zum Bandleiter und lade deine Mitmusiker ein.</p>
+                        <button id="onboardingCreateBandBtn" class="btn btn-primary">Starten</button>
+                    </div>
+
+                    <div class="onboarding-card" id="onboardingJoinBandCard">
+                        <div class="card-icon">👋</div>
+                        <h3>Band beitreten</h3>
+                        <p>Nutze einen Code, um einer bestehenden Band beizutreten.</p>
+                        <button id="onboardingJoinBandBtn" class="btn btn-secondary">Beitreten</button>
+                    </div>
+
+                    <div class="onboarding-card" id="onboardingSkipCard">
+                        <div class="card-icon">👀</div>
+                        <h3>Nur umschauen</h3>
+                        <p>Wirf erst mal einen Blick auf die Funktionen im Dashboard.</p>
+                        <button id="onboardingSkipBtn" class="btn btn-text">Später</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1587,68 +1628,94 @@
                 </div>
                 <form id="createEventForm">
                     <input type="hidden" id="editEventId">
-                    <div class="form-group">
-                        <label for="eventBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <select id="eventBand" required>
-                            <option value="">Band auswählen</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="eventTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <input type="text" id="eventTitle" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="eventDate">Datum und Uhrzeit <span style="color:red;"
-                                title="Pflichtfeld">*</span></label>
-                        <input type="datetime-local" id="eventDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="eventLocation">Ort</label>
-                        <input type="text" id="eventLocation">
-                    </div>
-                    <div class="form-group">
-                        <label for="eventShowExtras" style="display:inline;">Gibt es weitere Infos zum Soundcheck,
-                            Event
-                            oder zur Technik?</label>
-                        <input type="checkbox" id="eventShowExtras">
-                    </div>
-                    <div id="eventExtrasFields" style="display:none;">
+
+                    <div class="form-grid-2">
                         <div class="form-group">
-                            <label for="eventSoundcheckLocation">Infos zum Soundcheck</label>
-                            <input type="text" id="eventSoundcheckLocation" placeholder="Uhrzeit, Datum...">
+                            <label for="eventBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
+                            <select id="eventBand" required>
+                                <option value="">Band auswählen</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label for="eventInfo">Infos zum Event</label>
-                            <textarea id="eventInfo" rows="3"></textarea>
+                            <label for="eventTitle">Titel / Anlass <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
+                            <input type="text" id="eventTitle" placeholder="z.B. Hochzeit, Firmenfeier..." required>
                         </div>
                         <div class="form-group">
-                            <label for="eventTechInfo">Infos zur Technik</label>
-                            <textarea id="eventTechInfo" rows="3"></textarea>
+                            <label for="eventDate">Datum und Uhrzeit <span style="color:red;"
+                                    title="Pflichtfeld">*</span></label>
+                            <input type="datetime-local" id="eventDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventLocation">📍 Ort / Adresse</label>
+                            <input type="text" id="eventLocation" placeholder="Musterstadt, Hauptstr 1">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Folgende Bandmitglieder sind mit dabei</label>
-                        <div id="eventBandMembers" class="checkbox-list"></div>
+
+                    <div class="form-section-divider"></div>
+
+                    <div class="form-group toggle-group">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="eventShowExtras">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <label for="eventShowExtras" class="toggle-label">Weitere Infos (Soundcheck, Technik,
+                            Event-Infos)</label>
                     </div>
-                    <div class="form-group">
-                        <label for="eventShowGuests" style="display:inline;">Sind Gäste mit dabei?</label>
-                        <input type="checkbox" id="eventShowGuests">
-                    </div>
-                    <div class="form-group" id="eventGuestsField" style="display:none;">
-                        <label>Gästeliste</label>
-                        <textarea id="eventGuests" rows="2"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <div class="section-header">
-                            <label>Setlist</label>
-                            <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">Neuen Song
-                                erstellen</button>
+
+                    <div id="eventExtrasFields" class="form-optional-section" style="display:none;">
+                        <div class="form-group">
+                            <label for="eventSoundcheckLocation">🎚️ Soundcheck Infos</label>
+                            <input type="text" id="eventSoundcheckLocation"
+                                placeholder="Uhrzeit, konkreter Ort im Gebäude...">
                         </div>
-                        <div id="eventSongsList"></div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="eventInfo">ℹ️ Event-Infos</label>
+                                <textarea id="eventInfo" rows="3" placeholder="Ablauf, Ansprechpartner..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="eventTechInfo">🔧 Technik / PA</label>
+                                <textarea id="eventTechInfo" rows="3"
+                                    placeholder="Was wird benötigt? Monitoring?"></textarea>
+                            </div>
+                        </div>
                     </div>
+
+                    <div class="form-section-divider"></div>
+
+                    <div class="form-group">
+                        <label class="section-title">👥 Beteiligte Bandmitglieder</label>
+                        <div id="eventBandMembers" class="checkbox-list members-grid"></div>
+                    </div>
+
+                    <div class="form-group toggle-group">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="eventShowGuests">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <label for="eventShowGuests" class="toggle-label">Gäste / Aushilfen dabei?</label>
+                    </div>
+
+                    <div id="eventGuestsField" class="form-optional-section" style="display:none;">
+                        <label for="eventGuests">🎭 Gästeliste (einer pro Zeile)</label>
+                        <textarea id="eventGuests" rows="2" placeholder="Name (Instrument/Rolle)"></textarea>
+                    </div>
+
+                    <div class="form-section-divider"></div>
+
+                    <div class="form-group setlist-section">
+                        <div class="section-header-row">
+                            <label class="section-title">🎵 Setlist</label>
+                            <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">+ Neuer
+                                Song</button>
+                        </div>
+                        <div id="eventSongsList" class="compact-song-list"></div>
+                    </div>
+
                     <div class="modal-actions">
                         <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt erstellen</button>
+                        <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt speichern</button>
                     </div>
                 </form>
             </div>
@@ -1971,6 +2038,26 @@
 
     <!-- Capacitor JS (will be injected by Capacitor on iOS, safe to fail in browser) -->
     <script src="capacitor.js" onerror="console.log('Capacitor not available (running in browser)')"></script>
+    <!-- Dynamic Stage Effects for "Sound Check" -->
+    <div id="stageEffectsContainer" class="stage-lights-overlay">
+        <!-- Reaching Stage Beams -->
+        <div class="stage-beam"></div>
+        <div class="stage-beam"></div>
+        <div class="stage-beam"></div>
+        <div class="stage-beam"></div>
+
+        <!-- Floating Music Symbols -->
+        <div class="floating-notations">
+            <span class="music-note">🎵</span>
+            <span class="music-note">🎸</span>
+            <span class="music-note">🎶</span>
+            <span class="music-note">🎼</span>
+            <span class="music-note">🎹</span>
+            <span class="music-note">🎤</span>
+            <span class="music-note">🎵</span>
+            <span class="music-note">🎶</span>
+        </div>
+    </div>
 </body>
 
 </html>

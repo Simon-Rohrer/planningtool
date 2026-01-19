@@ -38,12 +38,6 @@ const Bands = {
         const container = document.getElementById('bandsList');
 
         try {
-            // Show loading overlay if present
-            if (overlay) {
-                overlay.style.display = 'flex';
-                overlay.style.opacity = '1';
-            }
-
             const user = Auth.getCurrentUser();
             if (!user) {
                 // If no user, we shouldn't be here, but just in case
@@ -111,11 +105,7 @@ const Bands = {
                 container.innerHTML = '<p class="error-text">Fehler beim Laden der Daten. Bitte versuchen Sie es später erneut.</p>';
             }
         } finally {
-            // Hide loading overlay after all data/UI is ready OR if error occurred
-            if (overlay) {
-                overlay.style.opacity = '0';
-                setTimeout(() => overlay.style.display = 'none', 400);
-            }
+            // Loading overlay removed as per user request
         }
     },
 
