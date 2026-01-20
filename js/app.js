@@ -2735,23 +2735,18 @@ const App = {
         const event = await Storage.getById('events', eventId);
         const bandSongs = event && event.bandId ? await Storage.getBandSongs(event.bandId) : [];
 
+        // Toggle static copy button visibility
+        const staticCopyBtn = document.getElementById('copyBandSongsBtn');
+        if (staticCopyBtn) {
+            staticCopyBtn.style.display = (Array.isArray(bandSongs) && bandSongs.length > 0) ? 'inline-flex' : 'none';
+        }
+
         if ((!Array.isArray(songs) || songs.length === 0) && (!Array.isArray(bandSongs) || bandSongs.length === 0)) {
             container.innerHTML = '<p class="text-muted">Noch keine Songs hinzugefügt.</p>';
             return;
         }
 
         let html = '';
-
-        // Show button to copy from band if there are band songs
-        if (Array.isArray(bandSongs) && bandSongs.length > 0) {
-            html += `
-                <div style="margin-bottom: var(--spacing-md);">
-                    <button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm">
-                        📋 Songs aus Band-Pool übernehmen
-                    </button>
-                </div>
-            `;
-        }
 
         if (Array.isArray(songs) && songs.length > 0) {
             html += `
@@ -2787,13 +2782,6 @@ const App = {
 
         container.innerHTML = html;
 
-        // Add copy band songs handler
-        const copyBtn = container.querySelector('#copyBandSongsBtn');
-        if (copyBtn) {
-            copyBtn.addEventListener('click', () => {
-                this.showBandSongSelector(eventId, bandSongs);
-            });
-        }
 
         // Add event listeners for edit/delete
         container.querySelectorAll('.edit-song').forEach(btn => {
@@ -3891,7 +3879,7 @@ const App = {
                 container.appendChild(img);
             } else {
                 // Render initials
-                const initials = UI.getUserInitials(user.name || user.username);
+                const initials = UI.getUserInitials(UI.getUserDisplayName(user));
                 const placeholder = document.createElement('div');
                 placeholder.className = 'profile-initials-large';
                 placeholder.style.width = '100px';
@@ -3929,7 +3917,7 @@ const App = {
             container.appendChild(img);
         } else {
             // Render initials
-            const initials = UI.getUserInitials(user.name || user.username);
+            const initials = UI.getUserInitials(UI.getUserDisplayName(user));
             container.style.backgroundColor = '#e5e7eb'; // Default light
             container.style.color = '#444';
             container.textContent = initials;

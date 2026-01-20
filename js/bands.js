@@ -439,10 +439,11 @@ const Bands = {
             if (users[i]) userMap[m.userId] = users[i];
         });
 
-        container.innerHTML = members.map(member => {
+        container.innerHTML = members.map((member, index) => {
             const user = userMap[member.userId];
             if (!user) return '';
 
+            const displayName = UI.getUserDisplayName(user);
             const isCurrentUser = user.id === currentUser.id;
             // Can remove if manager and not removing self (unless admin)
             const canRemove = canManage && (!isCurrentUser || Auth.isAdmin());
@@ -469,24 +470,32 @@ const Bands = {
             const instrumentIcon = user.instrument ? (this.instrumentIcons[user.instrument] || '') : '';
 
             return `
-                <div class="member-item">
+                <div class="member-item animated-fade-in" style="animation-delay: ${index * 0.1}s">
                     <div class="member-info">
-                        <div class="member-avatar" style="${user.profile_image_url ? 'background: none;' : ''}">
-                            ${user.profile_image_url ?
-                    `<img src="${user.profile_image_url}" alt="${this.escapeHtml(user.name)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` :
-                    UI.getUserInitials(user.name)}
+                        <div class="member-avatar-wrapper">
+                            <div class="member-avatar" style="${user.profile_image_url ? 'background: none;' : `background: ${UI.getAvatarColor(displayName)};`}">
+                                ${user.profile_image_url ?
+                    `<img src="${user.profile_image_url}" alt="${this.escapeHtml(displayName)}" class="avatar-img">` :
+                    `<span class="avatar-initials">${UI.getUserInitials(displayName)}</span>`}
+                            </div>
+                            ${member.role === 'leader' ? '<div class="leader-indicator" title="Bandleiter">👑</div>' : ''}
                         </div>
                         <div class="member-details">
-                            <h4>${this.escapeHtml(user.name)} ${isCurrentUser ? '(Du)' : ''}</h4>
-                            <p>${this.escapeHtml(user.email)}</p>
+                            <div class="member-name-row">
+                                <h4>${this.escapeHtml(displayName)}</h4>
+                                ${isCurrentUser ? '<span class="self-badge">DU</span>' : ''}
+                            </div>
+                            <p class="member-email">📧 ${this.escapeHtml(user.email)}</p>
                             ${instrumentIcon ? `<p class="member-instrument-label">${instrumentIcon} ${this.getInstrumentName(user.instrument)}</p>` : ''}
                         </div>
                     </div>
-                    <div class="member-actions">
-                        ${roleDisplay}
+                    <div class="member-actions-wrapper">
+                        <div class="member-role-area">
+                            ${roleDisplay}
+                        </div>
                         ${canRemove ? `
-                            <button class="btn-icon remove-member" data-user-id="${user.id}" title="Entfernen">
-                                🗑️
+                            <button class="btn-icon remove-member-btn" data-user-id="${user.id}" title="Aus Band entfernen">
+                                <span>🗑️</span>
                             </button>
                         ` : ''}
                     </div>

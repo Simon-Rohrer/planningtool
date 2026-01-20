@@ -107,13 +107,7 @@ const Rehearsals = {
 
     // Helper to get display name
     _getUserName(user) {
-        if (!user) return 'Unbekannt';
-        // Try various name fields
-        if (user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`;
-        if (user.first_name) return user.first_name;
-        if (user.name) return user.name; // Legacy/fallback
-        if (user.username) return user.username;
-        return 'Unbekannt';
+        return UI.getUserDisplayName(user);
     },
 
     // Render single rehearsal card
@@ -149,12 +143,33 @@ const Rehearsals = {
         // Leaders and Co-Leaders see detailed votes
         const showVoteDetails = isLeader || isCoLeader || isAdmin;
 
+        // Get linked event info if available
+        let event = null;
+        if (rehearsal.eventId) {
+            event = await Storage.getEvent(rehearsal.eventId);
+        }
+
+        // Prepare compact metadata items
+        const metaItems = [];
+        if (locationName && locationName !== 'Kein Ort') {
+            metaItems.push(`<span class="meta-tag"><span class="meta-icon">📍</span> ${Bands.escapeHtml(locationName)}</span>`);
+        }
+        if (event) {
+            metaItems.push(`<span class="meta-tag"><span class="meta-icon">🎫</span> Auftritt: ${Bands.escapeHtml(event.title)}</span>`);
+        }
+
+        const metaHtml = metaItems.length > 0 ? `
+            <div class="rehearsal-meta-compact">
+                ${metaItems.join('')}
+            </div>
+        ` : '';
+
         let dateOptionsHtml = '';
         if (rehearsal.status === 'pending') {
             if (rehearsal.proposedDates && rehearsal.proposedDates.length > 0) {
                 dateOptionsHtml = `<div class="date-options">
                     ${(await Promise.all(rehearsal.proposedDates.map((date, index) =>
-                    this.renderDateOption(rehearsal.id, date, index, user.id, showVoteDetails)
+                    this.renderDateOption(rehearsal.id, date, index, user.id, showVoteDetails, canManage)
                 ))).join('')}
                 </div>`;
             } else {
@@ -186,17 +201,28 @@ const Rehearsals = {
                 <div class="accordion-content" style="display: ${isExpanded ? 'block' : 'none'};">
                     <div class="accordion-body">
                         <div class="rehearsal-info">
-                            <p><strong>Probe erstellt von:</strong> ${Bands.escapeHtml(creatorName)}</p>
+                            <div class="rehearsal-creator-info">
+                                <div class="creator-avatar" style="background: ${creator ? UI.getAvatarColor(creatorName) : 'var(--color-primary)'}">
+                                    ${creator && creator.profile_image_url ?
+                `<img src="${creator.profile_image_url}" alt="${creatorName}" class="creator-avatar-img">` :
+                UI.getUserInitials(creatorName)}
+                                </div>
+                                <div class="creator-details">
+                                    <strong>Probe erstellt von:</strong>
+                                    <span class="creator-name">${Bands.escapeHtml(creatorName)}</span>
+                                </div>
+                            </div>
                             ${rehearsal.description ? `
                                 <p><strong>Beschreibung:</strong> ${Bands.escapeHtml(rehearsal.description)}</p>
                             ` : ''}
+                            
+                            ${metaHtml}
+
                             ${rehearsal.status === 'confirmed' && rehearsal.confirmedDate ? `
                                 <p><strong>✅ Bestätigter Termin:</strong> ${UI.formatDate(rehearsal.confirmedDate)}</p>
                                 ${locationName ? `<p><strong>📍 Ort:</strong> ${locationName}</p>` : ''}
                             ` : ''}
-                            ${rehearsal.status === 'pending' && rehearsal.proposedDates && rehearsal.proposedDates.length > 0 ? `
-                                <p><strong>📅 Vorgeschlagene Termine:</strong> ${rehearsal.proposedDates.length} Option(en)</p>
-                            ` : ''}
+
                         </div>
 
                         ${dateOptionsHtml}
@@ -224,7 +250,7 @@ const Rehearsals = {
     },
 
     // Render single date option with voting
-    async renderDateOption(rehearsalId, date, dateIndex, userId, showVoteDetails = false) {
+    async renderDateOption(rehearsalId, date, dateIndex, userId, showVoteDetails = false, canManage = false) {
         const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
         const dateVotes = votes.filter(v => v.dateIndex === dateIndex);
 
@@ -241,17 +267,23 @@ const Rehearsals = {
         const timeSuggestions = (await Storage.getTimeSuggestionsForDate(rehearsalId, dateIndex)) || [];
         const userTimeSuggestion = await Storage.getUserTimeSuggestionForDate(userId, rehearsalId, dateIndex);
 
-        // Group suggestions by time
+        // Group suggestions by time (and filter by visibility)
         const suggestionsByTime = {};
         for (const suggestion of timeSuggestions) {
+            // Visibility Rule: Only Proposer, Leader, Co-Leader, or Admin see it
+            const isProposer = suggestion.userId === userId;
+            if (!isProposer && !canManage) {
+                continue;
+            }
+
             const time = suggestion.suggestedTime;
             if (!suggestionsByTime[time]) {
                 suggestionsByTime[time] = [];
             }
             if (suggestion.userId) {
-                const user = await Storage.getById('users', suggestion.userId);
-                if (user) {
-                    const name = this._getUserName(user).trim();
+                const suggester = await Storage.getById('users', suggestion.userId);
+                if (suggester) {
+                    const name = this._getUserName(suggester).trim();
                     if (!suggestionsByTime[time].includes(name)) {
                         suggestionsByTime[time].push(name);
                     }
@@ -265,13 +297,30 @@ const Rehearsals = {
 
         // Format date display
         let dateDisplay;
+        const suggestionEntries = Object.entries(suggestionsByTime);
+        const hasVisibleProposals = suggestionEntries.length > 0;
+
+        let proposalsHtml = '';
+        if (hasVisibleProposals) {
+            proposalsHtml = `
+                <span class="integrated-time-proposals">
+                    <span class="proposal-icon">🕐</span> 
+                    ${suggestionEntries.map(([time, users]) => `
+                        <span class="proposal-pill" title="Vorgeschlagen von: ${users.join(', ')}">
+                            ${time} <small class="proposal-users">(${users.join(', ')})</small>
+                        </span>
+                    `).join('')}
+                </span>
+            `;
+        }
+
         if (endTimeString) {
             const datePart = UI.formatDate(dateString).replace(/ um .*/, '');
             const startTime = new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
             const endTime = new Date(endTimeString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-            dateDisplay = `${datePart} von ${startTime} bis ${endTime} Uhr`;
+            dateDisplay = `📅 ${datePart} von ${startTime} bis ${endTime} Uhr ${proposalsHtml}`;
         } else {
-            dateDisplay = UI.formatDate(dateString);
+            dateDisplay = `📅 ${UI.formatDate(dateString)} ${proposalsHtml}`;
         }
 
         // Prepare vote details HTML if permitted
@@ -301,7 +350,7 @@ const Rehearsals = {
         return `
             <div class="date-option">
                 <div class="date-info">
-                    <div class="date-time">📅 ${dateDisplay}</div>
+                    <div class="date-time">${dateDisplay}</div>
                     ${voteDetailsHtml}
                 </div>
                 <div class="vote-actions">
@@ -333,17 +382,6 @@ const Rehearsals = {
                         🕐
                     </button>
                 </div>
-                ${Object.keys(suggestionsByTime).length > 0 ? `
-                    <div class="time-suggestions">
-                        <strong>Vorgeschlagene Uhrzeiten:</strong>
-                        ${Object.entries(suggestionsByTime).map(([time, users]) => `
-                            <div class="time-suggestion-item">
-                                <span class="suggested-time">🕐 ${time}</span>
-                                <span class="suggested-by">(${users.join(', ')})</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
             </div>
         `;
     },
@@ -561,14 +599,15 @@ const Rehearsals = {
             if (tog) tog.textContent = '▶';
         });
 
-        // If it was already expanded, just close it (already done above)
+        // If it was already expanded, we just closed it (by the "close all" loop above)
         if (wasExpanded) {
             this.expandedRehearsalId = null;
-            this.renderRehearsals(this.currentFilter);
         } else {
             // Open this accordion
+            card.classList.add('expanded');
+            if (content) content.style.display = 'block';
+            if (toggle) toggle.textContent = '▼';
             this.expandedRehearsalId = rehearsalId;
-            this.renderRehearsals(this.currentFilter);
         }
     },
 
@@ -1227,7 +1266,7 @@ const Rehearsals = {
                     const timeStr = `${date.startTime.slice(11, 16)} - ${date.endTime.slice(11, 16)}`;
                     let availability = { available: true, conflicts: [] };
                     if (locationId && typeof App !== 'undefined' && App.checkLocationAvailability) {
-                        availability = await this.checkSingleDateAvailability(locationId, date.startTime);
+                        availability = await this.checkSingleDateAvailability(locationId, date.startTime, date.endTime);
                     }
                     const conflictDetails = availability.conflicts && availability.conflicts.length > 0
                         ? `<div class='conflict-details-box'><div class='conflict-details-header'>Konflikte:</div>${availability.conflicts.map(c => `<div class='conflict-item'>• ${Bands.escapeHtml(c.summary)}</div>`).join('')}</div>`
@@ -1324,7 +1363,7 @@ const Rehearsals = {
     },
 
     // Availability helpers
-    async checkSingleDateAvailability(locationId, isoString) {
+    async checkSingleDateAvailability(locationId, isoString, endIsoString = null) {
         try {
             if (!locationId || !isoString || typeof App === 'undefined' || !App.checkLocationAvailability) {
                 return { available: true, conflicts: [] };
@@ -1363,7 +1402,7 @@ const Rehearsals = {
             }
 
             const startDate = new Date(isoString);
-            const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+            const endDate = endIsoString ? new Date(endIsoString) : new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
             return await App.checkLocationAvailability(locationId, startDate, endDate);
         } catch (e) {
             console.error('Availability check failed', e);

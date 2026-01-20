@@ -237,11 +237,45 @@ const UI = {
     // Get user initials for avatar
     getUserInitials(name) {
         if (!name) return '?';
-        const parts = name.split(' ');
+        const parts = name.trim().split(/\s+/);
         if (parts.length >= 2) {
             return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
         }
-        return name.substring(0, 2).toUpperCase();
+        return name.trim().substring(0, 2).toUpperCase();
+    },
+
+    // Get consistent color based on name
+    getAvatarColor(name) {
+        if (!name || name === '?' || name === 'Unbekannt') return 'var(--color-primary)';
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        const colors = [
+            'linear-gradient(135deg, #6366f1, #4f46e5)', // Indigo
+            'linear-gradient(135deg, #ec4899, #db2777)', // Pink
+            'linear-gradient(135deg, #8b5cf6, #7c3aed)', // Violet
+            'linear-gradient(135deg, #f59e0b, #d97706)', // Amber
+            'linear-gradient(135deg, #10b981, #059669)', // Emerald
+            'linear-gradient(135deg, #3b82f6, #2563eb)', // Blue
+            'linear-gradient(135deg, #f43f5e, #e11d48)', // Rose
+            'linear-gradient(135deg, #06b6d4, #0891b2)'  // Cyan
+        ];
+
+        return colors[Math.abs(hash) % colors.length];
+    },
+
+    // Robust user name getter
+    getUserDisplayName(user) {
+        if (!user) return 'Unbekannt';
+        // Try various name fields
+        if (user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`;
+        if (user.first_name) return user.first_name;
+        if (user.name) return user.name;
+        if (user.display_name) return user.display_name;
+        if (user.username) return user.username;
+        return user.email || 'Unbekannt';
     },
 
     // Role display

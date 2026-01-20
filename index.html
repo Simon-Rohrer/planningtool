@@ -689,7 +689,7 @@
                     <!-- Probeorte View -->
                     <div id="probeorteView" class="view">
                         <div class="view-header">
-                            <h2>Probeorte Kalender</h2>
+                            <h2>JMS Probeorte Kalender</h2>
                         </div>
 
                         <!-- Submenu for calendar selection -->
@@ -1707,8 +1707,15 @@
                     <div class="form-group setlist-section">
                         <div class="section-header-row">
                             <label class="section-title">🎵 Setlist</label>
-                            <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">+ Neuer
-                                Song</button>
+                            <div class="section-actions">
+                                <button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm"
+                                    style="display: none;">
+                                    📋 Band-Pool
+                                </button>
+                                <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">
+                                    + Neuer Song
+                                </button>
+                            </div>
                         </div>
                         <div id="eventSongsList" class="compact-song-list"></div>
                     </div>
