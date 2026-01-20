@@ -17,55 +17,24 @@ const Events = {
     },
 
     // Render all events
-    async renderEvents(filterBandId = '', forceReload = false) {
-        // Nur laden, wenn noch keine Events im Speicher und kein forceReload
-        if (!forceReload && this.events && Array.isArray(this.events) && this.events.length > 0 && !filterBandId) {
-            this.renderEventsList(this.events);
-            return;
-        }
+    async renderEvents(filterBandId = '') {
         const container = document.getElementById('eventsList');
         const user = Auth.getCurrentUser();
+
         if (!user) return;
-        // Check if user is member of any band
-        const userBands = await Storage.getUserBands(user.id);
-        const hasBands = Array.isArray(userBands) && userBands.length > 0;
-        if (!hasBands) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">🎤</div>
-                    <h3>Du bist aktuell in keiner Band</h3>
-                    <p>Um Auftritte zu sehen oder zu erstellen, trete einer Band bei oder erstelle eine neue Band.</p>
-                    <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                        <button class="btn btn-primary" id="events_join_band_btn">Band beitreten</button>
-                        <button class="btn btn-secondary" id="events_create_band_btn">Neue Band erstellen</button>
-                    </div>
-                </div>
-            `;
-            // Wire CTAs
-            const joinBtn = document.getElementById('events_join_band_btn');
-            const createBtn = document.getElementById('events_create_band_btn');
-            if (joinBtn) joinBtn.addEventListener('click', () => UI.openModal('joinBandModal'));
-            if (createBtn) createBtn.addEventListener('click', () => UI.openModal('createBandModal'));
-            if (overlay) {
-                overlay.style.opacity = '0';
-                setTimeout(() => overlay.style.display = 'none', 400);
-            }
-            return;
-        }
+
         let events = (await Storage.getUserEvents(user.id)) || [];
-        this.events = events;
+
         // Apply filter
         if (filterBandId) {
             events = events.filter(e => e.bandId === filterBandId);
         }
+
         // Sort by date (nearest first)
         events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
         if (events.length === 0) {
             UI.showEmptyState(container, '🎤', 'Noch keine Auftritte vorhanden');
-            if (overlay) {
-                overlay.style.opacity = '0';
-                setTimeout(() => overlay.style.display = 'none', 400);
-            }
             return;
         }
 
@@ -75,12 +44,6 @@ const Events = {
 
         // Add click handlers
         this.attachEventHandlers();
-
-        // Hide loading overlay after all data/UI is ready
-        if (overlay) {
-            overlay.style.opacity = '0';
-            setTimeout(() => overlay.style.display = 'none', 400);
-        }
     },
 
     // Render single event card
@@ -184,7 +147,12 @@ const Events = {
         if (Array.isArray(eventSongs) && eventSongs.length > 0) {
             detailsHtml += `
                 <div class="detail-row">
-                    <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
+                        <button type="button" class="btn btn-sm btn-secondary download-setlist-pdf" data-event-id="${event.id}" style="white-space: nowrap;">
+                            📥 Als PDF herunterladen
+                        </button>
+                    </div>
                     <div class="detail-value">
                         <div style="display: flex; align-items: center; gap: 1.5rem; font-weight: bold; color: var(--color-text-secondary); font-size: 0.97em; border-bottom: 2px solid var(--color-border); padding-bottom: 0.3rem; margin-bottom: 0.2rem;">
                             <span style="min-width: 120px;">Titel</span>
@@ -292,6 +260,153 @@ const Events = {
                 await this.deleteEvent(eventId);
             });
         });
+
+        document.querySelectorAll('.download-setlist-pdf').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                await this.downloadSetlistPDF(eventId);
+            });
+        });
+    },
+
+    // Download setlist as PDF
+    async downloadSetlistPDF(eventId) {
+        try {
+            const event = await Storage.getById('events', eventId);
+            if (!event) {
+                UI.showToast('Auftritt nicht gefunden', 'error');
+                return;
+            }
+
+            const songs = await Storage.getEventSongs(eventId);
+            if (!Array.isArray(songs) || songs.length === 0) {
+                UI.showToast('Keine Songs in der Setlist', 'error');
+                return;
+            }
+
+            const band = await Storage.getBand(event.bandId);
+            const bandName = band ? band.name : 'Unbekannte Band';
+
+            // Build HTML content
+            let songsTableHTML = '';
+            songs.forEach((song, idx) => {
+                songsTableHTML += `
+                    <tr style="border-bottom: 1px solid #ddd;">
+                        <td style="padding: 8px; text-align: left; font-weight: bold;">${idx + 1}</td>
+                        <td style="padding: 8px; text-align: left;">${Bands.escapeHtml(song.title)}</td>
+                        <td style="padding: 8px; text-align: left;">${Bands.escapeHtml(song.artist || '-')}</td>
+                        <td style="padding: 8px; text-align: center;">${song.bpm || '-'}</td>
+                        <td style="padding: 8px; text-align: center;">${song.key || '-'}</td>
+                        <td style="padding: 8px; text-align: left;">${Bands.escapeHtml(song.leadVocal || '-')}</td>
+                    </tr>
+                `;
+            });
+
+            let additionalInfoHTML = '';
+            if (songs.some(s => s.ccli || s.notes)) {
+                additionalInfoHTML = '<div style="margin-top: 30px; background-color: #f9f9f9; padding: 15px; border-radius: 5px;"><h3 style="margin-top: 0; color: #333;">Zusätzliche Informationen</h3>';
+                songs.forEach((song, idx) => {
+                    if (song.ccli || song.notes) {
+                        additionalInfoHTML += `
+                            <div style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                                <strong>${idx + 1}. ${Bands.escapeHtml(song.title)}</strong>
+                                ${song.ccli ? `<p style="margin: 5px 0; color: #666;">CCLI: ${Bands.escapeHtml(song.ccli)}</p>` : ''}
+                                ${song.notes ? `<p style="margin: 5px 0; color: #666; font-style: italic;">📝 ${Bands.escapeHtml(song.notes)}</p>` : ''}
+                            </div>
+                        `;
+                    }
+                });
+                additionalInfoHTML += '</div>';
+            }
+
+            // Create PDF HTML element
+            const element = document.createElement('div');
+            element.innerHTML = `
+                <div style="font-family: Arial, sans-serif; padding: 20px; background: white; color: #000;">
+                    <h1 style="text-align: center; color: #333; margin: 0 0 10px 0; font-size: 24px;">${Bands.escapeHtml(event.title)}</h1>
+                    <div style="text-align: center; color: #666; margin-bottom: 30px; font-size: 14px;">
+                        <p style="margin: 5px 0;"><strong>Band:</strong> ${Bands.escapeHtml(bandName)}</p>
+                        <p style="margin: 5px 0;"><strong>Datum:</strong> ${UI.formatDate(event.date)}</p>
+                        ${event.location ? `<p style="margin: 5px 0;"><strong>Ort:</strong> ${Bands.escapeHtml(event.location)}</p>` : ''}
+                    </div>
+
+                    <h2 style="color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 20px; font-size: 18px;">Setlist (${songs.length} Songs)</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px;">
+                        <thead>
+                            <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                <th style="padding: 8px; text-align: left; font-weight: bold;">Nr.</th>
+                                <th style="padding: 8px; text-align: left; font-weight: bold;">Titel</th>
+                                <th style="padding: 8px; text-align: left; font-weight: bold;">Interpret</th>
+                                <th style="padding: 8px; text-align: center; font-weight: bold;">BPM</th>
+                                <th style="padding: 8px; text-align: center; font-weight: bold;">Tonart</th>
+                                <th style="padding: 8px; text-align: left; font-weight: bold;">Lead Vocal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${songsTableHTML}
+                        </tbody>
+                    </table>
+
+                    ${additionalInfoHTML}
+
+                    <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px; color: #999; font-size: 11px; text-align: center;">
+                        <p style="margin: 5px 0;">Erstellt mit Band Planning Tool</p>
+                        <p style="margin: 0;">Ausgedruckt am ${new Date().toLocaleString('de-DE')}</p>
+                    </div>
+                </div>
+            `;
+            
+            element.style.backgroundColor = 'white';
+            element.style.padding = '0';
+            element.style.margin = '0';
+            element.style.color = 'black';
+
+            // Append to body temporarily
+            document.body.appendChild(element);
+
+            // Wait for rendering
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Generate canvas
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                logging: false
+            });
+
+            // Create PDF
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 297; // A4 height in mm
+            let heightLeft = canvas.height * imgWidth / canvas.width;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - canvas.height * imgWidth / canvas.width;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
+                heightLeft -= pageHeight;
+            }
+
+            // Save PDF
+            const filename = `Setlist_${Bands.escapeHtml(event.title)}_${UI.formatDateShort(event.date)}.pdf`;
+            pdf.save(filename);
+
+            // Cleanup
+            document.body.removeChild(element);
+
+            UI.showToast('Setlist-PDF heruntergeladen!', 'success');
+        } catch (error) {
+            console.error('Error downloading setlist PDF:', error);
+            UI.showToast('Fehler beim Erstellen der PDF: ' + error.message, 'error');
+        }
     },
 
     // Toggle accordion
