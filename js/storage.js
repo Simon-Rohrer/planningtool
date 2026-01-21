@@ -473,6 +473,13 @@ const Storage = {
         return news.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     },
 
+    async getLatestNews(limit = 5) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('news').select('*').order('createdAt', { ascending: false }).limit(limit);
+        if (error) { console.error('Supabase getLatestNews error', error); return []; }
+        return data || [];
+    },
+
     async deleteNewsItem(newsId) {
         return await this.delete('news', newsId);
     },

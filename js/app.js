@@ -574,12 +574,15 @@ const App = {
             return;
         }
 
-        // On desktop we keep the click/hover behaviour that shows nav-submenu.
-        // On mobile we do not attach the old toggle handler because mobile will
-        // show the submenu in the header instead.
-        if (window.innerWidth <= 768) {
+        // IMPORTANT: This function is ONLY for MOBILE navigation (appNav bottom bar)
+        // On desktop (> 768px), we use the sidebar (.sidebar-nav), NOT this old appNav system
+        // So we should SKIP this entire setup on desktop to avoid conflicts
+        if (window.innerWidth > 768) {
+            console.log('[setupMobileSubmenuToggle] Skipping - desktop detected (width > 768px)');
             return;
         }
+
+        console.log('[setupMobileSubmenuToggle] Initializing mobile submenu toggle');
 
         navBar.addEventListener('click', (e) => {
             // Findet das geklickte .nav-item (oder dessen Elternelement)
@@ -594,7 +597,7 @@ const App = {
                 e.stopPropagation(); // Verhindert sofortiges Schließen durch globalen Handler
 
                 // 1. Alle anderen offenen Submenüs schließen
-                document.querySelectorAll('.nav-group.submenu-open').forEach(group => {
+                document.querySelectorAll('.app-nav .nav-group.submenu-open').forEach(group => {
                     // Schließe nur, wenn es nicht die aktuell geklickte Gruppe ist
                     if (group !== navGroup) {
                         group.classList.remove('submenu-open');
@@ -607,12 +610,13 @@ const App = {
         });
 
         // Submenüs schließen, wenn man irgendwo anders klickt (Globale Schließlogik)
+        // ONLY for mobile appNav submenus, not sidebar!
         document.addEventListener('click', (e) => {
             const isClickInsideNav = e.target.closest('.app-nav');
-            const isClickInsideSubmenu = e.target.closest('.nav-submenu');
+            const isClickInsideSubmenu = e.target.closest('.app-nav .nav-submenu');
             // Schließe alle Submenüs, wenn der Klick NICHT in der Nav-Bar und NICHT im Submenü war
             if (!isClickInsideNav && !isClickInsideSubmenu) {
-                document.querySelectorAll('.nav-group.submenu-open').forEach(group => {
+                document.querySelectorAll('.app-nav .nav-group.submenu-open').forEach(group => {
                     group.classList.remove('submenu-open');
                 });
             }
@@ -635,37 +639,130 @@ const App = {
 
     // Setup sidebar navigation (desktop)
     setupSidebarNav() {
-        const sidebarNavItems = document.querySelectorAll('.sidebar-nav-item');
-        const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+        // Prevent re-initialization
+        if (this._sidebarNavInitialized) {
+            console.log('[setupSidebarNav] Already initialized, skipping...');
+            return;
+        }
 
-        // Add click handlers to sidebar nav items
-        sidebarNavItems.forEach(item => {
-            item.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const view = item.dataset.view;
-                if (view) {
-                    // Update active state
-                    sidebarNavItems.forEach(i => i.classList.remove('active'));
-                    item.classList.add('active');
+        console.log('[setupSidebarNav] Initializing...');
+        const sidebarNav = document.querySelector('.sidebar-nav');
+        if (!sidebarNav) {
+            console.warn('[setupSidebarNav] No .sidebar-nav found');
+            return;
+        }
 
-                    // Navigate to view
-                    await this.navigateTo(view);
+        // Use event delegation - single listener on the parent
+        sidebarNav.addEventListener('click', (e) => {
+            // Find the clicked nav item or subitem
+            const navItem = e.target.closest('.nav-item, .nav-subitem');
+            if (!navItem) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            console.log('[Sidebar Click]', navItem.textContent.trim());
+
+            try {
+                // Handle main items with submenu (accordion behavior)
+                if (navItem.classList.contains('nav-main') && navItem.parentElement.classList.contains('has-submenu')) {
+                    const group = navItem.parentElement;
+                    const isExpanded = group.classList.contains('expanded');
+
+                    console.log('[Sidebar] Accordion item clicked. Currently expanded?', isExpanded);
+
+                    // Close all OTHER groups
+                    document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(other => {
+                        if (other !== group) {
+                            other.classList.remove('expanded');
+                            console.log('[Sidebar] Closed other group');
+                        }
+                    });
+
+                    // Toggle current group
+                    group.classList.toggle('expanded');
+                    const isNowExpanded = group.classList.contains('expanded');
+
+                    console.log('[Sidebar] After toggle - expanded?', isNowExpanded);
+                    if (isNowExpanded) {
+                        console.log('[Sidebar] ✓ Submenu expanded');
+                    } else {
+                        console.log('[Sidebar] ✗ Submenu collapsed');
+                    }
+
+                    // Don't navigate if it's just an accordion parent
+                    // (The items in this app don't have data-view on accordion parents)
+                    return;
                 }
-            });
+
+                // Handle navigation (subitems or regular nav items)
+                const view = navItem.dataset.view;
+                if (view) {
+                    console.log('[Sidebar] Navigating to:', view);
+
+                    // Close all expanded groups when navigating to a regular item or subitem
+                    document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
+                        group.classList.remove('expanded');
+                    });
+
+                    this.navigateTo(view).catch(err => {
+                        console.error('[Sidebar Nav Error]:', err);
+                    });
+
+                    // Update active states
+                    document.querySelectorAll('.sidebar-nav .nav-item, .sidebar-nav .nav-subitem').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                    navItem.classList.add('active');
+
+                    // If it's a subitem, also mark parent as active and keep it expanded
+                    if (navItem.classList.contains('nav-subitem')) {
+                        const parentGroup = navItem.closest('.nav-group');
+                        if (parentGroup) {
+                            const parentMain = parentGroup.querySelector('.nav-main');
+                            if (parentMain) {
+                                parentMain.classList.add('active');
+                            }
+                            // Keep parent group expanded
+                            parentGroup.classList.add('expanded');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('[Sidebar] Click handler error:', error);
+            }
         });
 
-        // Sidebar logout button
-        sidebarLogoutBtn.addEventListener('click', () => {
-            this.handleLogout();
-        });
-
-        const openSettingsBtn = document.getElementById('openSettingsBtn');
-        if (openSettingsBtn) {
+        // 2. Settings Button (Sidebar)
+        const openSettingsBtn = document.getElementById('openSettingsBtnSidebar');
+        if (openSettingsBtn && !openSettingsBtn._clickHandlerAttached) {
             openSettingsBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                // Close any open submenus
+                document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
+                    group.classList.remove('expanded');
+                });
                 this.openSettings();
             });
+            openSettingsBtn._clickHandlerAttached = true;
         }
+
+        // 3. Logout Button (Sidebar)
+        const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+        if (sidebarLogoutBtn && !sidebarLogoutBtn._clickHandlerAttached) {
+            sidebarLogoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Close any open submenus
+                document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
+                    group.classList.remove('expanded');
+                });
+                this.handleLogout();
+            });
+            sidebarLogoutBtn._clickHandlerAttached = true;
+        }
+
+        this._sidebarNavInitialized = true;
+        console.log('[setupSidebarNav] ✓ Initialization complete');
     },
 
     // Update sidebar profile info
@@ -1090,7 +1187,7 @@ const App = {
                                 console.error('[MOBILE NAV] navigateTo error for', first, navErr);
                             }
                         }
-                        return;
+                        retrn;
                     }
 
                     if (isMobile && item.classList.contains('nav-subitem') && navGroup) {
@@ -1825,6 +1922,32 @@ const App = {
             }
         });
 
+        // Initialize Sidebar Accordion
+        document.querySelectorAll('.nav-group.has-submenu > .nav-main').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent navigation if it's just a toggle
+                const group = btn.parentElement;
+
+                // Toggle current
+                group.classList.toggle('expanded');
+
+                // Close others (optional, but cleaner)
+                document.querySelectorAll('.nav-group.expanded').forEach(other => {
+                    if (other !== group) {
+                        other.classList.remove('expanded');
+                    }
+                });
+            });
+        });
+
+        // Setup logout button
+        const logoutBtn = document.getElementById('sidebarLogoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                Auth.logout();
+            });
+        }
+
         // Join Band Button
         const joinBandBtn = document.getElementById('joinBandBtn');
         if (joinBandBtn) {
@@ -1850,6 +1973,11 @@ const App = {
         // Lade-Overlay wird nur noch in den jeweiligen Datenladefunktionen angezeigt
         try {
             console.log('[navigateTo] called with view:', view);
+
+            // Declare overlay and loading flag at function start so they're accessible in all code paths
+            const overlay = document.getElementById('globalLoadingOverlay');
+            const shouldShowLoading = !['settings'].includes(view);
+
             const viewMap = {
                 'dashboard': 'dashboardView',
                 'bands': 'bandsView',
@@ -2138,11 +2266,11 @@ const App = {
 
     // Handle registration
     async handleRegister() {
-        const registrationCode = document.getElementById('registerCode').value;
-        const firstName = document.getElementById('registerFirstName').value;
-        const lastName = document.getElementById('registerLastName').value;
-        const email = document.getElementById('registerEmail').value;
-        const username = document.getElementById('registerUsername').value;
+        const registrationCode = document.getElementById('registerCode').value.trim();
+        const firstName = document.getElementById('registerFirstName').value.trim();
+        const lastName = document.getElementById('registerLastName').value.trim();
+        const email = document.getElementById('registerEmail').value.trim();
+        const username = document.getElementById('registerUsername').value.trim();
         const password = document.getElementById('registerPassword').value;
         const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
         const imageInput = document.getElementById('registerProfileImage');
@@ -2442,6 +2570,9 @@ const App = {
                     <p class="news-card-date">📅 ${date}</p>
                     ${imagesHtml}
                     <p class="news-card-content">${this.escapeHtml(truncatedContent)}</p>
+                    <div class="news-card-footer">
+                        <span class="news-card-expand">Mehr anzeigen <span class="expand-icon">→</span></span>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -5413,126 +5544,157 @@ const App = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const bands = await Storage.getUserBands(user.id);
-        document.getElementById('bandCount').textContent = bands.length;
-        // Make dashboard cards clickable for navigation
-        const dashboardCards = document.querySelectorAll('.dashboard-card');
-        if (dashboardCards.length >= 4) {
-            // Meine Bands
-            dashboardCards[0].style.cursor = 'pointer';
-            dashboardCards[0].onclick = () => this.navigateTo('bands');
-            // Nächste Auftritte
-            dashboardCards[1].style.cursor = 'pointer';
-            dashboardCards[1].onclick = () => this.navigateTo('events');
-            // Offene Abstimmungen
-            dashboardCards[2].style.cursor = 'pointer';
-            dashboardCards[2].onclick = () => this.navigateTo('rehearsals');
-            // Geplante Proben
-            dashboardCards[3].style.cursor = 'pointer';
-            dashboardCards[3].onclick = () => this.navigateTo('rehearsals');
+        console.time('dashboard-load');
+
+        // --- 1. Immediate Updates (Static / Local Data) ---
+
+        // Welcome Message
+        const welcomeUserName = document.getElementById('welcomeUserName');
+        if (welcomeUserName) {
+            welcomeUserName.textContent = user.first_name || user.username || 'Musiker';
         }
 
+        // Stat Cards Click Handlers
+        const statCards = document.querySelectorAll('.stat-card');
+        if (statCards.length >= 4) {
+            statCards[0].onclick = () => this.navigateTo('bands');
+            statCards[1].onclick = () => this.navigateTo('events');
+            statCards[2].onclick = () => this.navigateTo('rehearsals');
+            statCards[3].onclick = () => this.navigateTo('rehearsals');
+        }
 
-        // --- Fix: Upcoming Events Count ---
-        const events = (await Storage.getUserEvents(user.id)) || [];
-        const now = new Date();
-        const upcomingEvents = events.filter(e => new Date(e.date) >= now);
-        document.getElementById('upcomingEvents').textContent = upcomingEvents.length;
-
-        // Pending votes logic (unchanged)
-        const rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
-        const pendingRehearsals = rehearsals.filter(r => r.status === 'pending');
-        let openPollsCount = 0;
-        const nowTs = Date.now();
-        for (const rehearsal of pendingRehearsals) {
-            // Prüfe, ob mindestens ein Vorschlag noch offen ist (Endzeit in der Zukunft)
-            const hasOpenProposal = rehearsal.proposedDates && rehearsal.proposedDates.some(p => {
-                // Endzeit kann je nach Datenmodell unterschiedlich heißen
-                // Versuche endTime, ansonsten fallback auf startTime + 2h
-                let endTs = null;
-                if (p.endTime) {
-                    endTs = new Date(p.endTime).getTime();
-                } else if (p.startTime) {
-                    endTs = new Date(p.startTime).getTime() + 2 * 60 * 60 * 1000; // 2h default
+        // Quick Access (Sync) - Render Immediately
+        try {
+            const quickLinksDiv = document.getElementById('dashboardQuickLinks');
+            if (quickLinksDiv) {
+                const quickLinks = [
+                    { key: 'kalender', label: '📆 Mein Kalender', view: 'kalender' },
+                    { key: 'news', label: '📰 News', view: 'news' },
+                    { key: 'musikpool', label: '🎵 Musikerpool', view: 'musikpool' },
+                    { key: 'bands', label: '🎸 Meine Bands', view: 'bands' },
+                    { key: 'rehearsals', label: '📅 Probetermine', view: 'rehearsals' },
+                    { key: 'events', label: '🎤 Auftritte', view: 'events' },
+                    { key: 'statistics', label: '📊 Statistiken', view: 'statistics' },
+                ];
+                let selected = [];
+                try {
+                    selected = JSON.parse(localStorage.getItem('quickAccessLinks') || 'null');
+                } catch { }
+                if (!Array.isArray(selected) || selected.length === 0) {
+                    selected = ['kalender', 'news', 'musikpool'];
                 }
-                return endTs && endTs > nowTs;
-            });
-        }
-        document.getElementById('pendingVotes').textContent = openPollsCount;
-
-        // Confirmed rehearsals logic (unchanged)
-        const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
-        document.getElementById('confirmedRehearsals').textContent = confirmedRehearsals.length;
-
-        // Dashboard Sections Drag & Drop
-        const dashboardSectionsContainer = document.querySelector('.dashboard-sections');
-        if (dashboardSectionsContainer) {
-            const sectionIds = [
-                'dashboardNewsSection',
-                'dashboardQuickAccessSection',
-                'dashboardCalendarSection',
-                'dashboardActivitySection'
-            ];
-            // Reihenfolge aus localStorage holen
-            let order = [];
-            try {
-                order = JSON.parse(localStorage.getItem('dashboardSectionOrder') || 'null');
-            } catch { }
-            if (!Array.isArray(order) || order.length !== sectionIds.length) {
-                order = sectionIds;
+                const linksToShow = quickLinks.filter(l => selected.includes(l.key));
+                if (linksToShow.length === 0) {
+                    quickLinksDiv.innerHTML = '<span class="text-muted">Keine Schnellzugriffs-Links ausgewählt.</span>';
+                } else {
+                    quickLinksDiv.innerHTML = linksToShow.map(l =>
+                        `<button class="btn btn-primary btn-quick-link" data-view="${l.view}" style="margin:0 0.5em 0.5em 0;">${l.label}</button>`
+                    ).join('');
+                    quickLinksDiv.querySelectorAll('.btn-quick-link').forEach(btn => {
+                        btn.onclick = (e) => {
+                            e.preventDefault();
+                            this.navigateTo(btn.dataset.view);
+                        };
+                    });
+                }
             }
-            // Sortiere die Sections nach gespeicherter Reihenfolge
-            order.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) dashboardSectionsContainer.appendChild(el);
-            });
-            // Drag & Drop Setup
-            sectionIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.setAttribute('draggable', 'true');
-                el.ondragstart = (e) => {
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', id);
-                    el.classList.add('dragging');
-                };
-                el.ondragend = () => {
-                    el.classList.remove('dragging');
-                    el.classList.remove('drag-over');
-                };
-                el.ondragover = (e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    el.classList.add('drag-over');
-                };
-                el.ondragleave = (e) => {
-                    el.classList.remove('drag-over');
-                };
-                el.ondrop = (e) => {
-                    e.preventDefault();
-                    el.classList.remove('drag-over');
-                    const draggedId = e.dataTransfer.getData('text/plain');
-                    if (!draggedId || draggedId === id) return;
-                    const draggedEl = document.getElementById(draggedId);
-                    if (draggedEl) {
-                        dashboardSectionsContainer.insertBefore(draggedEl, el);
-                        // Neue Reihenfolge speichern
-                        const newOrder = Array.from(dashboardSectionsContainer.children).map(child => child.id);
-                        localStorage.setItem('dashboardSectionOrder', JSON.stringify(newOrder));
-                    }
-                };
-            });
+        } catch (err) {
+            console.error('[updateDashboard] QuickAccess failed', err);
         }
-        await this.renderUpcomingList();
-        // Populate Letzte News
+
+        // Drag & Drop Setup
+        try {
+            const dashboardSectionsContainer = document.querySelector('.dashboard-bento-grid');
+            if (dashboardSectionsContainer) {
+                const sectionIds = ['dashboardNewsSection', 'dashboardQuickAccessSection', 'dashboardCalendarSection', 'dashboardActivitySection'];
+                let order = [];
+                try { order = JSON.parse(localStorage.getItem('dashboardSectionOrder') || 'null'); } catch { }
+                if (!Array.isArray(order) || order.length !== sectionIds.length) order = sectionIds;
+
+                order.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) dashboardSectionsContainer.appendChild(el);
+                });
+
+                sectionIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.setAttribute('draggable', 'true');
+                    el.ondragstart = (e) => {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', id);
+                        el.classList.add('dragging');
+                    };
+                    el.ondragend = () => {
+                        el.classList.remove('dragging');
+                        el.classList.remove('drag-over');
+                    };
+                    el.ondragover = (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        el.classList.add('drag-over');
+                    };
+                    el.ondragleave = (e) => el.classList.remove('drag-over');
+                    el.ondrop = (e) => {
+                        e.preventDefault();
+                        el.classList.remove('drag-over');
+                        const draggedId = e.dataTransfer.getData('text/plain');
+                        if (!draggedId || draggedId === id) return;
+                        const draggedEl = document.getElementById(draggedId);
+                        if (draggedEl) {
+                            dashboardSectionsContainer.insertBefore(draggedEl, el);
+                            const newOrder = Array.from(dashboardSectionsContainer.children).map(child => child.id);
+                            localStorage.setItem('dashboardSectionOrder', JSON.stringify(newOrder));
+                        }
+                    };
+                });
+            }
+        } catch (err) {
+            console.error('[updateDashboard] Error in drag & drop logic', err);
+        }
+
+        // --- 2. Parallel Data Fetching ---
+
+        // Show Skeleton Loaders immediately
         const newsSection = document.getElementById('dashboardNewsList');
         if (newsSection) {
-            const news = await Storage.getAllNews();
-            if (news.length === 0) {
-                newsSection.innerHTML = '<div class="empty-state"><div class="empty-icon">📰</div><p>Keine News vorhanden.</p></div>';
-            } else {
-                // Render each news item with a clear heading (icon removed) and make it clickable
-                newsSection.innerHTML = news.slice(0, 3).map(n => `
+            newsSection.innerHTML = `
+                <div class="skeleton-item" style="height:80px; margin-bottom:10px;"></div>
+                <div class="skeleton-item" style="height:80px; margin-bottom:10px;"></div>
+                <div class="skeleton-item" style="height:80px;"></div>
+            `;
+        }
+
+        const activitySection = document.getElementById('dashboardActivityList');
+        if (activitySection) {
+            activitySection.innerHTML = `
+                <div class="skeleton-item" style="height:60px; margin-bottom:8px;"></div>
+                <div class="skeleton-item" style="height:60px; margin-bottom:8px;"></div>
+                <div class="skeleton-item" style="height:60px;"></div>
+            `;
+        }
+
+        // Start all fetches
+        const bandsPromise = Storage.getUserBands(user.id).catch(e => { console.error('Bands fetch failed', e); return []; });
+        const eventsPromise = Storage.getUserEvents(user.id).catch(e => { console.error('Events fetch failed', e); return []; });
+        const rehearsalsPromise = Storage.getUserRehearsals(user.id).catch(e => { console.error('Rehearsals fetch failed', e); return []; });
+        // Use optimized getLatestNews instead of fetching all
+        const newsPromise = Storage.getLatestNews(10).catch(e => { console.error('News fetch failed', e); return []; });
+
+        // Handle Bands
+        bandsPromise.then(bands => {
+            const bandCountEl = document.getElementById('bandCount');
+            if (bandCountEl) bandCountEl.textContent = bands.length;
+        });
+
+        // Handle News
+        newsPromise.then(news => {
+            const newsSection = document.getElementById('dashboardNewsList');
+            if (newsSection) {
+                if (news.length === 0) {
+                    newsSection.innerHTML = '<div class="empty-state"><div class="empty-icon">📰</div><p>Keine News vorhanden.</p></div>';
+                } else {
+                    newsSection.innerHTML = news.slice(0, 3).map(n => `
                     <div class="dashboard-news-item clickable" data-id="${n.id}">
                         <div class="news-heading"><strong>📰 News</strong></div>
                         <div class="news-title">${Bands.escapeHtml(n.title)}</div>
@@ -5541,95 +5703,110 @@ const App = {
                         <div class="btn-show-more-news">Mehr anzeigen</div>
                     </div>
                 `).join('');
-
-                // Attach click handlers to navigate to news view and mark the item as read
-                const self = this;
-                newsSection.querySelectorAll('.dashboard-news-item.clickable').forEach(item => {
-                    item.addEventListener('click', async (e) => {
-                        const id = item.dataset.id;
-                        const user = Auth.getCurrentUser();
-                        if (user && id) {
-                            try { await Storage.markNewsRead(id, user.id); } catch (err) { console.warn('markNewsRead failed', err); }
-                            if (typeof self.updateNewsNavBadge === 'function') await self.updateNewsNavBadge();
-                        }
-                        self.navigateTo('news');
+                    const self = this;
+                    newsSection.querySelectorAll('.dashboard-news-item.clickable').forEach(item => {
+                        item.addEventListener('click', async (e) => {
+                            const id = item.dataset.id;
+                            const user = Auth.getCurrentUser();
+                            if (user && id) {
+                                try { await Storage.markNewsRead(id, user.id); } catch (err) { }
+                                if (typeof self.updateNewsNavBadge === 'function') await self.updateNewsNavBadge();
+                            }
+                            self.navigateTo('news');
+                        });
                     });
-                });
+                }
             }
-        }
+        });
 
-        // Populate Schnellzugriff (Quick Access)
-        const quickLinksDiv = document.getElementById('dashboardQuickLinks');
-        if (quickLinksDiv) {
-            // Define available quick links (same as in setupQuickAccessEdit)
-            const quickLinks = [
-                { key: 'kalender', label: '📆 Mein Kalender', view: 'kalender' },
-                { key: 'news', label: '📰 News', view: 'news' },
-                { key: 'musikpool', label: '🎵 Musikerpool', view: 'musikpool' },
-                { key: 'bands', label: '🎸 Meine Bands', view: 'bands' },
-                { key: 'rehearsals', label: '📅 Probetermine', view: 'rehearsals' },
-                { key: 'events', label: '🎤 Auftritte', view: 'events' },
-                { key: 'statistics', label: '📊 Statistiken', view: 'statistics' },
-            ];
-            let selected = [];
-            try {
-                selected = JSON.parse(localStorage.getItem('quickAccessLinks') || 'null');
-            } catch { }
-            if (!Array.isArray(selected) || selected.length === 0) {
-                selected = ['kalender', 'news', 'musikpool'];
-            }
-            const linksToShow = quickLinks.filter(l => selected.includes(l.key));
-            if (linksToShow.length === 0) {
-                quickLinksDiv.innerHTML = '<span class="text-muted">Keine Schnellzugriffs-Links ausgewählt.</span>';
-            } else {
-                quickLinksDiv.innerHTML = linksToShow.map(l =>
-                    `<button class="btn btn-primary btn-quick-link" data-view="${l.view}" style="margin:0 0.5em 0.5em 0;">${l.label}</button>`
-                ).join('');
-                // Add click handlers
-                quickLinksDiv.querySelectorAll('.btn-quick-link').forEach(btn => {
-                    btn.onclick = (e) => {
-                        e.preventDefault();
-                        this.navigateTo(btn.dataset.view);
-                    };
-                });
-            }
-        }
+        // Handle Events & Rehearsals (Dependent logic: Next Event, Stats, Activities, Upcoming List)
+        Promise.all([eventsPromise, rehearsalsPromise]).then(([events, rehearsals]) => {
+            const now = new Date();
+            const nowTs = Date.now();
 
-        // Populate Neue Aktivität (recent events, rehearsals, news)
-        const activitySection = document.getElementById('dashboardActivityList');
-        if (activitySection) {
-            const user = Auth.getCurrentUser();
-            const [events, rehearsals, news] = await Promise.all([
-                Storage.getUserEvents(user.id),
-                Storage.getUserRehearsals(user.id),
-                Storage.getAllNews()
-            ]);
-            // Get most recent 5 items (events, rehearsals, news)
-            let activities = [];
-            activities = activities.concat(
-                (events || []).map(e => ({
-                    type: 'event',
-                    date: e.date,
-                    title: e.title,
-                })),
-                (rehearsals || []).filter(r => r.status === 'confirmed' && r.confirmedDateIndex !== undefined).map(r => ({
-                    type: 'rehearsal',
-                    date: r.proposedDates[r.confirmedDateIndex],
-                    title: r.title,
-                })),
-                (news || []).map(n => ({
-                    type: 'news',
-                    date: n.createdAt,
-                    title: n.title,
-                }))
-            );
-            activities = activities.filter(a => a.date).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-            if (activities.length === 0) {
-                activitySection.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>Keine neue Aktivität.</p></div>';
-            } else {
-                // Include type label and make each activity clickable
-                // Ensure we include IDs if available when building activities above
-                activitySection.innerHTML = activities.map(a => `
+            // Upcoming Events Count
+            const upcomingEvents = events.filter(e => new Date(e.date) >= now);
+            const upcomingEventsEl = document.getElementById('upcomingEvents');
+            if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingEvents.length;
+
+            // Pending Votes Count
+            const pendingRehearsals = rehearsals.filter(r => r.status === 'pending');
+            let openPollsCount = 0;
+            for (const rehearsal of pendingRehearsals) {
+                const hasOpenProposal = rehearsal.proposedDates && rehearsal.proposedDates.some(p => {
+                    let endTs = null;
+                    if (p.endTime) endTs = new Date(p.endTime).getTime();
+                    else if (p.startTime) endTs = new Date(p.startTime).getTime() + 2 * 60 * 60 * 1000;
+                    return endTs && endTs > nowTs;
+                });
+                if (hasOpenProposal) openPollsCount++;
+            }
+            const pendingVotesEl = document.getElementById('pendingVotes');
+            if (pendingVotesEl) pendingVotesEl.textContent = openPollsCount;
+
+            // Confirmed Rehearsals Count
+            const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
+            const confirmedRehearsalsEl = document.getElementById('confirmedRehearsals');
+            if (confirmedRehearsalsEl) confirmedRehearsalsEl.textContent = confirmedRehearsals.length;
+
+            // Next Event Hero
+            const nextEventContent = document.getElementById('nextEventContent');
+            if (nextEventContent) {
+                try {
+                    const allItems = [
+                        ...(upcomingEvents.map(e => ({ ...e, type: 'Gig', date: new Date(e.date) }))),
+                        ...(confirmedRehearsals.filter(r => r.confirmedDate).map(r => ({ ...r, type: 'Probe', date: new Date(r.confirmedDate) })))
+                    ];
+                    allItems.sort((a, b) => a.date - b.date);
+                    const nextItem = allItems.find(item => item.date >= now);
+
+                    if (nextItem) {
+                        const dateStr = nextItem.date.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' });
+                        const timeStr = nextItem.date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                        nextEventContent.innerHTML = `
+                        <div class="next-event-item">
+                            <div class="next-event-title">${Bands.escapeHtml(nextItem.title || nextItem.name || 'Ohne Titel')}</div>
+                            <div class="next-event-info">📅 ${dateStr} um ${timeStr} Uhr</div>
+                            <div class="next-event-info">📍 ${Bands.escapeHtml(nextItem.location || 'Kein Ort angegeben')}</div>
+                        </div>`;
+                        const heroCard = document.getElementById('nextEventHero');
+                        if (heroCard) {
+                            heroCard.style.cursor = 'pointer';
+                            heroCard.onclick = () => this.navigateTo(nextItem.type === 'Gig' ? 'events' : 'rehearsals');
+                        }
+                    } else {
+                        nextEventContent.innerHTML = `<div class="next-event-placeholder">Keine anstehenden Termine ❤️</div>`;
+                    }
+                } catch (err) {
+                    console.error('[updateDashboard] Error in Next Event logic', err);
+                    nextEventContent.innerHTML = '<div class="next-event-placeholder">Fehler beim Laden</div>';
+                }
+            }
+
+            // Render upcoming list using cached data
+            this.renderUpcomingList(events, rehearsals).catch(err => console.error('[updateDashboard] renderUpcomingList failed', err));
+
+            return { events, rehearsals };
+        });
+
+        // Handle Activities (needs News + Events + Rehearsals)
+        Promise.all([eventsPromise, rehearsalsPromise, newsPromise]).then(([events, rehearsals, news]) => {
+            const activitySection = document.getElementById('dashboardActivityList');
+            if (activitySection) {
+                let activities = [];
+                activities = activities.concat(
+                    (events || []).map(e => ({ type: 'event', date: e.date, title: e.title, id: e.id })),
+                    (rehearsals || []).filter(r => r.status === 'confirmed' && r.confirmedDateIndex !== undefined).map(r => ({
+                        type: 'rehearsal', date: r.proposedDates[r.confirmedDateIndex], title: r.title, id: r.id
+                    })),
+                    (news || []).map(n => ({ type: 'news', date: n.createdAt, title: n.title, id: n.id }))
+                );
+                activities = activities.filter(a => a.date).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+                if (activities.length === 0) {
+                    activitySection.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>Keine neue Aktivität.</p></div>';
+                } else {
+                    activitySection.innerHTML = activities.map(a => `
                     <div class="dashboard-activity-item clickable" data-type="${a.type}" data-id="${a.id || ''}">
                         <div style="display:flex; flex-direction:column; gap:0.2rem;">
                             <div class="activity-heading">${a.type === 'event' ? '🎤 Auftritt' : a.type === 'rehearsal' ? '📅 Probetermin' : '📰 News'}</div>
@@ -5640,34 +5817,32 @@ const App = {
                         </div>
                     </div>
                 `).join('');
-
-                const self = this;
-                activitySection.querySelectorAll('.dashboard-activity-item.clickable').forEach(item => {
-                    item.addEventListener('click', async () => {
-                        const type = item.dataset.type;
-                        // Navigate to the correct view depending on type
-                        if (type === 'event') {
-                            self.navigateTo('events');
-                        } else if (type === 'rehearsal') {
-                            self.navigateTo('rehearsals');
-                        } else {
-                            self.navigateTo('news');
-                        }
+                    const self = this;
+                    activitySection.querySelectorAll('.dashboard-activity-item.clickable').forEach(item => {
+                        item.addEventListener('click', async () => {
+                            const type = item.dataset.type;
+                            if (type === 'event') self.navigateTo('events');
+                            else if (type === 'rehearsal') self.navigateTo('rehearsals');
+                            else self.navigateTo('news');
+                        });
                     });
-                });
+                }
             }
-        }
+        });
+
+        console.timeEnd('dashboard-load');
     },
 
     // Render upcoming events and rehearsals sorted by date
-    async renderUpcomingList() {
+    async renderUpcomingList(cachedEvents = null, cachedRehearsals = null) {
         const container = document.getElementById('upcomingList');
         const user = Auth.getCurrentUser();
         if (!container || !user) return;
 
         const now = new Date();
-        const events = (await Storage.getUserEvents(user.id)) || [];
-        const rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
+        // Use cached data if provided, otherwise fetch
+        const events = cachedEvents || (await Storage.getUserEvents(user.id)) || [];
+        const rehearsals = cachedRehearsals || (await Storage.getUserRehearsals(user.id)) || [];
 
         const upcomingEvents = events
             .filter(e => new Date(e.date) >= now)
@@ -5683,7 +5858,6 @@ const App = {
         const upcomingRehearsals = rehearsals
             .filter(r => r.status === 'confirmed' && ((r.confirmedDate && r.confirmedDate !== '') || (r.confirmedDateIndex !== undefined && r.proposedDates && r.proposedDates[r.confirmedDateIndex])))
             .map(r => {
-                // Prefer confirmedDate if present, else fallback to proposedDates[confirmedDateIndex]
                 const dateIso = r.confirmedDate ? r.confirmedDate : (r.proposedDates && r.confirmedDateIndex !== undefined ? r.proposedDates[r.confirmedDateIndex] : null);
                 return {
                     type: 'rehearsal',
@@ -5708,7 +5882,6 @@ const App = {
         const rows = await Promise.all(combined.map(async item => {
             const band = await Storage.getBand(item.bandId);
             const bandName = band?.name || 'Band';
-            const dateText = UI.formatDateShort(item.date);
             const typeIcon = item.type === 'event' ? '🎤' : '📅';
             const typeLabel = item.type === 'event' ? 'Auftritt' : 'Probetermin';
 
@@ -5721,21 +5894,19 @@ const App = {
             }
 
             return `
-                <div class="dashboard-card upcoming-card">
-                    <div style="display:flex; align-items:center; gap:0.8rem; flex:1;">
-                        <div style="font-size:1.4rem;">${typeIcon}</div>
-                        <div style="display:flex; flex-direction:column;">
-                            <div style="font-weight:600;">${Bands.escapeHtml(item.title)}</div>
-                            <div style="font-size:0.9rem; color:var(--color-text-secondary); line-height:1.4;">
-                                <span style="font-weight:500; color:var(--color-primary);">${typeLabel}</span><br>
-                                ${UI.formatDate(item.date)}<br>
-                                🎸 ${Bands.escapeHtml(bandName)}<br>
-                                📍 ${locationText}
-                            </div>
+                <div class="upcoming-card">
+                    <div class="upcoming-card-icon">${typeIcon}</div>
+                    <div class="upcoming-card-content">
+                        <div class="upcoming-card-title">${Bands.escapeHtml(item.title)}</div>
+                        <div class="upcoming-card-meta">
+                            <span style="font-weight:600; color:var(--color-primary);">${typeLabel}</span> • ${UI.formatDate(item.date)}
+                        </div>
+                        <div class="upcoming-card-meta">
+                            🎸 ${Bands.escapeHtml(bandName)} • 📍 ${locationText}
                         </div>
                     </div>
-                    <div style="margin-left: 0.5rem;">
-                        ${item.type === 'event' ? `<button class=\"btn btn-secondary\" onclick=\"App.navigateTo('events')\">Öffnen</button>` : `<button class=\"btn btn-secondary\" onclick=\"App.navigateTo('rehearsals')\">Öffnen</button>`}
+                    <div class="upcoming-card-action">
+                         ${item.type === 'event' ? `<button class="btn btn-sm btn-secondary" onclick="App.navigateTo('events')">➜</button>` : `<button class="btn btn-sm btn-secondary" onclick="App.navigateTo('rehearsals')">➜</button>`}
                     </div>
                 </div>
             `;

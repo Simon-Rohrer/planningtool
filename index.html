@@ -310,70 +310,101 @@
                 <!-- Navigation -->
                 <!-- Navigation -->
                 <nav class="sidebar-nav">
-                    <!-- HOME -->
-                    <div class="sidebar-section-header">Home</div>
-                    <button class="sidebar-nav-item active" data-view="dashboard">
-                        <span class="sidebar-nav-icon">🏠</span>
-                        <span class="sidebar-nav-label">Dashboard</span>
-                    </button>
-                    <button class="sidebar-nav-item" data-view="bands">
-                        <span class="sidebar-nav-icon">🎸</span>
-                        <span class="sidebar-nav-label">Meine Bands</span>
-                    </button>
-                    <button class="sidebar-nav-item" data-view="musikpool">
-                        <span class="sidebar-nav-icon">🎵</span>
-                        <span class="sidebar-nav-label">Musikerpool</span>
-                    </button>
+                    <!-- 1. ÜBERBLICK -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main active" data-view="dashboard">
+                            <span class="nav-icon">🏠</span>
+                            <span class="nav-label">Überblick</span>
+                        </button>
+                    </div>
 
-                    <!-- PLANUNG -->
-                    <div class="sidebar-section-header">Planung</div>
-                    <button class="sidebar-nav-item" data-view="rehearsals">
-                        <span class="sidebar-nav-icon">📅</span>
-                        <span class="sidebar-nav-label">Probetermine</span>
-                    </button>
-                    <button class="sidebar-nav-item" data-view="probeorte">
-                        <span class="sidebar-nav-icon">🎙️</span>
-                        <span class="sidebar-nav-label">Probeorte</span>
-                    </button>
-                    <button class="sidebar-nav-item" data-view="kalender">
-                        <span class="sidebar-nav-icon">📆</span>
-                        <span class="sidebar-nav-label">Mein Kalender</span>
-                    </button>
+                    <!-- 2. BANDS -->
+                    <div class="nav-group has-submenu">
+                        <button class="nav-item nav-main">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-label">Bands</span>
+                            <span class="submenu-arrow">▼</span>
+                        </button>
+                        <div class="nav-submenu">
+                            <button class="nav-subitem" data-view="bands">
+                                <span class="nav-icon">🎸</span>
+                                <span class="nav-label">Meine Bands</span>
+                            </button>
+                            <button class="nav-subitem" data-view="musikpool">
+                                <span class="nav-icon">🎵</span>
+                                <span class="nav-label">Musikerpool</span>
+                            </button>
+                        </div>
+                    </div>
 
-                    <!-- GIGS -->
-                    <div class="sidebar-section-header">Gigs</div>
-                    <button class="sidebar-nav-item" data-view="events">
-                        <span class="sidebar-nav-icon">🎤</span>
-                        <span class="sidebar-nav-label">Auftritte</span>
-                    </button>
+                    <!-- 3. PLANUNG -->
+                    <div class="nav-group has-submenu">
+                        <button class="nav-item nav-main">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-label">Planung</span>
+                            <span class="submenu-arrow">▼</span>
+                        </button>
+                        <div class="nav-submenu">
+                            <button class="nav-subitem" data-view="kalender">
+                                <span class="nav-icon">📆</span>
+                                <span class="nav-label">Kalender</span>
+                            </button>
+                            <button class="nav-subitem" data-view="rehearsals">
+                                <span class="nav-icon">📅</span>
+                                <span class="nav-label">Probetermine</span>
+                            </button>
+                            <button class="nav-subitem" data-view="probeorte">
+                                <span class="nav-icon">📍</span>
+                                <span class="nav-label">Probeorte</span>
+                            </button>
+                        </div>
+                    </div>
 
-                    <!-- ANALYSE -->
-                    <div class="sidebar-section-header">Analyse</div>
-                    <button class="sidebar-nav-item" data-view="statistics">
-                        <span class="sidebar-nav-icon">📊</span>
-                        <span class="sidebar-nav-label">Statistiken</span>
-                    </button>
-                    <button class="sidebar-nav-item" data-view="news">
-                        <span class="sidebar-nav-icon">📰</span>
-                        <span class="sidebar-nav-label">News & Updates</span>
-                    </button>
+                    <!-- 4. GIGS -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main" data-view="events">
+                            <span class="nav-icon">🎤</span>
+                            <span class="nav-label">Gigs</span>
+                        </button>
+                    </div>
 
-                    <!-- SYSTEM -->
-                    <div class="sidebar-section-header">System</div>
-                    <button class="sidebar-nav-item" id="openSettingsBtn">
-                        <span class="sidebar-nav-icon">⚙️</span>
-                        <span class="sidebar-nav-label">Einstellungen</span>
-                    </button>
+                    <!-- 5. ANALYSE -->
+                    <div class="nav-group has-submenu">
+                        <button class="nav-item nav-main">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-label">Analyse</span>
+                            <span class="submenu-arrow">▼</span>
+                        </button>
+                        <div class="nav-submenu">
+                            <button class="nav-subitem" data-view="statistics">
+                                <span class="nav-icon">📈</span>
+                                <span class="nav-label">Statistiken</span>
+                            </button>
+                            <button class="nav-subitem" data-view="news">
+                                <span class="nav-icon">📰</span>
+                                <span class="nav-label">News</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 6. EINSTELLUNGEN -->
+                    <div class="nav-group" style="margin-top: auto;">
+                        <button class="nav-item nav-main" id="openSettingsBtnSidebar">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-label">Einstellungen</span>
+                        </button>
+                    </div>
+
+                    <!-- Logout Button moved here for consistent styling -->
+                    <div class="nav-group logout-group" style="margin-top: auto;">
+                        <button id="sidebarLogoutBtn" class="nav-item nav-main">
+                            <span class="nav-icon">🚪</span>
+                            <span class="nav-label">Abmelden</span>
+                        </button>
+                    </div>
                 </nav>
 
-                <!-- Logout Button at bottom of sidebar -->
-                <div style="padding: var(--spacing-md); margin-top: auto;">
-                    <button id="sidebarLogoutBtn" class="sidebar-nav-item"
-                        style="width: 100%; justify-content: center; background: rgba(255,255,255,0.1);">
-                        <span class="sidebar-nav-icon">🚪</span>
-                        <span class="sidebar-nav-label">Abmelden</span>
-                    </button>
-                </div>
+
             </aside>
 
             <!-- Main Content Wrapper (right of sidebar on desktop) -->
@@ -407,7 +438,8 @@
                     <div id="headerSubmenu" class="header-submenu-nav" aria-live="polite"></div>
 
                     <!-- Navigation (now inside header on desktop) -->
-                    <nav class="app-nav" id="appNav">
+                    <!-- HIDDEN IN FAVOR OF NEW SIDEBAR -->
+                    <nav class="app-nav" id="appNav" style="display: none !important;">
                         <!-- Home (Hauptreiter) -->
                         <div class="nav-group">
                             <button class="nav-item nav-main active" data-view="dashboard">
@@ -526,71 +558,91 @@
                         <div class="view-header">
                             <h2>Dashboard</h2>
                         </div>
+                        <!-- Dashboard Hero Section -->
+                        <div id="dashboardHero" class="dashboard-hero">
+                            <div class="hero-welcome">
+                                <h2 class="welcome-text">Hallo <span id="welcomeUserName">Musiker</span>, bereit zum
+                                    Rocken? 🤘</h2>
+                                <p class="hero-subtitle">Hier ist der Überblick für deine musikalische Woche.</p>
+                            </div>
+                            <div id="nextEventHero" class="next-event-hero-card">
+                                <div class="next-event-badge">Nächster Termin</div>
+                                <div id="nextEventContent" class="next-event-content">
+                                    <div class="next-event-placeholder">Lade nächsten Termin...</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="dashboard-grid">
-                            <div class="dashboard-card">
+                            <div class="dashboard-card stat-card">
                                 <div class="card-icon">🎸</div>
                                 <div class="card-content">
                                     <h3>Meine Bands</h3>
                                     <p class="card-stat" id="bandCount">0</p>
                                 </div>
                             </div>
-                            <div class="dashboard-card">
+                            <div class="dashboard-card stat-card">
                                 <div class="card-icon">🎤</div>
                                 <div class="card-content">
-                                    <h3>Nächste Auftritte</h3>
+                                    <h3>Nächste Gigs</h3>
                                     <p class="card-stat" id="upcomingEvents">0</p>
                                 </div>
                             </div>
-                            <div class="dashboard-card">
-                                <div class="card-icon">📅</div>
+                            <div class="dashboard-card stat-card">
+                                <div class="card-icon">🗳️</div>
                                 <div class="card-content">
-                                    <h3>Abstimmungen</h3>
+                                    <h3>Votings offen</h3>
                                     <p class="card-stat" id="pendingVotes">0</p>
                                 </div>
                             </div>
-                            <div class="dashboard-card">
+                            <div class="dashboard-card stat-card">
                                 <div class="card-icon">✅</div>
                                 <div class="card-content">
-                                    <h3>Geplante Proben</h3>
+                                    <h3>Bestätigt</h3>
                                     <p class="card-stat" id="confirmedRehearsals">0</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Neue Dashboard-Abschnitte -->
-                        <div class="dashboard-sections">
-                            <div class="dashboard-section" id="dashboardNewsSection">
+                        <!-- Dashboard Sections in Bento Layout -->
+                        <div class="dashboard-bento-grid">
+                            <div class="dashboard-section news-section" id="dashboardNewsSection">
                                 <div class="dashboard-section-header">
                                     <h3>📰 Letzte News</h3>
-                                    <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                                    <div class="section-header-actions">
+                                        <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                                    </div>
                                 </div>
                                 <div id="dashboardNewsList" class="dashboard-news-list"></div>
                             </div>
-                            <div class="dashboard-section" id="dashboardQuickAccessSection">
+
+                            <div class="dashboard-section quick-access-section" id="dashboardQuickAccessSection">
                                 <div class="dashboard-section-header">
-                                    <h3 style="margin: 0;">⚡ Schnellzugriff</h3>
-                                    <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
-                                    <button id="editQuickAccessBtn" class="btn btn-icon"
-                                        title="Schnellzugriff bearbeiten"
-                                        style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-                                        ✏️
-                                    </button>
+                                    <h3>⚡ Schnellzugriff</h3>
+                                    <div class="section-header-actions">
+                                        <button id="editQuickAccessBtn" class="btn btn-icon-sm"
+                                            title="Bearbeiten">✏️</button>
+                                        <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
+                                    </div>
                                 </div>
                                 <div class="dashboard-quick-links" id="dashboardQuickLinks"></div>
                             </div>
-                            <div class="dashboard-section" id="dashboardCalendarSection">
+
+                            <div class="dashboard-section calendar-section" id="dashboardCalendarSection">
                                 <div class="dashboard-section-header">
-                                    <h3>📅 Eigener Kalender</h3>
+                                    <h3>📅 Kalender-Abo</h3>
                                     <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
                                 </div>
-                                <div>
-                                    <button class="btn btn-primary" onclick="App.navigateTo('kalender')">Zum Kalender &
-                                        Export</button>
+                                <div class="calendar-sync-card">
+                                    <p>Verpasse keinen Termin mehr durch die Kalender-Synchronisation.</p>
+                                    <button class="btn btn-primary btn-sm" onclick="App.navigateTo('kalender')">Sync
+                                        einrichten</button>
                                 </div>
                             </div>
-                            <div class="dashboard-section" id="dashboardActivitySection">
+
+                            <div class="dashboard-section activity-section" id="dashboardActivitySection">
                                 <div class="dashboard-section-header">
-                                    <h3>✨ Neue Aktivität</h3>
+                                    <h3>✨ Aktivitäten</h3>
                                     <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
                                 </div>
                                 <div id="dashboardActivityList" class="dashboard-activity-list"></div>
@@ -1328,23 +1380,27 @@
                 </div>
                 <form id="addUserForm">
                     <div class="form-group">
-                        <label for="newUserFirstName">Vorname</label>
+                        <label for="newUserFirstName">Vorname <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
                         <input type="text" id="newUserFirstName" required>
                     </div>
                     <div class="form-group">
-                        <label for="newUserLastName">Nachname</label>
+                        <label for="newUserLastName">Nachname <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
                         <input type="text" id="newUserLastName" required>
                     </div>
                     <div class="form-group">
-                        <label for="newUserEmail">E-Mail</label>
+                        <label for="newUserEmail">E-Mail <span style="color:red;" title="Pflichtfeld">*</span></label>
                         <input type="email" id="newUserEmail" required>
                     </div>
                     <div class="form-group">
-                        <label for="newUserUsername">Benutzername</label>
+                        <label for="newUserUsername">Benutzername <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
                         <input type="text" id="newUserUsername" required>
                     </div>
                     <div class="form-group">
-                        <label for="newUserPassword">Passwort</label>
+                        <label for="newUserPassword">Passwort <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
                         <input type="password" id="newUserPassword" required minlength="6">
                         <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Mindestens 6
                             Zeichen</small>
@@ -1710,7 +1766,7 @@
                     </div>
 
                     <div id="eventGuestsField" class="form-optional-section" style="display:none;">
-                        <label for="eventGuests">🎭 Gästeliste (einer pro Zeile)</label>
+                        <label for="eventGuests">🎭 Gästeliste</label>
                         <textarea id="eventGuests" rows="2" placeholder="Name (Instrument/Rolle)"></textarea>
                     </div>
 

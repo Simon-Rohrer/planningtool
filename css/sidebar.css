@@ -189,6 +189,39 @@
 
 }
 
+/* Logout Button Styling - Match other nav-main buttons precisely */
+.sidebar-nav .nav-group.logout-group {
+    margin-top: 3rem;
+    /* Fallback shift to bottom */
+}
+
+#sidebarLogoutBtn.nav-item.nav-main {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #FFFFFF !important;
+    /* Force pure white */
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    opacity: 1 !important;
+    /* Ensure no transparency */
+}
+
+#sidebarLogoutBtn.nav-item.nav-main .nav-label {
+    color: #FFFFFF !important;
+}
+
+#sidebarLogoutBtn.nav-item.nav-main:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: translateX(2px);
+    color: #FFFFFF !important;
+}
+
 /* Mobile Responsive - Hide sidebar, show bottom nav */
 @media (max-width: 768px) {
     .app-sidebar {

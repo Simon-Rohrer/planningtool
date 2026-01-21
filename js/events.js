@@ -112,7 +112,7 @@ const Events = {
         // Mitglieder (immer anzeigen)
         detailsHtml += `
             <div class="detail-row">
-                <div class="detail-label">👥 Bandmitglieder (${members.length}):</div>
+                <div class="detail-label">👥 Bandmitglieder:</div>
                 <div class="detail-value">
                     ${members.map(m => `
                         <span class="member-tag" style="margin-right: 0.5em;">
@@ -127,7 +127,7 @@ const Events = {
         if (guests.length > 0) {
             detailsHtml += `
                 <div class="detail-row">
-                    <div class="detail-label">🎭 Gäste (${guests.length}):</div>
+                    <div class="detail-label">🎭 Gäste:</div>
                     <div class="detail-value">
                         ${guests.map(guest => `<span class="guest-tag">${Bands.escapeHtml(guest)}</span>`).join('')}
                     </div>

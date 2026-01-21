@@ -91,7 +91,7 @@ const Auth = {
         }
 
         // Validate inputs
-        if (!firstName || !lastName || !email || !username || !password) {
+        if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !username?.trim() || !password) {
             throw new Error('Alle Felder sind erforderlich');
         }
 
@@ -195,7 +195,7 @@ const Auth = {
         }
 
         // Validate inputs
-        if (!firstName || !lastName || !email || !username || !password) {
+        if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !username?.trim() || !password) {
             throw new Error('Alle Felder sind erforderlich');
         }
 
