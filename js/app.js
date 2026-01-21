@@ -2,6 +2,189 @@
 
 // Main Application Controller
 
+/* ===== Rich Text Editor Helper ===== */
+const RichTextEditor = {
+    init() {
+        console.log('[RichTextEditor] Initializing...');
+
+        // Toolbar buttons
+        document.querySelectorAll('.rte-button').forEach(btn => {
+            // Remove existing listeners to avoid duplicates (clone node)
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault(); // Prevents focus loss from editor
+                e.stopPropagation();
+
+                // Explicitly focus editor to ensure command works on selection
+                const editor = document.getElementById('newsContent');
+                if (editor) editor.focus();
+
+                const command = newBtn.dataset.command;
+
+                if (command === 'insertImage') {
+                    // Handled by specific ID listener or fallback here
+                    const input = document.getElementById('rteImageInput');
+                    if (input) input.click();
+                } else if (command === 'formatBlock') {
+                    document.execCommand(command, false, newBtn.dataset.value);
+                } else {
+                    document.execCommand(command, false, null);
+                }
+
+                // Update toolbar active states
+                this.updateToolbarState();
+
+                // Keep focus in editor (should persist due to preventDefault, but ensuring it)
+                // const editor = document.getElementById('newsContent');
+                // if (editor) editor.focus();
+            });
+        });
+
+        // Image insert button specific listener (if ID is used)
+        const imgBtn = document.getElementById('rteInsertImageBtn');
+        if (imgBtn) {
+            imgBtn.onclick = (e) => {
+                e.preventDefault();
+                document.getElementById('rteImageInput').click();
+            };
+        }
+
+        // Image input change
+        const imgInput = document.getElementById('rteImageInput');
+        if (imgInput) {
+            imgInput.onchange = (e) => this.handleImageUpload(e);
+        }
+
+        // Editor events for toolbar state updates
+        const editor = document.getElementById('newsContent');
+        if (editor) {
+            editor.addEventListener('keyup', () => this.updateToolbarState());
+            editor.addEventListener('mouseup', () => this.updateToolbarState());
+            editor.addEventListener('click', () => this.updateToolbarState());
+
+            // Allow drag and drop of images
+            editor.addEventListener('drop', (e) => {
+                // Let browser handle internal D&D, but maybe we want to handle external files too?
+                // For now, default browser behavior is fine for internal structure elements
+            });
+        }
+    },
+
+    updateToolbarState() {
+        document.querySelectorAll('.rte-button[data-command]').forEach(btn => {
+            const command = btn.dataset.command;
+            if (document.queryCommandState(command)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    },
+
+    async handleImageUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Check size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            UI.showToast('Bild ist zu groß (max 5MB)', 'error');
+            return;
+        }
+
+        UI.showLoading('Bild wird verarbeitet...');
+
+        try {
+            // Compress/Resize image before insertion
+            const resizedDataUrl = await this.resizeImage(file);
+            this.insertImage(resizedDataUrl);
+        } catch (err) {
+            console.error('Image processing error:', err);
+            UI.showToast('Fehler beim Einfügen des Bildes', 'error');
+        } finally {
+            UI.hideLoading();
+            e.target.value = ''; // Reset input
+        }
+    },
+
+    resizeImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Max width 800px for consistency
+                    if (width > 800) {
+                        height = Math.round(height * (800 / width));
+                        width = 800;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Output as JPEG high quality
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    },
+
+    insertImage(src) {
+        // Focus editor first
+        const editor = document.getElementById('newsContent');
+        if (editor) editor.focus();
+
+        // Insert image at cursor
+        // Using execCommand 'insertImage' is simplest for compatibility
+        // But we want custom styling, so insertHTML is better
+        const imgHtml = `<img src="${src}" class="rte-inline-image" style="max-width:100%; border-radius:8px; margin: 10px 0; display:block;">`;
+        document.execCommand('insertHTML', false, imgHtml);
+    },
+
+    getContent() {
+        const editor = document.getElementById('newsContent');
+        if (!editor) return '';
+        // Sanitize before returning? Or on save?
+        // Let's return raw logic here
+        return editor.innerHTML;
+    },
+
+    setContent(html) {
+        const editor = document.getElementById('newsContent');
+        if (!editor) return;
+        editor.innerHTML = html;
+    },
+
+    clear() {
+        const editor = document.getElementById('newsContent');
+        if (editor) editor.innerHTML = '';
+    },
+
+    // Simple sanitization
+    sanitize(html) {
+        if (!html) return '';
+
+        // Remove script tags and on* attributes
+        // This is a basic protection. For production use a library like DOMPurify.
+        return html
+            .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "")
+            .replace(/ on\w+="[^"]*"/g, "")
+            .replace(/javascript:/g, "");
+    }
+};
+
 const App = {
 
     // Track deleted songs for potential rollback
@@ -436,6 +619,20 @@ const App = {
         });
     },
 
+    // Helper to open settings modal
+    openSettings() {
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            UI.openModal('settingsModal');
+            // Initialize settings logic explicitly
+            const modalBody = settingsModal.querySelector('.modal-body');
+            const isAdmin = Auth.isAdmin();
+            if (this.initializeSettingsViewListeners) {
+                this.initializeSettingsViewListeners(isAdmin, modalBody);
+            }
+        }
+    },
+
     // Setup sidebar navigation (desktop)
     setupSidebarNav() {
         const sidebarNavItems = document.querySelectorAll('.sidebar-nav-item');
@@ -464,15 +661,9 @@ const App = {
 
         const openSettingsBtn = document.getElementById('openSettingsBtn');
         if (openSettingsBtn) {
-            openSettingsBtn.addEventListener('click', () => {
-                const settingsModal = document.getElementById('settingsModal');
-                if (settingsModal) {
-                    UI.openModal('settingsModal');
-                    // Initialize settings logic explicitly
-                    const modalBody = settingsModal.querySelector('.modal-body');
-                    const isAdmin = Auth.isAdmin();
-                    this.initializeSettingsViewListeners(isAdmin, modalBody);
-                }
+            openSettingsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.openSettings();
             });
         }
     },
@@ -1025,9 +1216,9 @@ const App = {
                     <div class="date-proposal-item" data-confirmed="false">
                         <div class="date-time-range">
                             <input type="date" class="date-input-date">
-                            <input type="time" class="date-input-start">
+                            <input type="time" class="date-input-start" value="18:30">
                             <span class="time-separator">bis</span>
-                            <input type="time" class="date-input-end">
+                            <input type="time" class="date-input-end" value="21:30">
                         </div>
                         <span class="date-availability" style="margin-left:8px"></span>
                         <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
@@ -1162,6 +1353,13 @@ const App = {
             document.getElementById('saveEventBtn').textContent = 'Auftritt erstellen';
             document.getElementById('editEventId').value = '';
             UI.clearForm('createEventForm');
+
+            // Pre-fill default time 09:30
+            const eventDateInput = document.getElementById('eventDate');
+            if (eventDateInput) {
+                const today = new Date().toISOString().split('T')[0];
+                eventDateInput.value = `${today}T09:30`;
+            }
 
             Events.populateBandSelect();
             // Clear draft song selection and deleted songs for new event
@@ -1668,6 +1866,20 @@ const App = {
 
             const viewId = viewMap[view];
 
+            // Special handling for Settings (Modal instead of View)
+            if (view === 'settings') {
+                this.openSettings();
+                // Update active state for nav items manually
+                document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
+                    if (item.dataset.view === 'settings') {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+                return;
+            }
+
             if (viewId) {
                 // Set nav active color per view for sticky bottom bar indicator
                 const navActiveColorMap = {
@@ -2130,13 +2342,20 @@ const App = {
 
     // News Management
     async renderNewsView() {
+        // Show loading overlay if present
+        const overlay = document.getElementById('globalLoadingOverlay');
+
         // Nur laden, wenn noch keine News im Speicher
         if (this.newsItems && Array.isArray(this.newsItems) && this.newsItems.length > 0) {
             this.renderNewsList(this.newsItems);
+            // CRITICAL FIX: Hide overlay when using cached news
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 400);
+            }
             return;
         }
-        // Show loading overlay if present
-        const overlay = document.getElementById('globalLoadingOverlay');
+
         if (overlay) {
             overlay.style.display = 'flex';
             overlay.style.opacity = '1';
@@ -2190,15 +2409,16 @@ const App = {
                 <button class="btn-icon edit-news" data-id="${news.id}" title="News bearbeiten">✏️</button>
             ` : '';
 
-            // Render images if present
+            // Render images with modern grid layout
             let imagesHtml = '';
             if (news.images && Array.isArray(news.images) && news.images.length > 0) {
-                const imgs = news.images.map(imgSrc => `
-                    <div style="flex: 0 0 120px; max-width:120px;">
-                        <img src="${imgSrc}" style="width:100%; height:80px; object-fit:cover; border-radius:6px;" />
+                const imgs = news.images.slice(0, 3).map(imgSrc => `
+                    <div class="news-image-preview">
+                        <img src="${imgSrc}" alt="News preview" />
                     </div>
                 `).join('');
-                imagesHtml = `<div style="display:flex; gap:0.5rem; margin:0.75rem 0; flex-wrap:wrap;">${imgs}</div>`;
+                const moreIndicator = news.images.length > 3 ? `<div class="news-more-images">+${news.images.length - 3}</div>` : '';
+                imagesHtml = `<div class="news-image-grid">${imgs}${moreIndicator}</div>`;
             }
 
             // mark unread for this user
@@ -2208,22 +2428,20 @@ const App = {
             const truncatedContent = this.truncateText(news.content, 150);
 
             return `
-                <div class="news-card" data-id="${news.id}" 
-                     style="background: var(--color-surface); padding: var(--spacing-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: var(--spacing-lg); border-left: 4px solid var(--color-primary); cursor: pointer; transition: all 0.2s ease;"
-                     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-lg)';"
-                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-md)';">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md);">
-                        <div style="flex: 1;">
-                            <h3 style="margin-bottom: var(--spacing-xs); color: var(--color-text);">${this.escapeHtml(news.title)} ${!isReadForUser ? '<span class="news-unread-badge" style="color: #e11d48; font-size:0.75rem; margin-left:0.5rem;">NEU</span>' : ''}</h3>
-                            <p style="font-size: 0.875rem; color: var(--color-text-light);">📅 ${date}</p>
+                <div class="news-card news-card-modern ${!isReadForUser ? 'news-card-unread' : ''}" data-id="${news.id}">
+                    <div class="news-card-header">
+                        <div class="news-card-title-section">
+                            <h3 class="news-card-title">${this.escapeHtml(news.title)}</h3>
+                            ${!isReadForUser ? '<span class="news-badge-new">NEU</span>' : ''}
                         </div>
-                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <div class="news-card-actions">
                             ${editBtn}
                             ${deleteBtn}
                         </div>
                     </div>
+                    <p class="news-card-date">📅 ${date}</p>
                     ${imagesHtml}
-                    <p style="color: var(--color-text-secondary); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">${this.escapeHtml(truncatedContent)}</p>
+                    <p class="news-card-content">${this.escapeHtml(truncatedContent)}</p>
                 </div>
             `;
         }).join('');
@@ -2261,7 +2479,10 @@ const App = {
 
     async handleCreateNews() {
         const title = document.getElementById('newsTitle').value;
-        const content = document.getElementById('newsContent').value;
+        // Use Rich Text Editor content
+        let content = RichTextEditor.getContent();
+        content = RichTextEditor.sanitize(content);
+
         const imagesInput = document.getElementById('newsImages');
         const editIdInput = document.getElementById('editNewsId');
         const user = Auth.getCurrentUser();
@@ -2271,7 +2492,7 @@ const App = {
             return;
         }
 
-        // Read image files (convert to data URLs)
+        // Read image files (convert to data URLs) - these are ADDITIONAL attachments, distinct from inline images
         const images = [];
         if (imagesInput && imagesInput.files && imagesInput.files.length > 0) {
             const files = Array.from(imagesInput.files).slice(0, 6); // limit to 6 images
@@ -2328,7 +2549,7 @@ const App = {
 
             await Storage.updateNewsItem(editId, {
                 title,
-                content,
+                content, // Rich Text HTML
                 images: finalImages,
                 updatedAt: new Date().toISOString(),
                 updatedBy: user.id,
@@ -2343,7 +2564,8 @@ const App = {
 
         // Clear form and close modal
         document.getElementById('newsTitle').value = '';
-        document.getElementById('newsContent').value = '';
+        RichTextEditor.clear(); // Clear editor
+
         if (imagesInput) {
             imagesInput.value = null;
         }
@@ -2402,11 +2624,11 @@ const App = {
 
         // Populate form
         const titleInput = document.getElementById('newsTitle');
-        const contentInput = document.getElementById('newsContent');
         const editInput = document.getElementById('editNewsId');
 
         if (titleInput) titleInput.value = news.title || '';
-        if (contentInput) contentInput.value = news.content || '';
+        // Populate Rich Text Editor
+        RichTextEditor.setContent(news.content || '');
         if (editInput) editInput.value = news.id;
 
         console.log('Populated fields - Title:', news.title, 'Content:', news.content);
@@ -2452,7 +2674,7 @@ const App = {
             return;
         }
 
-        // Populate modal
+        // Populate modal with modern styling
         document.getElementById('newsDetailTitle').textContent = news.title || '';
 
         const date = new Date(news.createdAt).toLocaleDateString('de-DE', {
@@ -2462,21 +2684,31 @@ const App = {
         });
         document.getElementById('newsDetailDate').textContent = `📅 ${date}`;
 
-        document.getElementById('newsDetailContent').textContent = news.content || '';
+        // Use innerHTML directly (content is sanitized on save by RichTextEditor)
+        document.getElementById('newsDetailContent').innerHTML = news.content || '';
 
-        // Render images
+        // Render images in modern gallery grid
         const imagesContainer = document.getElementById('newsDetailImages');
         imagesContainer.innerHTML = '';
         if (news.images && Array.isArray(news.images) && news.images.length > 0) {
+            // Create gallery grid based on image count
+            const galleryClass = news.images.length === 1 ? 'news-gallery-grid-single' : 'news-gallery-grid';
+            const gallery = document.createElement('div');
+            gallery.className = galleryClass;
+
             news.images.forEach(imgSrc => {
+                const imgWrapper = document.createElement('div');
+                imgWrapper.className = 'news-gallery-item';
+
                 const img = document.createElement('img');
                 img.src = imgSrc;
-                img.style.width = '150px';
-                img.style.height = '150px';
-                img.style.objectFit = 'cover';
-                img.style.borderRadius = '6px';
-                imagesContainer.appendChild(img);
+                img.alt = 'News image';
+
+                imgWrapper.appendChild(img);
+                gallery.appendChild(imgWrapper);
             });
+
+            imagesContainer.appendChild(gallery);
         }
 
         // Mark as read
@@ -3678,12 +3910,15 @@ const App = {
         }
 
         container.innerHTML = absences.map(absence => `
-            <div class="absence-item" data-absence-id="${absence.id}">
-                <div class="absence-info">
+            <div class="absence-card-modern" data-absence-id="${absence.id}">
+                <div class="absence-info-modern">
+                    <div class="absence-date-range">
+                        <span>📅</span>
                         <strong>${UI.formatDateOnly(absence.startDate)} - ${UI.formatDateOnly(absence.endDate)}</strong>
-                    ${absence.reason ? `<p>${Bands.escapeHtml(absence.reason)}</p>` : ''}
+                    </div>
+                    ${absence.reason ? `<p class="absence-reason-text">${Bands.escapeHtml(absence.reason)}</p>` : ''}
                 </div>
-                <div class="absence-actions">
+                <div class="absence-actions-modern">
                     <button class="btn-icon edit-absence-settings" data-absence-id="${absence.id}" title="Bearbeiten">✏️</button>
                     <button class="btn-icon delete-absence-settings" data-absence-id="${absence.id}" title="Löschen">🗑️</button>
                 </div>
@@ -5303,6 +5538,7 @@ const App = {
                         <div class="news-title">${Bands.escapeHtml(n.title)}</div>
                         <div class="news-date">${UI.formatDateShort(n.createdAt)}</div>
                         <div class="news-content">${Bands.escapeHtml(n.content).slice(0, 80)}${n.content.length > 80 ? '…' : ''}</div>
+                        <div class="btn-show-more-news">Mehr anzeigen</div>
                     </div>
                 `).join('');
 
@@ -6005,5 +6241,6 @@ window.App = App;
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    RichTextEditor.init();
     App.init();
 });

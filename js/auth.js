@@ -326,6 +326,17 @@ const Auth = {
         // Clear any cached session data
         sessionStorage.removeItem('currentUser');
 
+        // Clear module-level caches to prevent data from persisting between users
+        if (typeof Rehearsals !== 'undefined' && Rehearsals.clearCache) {
+            Rehearsals.clearCache();
+        }
+        if (typeof PersonalCalendar !== 'undefined' && PersonalCalendar.clearCache) {
+            PersonalCalendar.clearCache();
+        }
+        if (typeof Bands !== 'undefined' && Bands.clearCache) {
+            Bands.clearCache();
+        }
+
         // Sign out from Supabase
         const sb = SupabaseClient.getClient();
         if (sb) {
@@ -335,7 +346,7 @@ const Auth = {
             }
         }
 
-        console.log('[Auth.logout] User logged out and cache cleared');
+        console.log('[Auth.logout] User logged out and all caches cleared');
     },
 
     isAuthenticated() {

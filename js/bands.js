@@ -3,6 +3,12 @@
 const Bands = {
     currentBandId: null,
 
+    // Clear all cached data (called during logout)
+    clearCache() {
+        this.currentBandId = null;
+        this.bands = null;
+    },
+
     instrumentIcons: {
         'drums': '🥁',
         'bass': '🎸',
@@ -246,9 +252,11 @@ const Bands = {
         leaveSection.querySelector('#leaveBandBtn').addEventListener('click', () => {
             (async () => {
                 const members = await Storage.getBandMembers(bandId);
-                const user = Auth.getCurrentUser();
-                if (members.length <= 1 || (members.length === 2 && members.some(m => m.userId === user.id))) {
-                    UI.showToast('Du bist das letzte Mitglied dieser Band. Bitte lösche die Band, bevor du sie verlässt, um Datenmüll zu vermeiden.', 'warning');
+
+                // Simplified logic: if there is more than 1 record in the band, someone else is there.
+                // This avoids ID comparison/type issues.
+                if (members.length <= 1) {
+                    UI.showToast(`Du bist das letzte Mitglied dieser Band (Gefunden: ${members.length}). Bitte lösche die Band, bevor du sie verlässt, um Datenmüll zu vermeiden.`, 'warning');
                     return;
                 }
                 this.leaveBand(bandId);

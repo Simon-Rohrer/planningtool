@@ -830,7 +830,7 @@
         <!-- Absences Content (for inclusion in Settings) -->
         <div id="absencesSettingsContent" style="display: none;">
             <!-- Create Absence Section -->
-            <div class="section">
+            <div class="absence-form-container">
                 <h3>Neue Abwesenheit eintragen</h3>
                 <form id="createAbsenceForm">
                     <input type="hidden" id="editAbsenceId">
@@ -849,7 +849,7 @@
                     <div style="display:flex; gap:0.5rem; align-items:center;">
                         <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit
                             hinzufügen</button>
-                        <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
+                        <button type="button" id="cancelEditAbsenceBtn" class="btn btn-secondary"
                             style="display:none;">Abbrechen</button>
                     </div>
                 </form>
@@ -1906,8 +1906,52 @@
                     </div>
                     <div class="form-group">
                         <label for="newsContent">Inhalt</label>
-                        <textarea id="newsContent" rows="5" required
-                            placeholder="Beschreibe das Update oder Feature..."></textarea>
+                        <!-- Rich Text Editor Toolbar -->
+                        <div class="rte-toolbar">
+                            <button type="button" class="rte-button" data-command="bold" title="Fett (Strg+B)">
+                                <strong>B</strong>
+                            </button>
+                            <button type="button" class="rte-button" data-command="italic" title="Kursiv (Strg+I)">
+                                <em>I</em>
+                            </button>
+                            <button type="button" class="rte-button" data-command="underline"
+                                title="Unterstrichen (Strg+U)">
+                                <u>U</u>
+                            </button>
+                            <span class="rte-divider"></span>
+                            <button type="button" class="rte-button" data-command="formatBlock" data-value="h3"
+                                title="Überschrift 3">
+                                H3
+                            </button>
+                            <button type="button" class="rte-button" data-command="formatBlock" data-value="h4"
+                                title="Überschrift 4">
+                                H4
+                            </button>
+                            <button type="button" class="rte-button" data-command="formatBlock" data-value="p"
+                                title="Normal">
+                                P
+                            </button>
+                            <span class="rte-divider"></span>
+                            <button type="button" class="rte-button" data-command="insertUnorderedList"
+                                title="Aufzählung">
+                                • List
+                            </button>
+                            <button type="button" class="rte-button" data-command="insertOrderedList"
+                                title="Nummerierte Liste">
+                                1. List
+                            </button>
+                            <span class="rte-divider"></span>
+                            <button type="button" class="rte-button" id="rteInsertImageBtn" title="Bild einfügen">
+                                🖼️ Bild
+                            </button>
+                        </div>
+                        <!-- Rich Text Editor Content Area -->
+                        <div id="newsContent" class="rte-editor" contenteditable="true" role="textbox"
+                            aria-label="News content editor"
+                            data-placeholder="Beschreibe das Update oder Feature... Du kannst Text formatieren und Bilder einfügen.">
+                        </div>
+                        <!-- Hidden file input for inline images -->
+                        <input type="file" id="rteImageInput" accept="image/*" style="display:none;">
                     </div>
                     <div class="form-group">
                         <label for="newsImages">Bilder (optional)</label>

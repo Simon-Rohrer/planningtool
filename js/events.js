@@ -146,36 +146,48 @@ const Events = {
         // Setlist
         if (Array.isArray(eventSongs) && eventSongs.length > 0) {
             detailsHtml += `
-                <div class="detail-row">
-                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                        <div class="detail-label">🎵 Setlist (${eventSongs.length}):</div>
-                        <button type="button" class="btn btn-sm btn-secondary download-setlist-pdf" data-event-id="${event.id}" style="white-space: nowrap;">
-                            📥 Als PDF herunterladen
+                <div class="setlist-section">
+                    <div class="setlist-header">
+                        <div class="setlist-title">🎵 Setlist (${eventSongs.length})</div>
+                        <button type="button" class="btn-pdf download-setlist-pdf" data-event-id="${event.id}">
+                            📥 Als PDF
                         </button>
                     </div>
-                    <div class="detail-value">
-                        <div style="display: flex; align-items: center; gap: 1.5rem; font-weight: bold; color: var(--color-text-secondary); font-size: 0.97em; border-bottom: 2px solid var(--color-border); padding-bottom: 0.3rem; margin-bottom: 0.2rem;">
-                            <span style="min-width: 120px;">Titel</span>
-                            <span style="min-width: 100px;">Interpret</span>
-                            <span style="min-width: 70px;">BPM</span>
-                            <span style="min-width: 70px;">Tonart</span>
-                            <span style="min-width: 100px;">Lead Vocal</span>
+                    
+                    <div class="setlist-grid">
+                        <div class="setlist-grid-header-row">
+                            <div class="header-col">#</div>
+                            <div class="header-col">Titel</div>
+                            <div class="header-col">Interpret</div>
+                            <div class="header-col">BPM</div>
+                            <div class="header-col">Key</div>
+                            <div class="header-col">Vocal</div>
                         </div>
-                        <ol class="event-songs-list" style="padding:0; margin:0;">
-                            ${eventSongs.map((s, idx) => `
-                                <li style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: ${idx < eventSongs.length - 1 ? '1px solid var(--color-border)' : 'none'};">
-                                    <span style="min-width: 120px; font-weight: bold;">${Bands.escapeHtml(s.title)}</span>
-                                    <span style="min-width: 100px;">${s.artist ? Bands.escapeHtml(s.artist) : ''}</span>
-                                    <span style="min-width: 70px;">${s.bpm ? Bands.escapeHtml(s.bpm) : ''}</span>
-                                    <span style="min-width: 70px;">${s.key ? Bands.escapeHtml(s.key) : ''}</span>
-                                    <span style="min-width: 100px;">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : ''}</span>
-                                    <span style="display: flex; gap: 1rem; flex-wrap: wrap; color: var(--color-text-secondary); font-size: 0.95em;">
-                                        ${s.ccli ? `<span>CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
-                                        ${s.notes ? `<span style='font-style:italic;'>📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
-                                    </span>
-                                </li>
-                            `).join('')}
-                        </ol>
+                        
+                        ${eventSongs.map((s, idx) => `
+                            <div class="song-row">
+                                <div class="song-col-pos" style="font-weight:bold; color:var(--color-text-secondary);">${idx + 1}</div>
+                                <div class="song-col-title">${Bands.escapeHtml(s.title)}</div>
+                                <div class="song-col-artist">${s.artist ? Bands.escapeHtml(s.artist) : '-'}</div>
+                                <div class="song-col-bpm">${s.bpm || '-'}</div>
+                                <div class="song-col-key">${s.key || '-'}</div>
+                                <div class="song-col-lead">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : '-'}</div>
+
+                                <!-- Mobile Details (Hidden on Desktop) -->
+                                <div class="song-details-mobile">
+                                    ${s.bpm ? `<span>${s.bpm} BPM</span>` : ''}
+                                    ${s.key ? `<span>| ${s.key}</span>` : ''}
+                                    ${s.leadVocal ? `<span>| 🎤 ${Bands.escapeHtml(s.leadVocal)}</span>` : ''}
+                                </div>
+                            </div>
+                            
+                            ${(s.ccli || s.notes) ? `
+                                <div class="song-meta-row">
+                                    ${s.ccli ? `<span>CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
+                                    ${s.notes ? `<span style="font-style:italic;">📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
+                                </div>
+                            ` : ''}
+                        `).join('')}
                     </div>
                 </div>
             `;
@@ -356,7 +368,7 @@ const Events = {
                     </div>
                 </div>
             `;
-            
+
             element.style.backgroundColor = 'white';
             element.style.padding = '0';
             element.style.margin = '0';

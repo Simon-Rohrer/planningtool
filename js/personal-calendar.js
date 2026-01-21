@@ -8,6 +8,13 @@ const PersonalCalendar = {
     userBands: [],
     currentMonth: new Date(),
 
+    // Clear all cached data (called during logout)
+    clearCache() {
+        this.events = [];
+        this.rehearsals = [];
+        this.userBands = [];
+    },
+
     async loadPersonalCalendar() {
         // Nur laden, wenn noch keine Daten im Speicher
         if (this.events && this.events.length > 0 && this.rehearsals && this.rehearsals.length > 0 && this.userBands && this.userBands.length > 0) {

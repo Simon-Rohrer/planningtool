@@ -18,6 +18,14 @@ const Rehearsals = {
     currentRehearsalId: null,
     expandedRehearsalId: null,
 
+    // Clear all cached data (called during logout)
+    clearCache() {
+        this.expandedRehearsalId = null;
+        this.currentRehearsalId = null;
+        this.rehearsals = [];
+        this.currentFilter = '';
+    },
+
     // Render all rehearsals
     async renderRehearsals(filterBandId = '') {
         // Nur laden, wenn noch keine Rehearsals im Speicher
@@ -1575,9 +1583,9 @@ const Rehearsals = {
         newItem.innerHTML = `
             <div class="date-time-range">
                 <input type="date" class="date-input-date" required>
-                <input type="time" class="date-input-start" required>
+                <input type="time" class="date-input-start" value="18:30" required>
                 <span class="time-separator">bis</span>
-                <input type="time" class="date-input-end" required>
+                <input type="time" class="date-input-end" value="21:30" required>
             </div>
             <span class="date-availability" style="margin-left:8px"></span>
             <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
