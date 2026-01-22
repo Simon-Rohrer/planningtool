@@ -30,8 +30,25 @@ const Events = {
             events = events.filter(e => e.bandId === filterBandId);
         }
 
-        // Sort by date (nearest first)
-        events.sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Sort by date (Upcoming first, then past)
+        const now = new Date();
+        events.sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            const isPastA = dateA < now;
+            const isPastB = dateB < now;
+
+            if (isPastA && !isPastB) return 1; // Past at bottom
+            if (!isPastA && isPastB) return -1; // Future at top
+
+            if (!isPastA && !isPastB) {
+                // Both future: Ascending (nearest first)
+                return dateA - dateB;
+            } else {
+                // Both past: Descending (most recent past first)
+                return dateB - dateA;
+            }
+        });
 
         if (events.length === 0) {
             UI.showEmptyState(container, '🎤', 'Noch keine Auftritte vorhanden');

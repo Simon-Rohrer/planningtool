@@ -2069,7 +2069,9 @@ const App = {
                 try { this.updateHeaderUnderlineWidths(); } catch (e) { }
 
                 // Render specific views
-                if (view === 'bands') {
+                if (view === 'dashboard') {
+                    await this.updateDashboard();
+                } else if (view === 'bands') {
                     await Bands.renderBands();
                 } else if (view === 'events') {
                     await Bands.populateBandSelects();
@@ -3346,6 +3348,12 @@ const App = {
         }
 
         container.innerHTML = `
+            <div class="song-search-container">
+                <div class="search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="bandSongSearch" placeholder="Setliste durchsuchen..." class="modern-search-input">
+                </div>
+            </div>
             <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
                 <thead>
                     <tr style="border-bottom: 2px solid var(--color-border);">
@@ -3357,7 +3365,7 @@ const App = {
                         <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="bandSongsTableBody">
                     ${songs.map(song => `
                         <tr style="border-bottom: 1px solid var(--color-border);">
                             <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
@@ -3374,6 +3382,24 @@ const App = {
                 </tbody>
             </table>
         `;
+
+        // Search functionality
+        const searchInput = document.getElementById('bandSongSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const rows = document.getElementById('bandSongsTableBody').querySelectorAll('tr');
+                rows.forEach(row => {
+                    const title = row.children[0].textContent.toLowerCase();
+                    const artist = row.children[1].textContent.toLowerCase();
+                    if (title.includes(term) || artist.includes(term)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
 
         // Add event listeners
         container.querySelectorAll('.edit-song').forEach(btn => {

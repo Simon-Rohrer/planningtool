@@ -41,8 +41,39 @@ const Rehearsals = {
         if (filterBandId) {
             rehearsals = rehearsals.filter(r => r.bandId === filterBandId);
         }
-        // Sort by creation date (newest first)
-        rehearsals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // Sort by effective date (Upcoming first, then past)
+        const now = new Date();
+        const getEffectiveDate = (r) => {
+            if (r.status === 'confirmed' && r.confirmedDate) {
+                return r.confirmedDate.startTime ? new Date(r.confirmedDate.startTime) : new Date(r.confirmedDate);
+            }
+            if (r.proposedDates && r.proposedDates.length > 0) {
+                // Find earliest proposed date
+                return r.proposedDates.reduce((earliest, current) => {
+                    const d = current.startTime ? new Date(current.startTime) : new Date(current);
+                    return d < earliest ? d : earliest;
+                }, new Date(8640000000000000));
+            }
+            return new Date(r.createdAt); // Fallback
+        };
+
+        rehearsals.sort((a, b) => {
+            const dateA = getEffectiveDate(a);
+            const dateB = getEffectiveDate(b);
+            const isPastA = dateA < now;
+            const isPastB = dateB < now;
+
+            if (isPastA && !isPastB) return 1; // Past at bottom
+            if (!isPastA && isPastB) return -1; // Future at top
+
+            if (!isPastA && !isPastB) {
+                // Both future: Ascending (nearest first)
+                return dateA - dateB;
+            } else {
+                // Both past: Descending (most recent past first)
+                return dateB - dateA;
+            }
+        });
         this.renderRehearsalsList(rehearsals);
     },
 
@@ -62,19 +93,20 @@ const Rehearsals = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        // Split rehearsals
         const pendingRehearsals = [];
         const votedRehearsals = [];
+        const resolvedRehearsals = [];
 
         for (const rehearsal of rehearsals) {
             // Check if user has voted on ANY date option for this rehearsal
             const userVotes = await Storage.getUserVotesForRehearsal(user.id, rehearsal.id);
             const hasVoted = userVotes && userVotes.length > 0;
 
-            // Also move confirmed/cancelled rehearsals to "Voted/Done" regardless of vote
             const isDone = rehearsal.status === 'confirmed' || rehearsal.status === 'cancelled';
 
-            if (hasVoted || isDone) {
+            if (isDone) {
+                resolvedRehearsals.push(rehearsal);
+            } else if (hasVoted) {
                 votedRehearsals.push(rehearsal);
             } else {
                 pendingRehearsals.push(rehearsal);
@@ -97,6 +129,18 @@ const Rehearsals = {
             containerVoted.innerHTML = await Promise.all(votedRehearsals.map(rehearsal =>
                 this.renderRehearsalCard(rehearsal)
             )).then(cards => cards.join(''));
+        }
+
+        // Render Resolved List (New)
+        const containerResolved = document.getElementById('rehearsalsListResolved');
+        if (containerResolved) {
+            if (resolvedRehearsals.length === 0) {
+                containerResolved.innerHTML = '<div class="empty-section-message">Keine erledigten Proben</div>';
+            } else {
+                containerResolved.innerHTML = await Promise.all(resolvedRehearsals.map(rehearsal =>
+                    this.renderRehearsalCard(rehearsal)
+                )).then(cards => cards.join(''));
+            }
         }
 
         // Add vote handlers to BOTH containers (or just document/parent since we use robust selection)
@@ -663,7 +707,10 @@ const Rehearsals = {
                 }
                 const user = await Storage.getById('users', suggestion.userId);
                 if (user) {
-                    suggestionsByTime[time].push(user.name);
+                    const displayName = UI.getUserDisplayName(user);
+                    if (!suggestionsByTime[time].includes(displayName)) {
+                        suggestionsByTime[time].push(displayName);
+                    }
                 }
             }
 
@@ -823,7 +870,10 @@ const Rehearsals = {
                 }
                 const user = await Storage.getById('users', suggestion.userId);
                 if (user) {
-                    suggestionsByTime[time].push(user.name);
+                    const displayName = UI.getUserDisplayName(user);
+                    if (!suggestionsByTime[time].includes(displayName)) {
+                        suggestionsByTime[time].push(displayName);
+                    }
                 }
             }
 
