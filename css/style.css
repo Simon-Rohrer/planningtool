@@ -2027,6 +2027,40 @@ input:checked+.slider:before {
     align-items: center;
 }
 
+/* Dashboard Bento Grid - Dense Packing Fix */
+.dashboard-bento-grid {
+    display: grid;
+    /* Use auto-fill with minmax to limit max width while filling space */
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: var(--spacing-lg);
+    grid-auto-flow: dense;
+    /* Critical for filling gaps */
+    margin-bottom: var(--spacing-2xl);
+}
+
+/* Quick Access Edit Button - Refined */
+#editQuickAccessBtn {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--color-text-secondary);
+    transition: all 0.2s ease;
+}
+
+#editQuickAccessBtn:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-primary);
+    transform: scale(1.1);
+}
+
 /* Stat Cards */
 .dashboard-grid {
     display: grid;
@@ -2053,11 +2087,47 @@ input:checked+.slider:before {
     border-color: var(--color-primary-light);
 }
 
+/* Stat Cards */
 .stat-card .card-icon {
     width: 48px;
     height: 48px;
-    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
     background: var(--color-bg-secondary);
+    color: var(--color-text);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+
+/* Specific Icon Gradients */
+.stat-card .card-icon.icon-bands {
+    background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+.stat-card .card-icon.icon-events {
+    background: linear-gradient(135deg, #f472b6 0%, #db2777 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(219, 39, 119, 0.25);
+}
+
+.stat-card .card-icon.icon-votes {
+    background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
+}
+
+.stat-card .card-icon.icon-confirmed {
+    background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.stat-card:hover .card-icon {
+    transform: scale(1.1) rotate(5deg);
 }
 
 .stat-card .card-content h3 {
@@ -6341,6 +6411,7 @@ input:checked+.toggle-slider:before {
     border: 1px solid var(--color-border);
     margin-bottom: var(--spacing-2xl);
 }
+
 /* Modern Song Search Styling */
 .song-search-container {
     margin-bottom: 1.5rem;
@@ -6352,7 +6423,8 @@ input:checked+.toggle-slider:before {
     position: relative;
     display: flex;
     align-items: center;
-    width: 300px; /* Fixed width for consistency */
+    width: 300px;
+    /* Fixed width for consistency */
     max-width: 100%;
 }
 
@@ -6367,19 +6439,22 @@ input:checked+.toggle-slider:before {
 
 .modern-search-input {
     width: 100%;
-    padding: 10px 16px 10px 40px; /* Left padding makes room for icon */
+    padding: 10px 16px 10px 40px;
+    /* Left padding makes room for icon */
     font-size: 0.95rem;
     border: 1px solid rgba(0, 0, 0, 0.1);
     background: rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(10px);
-    border-radius: 9999px; /* Pill shape */
+    border-radius: 9999px;
+    /* Pill shape */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
     color: var(--color-text);
 }
 
 .theme-dark .modern-search-input {
-    background: rgba(255, 255, 255, 0.08); /* Frosted glass effect in dark mode */
+    background: rgba(255, 255, 255, 0.08);
+    /* Frosted glass effect in dark mode */
     border-color: rgba(255, 255, 255, 0.1);
     color: var(--color-text);
 }
@@ -6388,7 +6463,8 @@ input:checked+.toggle-slider:before {
     outline: none;
     background: rgba(255, 255, 255, 0.9);
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); /* Focus ring */
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    /* Focus ring */
     transform: translateY(-1px);
 }
 
@@ -6396,7 +6472,7 @@ input:checked+.toggle-slider:before {
     background: rgba(255, 255, 255, 0.15);
 }
 
-.modern-search-input:focus + .search-icon {
+.modern-search-input:focus+.search-icon {
     opacity: 1;
 }
 
