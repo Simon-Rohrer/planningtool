@@ -167,44 +167,60 @@ const Events = {
                     <div class="setlist-header">
                         <div class="setlist-title">🎵 Setlist (${eventSongs.length})</div>
                         <button type="button" class="btn-pdf download-setlist-pdf" data-event-id="${event.id}">
-                            📥 Als PDF
+                            📥 Als PDF herunterladen
                         </button>
                     </div>
-                    
-                    <div class="setlist-grid">
-                        <div class="setlist-grid-header-row">
-                            <div class="header-col">#</div>
-                            <div class="header-col">Titel</div>
-                            <div class="header-col">Interpret</div>
-                            <div class="header-col">BPM</div>
-                            <div class="header-col">Key</div>
-                            <div class="header-col">Vocal</div>
-                        </div>
-                        
-                        ${eventSongs.map((s, idx) => `
-                            <div class="song-row">
-                                <div class="song-col-pos" style="font-weight:bold; color:var(--color-text-secondary);">${idx + 1}</div>
-                                <div class="song-col-title">${Bands.escapeHtml(s.title)}</div>
-                                <div class="song-col-artist">${s.artist ? Bands.escapeHtml(s.artist) : '-'}</div>
-                                <div class="song-col-bpm">${s.bpm || '-'}</div>
-                                <div class="song-col-key">${s.key || '-'}</div>
-                                <div class="song-col-lead">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : '-'}</div>
 
-                                <!-- Mobile Details (Hidden on Desktop) -->
-                                <div class="song-details-mobile">
-                                    ${s.bpm ? `<span>${s.bpm} BPM</span>` : ''}
-                                    ${s.key ? `<span>| ${s.key}</span>` : ''}
-                                    ${s.leadVocal ? `<span>| 🎤 ${Bands.escapeHtml(s.leadVocal)}</span>` : ''}
-                                </div>
-                            </div>
-                            
-                            ${(s.ccli || s.notes) ? `
-                                <div class="song-meta-row">
-                                    ${s.ccli ? `<span>CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
-                                    ${s.notes ? `<span style="font-style:italic;">📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
-                                </div>
-                            ` : ''}
-                        `).join('')}
+                    <!-- Bulk Actions Bar -->
+                    <div id="bulk-actions-${event.id}" class="bulk-actions-bar" style="display: none; background: var(--color-surface); padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem; align-items: center; justify-content: space-between; border: 1px solid var(--color-accent);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-weight: bold; color: var(--color-accent);">Ausgewählt: <span id="count-${event.id}">0</span></span>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-danger btn-sm bulk-delete-event-songs" data-event-id="${event.id}">🗑️ Auswahl Löschen</button>
+                            <button class="btn btn-primary btn-sm bulk-pdf-event-songs" data-event-id="${event.id}">📥 Auswahl als PDF herunterladen</button>
+                        </div>
+                    </div>
+                    
+                    <div class="setlist-grid" style="overflow-x: auto;">
+                        <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--color-border);">
+                                    <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">
+                                        <input type="checkbox" class="select-all-event-songs" data-event-id="${event.id}">
+                                    </th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Key</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Lead Vocal</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${eventSongs.map((s, idx) => `
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                                        <td style="padding: var(--spacing-sm); text-align: center;">
+                                            <input type="checkbox" class="event-song-checkbox" data-event-id="${event.id}" value="${s.id}">
+                                        </td>
+                                        <td style="padding: var(--spacing-sm);">${Bands.escapeHtml(s.title)}</td>
+                                        <td style="padding: var(--spacing-sm);">${s.artist ? Bands.escapeHtml(s.artist) : '-'}</td>
+                                        <td style="padding: var(--spacing-sm);">${s.bpm || '-'}</td>
+                                        <td style="padding: var(--spacing-sm);">${s.key || '-'}</td>
+                                        <td style="padding: var(--spacing-sm);">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : '-'}</td>
+                                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;">${s.ccli || '-'}</td>
+                                    </tr>
+                                    ${(s.ccli || s.notes) ? `
+                                        <tr>
+                                            <td colspan="7" style="padding: 0 var(--spacing-sm) var(--spacing-sm) var(--spacing-sm); color: var(--color-text-secondary); font-size: 0.85em;">
+                                                ${s.ccli ? `<span style="margin-right: 1rem;">CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
+                                                ${s.notes ? `<span style="font-style:italic;">📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
+                                            </td>
+                                        </tr>
+                                    ` : ''}
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             `;
@@ -255,11 +271,11 @@ const Events = {
         // Accordion toggle handlers
         document.querySelectorAll('.event-card .accordion-header').forEach(header => {
             header.addEventListener('click', (e) => {
-                // Don't toggle if clicking on action buttons
+                // Don't toggle if clicking on action buttons or inputs
                 if (e.target.closest('.edit-event-icon') || e.target.closest('.accordion-toggle')) {
                     const eventId = header.dataset.eventId;
                     this.toggleAccordion(eventId);
-                } else if (!e.target.closest('button')) {
+                } else if (!e.target.closest('button') && e.target.tagName !== 'INPUT') {
                     const eventId = header.dataset.eventId;
                     this.toggleAccordion(eventId);
                 }
@@ -297,10 +313,78 @@ const Events = {
                 await this.downloadSetlistPDF(eventId);
             });
         });
+
+        // --- Bulk Actions Logic ---
+
+        // Select All
+        document.querySelectorAll('.select-all-event-songs').forEach(selectAll => {
+            const eventId = selectAll.dataset.eventId;
+            selectAll.addEventListener('click', (e) => e.stopPropagation());
+
+            selectAll.addEventListener('change', (e) => {
+                const checkboxes = document.querySelectorAll(`.event-song-checkbox[data-event-id="${eventId}"]`);
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                this.updateBulkActionsUI(eventId);
+            });
+        });
+
+        // Individual Checkboxes
+        document.querySelectorAll('.event-song-checkbox').forEach(cb => {
+            cb.addEventListener('click', (e) => e.stopPropagation());
+            cb.addEventListener('change', () => {
+                this.updateBulkActionsUI(cb.dataset.eventId);
+            });
+        });
+
+        // Bulk Delete
+        document.querySelectorAll('.bulk-delete-event-songs').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                const checkboxes = document.querySelectorAll(`.event-song-checkbox[data-event-id="${eventId}"]:checked`);
+                const songIds = Array.from(checkboxes).map(cb => cb.value);
+
+                if (songIds.length === 0) return;
+
+                if (await UI.confirmDelete(`${songIds.length} Songs wirklich aus dem Event entfernen?`)) {
+                    for (const id of songIds) {
+                        await Storage.deleteSong(id);
+                    }
+                    UI.showToast(`${songIds.length} Songs entfernt`, 'success');
+                    // Refresh rendering
+                    this.renderEvents(Events.currentFilter);
+                }
+            });
+        });
+
+        // Bulk PDF
+        document.querySelectorAll('.bulk-pdf-event-songs').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                const checkboxes = document.querySelectorAll(`.event-song-checkbox[data-event-id="${eventId}"]:checked`);
+                const songIds = Array.from(checkboxes).map(cb => cb.value);
+
+                if (songIds.length > 0) {
+                    this.downloadSetlistPDF(eventId, songIds);
+                }
+            });
+        });
+    },
+
+    updateBulkActionsUI(eventId) {
+        const checkboxes = document.querySelectorAll(`.event-song-checkbox[data-event-id="${eventId}"]:checked`);
+        const bar = document.getElementById(`bulk-actions-${eventId}`);
+        const countSpan = document.getElementById(`count-${eventId}`);
+
+        if (bar && countSpan) {
+            countSpan.textContent = checkboxes.length;
+            bar.style.display = checkboxes.length > 0 ? 'flex' : 'none';
+        }
     },
 
     // Download setlist as PDF
-    async downloadSetlistPDF(eventId) {
+    async downloadSetlistPDF(eventId, selectedIds = null) {
         try {
             const event = await Storage.getById('events', eventId);
             if (!event) {
@@ -308,10 +392,15 @@ const Events = {
                 return;
             }
 
-            const songs = await Storage.getEventSongs(eventId);
+            let songs = await Storage.getEventSongs(eventId);
             if (!Array.isArray(songs) || songs.length === 0) {
                 UI.showToast('Keine Songs in der Setlist', 'error');
                 return;
+            }
+
+            // Filter if selectedIds provided
+            if (selectedIds && Array.isArray(selectedIds) && selectedIds.length > 0) {
+                songs = songs.filter(s => selectedIds.includes(s.id));
             }
 
             const band = await Storage.getBand(event.bandId);

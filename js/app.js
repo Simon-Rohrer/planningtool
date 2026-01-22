@@ -3018,6 +3018,110 @@ const App = {
         return div.innerHTML;
     },
 
+    // Generic PDF Download for Song Lists
+    async downloadSongListPDF(songs, title, subtitle = '') {
+        try {
+            if (!Array.isArray(songs) || songs.length === 0) {
+                UI.showToast('Keine Songs für PDF vorhanden', 'warning');
+                return;
+            }
+
+            // Build HTML content
+            let songsTableHTML = '';
+            songs.forEach((song, idx) => {
+                songsTableHTML += `
+                    <tr style="border-bottom: 1px solid #ddd;">
+                        <td style="padding: 8px; text-align: left; font-weight: bold;">${idx + 1}</td>
+                        <td style="padding: 8px; text-align: left;">${this.escapeHtml(song.title)}</td>
+                        <td style="padding: 8px; text-align: left;">${this.escapeHtml(song.artist || '-')}</td>
+                        <td style="padding: 8px; text-align: center;">${song.bpm || '-'}</td>
+                        <td style="padding: 8px; text-align: center;">${song.key || '-'}</td>
+                        <td style="padding: 8px; text-align: left;">${this.escapeHtml(song.leadVocal || '-')}</td>
+                    </tr>
+                `;
+            });
+
+            // Create PDF HTML element
+            const element = document.createElement('div');
+            element.innerHTML = `
+                <div style="font-family: Arial, sans-serif; padding: 20px; background: white; color: #000;">
+                    <h1 style="text-align: center; color: #333; margin: 0 0 10px 0; font-size: 24px;">${this.escapeHtml(title)}</h1>
+                    ${subtitle ? `<div style="text-align: center; color: #666; margin-bottom: 30px; font-size: 14px;">${this.escapeHtml(subtitle)}</div>` : ''}
+
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px;">
+                        <thead>
+                            <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                <th style="padding: 8px; text-align: left; font-weight: bold;">Nr.</th>
+                                <th style="padding: 8px; text-align: left; font-weight: bold;">Titel</th>
+                                <th style="padding: 8px; text-align: left; font-weight: bold;">Interpret</th>
+                                <th style="padding: 8px; text-align: center; font-weight: bold;">BPM</th>
+                                <th style="padding: 8px; text-align: center; font-weight: bold;">Tonart</th>
+                                <th style="padding: 8px; text-align: left; font-weight: bold;">Lead Vocal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${songsTableHTML}
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px; color: #999; font-size: 11px; text-align: center;">
+                        <p style="margin: 5px 0;">Erstellt mit Band Planning Tool</p>
+                        <p style="margin: 0;">Ausgedruckt am ${new Date().toLocaleString('de-DE')}</p>
+                    </div>
+                </div>
+            `;
+
+            element.style.backgroundColor = 'white';
+            element.style.padding = '0';
+            element.style.margin = '0';
+            element.style.color = 'black';
+
+            // Append to body temporarily
+            document.body.appendChild(element);
+
+            // Wait for rendering
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Generate canvas
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                logging: false
+            });
+
+            // Create PDF
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 297; // A4 height in mm
+            let heightLeft = canvas.height * imgWidth / canvas.width;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - canvas.height * imgWidth / canvas.width;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
+                heightLeft -= pageHeight;
+            }
+
+            // Save PDF
+            const filename = `Setlist_${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+            pdf.save(filename);
+
+            // Cleanup
+            document.body.removeChild(element);
+            UI.showToast('PDF heruntergeladen!', 'success');
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            UI.showToast('Fehler bei PDF-Erstellung', 'error');
+        }
+    },
+
     // Handle CSV Upload
     async handleCSVUpload(file, bandId) {
         if (!file || !bandId) return;
@@ -3257,10 +3361,34 @@ const App = {
         let html = '';
 
         if (Array.isArray(songs) && songs.length > 0) {
+            // PDF Export button for ALL songs in event
+            const eventInfo = await Storage.getById('events', eventId);
+            const eventTitle = eventInfo ? eventInfo.title : 'Event';
+
             html += `
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+                     <button class="btn btn-secondary btn-sm" id="eventSongsExportPDF">
+                        📥 Als PDF herunterladen
+                    </button>
+                </div>
+
+                <!-- Bulk Actions Bar -->
+                <div id="eventSongsBulkActions" style="display: none; background: var(--color-surface); padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem; align-items: center; justify-content: space-between; border: 1px solid var(--color-accent);">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-weight: bold; color: var(--color-accent);">Ausgewählt: <span id="eventSongsSelectedCount">0</span></span>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button id="eventSongsBulkDelete" class="btn btn-danger btn-sm">🗑️ Auswahl löschen</button>
+                        <button id="eventSongsBulkPDF" class="btn btn-primary btn-sm">📄 Auswahl als PDF</button>
+                    </div>
+                </div>
+
                 <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
                     <thead>
                         <tr style="border-bottom: 2px solid var(--color-border);">
+                            <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">
+                                <input type="checkbox" id="selectAllEventSongs">
+                            </th>
                             <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
@@ -3272,6 +3400,9 @@ const App = {
                     <tbody>
                         ${songs.map(song => `
                             <tr style="border-bottom: 1px solid var(--color-border);">
+                                <td style="padding: var(--spacing-sm); text-align: center;">
+                                    <input type="checkbox" class="event-song-checkbox-row" value="${song.id}">
+                                </td>
                                 <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
                                 <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.artist)}</td>
                                 <td style="padding: var(--spacing-sm);">${song.bpm || '-'}</td>
@@ -3289,6 +3420,70 @@ const App = {
         }
 
         container.innerHTML = html;
+
+        // Store event songs for quick access
+        this.currentEventSongs = songs || [];
+        const eventInfo = await Storage.getById('events', eventId); // Fetch again or store content
+        const eventName = eventInfo ? eventInfo.title : 'Event Setlist';
+
+
+        // --- Event Listeners for Bulk Actions and Checkboxes ---
+        // Permanent PDF Export
+        const exportBtn = document.getElementById('eventSongsExportPDF');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                this.downloadSongListPDF(this.currentEventSongs, eventName, 'Gesamte Setliste');
+            });
+        }
+
+        const checkboxRows = container.querySelectorAll('.event-song-checkbox-row');
+        const selectAll = document.getElementById('selectAllEventSongs');
+        const bulkActionsBar = document.getElementById('eventSongsBulkActions');
+        const selectedCountSpan = document.getElementById('eventSongsSelectedCount');
+        const bulkDeleteBtn = document.getElementById('eventSongsBulkDelete');
+        const bulkPDFBtn = document.getElementById('eventSongsBulkPDF');
+
+        const updateBulkActions = () => {
+            const checkedCount = container.querySelectorAll('.event-song-checkbox-row:checked').length;
+            selectedCountSpan.textContent = checkedCount;
+            bulkActionsBar.style.display = checkedCount > 0 ? 'flex' : 'none';
+        };
+
+        if (selectAll) {
+            selectAll.addEventListener('change', (e) => {
+                checkboxRows.forEach(cb => cb.checked = e.target.checked);
+                updateBulkActions();
+            });
+        }
+
+        checkboxRows.forEach(cb => {
+            cb.addEventListener('change', updateBulkActions);
+        });
+
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', async () => {
+                const selectedIds = Array.from(container.querySelectorAll('.event-song-checkbox-row:checked')).map(cb => cb.value);
+                if (selectedIds.length === 0) return;
+
+                if (await UI.confirmDelete(`${selectedIds.length} Songs wirklich aus dem Event löschen?`)) {
+                    // Collect song objects to allow potential undo if needed (complex, skipping undo for now)
+                    for (const id of selectedIds) {
+                        await Storage.deleteSong(id);
+                    }
+                    UI.showToast(`${selectedIds.length} Songs entfernt`, 'success');
+                    this.renderEventSongs(eventId);
+                }
+            });
+        }
+
+        if (bulkPDFBtn) {
+            bulkPDFBtn.addEventListener('click', () => {
+                const selectedIds = Array.from(container.querySelectorAll('.event-song-checkbox-row:checked')).map(cb => cb.value);
+                const selectedSongs = this.currentEventSongs.filter(s => selectedIds.includes(s.id));
+                this.downloadSongListPDF(selectedSongs, eventName, 'Ausgewählte Songs');
+            });
+        }
+        // ----------------------------------------------------
 
 
         // Add event listeners for edit/delete
@@ -3478,6 +3673,9 @@ const App = {
             return;
         }
 
+        // Store songs for PDF export
+        this.currentBandSongs = songs;
+
         container.innerHTML = `
         <div class="song-search-container" style="margin-bottom: 1rem; display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
             <div class="search-wrapper" style="flex: 1; min-width: 200px;">
@@ -3487,17 +3685,35 @@ const App = {
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
                 <span style="font-size: 0.85em; color: var(--color-text-muted);">Wie möchtest du deine Songs bequem importieren?</span>
                 <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary btn-sm" id="bandSongsExportPDF" title="Gesamte Setliste als PDF">
+                        📥 Als PDF herunterladen
+                    </button>
                     <input type="file" id="csvSongUpload" accept=".csv" style="display: none;">
                     <button class="btn btn-secondary btn-sm" onclick="UI.openModal('importSongsModal')" title="Import-Anleitung anzeigen">
                         📥 CSV Import
                     </button>
                 </div>
             </div>
-        </div >
-    <div style="overflow-x: auto;">
+        </div>
+
+        <!-- Bulk Actions Bar -->
+        <div id="bandSongsBulkActions" style="display: none; background: var(--color-surface); padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem; align-items: center; justify-content: space-between; border: 1px solid var(--color-accent);">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-weight: bold; color: var(--color-accent);">Ausgewählt: <span id="bandSongsSelectedCount">0</span></span>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="bandSongsBulkDelete" class="btn btn-danger btn-sm">🗑️ Auswahl löschen</button>
+                <button id="bandSongsBulkPDF" class="btn btn-primary btn-sm">📄 Auswahl als exportieren</button>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
         <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
             <thead>
                 <tr style="border-bottom: 2px solid var(--color-border);">
+                    <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">
+                        <input type="checkbox" id="selectAllBandSongs">
+                    </th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
@@ -3510,6 +3726,9 @@ const App = {
             <tbody id="bandSongsTableBody">
                 ${songs.map(song => `
                     <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: var(--spacing-sm); text-align: center;">
+                            <input type="checkbox" class="band-song-checkbox-row" value="${song.id}">
+                        </td>
                         <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
                         <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.artist)}</td>
                         <td style="padding: var(--spacing-sm);">${song.bpm || '-'}</td>
@@ -3524,20 +3743,70 @@ const App = {
                 `).join('')}
             </tbody>
         </table>
-    </div>
+        </div>
 `;
 
-        // CSV Upload Listener
-        const csvInput = document.getElementById('csvSongUpload');
-        if (csvInput) {
-            csvInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    this.handleCSVUpload(e.target.files[0], bandId);
-                    e.target.value = ''; // Reset input
+        // PDF Export
+        document.getElementById('bandSongsExportPDF').addEventListener('click', () => {
+            this.downloadSongListPDF(this.currentBandSongs || [], 'Band Setlist', 'Repertoire Export');
+        });
+
+        // Bulk Actions Logic
+        const checkboxRows = container.querySelectorAll('.band-song-checkbox-row');
+        const selectAll = document.getElementById('selectAllBandSongs');
+        const bulkActionsBar = document.getElementById('bandSongsBulkActions');
+        const selectedCountSpan = document.getElementById('bandSongsSelectedCount');
+        const bulkDeleteBtn = document.getElementById('bandSongsBulkDelete');
+        const bulkPDFBtn = document.getElementById('bandSongsBulkPDF');
+
+        const updateBulkActions = () => {
+            const checkedCount = container.querySelectorAll('.band-song-checkbox-row:checked').length;
+            selectedCountSpan.textContent = checkedCount;
+            if (checkedCount > 0) {
+                bulkActionsBar.style.display = 'flex';
+            } else {
+                bulkActionsBar.style.display = 'none';
+            }
+        };
+
+        if (selectAll) {
+            selectAll.addEventListener('change', (e) => {
+                checkboxRows.forEach(cb => {
+                    // Check logic based on display (filtered search results)
+                    if (cb.closest('tr').style.display !== 'none') {
+                        cb.checked = e.target.checked;
+                    }
+                });
+                updateBulkActions();
+            });
+        }
+
+        checkboxRows.forEach(cb => {
+            cb.addEventListener('change', updateBulkActions);
+        });
+
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', async () => {
+                const selectedIds = Array.from(container.querySelectorAll('.band-song-checkbox-row:checked')).map(cb => cb.value);
+                if (selectedIds.length === 0) return;
+
+                if (await UI.confirmDelete(`${selectedIds.length} Songs wirklich löschen?`)) {
+                    for (const id of selectedIds) {
+                        await Storage.deleteSong(id);
+                    }
+                    UI.showToast(`${selectedIds.length} Songs gelöscht`, 'success');
+                    this.renderBandSongs(bandId);
                 }
             });
         }
 
+        if (bulkPDFBtn) {
+            bulkPDFBtn.addEventListener('click', () => {
+                const selectedIds = Array.from(container.querySelectorAll('.band-song-checkbox-row:checked')).map(cb => cb.value);
+                const selectedSongs = this.currentBandSongs.filter(s => selectedIds.includes(s.id));
+                this.downloadSongListPDF(selectedSongs, 'Band Setlist', 'Ausgewählte Songs');
+            });
+        }
 
         // Search functionality
         const searchInput = document.getElementById('bandSongSearch');
@@ -3546,12 +3815,14 @@ const App = {
                 const term = e.target.value.toLowerCase();
                 const rows = document.getElementById('bandSongsTableBody').querySelectorAll('tr');
                 rows.forEach(row => {
-                    const title = row.children[0].textContent.toLowerCase();
-                    const artist = row.children[1].textContent.toLowerCase();
+                    const title = row.children[1].textContent.toLowerCase(); // Index 1 because 0 is checkbox
+                    const artist = row.children[2].textContent.toLowerCase(); // Index 2
                     if (title.includes(term) || artist.includes(term)) {
                         row.style.display = '';
                     } else {
                         row.style.display = 'none';
+                        // Uncheck hidden rows if needed, or leave them.
+                        // For UX, maybe better not to uncheck but that's complex. keeping simple.
                     }
                 });
             });
@@ -6088,7 +6359,7 @@ const App = {
             }
 
             return `
-                <div class="upcoming-card">
+                <div class="upcoming-card" onclick="App.navigateTo('${item.type === 'event' ? 'events' : 'rehearsals'}')" style="cursor: pointer;">
                     <div class="upcoming-card-icon">${typeIcon}</div>
                     <div class="upcoming-card-content">
                         <div class="upcoming-card-title">${Bands.escapeHtml(item.title)}</div>
@@ -6100,7 +6371,7 @@ const App = {
                         </div>
                     </div>
                     <div class="upcoming-card-action">
-                         ${item.type === 'event' ? `<button class="btn btn-sm btn-secondary" onclick="App.navigateTo('events')">➜</button>` : `<button class="btn btn-sm btn-secondary" onclick="App.navigateTo('rehearsals')">➜</button>`}
+                         <button class="btn btn-sm btn-secondary">➜</button>
                     </div>
                 </div>
             `;
