@@ -1465,30 +1465,56 @@ input:checked+.slider:before {
         padding: 0.4rem 0.8rem;
     }
 
+    /* Liquid Glass Mobile Navigation - Advanced iOS 26 Style */
     .app-nav {
         position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
+        bottom: 20px !important;
+        left: 20px !important;
+        right: 20px !important;
         top: auto !important;
         z-index: 1000 !important;
-        padding: var(--spacing-sm) var(--spacing-xs);
-        border-top: 1px solid var(--color-border);
-        border-bottom: none;
-        justify-content: space-between;
-        gap: 2px;
-        background: color-mix(in oklab, var(--color-surface) 85%, transparent);
-        backdrop-filter: saturate(140%) blur(6px);
-        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+        padding: 5px 10px;
+        justify-content: space-around;
+        align-items: center;
+        gap: 0;
+
+        /* Advanced Glass Effect */
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(30px) saturate(200%);
+        -webkit-backdrop-filter: blur(30px) saturate(200%);
+
+        /* Premium multi-layered border */
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-top: 1px solid rgba(255, 255, 255, 0.6);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+
+        border-radius: 35px;
+
+        /* Complex, deep shadows */
+        box-shadow:
+            0 20px 50px -10px rgba(0, 0, 0, 0.15),
+            0 10px 20px -5px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+
         max-width: none;
         margin: 0;
         flex-wrap: nowrap;
         overflow: visible;
+        transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    /* Dark Mode Adjustment for Glass Bar */
+    :root.theme-dark .app-nav {
+        background: rgba(20, 25, 35, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow:
+            0 25px 60px -12px rgba(0, 0, 0, 0.6),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
     .app-main {
-        padding-bottom: 72px;
-        /* space for bottom bar */
+        padding-bottom: 110px;
     }
 
     .nav-group {
@@ -1496,70 +1522,132 @@ input:checked+.slider:before {
         min-width: 0;
         overflow: visible;
         position: relative;
+        display: flex;
+        justify-content: center;
     }
 
     .nav-item {
         flex: 1;
         justify-content: center;
-        padding: var(--spacing-sm) 2px;
+        align-items: center;
+        padding: 0;
         border-bottom: none;
-        border-radius: var(--radius-md);
-        min-height: 48px;
-        /* larger touch target */
+        border-radius: 50%;
+        height: 50px;
         width: 100%;
+        background: transparent !important;
+        color: var(--color-text-secondary);
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        display: flex;
+        flex-direction: column;
     }
 
-    /* Show submenu as modal on mobile */
-    .nav-submenu {
-        /* display: none; wird vom globalen @media (max-width: 769px) Block übernommen */
+    /* Active State - Pop Out Effect */
+    .nav-item.active {
+        color: var(--color-primary);
+        transform: translateY(-10px) scale(1.1);
+        z-index: 10;
+        text-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Glow/Indicator for active state - Floating beneath */
+    .nav-item.active::after {
+        content: '';
         position: absolute;
-        bottom: 100%;
-        /* Startet an der Oberkante des Elternelements */
+        bottom: -15px;
+        width: 20px;
+        height: 6px;
+        background: var(--color-primary);
+        border-radius: 50%;
+        box-shadow: 0 0 15px var(--color-primary);
+        opacity: 0.7;
+        filter: blur(4px);
+        transform: scaleX(1.2);
+        animation: glowPulse 2s infinite alternate;
+    }
+
+    @keyframes glowPulse {
+        0% {
+            opacity: 0.5;
+            transform: scaleX(1);
+        }
+
+        100% {
+            opacity: 0.8;
+            transform: scaleX(1.4);
+        }
+    }
+
+    .nav-icon {
+        font-size: 1.6rem;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.05));
+        transition: transform 0.3s ease;
+    }
+
+    .nav-item.active .nav-icon {
+        transform: scale(1.05);
+    }
+
+    /* Show submenu as modal on mobile - refined glass */
+    .nav-submenu {
+        position: absolute;
+        bottom: calc(100% + 25px);
         left: 50%;
-        transform: translateX(-50%);
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-xl);
-        padding: var(--spacing-md);
+        transform: translateX(-50%) scale(0.9) translateY(10px);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(25px) saturate(180%);
+        -webkit-backdrop-filter: blur(25px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 24px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+        padding: 8px;
         min-width: 200px;
-        max-width: 90vw;
+        width: max-content;
+        max-width: 85vw;
         z-index: 1001;
-        /* Wichtig: Liegt über der Nav-Bar (1000) */
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        pointer-events: none;
+    }
+
+    :root.theme-dark .nav-submenu {
+        background: rgba(30, 41, 59, 0.85);
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     }
 
     .nav-group.submenu-open .nav-submenu {
         display: flex !important;
-        flex-direction: column;
-        gap: var(--spacing-xs);
-        /* FINALE POSITION: bottom: 100% plus der gewünschte Abstand zur nav-group */
-        bottom: calc(100% + var(--spacing-sm));
-        animation: slideUpMobile 0.2s ease-out forwards;
-    }
-
-    @keyframes slideUpMobile {
-        from {
-            opacity: 0;
-            /* Startet leicht unter der finalen Position */
-            transform: translateX(-50%) translateY(20px);
-        }
-
-        to {
-            opacity: 1;
-            /* Endet an der durch 'bottom' definierten finalen Position */
-            transform: translateX(-50%) translateY(0);
-        }
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateX(-50%) scale(1) translateY(0);
     }
 
     .nav-subitem {
-        padding: var(--spacing-md);
-        border-radius: var(--radius-md);
+        padding: 14px 20px;
+        border-radius: 16px;
         justify-content: flex-start;
+        color: var(--color-text);
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .nav-subitem:last-child {
+        margin-bottom: 0;
+    }
+
+    .nav-subitem:hover,
+    .nav-subitem:active {
+        background: color-mix(in srgb, var(--color-primary), transparent 90%);
+        color: var(--color-primary);
     }
 
     .nav-subitem .nav-label {
         display: inline;
-        /* Show labels in submenu */
+        font-size: 1.05rem;
     }
 
     /* Only show main nav items on mobile */
@@ -1568,47 +1656,37 @@ input:checked+.slider:before {
         position: relative;
     }
 
-    /* Indicator for items with submenu */
-    .nav-group .nav-submenu+* .nav-item.nav-main::before,
-    .nav-group:has(.nav-submenu) .nav-item.nav-main::after {
-        content: '▼';
+    /* Indicator for items with submenu - refined dot */
+    .nav-group:has(.nav-submenu) .nav-item.nav-main::before {
+        content: '';
         position: absolute;
-        top: 4px;
-        right: 4px;
-        font-size: 0.5rem;
-        color: var(--color-primary);
-        opacity: 0.6;
+        top: 10px;
+        right: calc(50% - 14px);
+        width: 6px;
+        height: 6px;
+        background: var(--color-primary);
+        border-radius: 50%;
+        opacity: 0.8;
+        border: 1px solid white;
+        z-index: 5;
     }
 
-    /* Remove small submenu arrow for specific main items on very small screens */
-    @media (max-width: 768px) {
-
-        .nav-item.nav-main[data-view="dashboard"]::after,
-        .nav-item.nav-main[data-view="rehearsals"]::after,
-        .nav-item.nav-main[data-view="statistics"]::after,
-        .nav-item.nav-main[data-view="dashboard"]::before,
-        .nav-item.nav-main[data-view="rehearsals"]::before,
-        .nav-item.nav-main[data-view="statistics"]::before {
-            content: none !important;
-            display: none !important;
-        }
+    /* Remove old text arrow */
+    .nav-group .nav-submenu+* .nav-item.nav-main::before,
+    .nav-group:has(.nav-submenu) .nav-item.nav-main::after {
+        content: none;
     }
 
     .nav-item.active {
-        background: var(--color-bg);
         border-bottom-color: transparent;
     }
 
     .nav-label {
         display: none;
-        /* icons only for compact bar */
     }
 
     .nav-icon {
-        font-size: 1.2rem;
-        /* slightly larger icons */
         display: inline-block !important;
-        /* ensure icons are always visible */
         visibility: visible !important;
     }
 
@@ -1621,25 +1699,7 @@ input:checked+.slider:before {
 
     /* Tap feedback */
     .nav-item:active {
-        transform: scale(0.98);
-    }
-
-    /* Active indicator dot under icon */
-    .nav-item.active .nav-icon {
-        position: relative;
-    }
-
-    .nav-item.active .nav-icon::after {
-        content: '';
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: -8px;
-        width: 6px;
-        height: 6px;
-        background: var(--nav-active-color, var(--color-primary));
-        border-radius: 50%;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        transform: scale(0.9);
     }
 }
 

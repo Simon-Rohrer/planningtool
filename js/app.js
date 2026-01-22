@@ -2030,9 +2030,21 @@ const App = {
                     console.error('[navigateTo] UI.showView error:', uiErr);
                 }
 
+                // Define parent-child relationships for navigation highlighting
+                const parentViewMap = {
+                    'bands': 'dashboard',
+                    'musikpool': 'dashboard',
+                    'probeorte': 'rehearsals',
+                    'tonstudio': 'rehearsals',
+                    'kalender': 'rehearsals',
+                    'news': 'statistics'
+                };
+                const parentView = parentViewMap[view];
+
                 // Update active navigation (both main items and subitems)
                 document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
-                    if (item.dataset.view === view || (view === 'tonstudio' && item.dataset.view === 'probeorte')) {
+                    const itemView = item.dataset.view;
+                    if (itemView === view || (view === 'tonstudio' && itemView === 'probeorte') || (parentView && itemView === parentView)) {
                         item.classList.add('active');
                     } else {
                         item.classList.remove('active');
