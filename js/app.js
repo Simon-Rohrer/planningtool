@@ -2278,6 +2278,48 @@ const App = {
         }
     },
 
+    // Helper: Compress Image (Client-Side)
+    compressImage(file, maxWidth = 1024, quality = 0.8) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height = Math.round(height * (maxWidth / width));
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error('Canvas is empty'));
+                            return;
+                        }
+                        const newFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(newFile);
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    },
+
     // Handle registration
     async handleRegister() {
         const registrationCode = document.getElementById('registerCode').value.trim();
@@ -2976,6 +3018,95 @@ const App = {
         return div.innerHTML;
     },
 
+    // Handle CSV Upload
+    async handleCSVUpload(file, bandId) {
+        if (!file || !bandId) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const text = e.target.result;
+            const lines = text.split('\n');
+            let successCount = 0;
+            let dbErrorCount = 0;
+
+            // Simple CSV parsing (assumes comma or semicolon delimiter)
+            // Skip header if present (heuristic)
+            const startIndex = lines[0].toLowerCase().includes('titel') ? 1 : 0;
+
+            UI.showToast('Importiere Songs...', 'info');
+
+            // Basic Binary Check to prevent crashing with XLS/Numbers files
+            // "PK" at the start usually indicates a Zip/Office/Numbers file
+            if (text.startsWith('PK') || text.includes(String.fromCharCode(0))) {
+                UI.showToast('Fehler: Das ist keine gültige CSV-Datei.', 'error');
+                console.error('Binary file detected (PK header or null bytes). Likely an Excel (.xlsx) or Numbers file.');
+                alert('Es sieht so aus, als hätten Sie eine Excel- oder Numbers-Datei hochgeladen.\n\nBitte öffnen Sie die Datei in Ihrem Programm und wählen Sie "Datei > Exportieren > CSV" (Kommagetrennte Werte).');
+                return;
+            }
+
+            for (let i = startIndex; i < lines.length; i++) {
+                let line = lines[i].trim();
+                console.log(`Checking line ${i}:`, line);
+                if (!line) continue;
+
+                // Detect delimiter
+                const delimiter = line.includes(';') ? ';' : ',';
+                // Split by delimiter, handling quotes generically is hard without a library,
+                // so we assume simple CSV first. 
+                // Remove quotes from start/end of parts
+                const parts = line.split(delimiter).map(p => p.trim().replace(/^"|"$/g, ''));
+                console.log(`Parsed parts for line ${i}:`, parts);
+
+                // Expected format: Titel, Interpret, BPM, Tonart, Lead Vocal, CCLI
+                if (parts.length >= 2) {
+                    const title = parts[0];
+                    const artist = parts[1];
+                    const bpm = parts[2] || '';
+                    const key = parts[3] || '';
+                    const leadVocal = parts[4] || '';
+                    const ccli = parts[5] || '';
+
+                    console.log(`Extracted data: Title="${title}", Artist="${artist}"`);
+
+                    if (title && artist) {
+                        try {
+                            const songData = {
+                                bandId: bandId,
+                                title: title,
+                                artist: artist,
+                                bpm: bpm,
+                                key: key,
+                                leadVocal: leadVocal,
+                                ccli: ccli
+                            };
+                            console.log('Attempting to save song:', songData);
+                            await Storage.createSong(songData);
+                            successCount++;
+                            console.log('Save successful');
+                        } catch (err) {
+                            console.error('Import error for line:', line, err);
+                            dbErrorCount++;
+                        }
+                    } else {
+                        console.warn('Skipping line: Title or Artist missing');
+                    }
+                } else {
+                    console.warn('Skipping line: Not enough columns');
+                }
+            }
+
+            if (successCount > 0) {
+                UI.showToast(`${successCount} Songs erfolgreich importiert!`, 'success');
+                this.renderBandSongs(bandId); // Refresh list
+            } else if (dbErrorCount > 0) {
+                UI.showToast('Fehler beim Importieren. Prüfe die Konsole.', 'error');
+            } else {
+                UI.showToast('Keine gültigen Songs gefunden.', 'warning');
+            }
+        };
+        reader.readAsText(file);
+    },
+
     // Song Management
     async openSongModal(eventId = null, bandId = null, songId = null) {
         document.getElementById('songId').value = songId || '';
@@ -3348,40 +3479,65 @@ const App = {
         }
 
         container.innerHTML = `
-            <div class="song-search-container">
-                <div class="search-wrapper">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="bandSongSearch" placeholder="Setliste durchsuchen..." class="modern-search-input">
+        <div class="song-search-container" style="margin-bottom: 1rem; display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+            <div class="search-wrapper" style="flex: 1; min-width: 200px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="bandSongSearch" placeholder="Setliste durchsuchen..." class="modern-search-input" style="width: 100%;">
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                <span style="font-size: 0.85em; color: var(--color-text-muted);">Wie möchtest du deine Songs bequem importieren?</span>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="file" id="csvSongUpload" accept=".csv" style="display: none;">
+                    <button class="btn btn-secondary btn-sm" onclick="UI.openModal('importSongsModal')" title="Import-Anleitung anzeigen">
+                        📥 CSV Import
+                    </button>
                 </div>
             </div>
-            <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
-                <thead>
-                    <tr style="border-bottom: 2px solid var(--color-border);">
-                        <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
-                        <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
-                        <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
-                        <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
-                        <th style="padding: var(--spacing-sm); text-align: left;">Lead Vocal</th>
-                        <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
+        </div >
+    <div style="overflow-x: auto;">
+        <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--color-border);">
+                    <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Lead Vocal</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
+                    <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
+                </tr>
+            </thead>
+            <tbody id="bandSongsTableBody">
+                ${songs.map(song => `
+                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
+                        <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.artist)}</td>
+                        <td style="padding: var(--spacing-sm);">${song.bpm || '-'}</td>
+                        <td style="padding: var(--spacing-sm);">${song.key || '-'}</td>
+                        <td style="padding: var(--spacing-sm);">${song.leadVocal || '-'}</td>
+                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;">${song.ccli || '-'}</td>
+                        <td style="padding: var(--spacing-sm); text-align: center;">
+                            <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
+                            <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                        </td>
                     </tr>
-                </thead>
-                <tbody id="bandSongsTableBody">
-                    ${songs.map(song => `
-                        <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
-                            <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.artist)}</td>
-                            <td style="padding: var(--spacing-sm);">${song.bpm || '-'}</td>
-                            <td style="padding: var(--spacing-sm);">${song.key || '-'}</td>
-                            <td style="padding: var(--spacing-sm);">${song.leadVocal || '-'}</td>
-                            <td style="padding: var(--spacing-sm); text-align: center;">
-                                <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
-                                <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+`;
+
+        // CSV Upload Listener
+        const csvInput = document.getElementById('csvSongUpload');
+        if (csvInput) {
+            csvInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.handleCSVUpload(e.target.files[0], bandId);
+                    e.target.value = ''; // Reset input
+                }
+            });
+        }
+
 
         // Search functionality
         const searchInput = document.getElementById('bandSongSearch');
@@ -3433,7 +3589,7 @@ const App = {
             const s = Storage.getById('songs', songId);
             if (!s) return '';
             return `
-                <div class="draft-song-item" data-id="${songId}" style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0;">
+    < div class="draft-song-item" data - id="${songId}" style = "display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0;" >
                     <div>
                         <strong>${idx + 1}. ${this.escapeHtml(s.title)}</strong>
                         ${s.artist ? ` — <span>${this.escapeHtml(s.artist)}</span>` : ''}
@@ -3445,8 +3601,8 @@ const App = {
                     <div>
                         <button class="btn btn-sm btn-secondary remove-draft-song" data-id="${songId}">Entfernen</button>
                     </div>
-                </div>
-            `;
+                </div >
+    `;
         }).join('');
 
         container.innerHTML = items;
@@ -3810,8 +3966,8 @@ const App = {
                         }
 
                         const fileExt = file.name.split('.').pop();
-                        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-                        const filePath = `${fileName}`;
+                        const fileName = `${user.id} -${Date.now()}.${fileExt} `;
+                        const filePath = `${fileName} `;
 
                         const sb = SupabaseClient.getClient();
 
@@ -4079,7 +4235,7 @@ const App = {
         }
 
         container.innerHTML = absences.map(absence => `
-            <div class="absence-card-modern" data-absence-id="${absence.id}">
+    < div class="absence-card-modern" data - absence - id="${absence.id}" >
                 <div class="absence-info-modern">
                     <div class="absence-date-range">
                         <span>📅</span>
@@ -4091,8 +4247,8 @@ const App = {
                     <button class="btn-icon edit-absence-settings" data-absence-id="${absence.id}" title="Bearbeiten">✏️</button>
                     <button class="btn-icon delete-absence-settings" data-absence-id="${absence.id}" title="Löschen">🗑️</button>
                 </div>
-            </div>
-        `).join('');
+            </div >
+    `).join('');
 
         // Attach event listeners
         container.querySelectorAll('.edit-absence-settings').forEach(btn => {
@@ -6050,13 +6206,96 @@ const App = {
         }
     },
 
+    // Handle updating band profile image specifically
+    async handleUpdateBandImage(bandId, file) {
+        if (!file || !bandId) return;
+
+        try {
+            // Compress
+            try {
+                file = await this.compressImage(file);
+            } catch (e) {
+                console.warn('Band image compression failed', e);
+            }
+
+            const fileExt = 'jpg';
+            const fileName = `band-${bandId}-${Date.now()}.${fileExt}`;
+            const sb = SupabaseClient.getClient();
+
+            // Upload
+            const { error: uploadError } = await sb.storage
+                .from('band-images')
+                .upload(fileName, file, { upsert: true });
+
+            if (uploadError) {
+                console.error('Band image upload error:', uploadError);
+                UI.showToast('Fehler beim Bild-Upload: ' + uploadError.message, 'error');
+                return false;
+            }
+
+            // Get URL
+            const { data: { publicUrl } } = sb.storage
+                .from('band-images')
+                .getPublicUrl(fileName);
+
+            if (!publicUrl) {
+                UI.showToast('Fehler: Bild-URL nicht erhalten', 'error');
+                return false;
+            }
+
+            // Update DB
+            const success = await Storage.updateBand(bandId, { image_url: publicUrl });
+
+            if (success) {
+                UI.showToast('Profilbild aktualisiert', 'success');
+                // Refresh views
+                if (Bands.currentBandId === bandId) {
+                    await Bands.showBandDetails(bandId);
+                }
+                Bands.bands = null; // Clear cache
+                await Bands.renderBands(); // Update list
+                return true;
+            } else {
+                UI.showToast('Fehler beim Speichern der URL', 'error');
+                return false;
+            }
+
+        } catch (err) {
+            console.error('Error in handleUpdateBandImage:', err);
+            UI.showToast('Ein unerwarteter Fehler ist aufgetreten', 'error');
+            return false;
+        }
+    },
+
+    // Handle deleting band profile image
+    async handleDeleteBandImage(bandId) {
+        if (!bandId) return;
+        const confirm = await UI.confirmDelete('Möchtest du das Band-Profilbild wirklich entfernen?');
+        if (!confirm) return;
+
+        // Ensure we update with null, NOT undefined
+        const success = await Storage.updateBand(bandId, { image_url: null });
+
+        if (success) {
+            UI.showToast('Profilbild entfernt', 'success');
+            // Refresh views
+            if (Bands.currentBandId === bandId) {
+                await Bands.showBandDetails(bandId);
+            }
+            Bands.bands = null;
+            await Bands.renderBands();
+        } else {
+            UI.showToast('Fehler beim Löschen', 'error');
+        }
+    },
+
     // Handle add member
-    handleAddMember() {
+    async handleAddMember() {
         const username = document.getElementById('memberUsername').value;
         const role = document.getElementById('memberRole').value;
 
         if (Bands.currentBandId) {
-            Bands.addMember(Bands.currentBandId, username, role);
+            await Bands.addMember(Bands.currentBandId, username, role);
             UI.clearForm('addMemberForm');
         }
     },

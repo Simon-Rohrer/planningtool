@@ -74,10 +74,15 @@ const Bands = {
                 const members = await Storage.getBandMembers(band.id);
                 const memberCount = members.length;
 
+                const imageHtml = band.image_url
+                    ? `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" class="band-avatar-small">`
+                    : '';
+
                 return `
                     <div class="band-card" data-band-id="${band.id}" style="border-left: 4px solid ${band.color || '#6366f1'}">
                         <div class="band-card-header">
-                            <div>
+                            <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                ${imageHtml}
                                 <h3>${this.escapeHtml(band.name)}</h3>
                             </div>
                             <span class="band-role-badge ${UI.getRoleClass(band.role)}">
@@ -127,8 +132,17 @@ const Bands = {
         const nameHeader = document.getElementById('bandDetailsName');
         const canEdit = await Auth.canEditBandDetails(bandId);
 
+        // Show/Hide Image
+        const imageHtml = band.image_url
+            ? `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" onclick="Bands.showImageLightbox('${band.image_url}')" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-surface); box-shadow: var(--shadow-sm); cursor: zoom-in; transition: transform 0.2s;">`
+            : '';
+
         if (canEdit) {
+            nameHeader.style.display = 'flex';
+            nameHeader.style.alignItems = 'center';
+            nameHeader.style.gap = '1rem';
             nameHeader.innerHTML = `
+                ${imageHtml}
                 ${this.escapeHtml(band.name)}
                 <button class="btn-icon edit-band-name" title="Bandnamen ändern">✏️</button>
             `;
@@ -140,7 +154,13 @@ const Bands = {
                 this.editBandName(bandId);
             });
         } else {
-            nameHeader.textContent = band.name;
+            nameHeader.style.display = 'flex';
+            nameHeader.style.alignItems = 'center';
+            nameHeader.style.gap = '1rem';
+            nameHeader.innerHTML = `
+                ${imageHtml}
+                ${this.escapeHtml(band.name)}
+            `;
         }
 
         // Show modal
@@ -174,7 +194,76 @@ const Bands = {
 
         // Always show join code (all members can see and copy it)
         const existingCode = settingsTab.querySelector('.join-code-section');
+        // Check for existing image section and remove it to prevent duplicates
+        const existingImageSection = settingsTab.querySelector('.band-image-section');
+        if (existingImageSection) existingImageSection.remove();
+
         if (!existingCode) {
+            // New: Profile Image Section (only if canManage)
+            if (canManage) {
+                const imageSection = document.createElement('div');
+                imageSection.className = 'section band-image-section';
+                imageSection.style.marginBottom = 'var(--spacing-lg)';
+                imageSection.innerHTML = `
+                    <h3>Band Profilbild</h3>
+                    <div style="display: flex; gap: var(--spacing-md); align-items: flex-start; flex-wrap: wrap;">
+                        <div style="flex-shrink: 0;">
+                            ${band.image_url
+                        ? `<img src="${band.image_url}" alt="Profilbild" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-surface); box-shadow: var(--shadow-md);">`
+                        : `<div style="width: 100px; height: 100px; border-radius: 50%; background: var(--color-bg-secondary); display: flex; align-items: center; justify-content: center; font-size: 2rem;">🎸</div>`
+                    }
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <p class="help-text" style="margin-bottom: var(--spacing-sm);">
+                                Lade ein Bild hoch, das neben dem Bandnamen angezeigt wird. (Max. 5MB)
+                            </p>
+                            <input type="file" id="settingsBandImage" accept="image/*" style="margin-bottom: var(--spacing-sm); display: block; width: 100%;">
+                            <div style="display: flex; gap: var(--spacing-sm);">
+                                <button class="btn btn-primary btn-sm" id="saveBandImageBtn">Bild speichern</button>
+                                ${band.image_url ? `<button class="btn btn-danger btn-sm" id="deleteBandImageBtn">Bild löschen</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                settingsTab.insertBefore(imageSection, settingsTab.firstChild);
+
+                // Add listeners
+                const saveBtn = imageSection.querySelector('#saveBandImageBtn');
+                const deleteBtn = imageSection.querySelector('#deleteBandImageBtn');
+                const fileInput = imageSection.querySelector('#settingsBandImage');
+
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', async () => {
+                        if (fileInput.files.length === 0) {
+                            UI.showToast('Bitte wähle zuerst ein Bild aus', 'info');
+                            return;
+                        }
+                        const btnText = saveBtn.innerHTML;
+                        saveBtn.innerHTML = '⏳ Speichert...';
+                        saveBtn.disabled = true;
+
+                        // Explicitly call App.handleUpdateBandImage
+                        if (typeof App.handleUpdateBandImage === 'function') {
+                            await App.handleUpdateBandImage(bandId, fileInput.files[0]);
+                        } else {
+                            console.error('App.handleUpdateBandImage is missing!');
+                        }
+
+                        saveBtn.innerHTML = btnText;
+                        saveBtn.disabled = false;
+                    });
+                }
+
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', async () => {
+                        // Explicitly call App.handleDeleteBandImage
+                        if (typeof App.handleDeleteBandImage === 'function') {
+                            await App.handleDeleteBandImage(bandId);
+                        }
+                    });
+                }
+            }
+
             const codeSection = document.createElement('div');
             codeSection.className = 'section join-code-section';
             codeSection.innerHTML = `
@@ -512,7 +601,7 @@ const Bands = {
         }).join('');
 
         // Add remove handlers
-        container.querySelectorAll('.remove-member').forEach(btn => {
+        container.querySelectorAll('.remove-member-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const userId = btn.dataset.userId;
@@ -876,5 +965,79 @@ const Bands = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    // Lightbox for Band Images
+    showImageLightbox(url) {
+        let lightbox = document.getElementById('globalLightbox');
+        if (!lightbox) {
+            lightbox = document.createElement('div');
+            lightbox.id = 'globalLightbox';
+            lightbox.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.9);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                cursor: zoom-out;
+            `;
+            lightbox.innerHTML = `<img src="" style="max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); transform: scale(0.9); transition: transform 0.3s ease;">`;
+            document.body.appendChild(lightbox);
+
+            lightbox.addEventListener('click', () => {
+                lightbox.style.opacity = '0';
+                lightbox.querySelector('img').style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    lightbox.style.display = 'none';
+                }, 300);
+            });
+        }
+
+        const img = lightbox.querySelector('img');
+        img.src = url;
+        lightbox.style.display = 'flex';
+        // Trigger reflow
+        lightbox.offsetHeight;
+        lightbox.style.opacity = '1';
+        img.style.transform = 'scale(1)';
+    },
+
+    // Add member to band
+    async addMember(bandId, username, role) {
+        const userToAdd = await Storage.getUserByUsername(username);
+
+        if (!userToAdd) {
+            UI.showToast(`Benutzer "${username}" nicht gefunden`, 'error');
+            return;
+        }
+
+        // Check if already a member
+        const currentRole = await Storage.getUserRoleInBand(userToAdd.id, bandId);
+        if (currentRole) {
+            UI.showToast('Benutzer ist bereits Mitglied der Band', 'warning');
+            return;
+        }
+
+        const success = await Storage.addBandMember(bandId, userToAdd.id, role);
+        if (success) {
+            UI.showToast('Mitglied erfolgreich hinzugefügt', 'success');
+
+            // Refresh logic handled in UI calls but good to have here options
+            if (this.currentBandId === bandId) {
+                this.renderBandMembers(bandId);
+            }
+
+            UI.closeModal('addMemberModal');
+            // Bands.renderBands(); // Only needed if member count in list changes
+        } else {
+            UI.showToast('Fehler beim Hinzufügen des Mitglieds', 'error');
+        }
     }
 };

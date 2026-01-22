@@ -1410,6 +1410,62 @@
             </div>
         </div>
 
+        <!-- Import Songs Modal -->
+        <div id="importSongsModal" class="modal">
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2>Songs importieren</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 1rem;">Du kannst mehrere Songs gleichzeitig per CSV-Datei importieren.</p>
+
+                    <div
+                        style="background: var(--color-background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
+                        <h4 style="margin-bottom: 0.5rem; color: var(--color-text-muted);">Erforderliches Format:</h4>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                                <thead style="background: var(--color-surface);">
+                                    <tr>
+                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Titel</th>
+                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Interpret</th>
+                                        <th style="padding: 8px; border: 1px solid var(--color-border);">BPM</th>
+                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Tonart</th>
+                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Lead Vocal</th>
+                                        <th style="padding: 8px; border: 1px solid var(--color-border);">CCLI</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="padding: 8px; border: 1px solid var(--color-border);">Amazing Grace
+                                        </td>
+                                        <td style="padding: 8px; border: 1px solid var(--color-border);">John Newton
+                                        </td>
+                                        <td style="padding: 8px; border: 1px solid var(--color-border);">80</td>
+                                        <td style="padding: 8px; border: 1px solid var(--color-border);">G</td>
+                                        <td style="padding: 8px; border: 1px solid var(--color-border);">John</td>
+                                        <td style="padding: 8px; border: 1px solid var(--color-border);">123456</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p style="margin-top: 0.5rem; font-size: 0.85em; color: var(--color-text-muted);">
+                            ⚠️ Wichtig: Wenn du Excel oder Numbers verwendest, wähle bitte "Exportieren als CSV".
+                        </p>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn cancel"
+                            onclick="UI.closeModal('importSongsModal')">Abbrechen</button>
+                        <button type="button" class="btn btn-primary"
+                            onclick="document.getElementById('csvSongUpload').click()">
+                            📂 CSV-Datei auswählen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Add User Modal (Admin Only) -->
         <div id="addUserModal" class="modal">
             <div class="modal-content">
