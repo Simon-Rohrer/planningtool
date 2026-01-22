@@ -4310,131 +4310,102 @@ s .time-suggestions-compact {
     }
 }
 
+/* Modern Header Submenu - Scrollable Pills */
 .header-submenu-nav {
-    /* hidden by default on desktop; enabled for <=769px via media query below */
+    /* desktop: hidden */
     display: none;
-    gap: 0.4rem;
-    align-items: center;
-    justify-content: center;
-    margin-left: 0.5rem;
-}
-
-.header-submenu-btn {
-    background: var(--color-primary);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 0.25rem 0.6rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    width: 105px;
-    margin-left: 12px;
-    margin-right: 12px;
-
-    /* NEU: Zentrierung des Textes */
-    display: flex;
-    /* Button als Flex-Container definieren */
-    justify-content: center;
-    /* Horizontale Zentrierung */
-    align-items: center;
-    /* Vertikale Zentrierung */
-    text-align: center;
-    /* Fallback, primär für Text, falls der Button kein Flex-Container wäre, schadet hier aber nicht */
-}
-
-.header-submenu-btn:hover {
-    background: var(--color-primary-dark);
-}
-
-@media (max-width: 768px) {
-    .header-submenu-nav {
-        gap: 0.2rem;
-    }
-
-    .header-submenu-btn {
-        font-size: 0.82rem;
-        padding: 0.18rem 0.45rem;
-    }
-}
-
-/* Make header submenu buttons look like the Settings 'Abwesenheiten' tabs
-   on all viewports and allow them to wrap/scroll when many buttons exist */
-.header-submenu-nav {
-    /* fallback default properties (when enabled by media query) */
     gap: var(--spacing-sm);
     align-items: center;
     justify-content: flex-start;
-    margin-left: 0;
-    padding-left: var(--spacing-sm);
-    flex-wrap: wrap;
-    max-width: 100%;
+    padding: 0.5rem var(--spacing-md);
+    margin: 0;
+    width: 100%;
     overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    /* smooth scroll iOS */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.header-submenu-nav::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
 }
 
 .header-submenu-btn {
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    border-radius: var(--radius-md);
-    font-weight: 600;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    /* Pill shape */
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     color: var(--color-text-secondary);
     cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     display: inline-flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    margin-right: var(--spacing-sm);
-    line-height: 1;
+    gap: 0.4rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.header-submenu-btn:hover {
+    color: var(--color-text);
+    background: rgba(0, 0, 0, 0.03);
 }
 
 .header-submenu-btn.active {
-    color: var(--color-primary);
-    border-color: var(--color-primary);
-    background: var(--color-bg);
-}
-
-/* Show header submenu (buttons) on mobile sizes only (<=769px). */
-@media (max-width: 769px) {
-    .header-submenu-nav {
-        display: flex;
-        justify-content: center;
-        flex-wrap: nowrap;
-        /* keep buttons in a single row; allow horizontal scroll */
-        overflow-x: auto;
-    }
-
-    .header-submenu-nav .header-submenu-btn {
-        flex: 0 0 auto;
-    }
+    background: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    /* softer shadow */
+    font-weight: 600;
+    border-color: transparent;
+    transform: translateY(-1px);
 }
 
 .header-submenu-btn .nav-icon {
-    margin-right: 0.35em;
-    font-size: 1.05em;
-    display: inline-block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    /* Ensure icons are always visible, even on mobile */
+    font-size: 1.1em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Fix for very small screens (e.g., 390px) - ensure icons don't disappear */
-@media (max-width: 420px) {
+/* Ensure active icon is white */
+.header-submenu-btn.active .nav-icon {
+    color: #fff !important;
+}
+
+/* Mobile specific overrides */
+@media (max-width: 769px) {
+    .header-submenu-nav {
+        display: flex;
+        /* Activate flex for mobile */
+        width: 100%;
+        justify-content: flex-start;
+        /* Start align for scroll */
+        padding-bottom: 0.75rem;
+        /* Space for shadow/touch */
+        background: var(--color-surface);
+        /* Ensure contrast */
+        border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+        /* subtle separator */
+    }
+
+    /* Add gradient mask for scroll indication if desired, 
+       but simple padding usually suffices */
+}
+
+/* Very small screens adjustments */
+@media (max-width: 380px) {
     .header-submenu-btn {
-        min-width: auto;
-        padding: 0.4rem 0.5rem;
-        font-size: 0.75rem;
-    }
-
-    .header-submenu-btn .nav-icon {
-        margin-right: 0.25em;
-        font-size: 1.1em;
-        /* Icons should be slightly larger relative to the smaller text */
-    }
-
-    .header-submenu-label {
-        /* Ensure label text doesn't wrap or get cut off */
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
     }
 }
 
