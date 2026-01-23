@@ -441,36 +441,71 @@ const Events = {
             // Create PDF HTML element
             const element = document.createElement('div');
             element.innerHTML = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; background: white; color: #000;">
-                    <h1 style="text-align: center; color: #333; margin: 0 0 10px 0; font-size: 24px;">${Bands.escapeHtml(event.title)}</h1>
-                    <div style="text-align: center; color: #666; margin-bottom: 30px; font-size: 14px;">
-                        <p style="margin: 5px 0;"><strong>Band:</strong> ${Bands.escapeHtml(bandName)}</p>
-                        <p style="margin: 5px 0;"><strong>Datum:</strong> ${UI.formatDate(event.date)}</p>
-                        ${event.location ? `<p style="margin: 5px 0;"><strong>Ort:</strong> ${Bands.escapeHtml(event.location)}</p>` : ''}
+                <div style="font-family: 'Inter', Arial, sans-serif; padding: 40px; background: white; color: #111827; max-width: 800px; margin: 0 auto;">
+                    <!-- Header Accent -->
+                    <div style="height: 6px; background: #8B5CF6; border-radius: 3px; margin-bottom: 25px;"></div>
+
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 35px; border-bottom: 1px solid #E5E7EB; padding-bottom: 25px;">
+                        <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">${Bands.escapeHtml(event.title)}</h1>
+                        <div style="display: flex; gap: 20px; margin-top: 12px; color: #6B7280; font-size: 14px;">
+                            <span>🎸 <b>${Bands.escapeHtml(bandName)}</b></span>
+                            <span>📅 ${UI.formatDate(event.date)}</span>
+                            ${event.location ? `<span>📍 ${Bands.escapeHtml(event.location)}</span>` : ''}
+                        </div>
                     </div>
 
-                    <h2 style="color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 20px; font-size: 18px;">Setlist (${songs.length} Songs)</h2>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px;">
+                    <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827; text-transform: uppercase; letter-spacing: 0.05em;">Setlist</h2>
+                        <span style="color: #9CA3AF; font-size: 13px;">${songs.length} Songs</span>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 13px; table-layout: fixed;">
                         <thead>
-                            <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
-                                <th style="padding: 8px; text-align: left; font-weight: bold;">Nr.</th>
-                                <th style="padding: 8px; text-align: left; font-weight: bold;">Titel</th>
-                                <th style="padding: 8px; text-align: left; font-weight: bold;">Interpret</th>
-                                <th style="padding: 8px; text-align: center; font-weight: bold;">BPM</th>
-                                <th style="padding: 8px; text-align: center; font-weight: bold;">Tonart</th>
-                                <th style="padding: 8px; text-align: left; font-weight: bold;">Lead Vocal</th>
+                            <tr style="background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB;">
+                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 35px; color: #4B5563;">#</th>
+                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; color: #4B5563;">Titel</th>
+                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; color: #4B5563;">Interpret</th>
+                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">BPM</th>
+                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">Key</th>
+                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 100px; color: #4B5563;">Lead</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${songsTableHTML}
+                            ${songs.map((song, idx) => `
+                                <tr style="border-bottom: 1px solid #F3F4F6; ${idx % 2 === 0 ? '' : 'background-color: #FAFAFA;'}">
+                                    <td style="padding: 10px; color: #9CA3AF; font-weight: 500;">${idx + 1}</td>
+                                    <td style="padding: 10px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Bands.escapeHtml(song.title)}</td>
+                                    <td style="padding: 10px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Bands.escapeHtml(song.artist || '-')}</td>
+                                    <td style="padding: 10px; text-align: center; font-weight: 500;">${song.bpm || '-'}</td>
+                                    <td style="padding: 10px; text-align: center; font-weight: 500; color: #8B5CF6;">${song.key || '-'}</td>
+                                    <td style="padding: 10px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Bands.escapeHtml(song.leadVocal || '-')}</td>
+                                </tr>
+                            `).join('')}
                         </tbody>
                     </table>
 
-                    ${additionalInfoHTML}
+                    ${songs.some(s => s.ccli || s.notes) ? `
+                        <div style="margin-top: 40px; border-radius: 12px; border: 1px solid #E5E7EB; overflow: hidden;">
+                            <div style="background: #F9FAFB; padding: 12px 20px; border-bottom: 1px solid #E5E7EB;">
+                                <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: #111827;">Zusätzliche Informationen</h3>
+                            </div>
+                            <div style="padding: 10px 20px;">
+                                ${songs.filter(s => s.ccli || s.notes).map((song, idx) => `
+                                    <div style="padding: 12px 0; ${idx !== 0 ? 'border-top: 1px dashed #E5E7EB;' : ''}">
+                                        <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: #111827;">${Bands.escapeHtml(song.title)}</div>
+                                        <div style="display: flex; gap: 15px; font-size: 12px; color: #6B7280;">
+                                            ${song.ccli ? `<span><b>CCLI:</b> ${Bands.escapeHtml(song.ccli)}</span>` : ''}
+                                            ${song.notes ? `<span><b>Notiz:</b> ${Bands.escapeHtml(song.notes)}</span>` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
 
-                    <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px; color: #999; font-size: 11px; text-align: center;">
-                        <p style="margin: 5px 0;">Erstellt mit Band Planning Tool</p>
-                        <p style="margin: 0;">Ausgedruckt am ${new Date().toLocaleString('de-DE')}</p>
+                    <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #E5E7EB; color: #9CA3AF; font-size: 11px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>Erstellt mit <b>Band Manager</b></div>
+                        <div>Stand: ${new Date().toLocaleString('de-DE')}</div>
                     </div>
                 </div>
             `;

@@ -3147,29 +3147,48 @@ const App = {
             // Create PDF HTML element
             const element = document.createElement('div');
             element.innerHTML = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; background: white; color: #000;">
-                    <h1 style="text-align: center; color: #333; margin: 0 0 10px 0; font-size: 24px;">${this.escapeHtml(title)}</h1>
-                    ${subtitle ? `<div style="text-align: center; color: #666; margin-bottom: 30px; font-size: 14px;">${this.escapeHtml(subtitle)}</div>` : ''}
+                <div style="font-family: 'Inter', Arial, sans-serif; padding: 40px; background: white; color: #111827; max-width: 800px; margin: 0 auto;">
+                    <!-- Header Accent -->
+                    <div style="height: 6px; background: #8B5CF6; border-radius: 3px; margin-bottom: 25px;"></div>
 
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px;">
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 35px; border-bottom: 1px solid #E5E7EB; padding-bottom: 25px;">
+                        <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">${this.escapeHtml(title)}</h1>
+                        ${subtitle ? `<div style="margin-top: 8px; color: #6B7280; font-size: 14px; font-weight: 500;">${this.escapeHtml(subtitle)}</div>` : ''}
+                    </div>
+
+                    <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827; text-transform: uppercase; letter-spacing: 0.05em;">Songliste</h2>
+                        <span style="color: #9CA3AF; font-size: 13px;">${songs.length} Songs</span>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 13px; table-layout: fixed;">
                         <thead>
-                            <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
-                                <th style="padding: 8px; text-align: left; font-weight: bold;">Nr.</th>
-                                <th style="padding: 8px; text-align: left; font-weight: bold;">Titel</th>
-                                <th style="padding: 8px; text-align: left; font-weight: bold;">Interpret</th>
-                                <th style="padding: 8px; text-align: center; font-weight: bold;">BPM</th>
-                                <th style="padding: 8px; text-align: center; font-weight: bold;">Tonart</th>
-                                <th style="padding: 8px; text-align: left; font-weight: bold;">Lead Vocal</th>
+                            <tr style="background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB;">
+                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 35px; color: #4B5563;">#</th>
+                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; color: #4B5563;">Titel</th>
+                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; color: #4B5563;">Interpret</th>
+                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">BPM</th>
+                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">Key</th>
+                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 100px; color: #4B5563;">Lead</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${songsTableHTML}
+                            ${songs.map((song, idx) => `
+                                <tr style="border-bottom: 1px solid #F3F4F6; ${idx % 2 === 0 ? '' : 'background-color: #FAFAFA;'}">
+                                    <td style="padding: 10px; color: #9CA3AF; font-weight: 500;">${idx + 1}</td>
+                                    <td style="padding: 10px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(song.title)}</td>
+                                    <td style="padding: 10px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(song.artist || '-')}</td>
+                                    <td style="padding: 10px; text-align: center; font-weight: 500;">${song.bpm || '-'}</td>
+                                    <td style="padding: 10px; text-align: center; font-weight: 500; color: #8B5CF6;">${song.key || '-'}</td>
+                                    <td style="padding: 10px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(song.leadVocal || '-')}</td>
+                                </tr>
+                            `).join('')}
                         </tbody>
                     </table>
 
-                    <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px; color: #999; font-size: 11px; text-align: center;">
-                        <p style="margin: 5px 0;">Erstellt mit Band Planning Tool</p>
-                        <p style="margin: 0;">Ausgedruckt am ${new Date().toLocaleString('de-DE')}</p>
+                    <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #E5E7EB; color: #9CA3AF; font-size: 11px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>Erstellt mit <b>Band Manager</b></div>
+                        <div>Stand: ${new Date().toLocaleString('de-DE')}</div>
                     </div>
                 </div>
             `;
@@ -3770,6 +3789,8 @@ const App = {
         if (!container) return;
 
         const songs = await Storage.getBandSongs(bandId);
+        const band = await Storage.getBand(bandId);
+        const bandName = band ? band.name : 'Unbekannte Band';
 
         if (!Array.isArray(songs) || songs.length === 0) {
             container.innerHTML = '<p class="text-muted">Noch keine Songs hinzugefügt.</p>';
@@ -3851,7 +3872,7 @@ const App = {
 
         // PDF Export
         document.getElementById('bandSongsExportPDF').addEventListener('click', () => {
-            this.downloadSongListPDF(this.currentBandSongs || [], 'Band Setlist', 'Repertoire Export');
+            this.downloadSongListPDF(this.currentBandSongs || [], `Gesamtsetlist der Band ${bandName}`, 'Repertoire Export');
         });
 
         // Bulk Actions Logic
@@ -3907,7 +3928,7 @@ const App = {
             bulkPDFBtn.addEventListener('click', () => {
                 const selectedIds = Array.from(container.querySelectorAll('.band-song-checkbox-row:checked')).map(cb => cb.value);
                 const selectedSongs = this.currentBandSongs.filter(s => selectedIds.includes(s.id));
-                this.downloadSongListPDF(selectedSongs, 'Band Setlist', 'Ausgewählte Songs');
+                this.downloadSongListPDF(selectedSongs, `Ausgewählte Songs der Band ${bandName}`, 'Teil-Repertoire Export');
             });
         }
 
