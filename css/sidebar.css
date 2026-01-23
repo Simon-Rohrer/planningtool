@@ -162,7 +162,8 @@
     .app-nav,
     .header-submenu-nav,
     #headerSubmenu,
-    .app-header .logo {
+    .app-header .logo,
+    #logoutBtn {
         display: none !important;
     }
 

@@ -409,5 +409,25 @@ const UI = {
         if (form) {
             form.reset();
         }
+    },
+
+    toggleAdminAccordion(sectionId) {
+        const section = document.getElementById(sectionId);
+        if (!section) return;
+
+        const isActive = section.classList.contains('active');
+
+        // Close all other accordion cards in the same container if desired
+        const adminTab = section.closest('#adminSettingsTab');
+        if (adminTab) {
+            adminTab.querySelectorAll('.admin-accordion-card').forEach(card => {
+                card.classList.remove('active');
+            });
+        }
+
+        // Toggle current section
+        if (!isActive) {
+            section.classList.add('active');
+        }
     }
 };

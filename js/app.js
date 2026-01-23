@@ -4183,17 +4183,11 @@ const App = {
         }
 
         // Always update logic below (visibility, values, re-rendering lists)
-        const locationsTab = effectiveRoot.querySelector('#settingsTabLocations');
-        const bandsTab = effectiveRoot.querySelector('#settingsTabBands');
-        const usersTab = effectiveRoot.querySelector('#settingsTabUsers');
-
-        if (locationsTab) locationsTab.style.display = isAdmin ? 'block' : 'none';
-        if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
-        if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
-
-        // Admin Feedback Tab
-        const adminFeedbackTab = effectiveRoot.querySelector('#settingsTabAdminFeedback');
-        if (adminFeedbackTab) adminFeedbackTab.style.display = isAdmin ? 'block' : 'none';
+        // Admin Tab Visibility
+        const adminTab = effectiveRoot.querySelector('#settingsTabAdmin');
+        if (adminTab) {
+            adminTab.style.display = isAdmin ? 'flex' : 'none';
+        }
 
         // Refresh button for feedback
         const refreshFeedbackBtn = effectiveRoot.querySelector('#refreshFeedbackBtn');
@@ -4224,6 +4218,13 @@ const App = {
         if (profileEmail) profileEmail.value = user.email || '';
         if (profileInstrument) profileInstrument.value = user.instrument || '';
         if (profilePassword) profilePassword.value = '';
+
+        // Update profile display name preview
+        const profileDisplayNamePreview = effectiveRoot.querySelector('#profileDisplayNamePreview');
+        if (profileDisplayNamePreview) {
+            const displayName = UI.getUserDisplayName(user);
+            profileDisplayNamePreview.textContent = displayName || user.username || 'Dein Profil';
+        }
 
         // Continue with existing logic...
 
@@ -4586,6 +4587,9 @@ const App = {
         try {
             const feedbacks = await FeedbackService.getAllFeedback();
 
+            const badge = document.getElementById('adminFeedbackCount');
+            if (badge) badge.textContent = feedbacks ? feedbacks.length : 0;
+
             if (!feedbacks || feedbacks.length === 0) {
                 list.innerHTML = '<div class="empty-state">Aktuell keine Einträge vorhanden.</div>';
                 return;
@@ -4918,9 +4922,6 @@ const App = {
         // Mappings
         let contentId = '';
         if (tabName === 'profile') contentId = 'profileSettingsTab';
-        else if (tabName === 'adminFeedback') contentId = 'adminFeedbackSettingsTab';
-        else if (tabName === 'users') contentId = 'usersSettingsTab';
-        // Absences often has special handling or missing container ID in this project context
 
         // Try precise ID
         let content = document.getElementById(contentId);
@@ -4931,8 +4932,19 @@ const App = {
 
         if (content) {
             content.style.display = 'block';
-            if (tabName === 'adminFeedback') {
+
+            // Load data if switching to Admin tab
+            if (tabName === 'admin') {
                 this.loadAdminFeedback();
+                this.renderLocationsList();
+                this.renderAllBandsList();
+                this.renderUsersList();
+                this.renderCalendarsList(); // Don't forget calendars!
+
+                // Open first accordion by default
+                setTimeout(() => {
+                    UI.toggleAdminAccordion('adminSectionFeedback');
+                }, 50);
             }
         } else {
             // Handling for bands/locations if standard ID isn't matching
@@ -4993,20 +5005,20 @@ const App = {
         }
 
         container.innerHTML = absences.map(absence => `
-    < div class="absence-card-modern" data - absence - id="${absence.id}" >
-                <div class="absence-info-modern">
+            <div class="absence-item-card" data-absence-id="${absence.id}">
+                <div class="absence-info">
                     <div class="absence-date-range">
-                        <span>📅</span>
-                        <strong>${UI.formatDateOnly(absence.startDate)} - ${UI.formatDateOnly(absence.endDate)}</strong>
+                        <span style="margin-right:0.25rem;">📅</span>
+                        ${UI.formatDateOnly(absence.startDate)} - ${UI.formatDateOnly(absence.endDate)}
                     </div>
-                    ${absence.reason ? `<p class="absence-reason-text">${Bands.escapeHtml(absence.reason)}</p>` : ''}
+                    ${absence.reason ? `<div class="absence-reason">${Bands.escapeHtml(absence.reason)}</div>` : ''}
                 </div>
-                <div class="absence-actions-modern">
-                    <button class="btn-icon edit-absence-settings" data-absence-id="${absence.id}" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon delete-absence-settings" data-absence-id="${absence.id}" title="Löschen">🗑️</button>
+                <div class="absence-actions">
+                    <button class="btn btn-sm btn-icon edit-absence-settings" data-absence-id="${absence.id}" title="Bearbeiten" style="background:transparent; border:none; font-size:1.1rem; padding:0.25rem;">✏️</button>
+                    <button class="btn btn-sm btn-icon delete-absence-settings" data-absence-id="${absence.id}" title="Löschen" style="background:transparent; border:none; font-size:1.1rem; padding:0.25rem;">🗑️</button>
                 </div>
-            </div >
-    `).join('');
+            </div>
+        `).join('');
 
         // Attach event listeners
         container.querySelectorAll('.edit-absence-settings').forEach(btn => {
@@ -5091,13 +5103,11 @@ const App = {
         console.log('[openSettingsModal] User:', user.email, 'isAdmin:', isAdmin);
 
         // Show/Hide tabs based on role
-        const locationsTab = document.getElementById('settingsTabLocations');
-        const bandsTab = document.getElementById('settingsTabBands');
-        const usersTab = document.getElementById('settingsTabUsers');
-
-        if (locationsTab) locationsTab.style.display = isAdmin ? 'block' : 'none';
-        if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
-        if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
+        // Show/Hide tabs based on role
+        const adminTab = document.getElementById('settingsTabAdmin');
+        if (adminTab) {
+            adminTab.style.display = isAdmin ? 'flex' : 'none';
+        }
 
         // Pre-fill profile form
         document.getElementById('profileUsername').value = user.username;
@@ -5185,32 +5195,26 @@ const App = {
         containers.forEach(container => {
             container.innerHTML = '';
 
+            // Remove inline styles from container if any (cleanup)
+            container.removeAttribute('style');
+            container.className = 'profile-avatar-container'; // Add a class for hooking
+
             if (user.profile_image_url) {
                 const img = document.createElement('img');
                 img.src = user.profile_image_url;
                 img.alt = 'Profilbild';
-                img.style.width = '100px';
-                img.style.height = '100px';
-                img.style.borderRadius = '50%';
-                img.style.objectFit = 'cover';
-                img.style.border = '2px solid var(--color-border)';
+                img.className = 'profile-avatar-preview'; // Use CSS class
                 container.appendChild(img);
             } else {
                 // Render initials
                 const initials = UI.getUserInitials(UI.getUserDisplayName(user));
                 const placeholder = document.createElement('div');
-                placeholder.className = 'profile-initials-large';
-                placeholder.style.width = '100px';
-                placeholder.style.height = '100px';
-                placeholder.style.borderRadius = '50%';
+                placeholder.className = 'profile-avatar-preview profile-initials-placeholder'; // Use CSS classes
+                placeholder.innerHTML = `<span style="font-size: 2.5rem; font-weight: bold; color: white;">${initials}</span>`;
                 placeholder.style.backgroundColor = 'var(--color-primary)';
-                placeholder.style.color = '#fff';
                 placeholder.style.display = 'flex';
                 placeholder.style.alignItems = 'center';
                 placeholder.style.justifyContent = 'center';
-                placeholder.style.fontSize = '2.5rem';
-                placeholder.style.fontWeight = 'bold';
-                placeholder.textContent = initials;
                 container.appendChild(placeholder);
             }
         });
@@ -5252,6 +5256,10 @@ const App = {
     async renderLocationsList() {
         const container = document.getElementById('locationsList');
         const locations = await Storage.getLocations();
+
+        const badge = document.getElementById('adminLocationCount');
+        if (badge) badge.textContent = locations ? locations.length : 0;
+
         const calendars = await Storage.getAllCalendars();
 
         // Create map of calendar names
@@ -5551,6 +5559,9 @@ const App = {
         const container = document.getElementById('allBandsList');
         const bands = await Storage.getAllBands();
 
+        const badge = document.getElementById('adminBandCount');
+        if (badge) badge.textContent = bands ? bands.length : 0;
+
         if (bands.length === 0) {
             container.innerHTML = '<p class="text-muted">Keine Bands vorhanden.</p>';
             return;
@@ -5736,6 +5747,9 @@ const App = {
 
         const container = document.getElementById('usersList');
         const users = await Storage.getAll('users');
+
+        const badge = document.getElementById('adminUserCount');
+        if (badge) badge.textContent = users ? users.length : 0;
 
         if (!users || users.length === 0) {
             container.innerHTML = '<p class="text-muted">Keine Benutzer vorhanden.</p>';
@@ -6141,7 +6155,11 @@ const App = {
             // Refresh settings view to show updated values if open
             // but handleUpdateProfile is often used from modal which might not be settings view
             // If this is used, we might want to also re-render settings list
-            if (document.getElementById('settingsView').classList.contains('active')) {
+            // Refresh settings view to show updated values if open
+            // but handleUpdateProfile is often used from modal which might not be settings view
+            // If this is used, we might want to also re-render settings list
+            const settingsView = document.getElementById('settingsView');
+            if (settingsView && settingsView.classList.contains('active')) {
                 await this.renderSettingsView();
             }
 

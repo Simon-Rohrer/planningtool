@@ -71,3 +71,341 @@
         font-size: 0.9rem;
     }
 }
+
+/* =========================================
+   NEW PROFILE SETTINGS LAYOUT
+========================================= */
+
+.profile-settings-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+/* Left Column: Avatar & Basic Info */
+.profile-sidebar-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: var(--color-surface);
+    padding: 2rem;
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+}
+
+/* Avatar Wrapper */
+.profile-avatar-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin-bottom: 1.5rem;
+}
+
+.profile-avatar-preview {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--color-surface);
+    box-shadow: 0 0 0 2px var(--color-primary);
+    background: var(--color-bg-secondary);
+}
+
+/* Edit Button (Camera Icon) */
+.profile-avatar-edit-btn {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 36px;
+    height: 36px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid var(--color-surface);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
+}
+
+.profile-avatar-edit-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Main Form Area */
+.profile-main-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Form Sections */
+.profile-section {
+    background: var(--color-surface);
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+}
+
+.profile-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.profile-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Inputs styling improvements */
+.profile-form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-main);
+    color: var(--color-text);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.profile-form-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    outline: none;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .profile-settings-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .profile-sidebar-column {
+        flex-direction: row;
+        text-align: left;
+        padding: 1.5rem;
+        gap: 1.5rem;
+    }
+
+    .profile-avatar-wrapper {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .profile-sidebar-column {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .profile-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================
+   ABSENCES SETTINGS LAYOUT
+========================================= */
+
+.absences-settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    /* List takes more space, Form is side sidebar */
+    gap: 2rem;
+    align-items: start;
+    height: 100%;
+    /* Ensure it fills available space if needed */
+}
+
+/* Swap order visually if needed, but here: Left=List, Right=Form is requested */
+
+.absences-list-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    /* optional: min-width for grid */
+}
+
+.absences-form-column {
+    background: var(--color-surface);
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+    position: sticky;
+    top: 1rem;
+    /* Sticky form when scrolling long list */
+}
+
+/* Absence Card Styling */
+.absence-item-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.absence-item-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.absence-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.absence-date-range {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.absence-reason {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.absence-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Responsive Absences */
+@media (max-width: 900px) {
+    .absences-settings-grid {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column-reverse;
+        /* Form on top (handled by HTML order or flex-direction) */
+    }
+
+    .absences-form-column {
+        position: static;
+        width: 100%;
+        margin-bottom: 2rem;
+    }
+
+    /* We want Form FIRST on mobile */
+    .absences-settings-grid {
+        flex-direction: column-reverse;
+        /* List bottom, Form top */
+    }
+}
+
+/* =========================================
+   ADMIN SETTINGS REFINEMENTS
+   ========================================= */
+
+.admin-accordion-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-accordion-header {
+    width: 100%;
+    padding: 1.25rem 1.5rem;
+    background: transparent;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    text-align: left;
+    color: var(--color-text);
+    transition: background-color 0.2s;
+}
+
+.admin-accordion-header:hover {
+    background-color: rgba(99, 102, 241, 0.03);
+}
+
+.admin-accordion-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.admin-accordion-toggle-icon {
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+    opacity: 0.5;
+}
+
+.admin-accordion-card.active .admin-accordion-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.admin-accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s;
+    background-color: var(--color-bg-secondary);
+}
+
+.admin-accordion-card.active .admin-accordion-content {
+    max-height: 2000px;
+    /* Increased to allow for content */
+    padding-bottom: 0;
+}
+
+.admin-section-inner {
+    padding: 1.5rem;
+}
+
+/* Scrollable area for long lists */
+.admin-scroll-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.5rem;
+    background: var(--color-surface);
+    margin-top: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.admin-scroll-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.admin-scroll-list::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 10px;
+}
+
+.admin-count-badge {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}

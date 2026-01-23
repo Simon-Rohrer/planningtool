@@ -439,7 +439,7 @@
                                 <span id="themeToggleIcon">🌙</span>
                             </button>
                             <button id="logoutBtn" class="btn btn-secondary">
-                                <img src="images/logout-logo Kopie.jpg" alt="Abmelden" class="icon-img">
+                                <img src="images/logout darkmode.jpg" alt="Abmelden" class="icon-img">
                             </button>
                         </div>
                     </div>
@@ -979,263 +979,372 @@
                             data-tab="profile">Profil</button>
                         <button id="settingsTabAbsences" class="settings-tab-btn"
                             data-tab="absences">Abwesenheiten</button>
-                        <button id="settingsTabLocations" class="settings-tab-btn"
-                            data-tab="locations">Probeorte</button>
-                        <button id="settingsTabBands" class="settings-tab-btn" data-tab="bands">Bandmanagement</button>
-                        <button id="settingsTabUsers" class="settings-tab-btn" data-tab="users"
-                            style="display: none;">Benutzerverwaltung</button>
-                        <button id="settingsTabAdminFeedback" class="settings-tab-btn" data-tab="adminFeedback"
-                            style="display: none; border-color: var(--color-warning); color: var(--color-warning);">Admin
-                            Feedback</button>
+                        <button id="settingsTabAdmin" class="settings-tab-btn" data-tab="admin"
+                            style="display: none;">Admin</button>
                     </div>
 
 
-                    <!-- Admin Feedback Tab -->
-                    <div id="adminFeedbackSettingsTab" class="settings-tab-content">
-                        <div class="section">
-                            <h3>Feedback & Fehlerberichte</h3>
-                            <div class="view-controls" style="margin-bottom: 1rem;">
-                                <button id="refreshFeedbackBtn" class="btn btn-sm btn-secondary">🔄
-                                    Aktualisieren</button>
-                            </div>
-                            <div id="adminFeedbackList" style="display: flex; flex-direction: column; gap: 1rem;">
-                                <!-- Feedback items rendered here -->
-                                <div class="empty-state">Lade Daten...</div>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <!-- Profile Tab -->
                     <div id="profileSettingsTab" class="settings-tab-content active">
                         <div class="section">
-                            <h3>Mein Profil bearbeiten</h3>
-                            <form id="updateProfileForm">
-                                <div class="form-group" style="display:flex;align-items:center;gap:1.5rem;">
-                                    <div id="profileImageSettingsContainer"
-                                        style="display:flex;flex-direction:column;align-items:center;gap:0.5rem;">
-                                        <!-- Profilbild/Initialen werden per JS gerendert -->
+                            <h3 style="margin-bottom: 1.5rem;">Mein Profil & Einstellungen</h3>
+
+                            <form id="updateProfileForm" class="profile-settings-grid">
+
+                                <!-- Left Column: Avatar & Overview -->
+                                <div class="profile-sidebar-column">
+                                    <div class="profile-avatar-wrapper">
+                                        <div id="profileImageSettingsContainer"
+                                            style="width:100%; height:100%; border-radius:50%; overflow:hidden;">
+                                            <!-- Profile Image Rendered by JS -->
+                                        </div>
+                                        <label for="profileImageInput" class="profile-avatar-edit-btn"
+                                            title="Profilbild ändern">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path
+                                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                                                </path>
+                                                <circle cx="12" cy="13" r="4"></circle>
+                                            </svg>
+                                        </label>
+                                        <input type="file" id="profileImageInput" accept="image/*" hidden>
                                     </div>
-                                    <div style="flex:1;">
-                                        <label for="profileImageInput" style="font-weight:600;">Profilbild
-                                            ändern</label>
-                                        <input type="file" id="profileImageInput" accept="image/*"
-                                            style="margin-bottom:0.5rem;">
-                                        <button type="button" id="deleteProfileImageBtn" class="btn btn-danger btn-sm"
-                                            style="margin-top:0.2rem;">Profilbild
-                                            entfernen</button>
-                                        <small style="display:block;color:#888;">Max. 100kb. Größere Bilder werden
-                                            komprimiert.</small>
+
+                                    <h4 id="profileDisplayNamePreview"
+                                        style="margin:0; font-weight:700; font-size:1.1rem; color: var(--color-text);">
+                                        Dein Profil</h4>
+                                    <p
+                                        style="margin:0.25rem 0 1rem 0; color:var(--color-text-secondary); font-size:0.9rem;">
+                                        Bearbeite deine Informationen</p>
+
+                                    <button type="button" id="deleteProfileImageBtn"
+                                        class="btn btn-outline-danger btn-sm"
+                                        style="border:none; background:transparent; font-size:0.85rem; padding:0.25rem 0.5rem;">
+                                        Bild entfernen
+                                    </button>
+                                </div>
+
+                                <!-- Right Column: Form Fields -->
+                                <div class="profile-main-column">
+
+                                    <!-- Personal Info -->
+                                    <div class="profile-section">
+                                        <div class="profile-section-title">
+                                            <span>👤</span> Persönliche Daten
+                                        </div>
+                                        <div class="profile-form-grid">
+                                            <div class="form-group">
+                                                <label for="profileFirstName">Vorname</label>
+                                                <input type="text" id="profileFirstName" class="profile-form-input"
+                                                    required placeholder="Dein Vorname">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="profileLastName">Nachname</label>
+                                                <input type="text" id="profileLastName" class="profile-form-input"
+                                                    required placeholder="Dein Nachname">
+                                            </div>
+                                            <div class="form-group full-width">
+                                                <label for="profileUsername">Benutzername</label>
+                                                <input type="text" id="profileUsername" class="profile-form-input"
+                                                    required placeholder="@username">
+                                            </div>
+                                            <div class="form-group full-width">
+                                                <label for="profileEmail">E-Mail Adresse</label>
+                                                <input type="email" id="profileEmail" class="profile-form-input"
+                                                    required placeholder="name@example.com">
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    <!-- Artist Info -->
+                                    <div class="profile-section">
+                                        <div class="profile-section-title">
+                                            <span>🎸</span> Musiker Profil
+                                        </div>
+                                        <div class="form-group full-width">
+                                            <label for="profileInstrument">Hauptinstrument</label>
+                                            <select id="profileInstrument" class="profile-form-input">
+                                                <option value="">Kein Instrument gewählt</option>
+                                                <option value="drums">Schlagzeug (🥁)</option>
+                                                <option value="bass">Bass (🎸)</option>
+                                                <option value="acoustic_guitar">Akustische Gitarre (🎸)</option>
+                                                <option value="electric_guitar">Elektrische Gitarre (🎸)</option>
+                                                <option value="keyboard">Keyboard (🎹)</option>
+                                                <option value="synth">Synth (🎹)</option>
+                                                <option value="violin">Geige (🎻)</option>
+                                                <option value="vocals">Gesang (🎤)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Security -->
+                                    <div class="profile-section">
+                                        <div class="profile-section-title">
+                                            <span>🔒</span> Sicherheit
+                                        </div>
+                                        <div class="profile-form-grid">
+                                            <div class="form-group">
+                                                <label for="profilePassword">Neues Passwort</label>
+                                                <input type="password" id="profilePassword" class="profile-form-input"
+                                                    placeholder="••••••••" autocomplete="new-password">
+                                            </div>
+                                            <div class="form-group" id="profilePasswordConfirmGroup">
+                                                <label for="profilePasswordConfirm">Bestätigen</label>
+                                                <input type="password" id="profilePasswordConfirm"
+                                                    class="profile-form-input" placeholder="••••••••"
+                                                    autocomplete="new-password">
+                                            </div>
+                                        </div>
+                                        <small
+                                            style="display:block; margin-top:0.5rem; color:var(--color-text-secondary);">Leer
+                                            lassen, wenn du dein Passwort nicht ändern möchtest.</small>
+                                    </div>
+
+                                    <!-- Actions -->
+                                    <div style="display:flex; justify-content:flex-end; padding-top:1rem;">
+                                        <button type="submit" class="btn btn-primary"
+                                            style="padding: 0.75rem 2rem; font-weight:600; display:flex; align-items:center; gap:0.5rem; border-radius:12px;">
+                                            <span>💾</span> Änderungen speichern
+                                        </button>
+                                    </div>
+
                                 </div>
-                                <div class="form-group">
-                                    <label for="profileFirstName">Vorname</label>
-                                    <input type="text" id="profileFirstName" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="profileLastName">Nachname</label>
-                                    <input type="text" id="profileLastName" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="profileUsername">Benutzername</label>
-                                    <input type="text" id="profileUsername" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="profileEmail">E-Mail</label>
-                                    <input type="email" id="profileEmail" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="profileInstrument">Instrument</label>
-                                    <select id="profileInstrument" class="form-select">
-                                        <option value="">Kein Instrument</option>
-                                        <option value="drums">Schlagzeug (🥁)</option>
-                                        <option value="bass">Bass (🎸)</option>
-                                        <option value="acoustic_guitar">Akustische Gitarre (🎸)</option>
-                                        <option value="electric_guitar">Elektrische Gitarre (🎸)</option>
-                                        <option value="keyboard">Keyboard (🎹)</option>
-                                        <option value="synth">Synth (🎹)</option>
-                                        <option value="violin">Geige (🎻)</option>
-                                        <option value="vocals">Gesang (🎤)</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="profilePassword">Neues Passwort (leer lassen für keine
-                                        Änderung)</label>
-                                    <input type="password" id="profilePassword" placeholder="Neues Passwort">
-                                </div>
-                                <div class="form-group" id="profilePasswordConfirmGroup" style="display: none;">
-                                    <label for="profilePasswordConfirm">Passwort bestätigen</label>
-                                    <input type="password" id="profilePasswordConfirm"
-                                        placeholder="Passwort wiederholen">
-                                </div>
-                                <button type="submit" class="btn btn-primary">Speichern</button>
                             </form>
-                            <!-- Admin: Tutorial anzeigen / testen (sichtbar nur für Admins, wird per JS gesteuert) -->
-                            <div id="adminTutorialSection" style="margin-top: 1rem; display: none;">
-                                <h4>Tutorial</h4>
-                                <p style="color: var(--color-text-secondary); margin-top: 0.25rem;">Als Admin kannst
-                                    du
-                                    das Onboarding/Tutorial anzeigen und testen.</p>
-                                <button id="adminShowTutorialBtn" class="btn btn-secondary">Tutorial anzeigen /
-                                    testen</button>
-                            </div>
+                            <!-- (Tutorial and Donate moved to Admin tab) -->
                             <div class="section" style="margin-top: 1rem;">
                                 <!-- Account löschen Button -->
                                 <button id="deleteAccountBtn" class="btn btn-danger" style="margin-top:2rem;">Account
                                     löschen</button>
-                            </div>
-                            <div id="donateLinkSection" class="section" style="margin-top: 1rem;">
-                                <h3>Spenden-Link</h3>
-                                <div class="form-group">
-                                    <label for="donateLink">PayPal-Link</label>
-                                    <input type="url" id="donateLink" placeholder="https://paypal.me/deinusername"
-                                        value="">
-                                    <small
-                                        style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
-                                        Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich angezeigt.
-                                    </small>
-                                </div>
-                                <button id="saveDonateLink" class="btn btn-primary">Spenden-Link speichern</button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Absences Tab -->
                     <div id="absencesSettingsTab" class="settings-tab-content">
-                        <!-- Create Absence Section -->
-                        <div class="section">
-                            <h3>Neue Abwesenheit eintragen</h3>
-                            <form id="createAbsenceFormSettings">
-                                <input type="hidden" id="editAbsenceIdSettings">
-                                <div class="form-group">
-                                    <label for="absenceStartSettings">Von (Datum)</label>
-                                    <input type="date" id="absenceStartSettings" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="absenceEndSettings">Bis (Datum)</label>
-                                    <input type="date" id="absenceEndSettings" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="absenceReasonSettings">Grund (optional)</label>
-                                    <input type="text" id="absenceReasonSettings"
-                                        placeholder="z.B. Urlaub, Krankheit...">
-                                </div>
-                                <div style="display:flex; gap:0.5rem; align-items:center;">
-                                    <button type="submit" id="saveAbsenceBtnSettings"
-                                        class="btn btn-primary">Abwesenheit
-                                        hinzufügen</button>
-                                    <button type="button" id="cancelEditAbsenceBtnSettings" class="btn cancel"
-                                        style="display:none;">Abbrechen</button>
-                                </div>
-                            </form>
-                        </div>
+                        <div class="absences-settings-grid">
 
-                        <!-- List Absences Section -->
-                        <div class="section">
-                            <h3>Meine eingetragenen Abwesenheiten</h3>
-                            <div id="absencesListSettings"></div>
-                        </div>
-                    </div>
-
-                    <!-- Locations Tab -->
-                    <div id="locationsSettingsTab" class="settings-tab-content">
-                        <div class="section">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <div>
-                                    <h3>Kalender verwalten</h3>
-                                    <p class="help-text">Verwalte iCal-Kalender für die Verfügbarkeitsprüfung von
-                                        Probeorten</p>
+                            <!-- Left Column: List of Absences -->
+                            <div class="absences-list-column">
+                                <h3 style="margin-bottom: 0.5rem;">Meine Abwesenheiten</h3>
+                                <p style="color:var(--color-text-secondary); margin-bottom:1rem; font-size:0.9rem;">
+                                    Hier siehst du alle deine eingetragenen Urlaube und Fehlzeiten.
+                                </p>
+                                <div id="absencesListSettings">
+                                    <!-- Populated by JS -->
+                                    <div class="empty-state">Lade Abwesenheiten...</div>
                                 </div>
-                                <button id="addCalendarBtn" class="btn btn-primary" style="white-space: nowrap;">
-                                    ➕ Neuen Kalender hinzufügen
-                                </button>
                             </div>
-                            <div id="calendarsList" class="calendars-list"></div>
-                        </div>
-                        <div class="section">
-                            <h3>Neuen Probeort hinzufügen</h3>
-                            <form id="createLocationForm" class="inline-form">
-                                <div class="form-group">
-                                    <label for="newLocationName" class="sr-only">Name</label>
-                                    <input type="text" id="newLocationName" placeholder="Name (z.B. Proberaum A)"
-                                        required>
 
-                                    <label for="newLocationAddress" class="sr-only">Adresse</label>
-                                    <input type="text" id="newLocationAddress" placeholder="Adresse (Optional)">
-                                </div>
-                                <div class="form-group">
-                                    <label for="newLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
-                                    <select id="newLocationLinkedCalendar" class="form-select">
-                                        <option value="">Nicht verknüpft</option>
-                                        <option value="tonstudio">🎙️ Tonstudio</option>
-                                        <option value="festhalle">🏛️ JMS Festhalle</option>
-                                        <option value="ankersaal">⚓ Ankersaal</option>
-                                    </select>
-                                    <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die
-                                        Verfügbarkeit
-                                        zu prüfen.</p>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Hinzufügen</button>
-                            </form>
-                        </div>
-                        <div class="section">
-                            <h3>Vorhandene Probeorte</h3>
-                            <div id="locationsList" class="locations-list"></div>
-                        </div>
-                    </div>
+                            <!-- Right Column: Create/Edit Form -->
+                            <div class="absences-form-column">
+                                <h3
+                                    style="margin-bottom: 1.25rem; font-size:1.1rem; border-bottom:1px solid var(--color-border); padding-bottom:0.75rem;">
+                                    Neuer Eintrag
+                                </h3>
 
-                    <!-- Bands Management Tab -->
-                    <div id="bandsSettingsTab" class="settings-tab-content">
-                        <div class="section">
-                            <div>
-                                <h3>Alle Bands</h3>
-                                <button id="createBandBtn" class="btn btn-primary">+ Neue Band erstellen</button>
+                                <form id="createAbsenceFormSettings">
+                                    <input type="hidden" id="editAbsenceIdSettings">
 
+                                    <div class="form-group">
+                                        <label for="absenceStartSettings">Von</label>
+                                        <input type="date" id="absenceStartSettings" class="profile-form-input"
+                                            required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="absenceEndSettings">Bis</label>
+                                        <input type="date" id="absenceEndSettings" class="profile-form-input" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="absenceReasonSettings">Grund</label>
+                                        <input type="text" id="absenceReasonSettings" class="profile-form-input"
+                                            placeholder="Urlaub, Krankheit, ..." required>
+                                    </div>
+
+                                    <div style="display:flex; gap:0.5rem; margin-top:1.5rem;">
+                                        <button type="submit" id="saveAbsenceBtnSettings" class="btn btn-primary"
+                                            style="flex:1; justify-content:center;">
+                                            Speichern
+                                        </button>
+                                        <button type="button" id="cancelEditAbsenceBtnSettings"
+                                            class="btn btn-secondary"
+                                            style="display:none; flex:1; justify-content:center;">
+                                            Abbrechen
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
-                            <div id="allBandsList" class="bands-management-list"></div>
+
                         </div>
                     </div>
 
-                    <!-- User Management Tab (Admin Only) -->
-                    <div id="usersSettingsTab" class="settings-tab-content">
-                        <div class="section">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <div>
-                                    <h3>Benutzerverwaltung</h3>
-                                    <p class="help-text">Verwalte alle registrierten Benutzer</p>
+                    <!-- ADMIN TAB (New Consolidated Tab) -->
+                    <div id="adminSettingsTab" class="settings-tab-content">
+
+                        <!-- 1. Admin Feedback -->
+                        <div class="admin-accordion-card" id="adminSectionFeedback">
+                            <button class="admin-accordion-header"
+                                onclick="UI.toggleAdminAccordion('adminSectionFeedback')">
+                                <h3><span>📢</span> Admin Feedback <span id="adminFeedbackCount"
+                                        class="admin-count-badge">0</span></h3>
+                                <span class="admin-accordion-toggle-icon">▼</span>
+                            </button>
+                            <div class="admin-accordion-content">
+                                <div class="admin-section-inner">
+                                    <div class="view-controls"
+                                        style="margin-bottom: 1rem; display:flex; justify-content:flex-end;">
+                                        <button id="refreshFeedbackBtn" class="btn btn-sm btn-secondary">🔄
+                                            Aktualisieren</button>
+                                    </div>
+                                    <div id="adminFeedbackList" class="admin-scroll-list">
+                                        <div class="empty-state">Lade Daten...</div>
+                                    </div>
                                 </div>
-                                <button id="addUserBtn" class="btn btn-primary" style="white-space: nowrap;">
-                                    ➕ Mitglied hinzufügen
-                                </button>
                             </div>
-                            <div id="usersList" class="users-list"></div>
                         </div>
+
+                        <!-- 2. Bandmanagement -->
+                        <div class="admin-accordion-card" id="adminSectionBands">
+                            <button class="admin-accordion-header"
+                                onclick="UI.toggleAdminAccordion('adminSectionBands')">
+                                <h3><span>🎸</span> Bandmanagement <span id="adminBandCount"
+                                        class="admin-count-badge">0</span></h3>
+                                <span class="admin-accordion-toggle-icon">▼</span>
+                            </button>
+                            <div class="admin-accordion-content">
+                                <div class="admin-section-inner">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                        <p class="help-text">Erstelle neue Bands oder verwalte bestehende.</p>
+                                        <button id="createBandBtn" class="btn btn-primary btn-sm">+ Neu</button>
+                                    </div>
+                                    <div id="allBandsList" class="admin-scroll-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Benutzerverwaltung -->
+                        <div class="admin-accordion-card" id="adminSectionUsers">
+                            <button class="admin-accordion-header"
+                                onclick="UI.toggleAdminAccordion('adminSectionUsers')">
+                                <h3><span>👥</span> Benutzerverwaltung <span id="adminUserCount"
+                                        class="admin-count-badge">0</span></h3>
+                                <span class="admin-accordion-toggle-icon">▼</span>
+                            </button>
+                            <div class="admin-accordion-content">
+                                <div class="admin-section-inner">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                        <p class="help-text">Verwalte alle registrierten Benutzer</p>
+                                        <button id="addUserBtn" class="btn btn-primary btn-sm">➕ Neu</button>
+                                    </div>
+                                    <div id="usersList" class="admin-scroll-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Probeorte (Kalender) -->
+                        <div class="admin-accordion-card" id="adminSectionLocations">
+                            <button class="admin-accordion-header"
+                                onclick="UI.toggleAdminAccordion('adminSectionLocations')">
+                                <h3><span>📍</span> Probeorte & Kalender <span id="adminLocationCount"
+                                        class="admin-count-badge">0</span></h3>
+                                <span class="admin-accordion-toggle-icon">▼</span>
+                            </button>
+                            <div class="admin-accordion-content">
+                                <div class="admin-section-inner">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                        <p class="help-text">Verwalte iCal-Kalender für die Verfügbarkeitsprüfung von
+                                            Probeorten</p>
+                                        <button id="addCalendarBtn" class="btn btn-primary btn-sm">➕ Neu</button>
+                                    </div>
+                                    <div id="calendarsList" class="calendars-list"></div>
+
+                                    <div
+                                        style="margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--color-border);">
+                                        <h4>Neuer Probeort</h4>
+                                        <form id="createLocationForm" class="inline-form" style="margin-top:1rem;">
+                                            <div class="form-group">
+                                                <input type="text" id="newLocationName"
+                                                    placeholder="Name (z.B. Proberaum A)" required
+                                                    class="profile-form-input">
+                                                <input type="text" id="newLocationAddress"
+                                                    placeholder="Adresse (Optional)" class="profile-form-input"
+                                                    style="margin-top:0.5rem;">
+                                            </div>
+                                            <div class="form-group" style="margin-top:1rem;">
+                                                <label for="newLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
+                                                <select id="newLocationLinkedCalendar"
+                                                    class="form-select profile-form-input">
+                                                    <option value="">Nicht verknüpft</option>
+                                                    <option value="tonstudio">🎙️ Tonstudio</option>
+                                                    <option value="festhalle">🏛️ JMS Festhalle</option>
+                                                    <option value="ankersaal">⚓ Ankersaal</option>
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary"
+                                                style="margin-top:1rem; width:100%;">Probeort hinzufügen</button>
+                                        </form>
+                                    </div>
+
+                                    <div style="margin-top:2rem;">
+                                        <h4>Vorhandene Probeorte</h4>
+                                        <div id="locationsList" class="admin-scroll-list"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. Tutorial & Spenden -->
+                        <div class="admin-accordion-card" id="adminSectionExtras">
+                            <button class="admin-accordion-header"
+                                onclick="UI.toggleAdminAccordion('adminSectionExtras')">
+                                <h3><span>🎓</span> Tutorial & Extras</h3>
+                                <span class="admin-accordion-toggle-icon">▼</span>
+                            </button>
+                            <div class="admin-accordion-content">
+                                <div class="admin-section-inner">
+                                    <!-- Tutorial -->
+                                    <div id="adminTutorialSection"
+                                        style="display: none; padding-bottom:1.5rem; border-bottom:1px solid var(--color-border); margin-bottom:1.5rem;">
+                                        <h4>Onboarding</h4>
+                                        <p
+                                            style="color: var(--color-text-secondary); margin-top: 0.25rem; font-size:0.9rem;">
+                                            Als Admin kannst du das Onboarding/Tutorial anzeigen und testen.
+                                        </p>
+                                        <button id="adminShowTutorialBtn" class="btn btn-secondary btn-sm"
+                                            style="margin-top:0.75rem;">Tutorial anzeigen / testen</button>
+                                    </div>
+                                    <!-- Spenden Link -->
+                                    <div id="donateLinkSection">
+                                        <h4>Spenden-Link</h4>
+                                        <div class="form-group" style="margin-top:0.75rem;">
+                                            <input type="url" id="donateLink"
+                                                placeholder="https://paypal.me/deinusername" value=""
+                                                class="profile-form-input">
+                                            <small
+                                                style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
+                                                Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich
+                                                angezeigt.
+                                            </small>
+                                        </div>
+                                        <button id="saveDonateLink" class="btn btn-primary"
+                                            style="margin-top:1rem; width:100%;">Spenden-Link speichern</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+
                     </div>
 
-                    <!-- Supabase Settings Tab -->
-                    <div id="supabaseSettingsTab" class="settings-tab-content">
-                        <div class="section">
-                            <h3>Supabase Konfiguration</h3>
-                            <form id="supabaseSettingsForm">
-                                <div class="form-group">
-                                    <label for="supabaseUrl">Supabase URL</label>
-                                    <input type="url" id="supabaseUrl" placeholder="https://your-project.supabase.co">
-                                </div>
-                                <div class="form-group">
-                                    <label for="supabaseAnonKey">Supabase Anon Key</label>
-                                    <input type="text" id="supabaseAnonKey" placeholder="ey...">
-                                </div>
-                                <small style="color: var(--color-text-secondary);">Diese Daten werden lokal
-                                    gespeichert
-                                    und
-                                    für die Datenbankverbindung genutzt.</small>
-                                <div class="modal-actions" style="margin-top: 0.5rem;">
-                                    <button type="submit" class="btn btn-primary">Speichern</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1431,26 +1540,31 @@
                     <button class="modal-close">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p style="margin-bottom: 1rem;">Du kannst mehrere Songs gleichzeitig per CSV-Datei importieren.</p>
+                    <p style="margin-bottom: 1rem;">Du kannst mehrere Songs gleichzeitig per CSV-Datei importieren.
+                    </p>
 
                     <div
                         style="background: var(--color-background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
-                        <h4 style="margin-bottom: 0.5rem; color: var(--color-text-muted);">Erforderliches Format:</h4>
+                        <h4 style="margin-bottom: 0.5rem; color: var(--color-text-muted);">Erforderliches Format:
+                        </h4>
                         <div style="overflow-x: auto;">
                             <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
                                 <thead style="background: var(--color-surface);">
                                     <tr>
                                         <th style="padding: 8px; border: 1px solid var(--color-border);">Titel</th>
-                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Interpret</th>
+                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Interpret
+                                        </th>
                                         <th style="padding: 8px; border: 1px solid var(--color-border);">BPM</th>
                                         <th style="padding: 8px; border: 1px solid var(--color-border);">Tonart</th>
-                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Lead Vocal</th>
+                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Lead Vocal
+                                        </th>
                                         <th style="padding: 8px; border: 1px solid var(--color-border);">CCLI</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td style="padding: 8px; border: 1px solid var(--color-border);">Amazing Grace
+                                        <td style="padding: 8px; border: 1px solid var(--color-border);">Amazing
+                                            Grace
                                         </td>
                                         <td style="padding: 8px; border: 1px solid var(--color-border);">John Newton
                                         </td>
