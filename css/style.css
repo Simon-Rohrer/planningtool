@@ -6447,6 +6447,11 @@ input:checked+.toggle-slider:before {
 }
 
 .modern-search-input::placeholder {
-    color: var(--color-text-secondary);
     opacity: 0.7;
+}
+
+/* Utility class to disable scrolling during tutorial */
+body.no-scroll {
+    overflow: hidden !important;
+    height: 100vh;
 }

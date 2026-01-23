@@ -341,34 +341,81 @@ const App = {
     /* ===== Tutorial / Guided Tour ===== */
     showTutorialSuggestBanner() {
         try {
-            const banner = document.getElementById('tutorialSuggestBanner');
-            const startBtn = document.getElementById('tutorialStartBannerBtn');
-            const dismissBtn = document.getElementById('tutorialDismissBannerBtn');
+            const banner = document.getElementById('tutorialSlideBanner');
+            const startBtn = document.getElementById('tutorialStartSlideBtn');
+            const dismissBtn = document.getElementById('tutorialDismissSlideBtn');
             if (!banner) return;
 
             // If dismissed before, don't show
             if (localStorage.getItem('tutorialBannerDismissed') === '1') return;
 
             banner.style.display = 'flex';
-            if (startBtn) startBtn.onclick = (e) => { e.preventDefault(); this.startTutorial(); banner.style.display = 'none'; };
-            if (dismissBtn) dismissBtn.onclick = (e) => { e.preventDefault(); banner.style.display = 'none'; localStorage.setItem('tutorialBannerDismissed', '1'); };
+            if (startBtn) startBtn.onclick = (e) => {
+                e.preventDefault();
+                this.startTutorial();
+                banner.style.display = 'none';
+                // Implicitly dismiss on start so it doesn't annoy again
+                localStorage.setItem('tutorialBannerDismissed', '1');
+            };
+            if (dismissBtn) dismissBtn.onclick = (e) => {
+                e.preventDefault();
+                banner.style.display = 'none';
+                localStorage.setItem('tutorialBannerDismissed', '1');
+            };
         } catch (err) {
             console.error('Error showing tutorial banner:', err);
         }
     },
 
     async startTutorial(steps) {
-        // Default steps if none provided
+        // Updated Modern Tour Steps
         this.tour = this.tour || {};
         this.tour.steps = steps || [
-            { navigate: 'dashboard', sel: '.nav-item[data-view="dashboard"]', title: 'Start / Dashboard', body: 'Das Dashboard gibt dir einen schnellen Überblick über Bands, nächste Termine und Aktivitäten.' },
-            { navigate: 'bands', sel: '#bandsView .view-header h2', title: 'Meine Bands', body: 'Hier findest du alle Bands, in denen du Mitglied bist. Klicke auf eine Band, um Details zu sehen.' },
-            { navigate: 'rehearsals', sel: '.nav-item[data-view="rehearsals"]', title: 'Probetermine', body: 'Erstelle neue Proben oder bearbeite bestehende Termine. Du kannst Teilnehmer einladen und Zeiten vorschlagen.' },
-            { navigate: 'events', sel: '.nav-item[data-view="events"]', title: 'Auftritte', body: 'Verwalte Auftritte, erstelle Setlists und lade Musiker ein.' },
-            { navigate: 'dashboard', sel: '#dashboardView .dashboard-card:nth-child(1) .card-icon', title: 'Dashboard-Karten', body: 'Die Karten zeigen Metriken — klicke eine Karte, um zur entsprechenden Ansicht zu springen.' },
-            { navigate: 'settings', tab: 'profile', sel: '#profileSettingsTab .section h3', title: 'Profil bearbeiten', body: 'Bearbeite hier Benutzername, E-Mail und Instrument. Passwörter kannst du hier ändern.' },
-            { navigate: 'settings', tab: 'absences', sel: '#absencesSettingsTab .section h3', title: 'Abwesenheiten', body: 'Trage deine Abwesenheiten ein, damit andere Mitglieder Bescheid wissen.' },
-            { navigate: 'settings', tab: 'users', sel: '#settingsTabUsers', title: 'Benutzerverwaltung', body: 'Admins können hier Benutzer verwalten (sichtbar nur für Admins).', adminOnly: true }
+            {
+                navigate: 'dashboard',
+                sel: '#headerProfileImage', // Center welcome if possible, but header is safe
+                title: 'Willkommen! 👋',
+                body: 'Schön, dass du da bist! Lass uns einen kurzen Rundgang machen, damit du sofort loslegen kannst. Wir starten im Dashboard.',
+                center: true // Custom flag to center tooltip
+            },
+            {
+                navigate: 'dashboard',
+                sel: '.dashboard-grid',
+                title: 'Dein Dashboard',
+                body: 'Hier siehst du auf einen Blick, was ansteht. Diese Karten sind INTERAKTIV! Klicke z.B. auf "Nächste Gigs", um direkt zu deinen Auftritten zu springen.'
+            },
+            {
+                navigate: 'dashboard',
+                sel: '#nextEventHero',
+                title: 'Nächster Termin',
+                body: 'Dein absolut nächster Termin wird hier prominent angezeigt. Ein Klick auf die Karte bringt dich direkt zu den Details.'
+            },
+            {
+                title: 'Navigation',
+                navigate: 'dashboard',
+                sel: '.app-sidebar', // Desktop
+                mobileSel: '#mobileMenuBtn', // Mobile fallback
+                body: 'Über die Seitenleiste (oder das Menü oben links auf dem Handy) erreichst du alle Bereiche: Bands, Planung, Gigs und mehr.'
+            },
+            {
+                navigate: 'events',
+                sel: '.nav-item[data-view="events"]',
+                title: 'Auftritte / Gigs',
+                body: 'Hier planst du deine Shows. Erstelle Setlists, verwalte Details und teile Infos mit deiner Band. Jetzt neu: Mit CCLI-Spalte!'
+            },
+            {
+                navigate: 'rehearsals',
+                sel: '.nav-item[data-view="rehearsals"]',
+                title: 'Probetermine',
+                body: 'Finde gemeinsame Termine. Du kannst Umfragen erstellen und sehen, wer wann kann.'
+            },
+            {
+                navigate: 'settings',
+                sel: '#openSettingsBtnSidebar', // Desktop
+                mobileSel: '#headerProfileImage', // Mobile
+                title: 'Dein Profil',
+                body: 'Hier kannst du dein Instrument, Passwort und Benachrichtigungen einstellen.'
+            }
         ];
         this.tour.index = 0;
         this.tourOverlay = document.getElementById('tutorialOverlay');
@@ -381,14 +428,21 @@ const App = {
         }
 
         this.tourOverlay.style.display = 'block';
+        // Force reflow
+        void this.tourOverlay.offsetWidth;
         this.tourOverlay.classList.add('active');
+        document.body.classList.add('no-scroll'); // Disable scrolling
 
         // Wire up controls
-        document.getElementById('tourNextBtn').onclick = () => this.nextTutorialStep();
-        document.getElementById('tourPrevBtn').onclick = () => this.prevTutorialStep();
-        document.getElementById('tourEndBtn').onclick = () => this.endTutorial();
+        const nextBtn = document.getElementById('tourNextBtn');
+        const prevBtn = document.getElementById('tourPrevBtn');
+        const endBtn = document.getElementById('tourEndBtn');
 
-        // Initialize calendar module
+        if (nextBtn) nextBtn.onclick = () => this.nextTutorialStep();
+        if (prevBtn) prevBtn.onclick = () => this.prevTutorialStep();
+        if (endBtn) endBtn.onclick = () => this.endTutorial();
+
+        // Initialize calendar module if needed
         if (typeof Calendar !== 'undefined' && Calendar.initCalendars) {
             await Calendar.initCalendars();
         }
@@ -405,7 +459,6 @@ const App = {
     },
 
     async renderTutorialStep(idx) {
-        // If the step requires navigation, do it first
         if (!this.tour || !Array.isArray(this.tour.steps)) return;
         if (idx < 0 || idx >= this.tour.steps.length) {
             this.endTutorial();
@@ -413,112 +466,94 @@ const App = {
         }
         this.tour.index = idx;
         const step = this.tour.steps[idx];
-        // Optional navigation: if step.navigate is provided, navigate there first
+
+        // 1. Navigate if needed
         try {
             if (step.navigate) {
-                await this.navigateTo(step.navigate);
-                // small delay for view DOM to render
-                await new Promise(r => setTimeout(r, 200));
-            }
-            if (step.tab && step.navigate === 'settings') {
-                // ensure settings tab is shown
-                this.switchSettingsTab(step.tab);
-                await new Promise(r => setTimeout(r, 120));
+                // Determine if we need to switch view
+                const currentView = document.querySelector('.view.active')?.id.replace('View', '');
+                if (currentView !== step.navigate) {
+                    await this.navigateTo(step.navigate);
+                    await new Promise(r => setTimeout(r, 300)); // Wait for render
+                }
             }
         } catch (navErr) {
             console.warn('Tour navigation error:', navErr);
         }
 
-        // Skip admin-only steps when current user is not admin
-        if (step.adminOnly && !(Auth && Auth.isAdmin && Auth.isAdmin())) {
-            // jump to next step
-            setTimeout(() => this.nextTutorialStep(), 10);
-            return;
+        // 2. Select Element (Desktop vs Mobile handling)
+        const isMobile = window.innerWidth <= 768;
+        let selector = isMobile && step.mobileSel ? step.mobileSel : step.sel;
+
+        let el = null;
+        if (selector) {
+            el = document.querySelector(selector);
         }
 
-        const el = document.querySelector(step.sel);
+        // Handle "centered" steps (no specific target, e.g. Intro)
+        if (step.center || !el) {
+            // Position highlight off-screen or hide it
+            this.tourHighlight.style.width = '0px';
+            this.tourHighlight.style.height = '0px';
+            this.tourHighlight.style.top = '50%';
+            this.tourHighlight.style.left = '50%';
+            this.tourHighlight.style.boxShadow = '0 0 0 9999px rgba(0,0,0,0.7)'; // Maintain dimming
 
-        // Update tooltip text
-        const titleEl = document.getElementById('tourTitle');
-        const bodyEl = document.getElementById('tourBody');
-        titleEl.textContent = step.title || 'Schritt ' + (idx + 1);
-        bodyEl.textContent = step.body || '';
+            // Center tooltip
+            this.tourTooltip.style.display = 'block';
+            this.tourTooltip.style.top = '50%';
+            this.tourTooltip.style.left = '50%';
+            this.tourTooltip.style.transform = 'translate(-50%, -50%)';
+        } else {
+            // Target found
+            el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 
-        // Update buttons
-        document.getElementById('tourPrevBtn').style.display = idx === 0 ? 'none' : 'inline-block';
-        document.getElementById('tourNextBtn').textContent = idx === this.tour.steps.length - 1 ? 'Fertig' : 'Weiter';
+            // Wait a bit for scroll
+            await new Promise(r => setTimeout(r, 100));
+            const rect = el.getBoundingClientRect();
 
-        if (!el) {
-            console.warn('Tour: target not found for selector', step.sel);
-            setTimeout(() => this.nextTutorialStep(), 300);
-            return;
-        }
+            // Update Highlight
+            const pad = 8;
+            // Overlay is fixed, so we use viewport coordinates directly (no scrollY/scrollX addition)
+            this.tourHighlight.style.top = (rect.top - pad) + 'px';
+            this.tourHighlight.style.left = (rect.left - pad) + 'px';
+            this.tourHighlight.style.width = (rect.width + pad * 2) + 'px';
+            this.tourHighlight.style.height = (rect.height + pad * 2) + 'px';
+            this.tourHighlight.style.boxShadow = '0 0 0 9999px rgba(0,0,0,0.7)';
+            this.tourHighlight.style.display = 'block';
 
-        // Try to find a visible/fallback element if the target is hidden or tiny
-        let target = el;
-        const getRect = (node) => node ? node.getBoundingClientRect() : { width: 0, height: 0, top: 0, left: 0, bottom: 0 };
-        let rect = getRect(target);
-        if ((rect.width < 8 || rect.height < 8) && step.navigate) {
-            const candidates = [
-                document.querySelector(`.nav-item[data-view="${step.navigate}"]`),
-                document.querySelector(`.nav-subitem[data-view="${step.navigate}"]`),
-                document.querySelector(`#headerSubmenu .header-submenu-btn[data-view="${step.navigate}"]`),
-                target.closest('.nav-item'),
-                target.closest('.nav-subitem')
-            ].filter(Boolean);
-            for (const c of candidates) {
-                const r = getRect(c);
-                if (r.width > 8 && r.height > 8) {
-                    target = c;
-                    rect = r;
-                    break;
-                }
+            // Position Tooltip Smartly
+            this.tourTooltip.style.display = 'block';
+            this.tourTooltip.style.transform = 'none'; // Reset center transform
+
+            const ttRect = this.tourTooltip.getBoundingClientRect();
+            // Use viewport coordinates
+            let ttTop = rect.bottom + 20;
+            let ttLeft = rect.left + (rect.width / 2) - (ttRect.width / 2);
+
+            // Check bounds
+            if (ttLeft < 10) ttLeft = 10;
+            if (ttLeft + ttRect.width > window.innerWidth - 10) ttLeft = window.innerWidth - ttRect.width - 10;
+
+            if (ttTop + ttRect.height > window.innerHeight) {
+                // Flip to top if no space below
+                ttTop = rect.top - ttRect.height - 20;
             }
+
+            this.tourTooltip.style.top = ttTop + 'px';
+            this.tourTooltip.style.left = ttLeft + 'px';
         }
 
-        // Bring the chosen element into view
-        try { target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch { }
-        // Recompute rect after scroll
-        rect = getRect(target);
+        // Update Content
+        document.getElementById('tourTitle').textContent = step.title;
+        document.getElementById('tourBody').textContent = step.body;
 
-        // Position highlight around element (ensure minimum size)
-        const pad = 10;
-        const highlightStyle = this.tourHighlight.style;
-        const hWidth = Math.max(rect.width + pad * 2, 24);
-        const hHeight = Math.max(rect.height + pad * 2, 24);
-        highlightStyle.top = (window.scrollY + rect.top - pad) + 'px';
-        highlightStyle.left = (window.scrollX + rect.left - pad) + 'px';
-        highlightStyle.width = hWidth + 'px';
-        highlightStyle.height = hHeight + 'px';
+        // Update Buttons
+        const nextBtn = document.getElementById('tourNextBtn');
+        const prevBtn = document.getElementById('tourPrevBtn');
 
-        // Position tooltip centered under (or above if not enough space)
-        const tooltip = this.tourTooltip;
-        tooltip.style.display = 'block';
-        // Allow browser to compute tooltip size
-        const ttWidth = tooltip.offsetWidth || 300;
-        const ttHeight = tooltip.offsetHeight || 120;
-        const viewportWidth = document.documentElement.clientWidth;
-        const centerLeft = window.scrollX + rect.left + (rect.width / 2) - (ttWidth / 2);
-        let ttLeft = Math.max(8 + window.scrollX, Math.min(centerLeft, window.scrollX + viewportWidth - ttWidth - 8));
-        // Prefer below element
-        let ttTop = window.scrollY + rect.bottom + 12;
-        const viewportBottom = window.scrollY + document.documentElement.clientHeight;
-        if (ttTop + ttHeight > viewportBottom - 8) {
-            // not enough space below, show above
-            ttTop = window.scrollY + rect.top - ttHeight - 12;
-        }
-
-        // Special case: on small screens the logout icon is tiny and the
-        // centered tooltip may appear off. Anchor the tooltip to the
-        // logout button center, but increase highlight padding so the
-        // small icon is still visible and the tooltip doesn't overlap
-        // header items.
-        // remove special-case logout positioning: tooltip defaults handle placement
-
-        tooltip.style.top = ttTop + 'px';
-        tooltip.style.left = ttLeft + 'px';
-        // Ensure overlay active
-        this.tourOverlay.classList.add('active');
+        if (prevBtn) prevBtn.style.display = idx === 0 ? 'none' : 'inline-block';
+        if (nextBtn) nextBtn.textContent = idx === this.tour.steps.length - 1 ? 'Fertig' : 'Weiter';
     },
 
     async nextTutorialStep() {
@@ -541,6 +576,7 @@ const App = {
                 this.tourOverlay.style.display = 'none';
                 this.tourOverlay.classList.remove('active');
             }
+            document.body.classList.remove('no-scroll'); // Re-enable scrolling
             if (this.tourHighlight) {
                 this.tourHighlight.style.width = '0px';
             }
@@ -4088,6 +4124,10 @@ const App = {
         if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
         if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
 
+        // Donate Link (Admin only)
+        const donateLinkSection = effectiveRoot.querySelector('#donateLinkSection');
+        if (donateLinkSection) donateLinkSection.style.display = isAdmin ? 'block' : 'none';
+
         // Pre-fill profile form (scoped)
         const profileFirstName = effectiveRoot.querySelector('#profileFirstName');
         const profileLastName = effectiveRoot.querySelector('#profileLastName');
@@ -4125,16 +4165,20 @@ const App = {
         this.switchSettingsTab('profile');
 
         // Admin-only: show tutorial/test button in profile settings (scoped)
+        // Universal: show tutorial/test button in profile settings
         try {
             const adminTutorialSection = root.querySelector('#adminTutorialSection');
             const adminTutorialBtn = root.querySelector('#adminShowTutorialBtn');
-            if (adminTutorialSection) adminTutorialSection.style.display = isAdmin ? 'block' : 'none';
+            // Show for everyone now
+            if (adminTutorialSection) adminTutorialSection.style.display = 'block';
             if (adminTutorialBtn) {
-                adminTutorialBtn.style.display = isAdmin ? 'inline-block' : 'none';
+                adminTutorialBtn.style.display = 'inline-block';
+                adminTutorialBtn.textContent = 'Tour starten'; // Update text to match user request
                 adminTutorialBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     // Start the interactive tutorial/tour
                     try {
+                        UI.closeModal('settingsModal'); // Close settings first
                         this.startTutorial();
                         UI.showToast('Tutorial wird gestartet', 'info');
                     } catch (err) {

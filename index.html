@@ -537,17 +537,17 @@
                     </div>
                 </div>
 
-                <!-- Tutorial Suggest Banner (for admins) -->
-                <div id="tutorialSuggestBanner" class="news-banner"
-                    style="display: none; background: linear-gradient(90deg,#f0f7ff,#e8f4ff); border: 1px solid var(--color-border);">
-                    <div class="news-banner-content">
-                        <span class="news-banner-icon">🎓</span>
-                        <div class="news-banner-text">
-                            <strong>Tutorial verfügbar</strong>
-                            <span id="tutorialBannerMessage">Möchtest du eine kurze Tour durch die App starten?</span>
-                        </div>
-                        <button id="tutorialStartBannerBtn" class="btn btn-primary">Tour starten</button>
-                        <button id="tutorialDismissBannerBtn" class="news-banner-close" title="Schließen">×</button>
+                <!-- Tutorial Slide-In Banner -->
+                <div id="tutorialSlideBanner" class="tutorial-slide-banner" style="display: none;">
+                    <span class="banner-icon">🎓</span>
+                    <div class="banner-content">
+                        <strong>Neu hier?</strong>
+                        <p>Starte eine kurze Tour durch die App.</p>
+                        <p class="banner-hint">Jederzeit in den Einstellungen wiederholbar.</p>
+                    </div>
+                    <div class="banner-actions">
+                        <button id="tutorialStartSlideBtn" class="btn btn-primary btn-sm">Tour starten</button>
+                        <button id="tutorialDismissSlideBtn" class="banner-close" title="Schließen">×</button>
                     </div>
                 </div>
 
@@ -1055,7 +1055,7 @@
                                 <button id="deleteAccountBtn" class="btn btn-danger" style="margin-top:2rem;">Account
                                     löschen</button>
                             </div>
-                            <div class="section" style="margin-top: 1rem;">
+                            <div id="donateLinkSection" class="section" style="margin-top: 1rem;">
                                 <h3>Spenden-Link</h3>
                                 <div class="form-group">
                                     <label for="donateLink">PayPal-Link</label>
@@ -1212,22 +1212,7 @@
             </div>
         </div>
 
-        <!-- Tutorial Overlay (step-by-step) -->
-        <div id="tutorialOverlay" class="tour-overlay" style="display:none;">
-            <div id="tourHighlight" class="tour-highlight" aria-hidden="true"></div>
-            <div id="tourTooltip" class="tour-tooltip" role="dialog" aria-modal="true">
-                <div id="tourTooltipContent">
-                    <h3 id="tourTitle">Tutorial</h3>
-                    <p id="tourBody">Schritt</p>
-                    <div class="tour-controls"
-                        style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem;">
-                        <button id="tourPrevBtn" class="btn">Zurück</button>
-                        <button id="tourNextBtn" class="btn btn-primary">Weiter</button>
-                        <button id="tourEndBtn" class="btn">Beenden</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Create Band Modal -->
         <div id="createBandModal" class="modal">
@@ -2215,6 +2200,23 @@
 
     <!-- Scripts -->
     <!-- iCal.js library for parsing calendar data -->
+    <!-- Tutorial Overlay (Moved to end of body) -->
+    <div id="tutorialOverlay" class="tour-overlay" style="display:none;">
+        <div id="tourHighlight" class="tour-highlight" aria-hidden="true"></div>
+        <div id="tourTooltip" class="tour-tooltip" role="dialog" aria-modal="true">
+            <div id="tourTooltipContent">
+                <h3 id="tourTitle">Tutorial</h3>
+                <p id="tourBody">Schritt</p>
+                <div class="tour-controls"
+                    style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem;">
+                    <button id="tourPrevBtn" class="btn">Zurück</button>
+                    <button id="tourNextBtn" class="btn btn-primary">Weiter</button>
+                    <button id="tourEndBtn" class="btn">Beenden</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
     <script src="js/supabase.js?v=1.0.1"></script>
