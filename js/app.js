@@ -976,6 +976,9 @@ const App = {
         this.draftEventSongIds = [];
         this.lastSongModalContext = null; // { eventId, bandId, origin }
 
+        // Update absence indicator
+        await this.updateAbsenceIndicator();
+
         // Load calendar immediately if Tonstudio view is present
         document.addEventListener('DOMContentLoaded', () => {
             if (document.getElementById('tonstudioView')) {
@@ -999,6 +1002,44 @@ const App = {
                 Calendar.ensureLocationCalendar(cal.id, cal.name)
                     .catch(err => console.error(`[App] Kalender konnte nicht geladen werden: ${cal.name}`, err));
             });
+        }
+    },
+
+    // Update absence indicator in header
+    async updateAbsenceIndicator() {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        try {
+            const absences = await Storage.getUserAbsences(user.id);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Find active absence
+            const activeAbsence = absences?.find(abs => {
+                const start = new Date(abs.startDate);
+                const end = new Date(abs.endDate);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(0, 0, 0, 0);
+                return today >= start && today <= end;
+            });
+
+            const indicator = document.getElementById('absenceIndicator');
+            const endDateSpan = document.getElementById('absenceEndDate');
+
+            if (activeAbsence && indicator && endDateSpan) {
+                const endDate = new Date(activeAbsence.endDate);
+                endDateSpan.textContent = endDate.toLocaleDateString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+                indicator.style.display = 'flex';
+            } else if (indicator) {
+                indicator.style.display = 'none';
+            }
+        } catch (error) {
+            Logger.error('Error updating absence indicator', error);
         }
     },
 
@@ -4565,7 +4606,7 @@ const App = {
 
         // Calendar form event listeners (only register once)
         if (!this._calendarListenersRegistered) {
-            console.log('[setupEventListeners] Registering calendar form listeners...');
+
 
             const calendarForm = document.getElementById('calendarForm');
             if (calendarForm) {
@@ -4591,7 +4632,7 @@ const App = {
             }
 
             this._calendarListenersRegistered = true;
-            console.log('[setupEventListeners] Calendar form listeners registered');
+
         }
 
         // Render absences list in settings
@@ -5007,6 +5048,9 @@ const App = {
         document.getElementById('saveAbsenceBtnSettings').textContent = 'Abwesenheit hinzufügen';
         document.getElementById('cancelEditAbsenceBtnSettings').style.display = 'none';
 
+        // Update absence indicator
+        await this.updateAbsenceIndicator();
+
         // Refresh list
         this.renderAbsencesListSettings();
     },
@@ -5121,7 +5165,6 @@ const App = {
         }
 
         const isAdmin = user.isAdmin || false;
-        console.log('[openSettingsModal] User:', user.email, 'isAdmin:', isAdmin);
 
         // Show/Hide tabs based on role
         // Show/Hide tabs based on role
@@ -5190,9 +5233,7 @@ const App = {
         }
 
         if (isAdmin) {
-            console.log('[openSettingsModal] Admin detected, rendering calendars list...');
             await this.renderCalendarsList();
-            console.log('[openSettingsModal] renderCalendarsList completed');
             await this.renderLocationsList();
             await this.populateCalendarDropdowns(); // Populate calendar dropdowns
             await this.renderAllBandsList();
@@ -5275,6 +5316,7 @@ const App = {
 
     // Render locations list
     async renderLocationsList() {
+        const startTime = performance.now();
         const container = document.getElementById('locationsList');
         const locations = await Storage.getLocations();
 
@@ -5297,16 +5339,14 @@ const App = {
             });
         }
 
-        console.log('[renderLocationsList] Locations:', locations);
-
-        if (locations.length === 0) {
+        if (!locations || locations.length === 0) {
             container.innerHTML = '<p class="text-muted">Keine Probeorte vorhanden.</p>';
+            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+            Logger.info(`Locations Rendered – 0 items (${duration}s)`);
             return;
         }
 
         container.innerHTML = locations.map(loc => {
-            console.log('[renderLocationsList] Processing location:', loc);
-
             // Support new format (linkedCalendar string) and old formats
             let linkedCalendar = loc.linkedCalendar || '';
 
@@ -5319,13 +5359,9 @@ const App = {
                 linkedCalendar = 'tonstudio';
             }
 
-            console.log('[renderLocationsList] linkedCalendar for', loc.name, ':', linkedCalendar);
-
             const linkedBadge = linkedCalendar && calendarMap[linkedCalendar]
                 ? `<br><span style="color: var(--color-primary); font-size: 0.875rem;">🔗 ${calendarMap[linkedCalendar]}</span>`
                 : (linkedCalendar ? `<br><span class="text-muted" style="font-size: 0.875rem;">🔗 Unbekannter Kalender</span>` : '');
-
-            console.log('[renderLocationsList] linkedBadge:', linkedBadge);
 
             return `
                 <div class="location-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);">
@@ -5341,6 +5377,9 @@ const App = {
                 </div>
             `;
         }).join('');
+
+        const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+        Logger.info(`Locations Rendered – ${locations.length} items (${duration}s)`);
 
         // Edit handlers
         container.querySelectorAll('.edit-location').forEach(btn => {
@@ -5365,23 +5404,22 @@ const App = {
 
     // Render calendars list in settings
     async renderCalendarsList() {
-        console.log('[renderCalendarsList] Starting...');
+        const startTime = performance.now();
         const container = document.getElementById('calendarsList');
-        if (!container) {
-            console.warn('[renderCalendarsList] Container not found!');
-            return;
-        }
+        if (!container) return;
 
-        console.log('[renderCalendarsList] Fetching calendars...');
         const calendars = await Storage.getAllCalendars();
-        console.log('[renderCalendarsList] Got calendars:', calendars);
+
+        const badge = document.getElementById('adminCalendarCount');
+        if (badge) badge.textContent = calendars ? calendars.length : 0;
 
         if (!calendars || calendars.length === 0) {
             container.innerHTML = '<p class="text-muted">Keine Kalender vorhanden. Füge einen neuen Kalender hinzu, um zu beginnen.</p>';
+            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+            Logger.info(`Calendars Rendered – 0 items (${duration}s)`);
             return;
         }
 
-        console.log('[renderCalendarsList] Rendering', calendars.length, 'calendars...');
         container.innerHTML = calendars.map(cal => {
             const icon = cal.icon || '📅';
             const isSystem = cal.is_system || false;
@@ -5401,7 +5439,6 @@ const App = {
             `;
         }).join('');
 
-        console.log('[renderCalendarsList] Adding event listeners...');
         // Edit handlers
         container.querySelectorAll('.edit-calendar').forEach(btn => {
             btn.addEventListener('click', async () => {
@@ -5418,7 +5455,8 @@ const App = {
             });
         });
 
-        console.log('[renderCalendarsList] Completed!');
+        const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+        Logger.info(`Calendars Rendered – ${calendars.length} items (${duration}s)`);
     },
 
     // Open calendar modal for add or edit

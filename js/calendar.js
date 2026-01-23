@@ -42,8 +42,6 @@ const Calendar = {
 
     // Initialize calendars from database
     async initCalendars() {
-        console.log('[Calendar] Initializing calendars from database...');
-
         // Keep hardcoded system calendars as fallback
         const systemCalendars = {
             tonstudio: {
@@ -79,7 +77,6 @@ const Calendar = {
         try {
             if (typeof Storage !== 'undefined' && Storage.getAllCalendars) {
                 const dbCalendars = await Storage.getAllCalendars();
-                console.log('[Calendar] Loaded calendars from database:', dbCalendars);
 
                 // Update calendars object with DB data
                 this.calendars = { ...systemCalendars };
@@ -99,10 +96,10 @@ const Calendar = {
                     });
                 }
 
-                console.log('[Calendar] Calendars initialized:', Object.keys(this.calendars));
+                Logger.info(`Calendars Initialized – ${Object.keys(this.calendars).length} locations found`);
             }
         } catch (error) {
-            console.error('[Calendar] Error loading calendars from database:', error);
+            Logger.error('Error loading calendars from database', error);
             // Fallback to system calendars
             this.calendars = systemCalendars;
         }
@@ -119,14 +116,13 @@ const Calendar = {
         }
 
         if (calendar.isLoading) {
-            console.log(`[Calendar] Already loading ${calendarType}, skipping...`);
             Logger.timeEnd(timerLabel);
             return;
         }
 
-        // Prevent reload if already loaded (unless forced, but force logic isn't here yet)
+        // Prevent reload if already loaded
         if (calendar.events && calendar.events.length > 0) {
-            console.log(`[Calendar] ${calendarType} already loaded with ${calendar.events.length} events, skipping fetch.`);
+            this.currentCalendar = calendarType; // CRITICAL: Set current calendar before rendering
             this.renderMonthView(); // Just re-render
             Logger.timeEnd(timerLabel);
             return;
@@ -162,13 +158,10 @@ const Calendar = {
             if (typeof UI !== 'undefined' && UI.showLoading) {
                 UI.showLoading('Kalender wird geladen…');
             }
-            console.log(`Loading ${calendarType} calendar from:`, calendar.url);
             container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Kalender-Termine...</p></div>';
 
             // Use CORS proxy to fetch iCal data
             const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(calendar.url)}`;
-            console.log('Fetching via proxy:', proxyUrl);
-
             const response = await fetch(proxyUrl);
 
             if (!response.ok) {
@@ -176,13 +169,11 @@ const Calendar = {
             }
 
             const icalData = await response.text();
-            console.log(`Received ${icalData.length} characters of iCal data`);
 
             // Parse iCal data using ical.js
             const jcalData = ICAL.parse(icalData);
             const comp = new ICAL.Component(jcalData);
             const vevents = comp.getAllSubcomponents('vevent');
-            console.log(`Found ${vevents.length} events`);
 
             // Extract events
             calendar.events = vevents.map(vevent => {
@@ -199,10 +190,11 @@ const Calendar = {
 
             // Sort by start date
             calendar.events.sort((a, b) => a.startDate - b.startDate);
-            console.log(`${calendarType} calendar loaded successfully with ${calendar.events.length} events`);
 
             this.renderMonthView();
-            Logger.timeEnd(timerLabel);
+            const duration = ((performance.now() - Logger.timers[timerLabel]) / 1000).toFixed(2);
+            Logger.info(`Calendar Loaded – "${calendarType}" (${calendar.events.length} events, ${duration}s)`);
+            delete Logger.timers[timerLabel];
         } catch (error) {
             console.error(`Fehler beim Laden des ${calendarType} Kalenders:`, error);
             container.innerHTML = `
@@ -221,6 +213,7 @@ const Calendar = {
                 </div>
             `;
         } finally {
+            calendar.isLoading = false;
             if (typeof UI !== 'undefined' && UI.hideLoading) {
                 UI.hideLoading();
             }
@@ -231,10 +224,8 @@ const Calendar = {
         const calendar = this.calendars[this.currentCalendar];
         const container = document.getElementById(calendar.containerId);
 
-        console.log(`renderMonthView called for ${this.currentCalendar}, container:`, container);
-
         if (!container) {
-            console.error(`Container "${calendar.containerId}" not found in DOM!`);
+            Logger.error(`Container "${calendar.containerId}" not found in DOM!`);
             return;
         }
 
@@ -306,9 +297,7 @@ const Calendar = {
 
         html += '</div>';
 
-        console.log(`Setting innerHTML for ${this.currentCalendar}, HTML length: ${html.length}`);
         container.innerHTML = html;
-        console.log(`Container updated, new innerHTML length: ${container.innerHTML.length}`);
 
         // Add click listeners to all calendar events
         container.querySelectorAll('.calendar-event').forEach(eventElement => {
@@ -317,7 +306,6 @@ const Calendar = {
                 this.showEventDetails(eventElement);
             });
         });
-        console.log(`Added click listeners to ${container.querySelectorAll('.calendar-event').length} events`);
     },
 
     getEventsForDate(date) {
@@ -421,7 +409,7 @@ const Calendar = {
 
     // Ensure a calendar is loaded (for availability checking)
     async ensureLocationCalendar(calendarId, locationName) {
-        console.log(`[Calendar] ensureLocationCalendar called for: ${calendarId}, ${locationName}`);
+        const startTime = performance.now();
 
         // Map calendar IDs to internal calendar types
         const calendarMap = {
@@ -434,19 +422,19 @@ const Calendar = {
         const calendarType = calendarMap[calendarId] || calendarId;
         const calendar = this.calendars[calendarType];
 
-        if (!calendar) {
-            console.warn(`[Calendar] Unknown calendar type: ${calendarType}`);
-            return;
-        }
+        if (!calendar) return;
 
         // Check if calendar already has events loaded
         if (calendar.events && calendar.events.length > 0) {
-            console.log(`[Calendar] ${calendarType} already loaded with ${calendar.events.length} events`);
+            // If already loaded, just render it
+            const previousCalendar = this.currentCalendar;
+            this.currentCalendar = calendarType;
+            this.renderMonthView();
+            this.currentCalendar = previousCalendar;
             return;
         }
 
         // Load the calendar
-        console.log(`[Calendar] Loading ${calendarType} calendar...`);
         try {
             const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(calendar.url)}`;
             const response = await fetch(proxyUrl);
@@ -472,9 +460,16 @@ const Calendar = {
             }).filter(event => event.startDate);
 
             calendar.events.sort((a, b) => a.startDate - b.startDate);
-            console.log(`[Calendar] ${calendarType} loaded successfully with ${calendar.events.length} events`);
+            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+            Logger.info(`Calendar Loaded – "${locationName}" (${calendar.events.length} events, ${duration}s)`);
+
+            // Render the calendar after loading
+            const previousCalendar = this.currentCalendar;
+            this.currentCalendar = calendarType;
+            this.renderMonthView();
+            this.currentCalendar = previousCalendar;
         } catch (error) {
-            console.error(`[Calendar] Failed to load ${calendarType}:`, error);
+            Logger.error(`Failed to load ${calendarType}`, error);
             throw error;
         }
     },

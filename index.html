@@ -430,6 +430,13 @@
                                 <span class="logo-part">Tool</span>
                             </span>
                         </h1>
+
+                        <!-- Absence Indicator Badge -->
+                        <div id="absenceIndicator" class="absence-indicator" style="display: none;">
+                            <span class="absence-icon">🏖️</span>
+                            <span class="absence-text">Abwesend bis <span id="absenceEndDate"></span></span>
+                        </div>
+
                         <div class="header-actions">
                             <span id="headerProfileImage" class="profile-avatar"
                                 style="display:inline-block;vertical-align:middle;margin-right:0.5em;width:36px;height:36px;border-radius:50%;background:#e5e7eb;overflow:hidden;text-align:center;line-height:36px;font-weight:600;font-size:1.1em;color:#444;"></span>
@@ -806,13 +813,13 @@
 
                         <!-- Submenu for calendar selection -->
                         <div class="calendar-submenu">
-                            <button id="probeorteBtn" class="calendar-tab active" data-calendar="tonstudio">
+                            <button id="probeorteBtnTonstudio" class="calendar-tab active" data-calendar="tonstudio">
                                 🎙️ Tonstudio
                             </button>
-                            <button id="probeorteBtn" class="calendar-tab" data-calendar="festhalle">
+                            <button id="probeorteBtnFesthalle" class="calendar-tab" data-calendar="festhalle">
                                 🏛️ JMS Festhalle
                             </button>
-                            <button id="probeorteBtn" class="calendar-tab" data-calendar="ankersaal">
+                            <button id="probeorteBtnAnkersaal" class="calendar-tab" data-calendar="ankersaal">
                                 ⚓ Ankersaal
                             </button>
                             <!-- refresh button removed per request -->
@@ -2412,21 +2419,21 @@
     <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
     <script src="js/supabase.js?v=1.0.1"></script>
-    <script src="js/storage.js?v=1.0.1"></script>
+    <script src="js/storage.js?v=1.0.3"></script>
     <script src="js/auth.js?v=1.0.1"></script>
     <script src="js/email-service.js?v=1.0.1"></script>
     <script src="js/bands.js?v=1.0.1"></script>
     <script src="js/events.js?v=1.0.1"></script>
     <script src="js/rehearsals.js?v=1.0.1"></script>
     <script src="js/statistics.js?v=1.0.1"></script>
-    <script src="js/calendar.js?v=1.0.1"></script>
-    <script src="js/personal-calendar.js?v=1.0.1"></script>
+    <script src="js/calendar.js?v=1.0.3"></script>
+    <script src="js/personal-calendar.js?v=1.0.2"></script>
     <script src="js/churchtools-api.js?v=1.0.1"></script>
     <script src="js/musikpool.js?v=1.0.1"></script>
     <script src="js/ui.js?v=1.0.1"></script>
     <script src="js/logger.js?v=1.0.1"></script>
     <script src="js/feedback-service.js?v=1.0.1"></script>
-    <script src="js/app.js?v=1.0.1"></script>
+    <script src="js/app.js?v=1.0.4"></script>
 
 
     <!-- Service Worker Registration -->

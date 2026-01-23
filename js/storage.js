@@ -14,13 +14,11 @@ const Storage = {
         if (error) throw new Error('User konnte nicht aus der Datenbank gelöscht werden!');
         return true;
     },
-    // Initialize storage
     async init() {
         if (!SupabaseClient.isConfigured()) {
-            console.error('⚠️ Supabase nicht konfiguriert! Bitte URL und Anon Key in den Einstellungen eingeben.');
+            Logger.error('⚠️ Supabase nicht konfiguriert! Bitte URL und Anon Key in den Einstellungen eingeben.');
             return;
         }
-        console.log('✓ Storage initialized with Supabase');
     },
 
     generateId() {
@@ -44,27 +42,15 @@ const Storage = {
     },
 
     async save(key, item) {
-        console.log('[Storage.save] Starting save to table:', key, 'Item:', item);
         const sb = SupabaseClient.getClient();
-        console.log('[Storage.save] Supabase client obtained:', sb);
-        console.log('[Storage.save] Building query for table:', key);
-
-        // Remove .single() - it might be causing the hang
-        const query = sb.from(key).insert(item).select('*');
-        console.log('[Storage.save] Query built successfully, executing...');
-
-        const { data, error } = await query;
-        console.log('[Storage.save] Query execution completed. Data:', data, 'Error:', error);
+        const { data, error } = await sb.from(key).insert(item).select('*');
 
         if (error) {
-            console.error('Supabase save error', key, error);
+            Logger.error(`Supabase save error in ${key}`, error);
             throw new Error(`Fehler beim Speichern in ${key}: ${error.message}`);
         }
 
-        // Return first item if array, or the item itself
-        const result = Array.isArray(data) ? data[0] : (data || item);
-        console.log('[Storage.save] Returning data:', result);
-        return result;
+        return Array.isArray(data) ? data[0] : (data || item);
     },
 
     async update(key, id, updatedItem) {
@@ -601,7 +587,6 @@ const Storage = {
                     if (eventDate < now) {
                         await this.deleteEvent(event.id);
                         deletedEventsCount++;
-                        console.log(`🗑️ Deleted past event: ${event.title} (${event.date})`);
                     }
                 }
             }
@@ -638,82 +623,60 @@ const Storage = {
                 if (shouldDelete) {
                     await this.deleteRehearsal(rehearsal.id);
                     deletedRehearsalsCount++;
-                    const dateInfo = rehearsal.finalDate || (rehearsal.proposedDates ? rehearsal.proposedDates[0] : 'unknown');
-                    console.log(`🗑️ Deleted past rehearsal: ${rehearsal.title} (${dateInfo})`);
                 }
             }
 
             if (deletedEventsCount > 0 || deletedRehearsalsCount > 0) {
-                console.log(`✓ Cleanup complete: ${deletedEventsCount} events and ${deletedRehearsalsCount} rehearsals deleted`);
-            } else {
-                console.log('✓ Cleanup complete: No past items to delete');
+                Logger.info(`Cleanup complete: ${deletedEventsCount} events and ${deletedRehearsalsCount} rehearsals deleted`);
             }
 
             return { deletedEventsCount, deletedRehearsalsCount };
         } catch (error) {
-            console.error('Error during cleanup:', error);
+            Logger.error('Error during cleanup:', error);
             return { deletedEventsCount: 0, deletedRehearsalsCount: 0 };
         }
     },
 
     // Calendar operations
     async createCalendar(calendarData) {
-        console.log('[Storage.createCalendar] Starting...', calendarData);
         const calendar = {
-            id: this.generateId(), // Generate ID for new calendars
+            id: this.generateId(),
             ...calendarData,
             created_at: new Date().toISOString()
         };
-        console.log('[Storage.createCalendar] Calendar object created:', calendar);
 
-        // Use direct fetch for calendars to avoid Supabase JS hanging issue
-        console.log('[Storage.createCalendar] Using direct REST API call...');
         try {
-            // Get credentials from SupabaseClient
             const sb = SupabaseClient.getClient();
-            const supabaseUrl = sb.supabaseUrl;
-            const supabaseKey = sb.supabaseKey;
-
-            console.log('[Storage.createCalendar] Using URL:', supabaseUrl);
-
-            const response = await fetch(`${supabaseUrl}/rest/v1/calendars`, {
+            const response = await fetch(`${sb.supabaseUrl}/rest/v1/calendars`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'apikey': supabaseKey,
-                    'Authorization': `Bearer ${supabaseKey}`,
+                    'apikey': sb.supabaseKey,
+                    'Authorization': `Bearer ${sb.supabaseKey}`,
                     'Prefer': 'return=representation'
                 },
                 body: JSON.stringify(calendar)
             });
 
-            console.log('[Storage.createCalendar] Response status:', response.status);
-
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('[Storage.createCalendar] Error response:', errorText);
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
             const result = await response.json();
-            console.log('[Storage.createCalendar] Created successfully:', result);
-
             this.calendarsCache = null; // Invalidate cache
-
             return Array.isArray(result) ? result[0] : result;
         } catch (error) {
-            console.error('[Storage.createCalendar] Fetch error:', error);
+            Logger.error('Storage.createCalendar error', error);
             throw error;
         }
     },
 
     async getAllCalendars() {
         if (this.calendarsCache && (Date.now() - this.calendarsCacheTimestamp < this.CACHE_DURATION)) {
-            console.log('[Storage.getAllCalendars] Returning cached calendars');
             return this.calendarsCache;
         }
 
-        console.log('[Storage.getAllCalendars] Using direct REST API call...');
         try {
             const sb = SupabaseClient.getClient();
             const supabaseUrl = sb.supabaseUrl;
@@ -725,19 +688,16 @@ const Storage = {
                     'Content-Type': 'application/json',
                     'apikey': supabaseKey,
                     'Authorization': `Bearer ${supabaseKey}`
-                },
-                // cache: 'no-store'  // Removed to allow browser caching if applicable (though we handle it manually)
+                }
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('[Storage.getAllCalendars] Error:', errorText);
+                Logger.error('Storage.getAllCalendars error', errorText);
                 return [];
             }
 
             const data = await response.json();
-            console.log('[Storage.getAllCalendars] Loaded calendars:', data);
-
             this.calendarsCache = data;
             this.calendarsCacheTimestamp = Date.now();
 
@@ -749,7 +709,6 @@ const Storage = {
     },
 
     async getCalendar(calendarId) {
-        console.log('[Storage.getCalendar] Using direct REST API call for:', calendarId);
         try {
             const sb = SupabaseClient.getClient();
             const response = await fetch(`${sb.supabaseUrl}/rest/v1/calendars?id=eq.${calendarId}&select=*`, {
@@ -761,14 +720,12 @@ const Storage = {
             const data = await response.json();
             return Array.isArray(data) ? data[0] : data;
         } catch (error) {
-            console.error('[Storage.getCalendar] Error:', error);
+            Logger.error('Storage.getCalendar error', error);
             return null;
         }
     },
 
     async updateCalendar(calendarId, updates) {
-        console.log('[Storage.updateCalendar] Using direct REST API call for:', calendarId);
-        console.log('[Storage.updateCalendar] Updates:', updates);
         try {
             const sb = SupabaseClient.getClient();
             const response = await fetch(`${sb.supabaseUrl}/rest/v1/calendars?id=eq.${calendarId}`, {
@@ -781,22 +738,17 @@ const Storage = {
                 },
                 body: JSON.stringify(updates)
             });
-            console.log('[Storage.updateCalendar] Response status:', response.status);
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('[Storage.updateCalendar] Error response:', errorText);
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
-            console.log('[Storage.updateCalendar] Updated calendar:', data);
-
             this.calendarsCache = null; // Invalidate cache
-
             return Array.isArray(data) ? data[0] : data;
         } catch (error) {
-            console.error('[Storage.updateCalendar] Error:', error);
+            Logger.error('Storage.updateCalendar error', error);
             throw error;
         }
     },

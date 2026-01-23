@@ -1161,6 +1161,46 @@ input:checked+.slider:before {
     gap: var(--spacing-lg);
 }
 
+/* ===== Absence Indicator Badge ===== */
+.absence-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: white;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    animation: absence-pulse 2s ease-in-out infinite;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.absence-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.absence-text {
+    white-space: nowrap;
+}
+
+@keyframes absence-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.85;
+        transform: scale(0.98);
+    }
+}
+
 @media (max-width: 768px) {
 
     /* keep logo left and user actions right on first row */
@@ -1177,6 +1217,25 @@ input:checked+.slider:before {
         font-size: 1.05rem;
         white-space: normal;
         max-width: 55%;
+    }
+
+    /* Make absence indicator much smaller on mobile */
+    .absence-indicator {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.65rem;
+        gap: 0.25rem;
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+    }
+
+    .absence-icon {
+        font-size: 0.875rem;
+    }
+
+    .absence-text {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* On mobile, stack the logo words but keep emoji + first word on the same line */

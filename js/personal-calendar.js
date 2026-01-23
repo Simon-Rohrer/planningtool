@@ -1,7 +1,5 @@
 // Personal Calendar Module - Shows user's rehearsals and events
 
-console.log('[PersonalCalendar] Module loading...');
-
 const PersonalCalendar = {
     events: [],
     rehearsals: [],
@@ -25,13 +23,10 @@ const PersonalCalendar = {
             return;
         }
 
-        if (this.isLoading) {
-            console.log('[PersonalCalendar] Already loading, skipping.');
-            return;
-        }
+        if (this.isLoading) return;
         this.isLoading = true;
 
-        console.log('[PersonalCalendar] loadPersonalCalendar called');
+        const startTime = performance.now();
         const container = document.getElementById('personalCalendarContainer');
         if (!container) {
             console.error('[PersonalCalendar] Container not found!');
@@ -42,15 +37,9 @@ const PersonalCalendar = {
         let overlay = document.getElementById('globalLoadingOverlay');
         try {
             const user = Auth.getCurrentUser();
-            console.log('[PersonalCalendar] Current user:', user);
-            if (!user) {
-                throw new Error('Benutzer nicht angemeldet');
-            }
             // Load user's bands to filter relevant data
             const userBands = await Storage.getUserBands(user.id);
-            console.log('[PersonalCalendar] User bands:', userBands);
             if (!Array.isArray(userBands) || userBands.length === 0) {
-                console.log('[PersonalCalendar] No bands found for user');
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">📅</div>
@@ -62,20 +51,19 @@ const PersonalCalendar = {
                 return;
             }
             const bandIds = userBands.map(b => b.id || b.band_id || b.bandId);
-            console.log('[PersonalCalendar] Band IDs:', bandIds);
             // Load all events and rehearsals
             const [allEvents, allRehearsals] = await Promise.all([
                 this.loadUserEvents(bandIds),
                 this.loadUserRehearsals(bandIds)
             ]);
-            console.log('[PersonalCalendar] Loaded events:', allEvents.length);
-            console.log('[PersonalCalendar] Loaded rehearsals:', allRehearsals.length);
             this.events = allEvents;
             this.rehearsals = allRehearsals;
             this.userBands = userBands;
             this.renderCalendar();
-            Logger.timeEnd('Personal Calendar Load');
 
+            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+            Logger.info(`Personal Calendar Loaded – (${allEvents.length} events, ${allRehearsals.length} rehearsals, ${duration}s)`);
+            delete Logger.timers['Personal Calendar Load']; // handled manually
         } catch (error) {
             console.error('[PersonalCalendar] Error loading personal calendar:', error);
             container.innerHTML = `
@@ -651,9 +639,6 @@ const PersonalCalendar = {
         return div.innerHTML;
     }
 };
-
-console.log('[PersonalCalendar] Module loaded successfully');
-console.log('[PersonalCalendar] loadPersonalCalendar function type:', typeof PersonalCalendar.loadPersonalCalendar);
 
 // Make globally accessible
 window.PersonalCalendar = PersonalCalendar;
