@@ -783,7 +783,21 @@ const App = {
             openSettingsBtn._clickHandlerAttached = true;
         }
 
-        // 3. Logout Button (Sidebar)
+        // 3. Feedback Button (Sidebar)
+        const feedbackBtn = document.getElementById('feedbackBtnSidebar');
+        if (feedbackBtn && !feedbackBtn._clickHandlerAttached) {
+            feedbackBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Close any open submenus
+                document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
+                    group.classList.remove('expanded');
+                });
+                UI.openModal('feedbackModal');
+            });
+            feedbackBtn._clickHandlerAttached = true;
+        }
+
+        // 4. Logout Button (Sidebar)
         const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
         if (sidebarLogoutBtn && !sidebarLogoutBtn._clickHandlerAttached) {
             sidebarLogoutBtn.addEventListener('click', (e) => {
@@ -799,6 +813,71 @@ const App = {
 
         this._sidebarNavInitialized = true;
         console.log('[setupSidebarNav] ✓ Initialization complete');
+    },
+
+    setupFeedbackModal() {
+        const modal = document.getElementById('feedbackModal');
+        if (!modal) return;
+
+        // Tabs
+        const tabs = modal.querySelectorAll('.settings-tab-btn');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Deactivate all tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                // Hide all contents
+                modal.querySelectorAll('.feedback-tab-content').forEach(c => {
+                    c.style.display = 'none';
+                    c.classList.remove('active');
+                });
+
+                // Activate clicked tab
+                tab.classList.add('active');
+                const targetId = tab.dataset.tab === 'feedback' ? 'feedbackTabContent' : 'bugTabContent';
+                const targetContent = document.getElementById(targetId);
+                if (targetContent) {
+                    targetContent.style.display = 'block';
+                    targetContent.classList.add('active');
+                }
+            });
+        });
+
+        // Forms
+        const feedbackForm = document.getElementById('feedbackForm');
+        if (feedbackForm) {
+            feedbackForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const msg = document.getElementById('feedbackMessage').value;
+
+                try {
+                    await FeedbackService.submitFeedback('feedback', null, msg);
+                    UI.showToast('Vielen Dank für dein Feedback! 🤘', 'success');
+                    UI.closeModal('feedbackModal');
+                    feedbackForm.reset();
+                } catch (err) {
+                    UI.showToast(err.message || 'Fehler beim Senden', 'error');
+                }
+            });
+        }
+
+        const bugForm = document.getElementById('bugReportForm');
+        if (bugForm) {
+            bugForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const title = document.getElementById('bugTitle').value;
+                const desc = document.getElementById('bugDescription').value;
+
+                try {
+                    await FeedbackService.submitFeedback('bug', title, desc);
+                    UI.showToast('Danke für den Fehlerbericht! Wir schauen uns das an. 🐛', 'success');
+                    UI.closeModal('feedbackModal');
+                    bugForm.reset();
+                } catch (err) {
+                    UI.showToast(err.message || 'Fehler beim Senden', 'error');
+                }
+            });
+        }
     },
 
     // Update sidebar profile info
@@ -843,6 +922,7 @@ const App = {
         // Initialize Supabase Auth first
         this.setupMobileSubmenuToggle();
         this.setupSidebarNav();
+        this.setupFeedbackModal();
 
         // NOTE: tutorial banner will be shown after auth initialization below
 
@@ -4111,6 +4191,19 @@ const App = {
         if (bandsTab) bandsTab.style.display = isAdmin ? 'block' : 'none';
         if (usersTab) usersTab.style.display = isAdmin ? 'block' : 'none';
 
+        // Admin Feedback Tab
+        const adminFeedbackTab = effectiveRoot.querySelector('#settingsTabAdminFeedback');
+        if (adminFeedbackTab) adminFeedbackTab.style.display = isAdmin ? 'block' : 'none';
+
+        // Refresh button for feedback
+        const refreshFeedbackBtn = effectiveRoot.querySelector('#refreshFeedbackBtn');
+        if (refreshFeedbackBtn) {
+            refreshFeedbackBtn.onclick = (e) => {
+                e.preventDefault();
+                this.loadAdminFeedback();
+            };
+        }
+
         // Donate Link (Admin only)
         const donateLinkSection = effectiveRoot.querySelector('#donateLinkSection');
         if (donateLinkSection) donateLinkSection.style.display = isAdmin ? 'block' : 'none';
@@ -4482,6 +4575,369 @@ const App = {
         // Render absences list in settings
         this.renderAbsencesListSettings();
 
+    },
+
+    async loadAdminFeedback() {
+        const list = document.getElementById('adminFeedbackList');
+        if (!list) return;
+
+        list.innerHTML = '<div class="loader">Daten werden geladen...</div>';
+
+        try {
+            const feedbacks = await FeedbackService.getAllFeedback();
+
+            if (!feedbacks || feedbacks.length === 0) {
+                list.innerHTML = '<div class="empty-state">Aktuell keine Einträge vorhanden.</div>';
+                return;
+            }
+
+            // Split items
+            const openItems = feedbacks.filter(i => i.status !== 'resolved');
+            const resolvedItems = feedbacks.filter(i => i.status === 'resolved');
+
+            let html = '';
+
+            // Section: Open
+            html += `<h4 style="margin: 1.5rem 0 1rem; color: var(--color-text); border-bottom: 2px solid var(--color-primary); padding-bottom: 0.5rem; display: inline-block;">
+                        Offene Tickets <span class="badge bg-primary" style="font-size: 0.8em; vertical-align: middle; margin-left: 0.5rem;">${openItems.length}</span>
+                     </h4>`;
+
+            if (openItems.length === 0) {
+                html += '<div style="font-style: italic; color: var(--color-text-secondary); margin-bottom: 2rem;">Alles erledigt! 🎉</div>';
+            } else {
+                html += '<div class="feedback-grid" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">';
+                openItems.forEach(item => html += this._renderFeedbackCard(item));
+                html += '</div>';
+            }
+
+            // Section: Resolved
+            if (resolvedItems.length > 0) {
+                html += `<h4 style="margin: 2rem 0 1rem; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); padding-bottom: 0.5rem;">
+                            Archiv / Erledigt <span class="badge bg-secondary" style="font-size: 0.8em; vertical-align: middle; margin-left: 0.5rem;">${resolvedItems.length}</span>
+                         </h4>`;
+                html += '<div class="feedback-grid resolved" style="display: flex; flex-direction: column; gap: 1rem; opacity: 0.7;">';
+                resolvedItems.forEach(item => html += this._renderFeedbackCard(item));
+                html += '</div>';
+            }
+
+            list.innerHTML = html;
+
+            // Attach listeners
+            // Attach listeners
+            // 1. Resolve Buttons
+            list.querySelectorAll('.resolve-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation(); // Prevent card expansion
+                    const id = btn.dataset.id;
+                    const confirm = await UI.confirmAction(
+                        'Möchtest du dieses Ticket wirklich als erledigt markieren? Es wird ins Archiv verschoben.',
+                        'Ticket schließen',
+                        'Ja, erledigt',
+                        'btn-success'
+                    );
+
+                    if (!confirm) return;
+
+                    try {
+                        const originalContent = btn.innerHTML;
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                        btn.disabled = true;
+
+                        await FeedbackService.updateStatus(id, 'resolved');
+
+                        UI.showToast('Ticket als erledigt markiert', 'success');
+                        this.loadAdminFeedback(); // Reload
+                    } catch (err) {
+                        UI.showToast('Fehler: ' + err.message, 'error');
+                        btn.innerHTML = originalContent;
+                        btn.disabled = false;
+                    }
+                });
+            });
+
+            // 1.5 Delete Buttons
+            list.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation(); // Prevent card expansion
+                    const id = btn.dataset.id;
+                    const confirm = await UI.confirmAction(
+                        'Möchtest du dieses Ticket wirklich unwiderruflich löschen?',
+                        'Ticket löschen',
+                        'Ja, löschen',
+                        'btn-danger'
+                    );
+
+                    if (!confirm) return;
+
+                    let originalContent = btn.innerHTML; // Store before try block
+                    try {
+                        // Show simple spinner or just disable
+                        btn.style.opacity = '0.5';
+                        btn.disabled = true;
+
+                        await FeedbackService.deleteFeedback(id);
+
+                        UI.showToast('Ticket gelöscht', 'success');
+                        this.loadAdminFeedback(); // Reload
+                    } catch (err) {
+                        UI.showToast('Fehler: ' + err.message, 'error');
+                        btn.innerHTML = originalContent;
+                        btn.style.opacity = '1';
+                        btn.disabled = false;
+                    }
+                });
+            });
+
+            // 2. Card Expansion (Toggle)
+            list.querySelectorAll('.feedback-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    // Don't toggle if selecting text
+                    if (window.getSelection().toString().length > 0) return;
+
+                    const isExpanded = card.getAttribute('data-expanded') === 'true';
+                    const messageEl = card.querySelector('.feedback-message');
+                    const actionsEl = card.querySelector('.feedback-actions');
+                    const chevronEl = card.querySelector('.chevron-icon');
+
+                    if (isExpanded) {
+                        // Collapse
+                        card.setAttribute('data-expanded', 'false');
+                        messageEl.style.webkitLineClamp = '2';
+                        messageEl.style.overflow = 'hidden';
+                        messageEl.style.display = '-webkit-box';
+                        actionsEl.style.display = 'none';
+                        if (chevronEl) chevronEl.style.transform = 'rotate(0deg)';
+                    } else {
+                        // Expand
+                        card.setAttribute('data-expanded', 'true');
+                        messageEl.style.webkitLineClamp = 'unset';
+                        messageEl.style.overflow = 'visible';
+                        messageEl.style.display = 'block';
+                        actionsEl.style.display = 'flex'; // Restore flex
+                        if (chevronEl) chevronEl.style.transform = 'rotate(180deg)';
+                    }
+                });
+            });
+
+        } catch (err) {
+            console.error(err);
+            list.innerHTML = `<div class="error-state" style="color:red">Fehler beim Laden: ${err.message}</div>`;
+        }
+    },
+
+    _renderFeedbackCard(item) {
+        const isBug = item.type === 'bug';
+        const userLabel = item.users ?
+            (item.users.first_name + ' ' + item.users.last_name) :
+            'Unbekannter User';
+        const username = item.users ? item.users.username : '???';
+
+        const date = new Date(item.created_at);
+        const dateStr = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+        const badgeColor = isBug ? '#ef4444' : '#3b82f6';
+        const badgeIcon = isBug ? '🐛' : '💡';
+        const badgeLabel = isBug ? 'Bug Report' : 'Feedback';
+
+        const isResolved = item.status === 'resolved';
+
+        return `
+            <div class="card feedback-card" data-expanded="false" style="
+                background: var(--color-card-bg); 
+                border: 1px solid var(--color-border);
+                border-radius: 16px;
+                padding: 1.5rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                transition: all 0.2s;
+                position: relative;
+                overflow: hidden;
+                cursor: pointer;
+            ">
+                <div style="
+                    position: absolute; 
+                    top: 0; 
+                    left: 0; 
+                    width: 6px; 
+                    height: 100%; 
+                    background: ${badgeColor};
+                "></div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; padding-left: 0.75rem;">
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <span style="
+                            background: ${badgeColor}20; 
+                            color: ${badgeColor}; 
+                            padding: 0.35rem 0.85rem; 
+                            border-radius: 999px; 
+                            font-size: 0.75rem; 
+                            font-weight: 700; 
+                            letter-spacing: 0.05em;
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 0.4rem;
+                        ">
+                            ${badgeIcon} ${badgeLabel.toUpperCase()}
+                        </span>
+                        <span style="color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;">
+                            ${dateStr} • ${timeStr}
+                        </span>
+                    </div>
+                    <!-- Chevron for expansion indication -->
+                    <div class="chevron-icon" style="transition: transform 0.3s ease; color: var(--color-text-secondary); opacity: 0.5;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                </div>
+
+                <div style="padding-left: 0.75rem;">
+                    ${item.title ? `<h3 style="margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.3;">${Bands.escapeHtml(item.title)}</h3>` : ''}
+                    
+                    <div class="feedback-message" style="
+                        background: var(--color-background); 
+                        padding: 1rem; 
+                        border-radius: 12px; 
+                        margin-bottom: 1rem;
+                        font-size: 1rem;
+                        line-height: 1.6;
+                        color: var(--color-text);
+                        border: 1px solid var(--color-border);
+                        /* Default Collapsed State */
+                        display: -webkit-box;
+                        -webkit-line-clamp: 2;
+                        -webkit-box-orient: vertical;
+                        overflow: hidden;
+                    ">${Bands.escapeHtml(item.message)}</div>
+
+                    <div class="feedback-actions" style="
+                        display: none; /* Hidden by default */
+                        justify-content: space-between; 
+                        align-items: center; 
+                        padding-top: 0.5rem; 
+                        border-top: 1px solid var(--color-border);
+                        transition: opacity 0.3s ease;
+                    ">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="
+                                width: 32px; 
+                                height: 32px; 
+                                background: linear-gradient(135deg, var(--color-primary), #4f46e5); 
+                                color: white; 
+                                border-radius: 50%; 
+                                display: flex; 
+                                align-items: center; 
+                                justify-content: center; 
+                                font-size: 0.85rem; 
+                                font-weight: bold;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            ">${userLabel.charAt(0)}</div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-weight: 600; font-size: 0.95rem;">${userLabel}</span>
+                                <span style="font-size: 0.8rem; color: var(--color-text-secondary);">@${username}</span>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <!-- Delete Button (Available for both open and resolved) -->
+                            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${item.id}" style="
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                width: 36px;
+                                height: 36px;
+                                border-radius: 50%;
+                                padding: 0;
+                                border: 1px solid #ef4444;
+                                color: #ef4444;
+                                background: transparent;
+                                transition: all 0.2s;
+                            " title="Löschen"
+                            onmouseover="this.style.background='#ef4444'; this.style.color='white'"
+                            onmouseout="this.style.background='transparent'; this.style.color='#ef4444'">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            </button>
+
+                            ${!isResolved ? `
+                                <button class="btn resolve-btn" data-id="${item.id}" style="
+                                    display: inline-flex; 
+                                    align-items: center; 
+                                    gap: 0.6rem;
+                                    border-radius: 12px;
+                                    padding: 0.6rem 1.25rem;
+                                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                                    background: linear-gradient(to right, #10b981, #059669);
+                                    color: white;
+                                    border: none;
+                                    font-weight: 600;
+                                    font-size: 0.9rem;
+                                    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.15);
+                                    cursor: pointer;
+                                " 
+                                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 12px -1px rgba(16, 185, 129, 0.4)'" 
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(16, 185, 129, 0.3)'">
+                                    <span style="font-size: 1.1em;">✓</span> Als erledigt markieren
+                                </button>
+                            ` : `
+                                <div style="
+                                    color: #059669; 
+                                    font-weight: 700; 
+                                    display: flex; 
+                                    align-items: center; 
+                                    gap: 0.5rem; 
+                                    font-size: 0.95rem;
+                                    background: #ecfdf5;
+                                    padding: 0.5rem 1rem;
+                                    border-radius: 999px;
+                                    border: 1px solid #a7f3d0;
+                                ">
+                                    ✓ Erledigt
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    switchSettingsTab(tabName) {
+        // Toggle Buttons
+        const settingsModal = document.getElementById('settingsModal');
+        if (!settingsModal) return;
+
+        const btns = settingsModal.querySelectorAll('.settings-tab-btn');
+        btns.forEach(b => {
+            // We can check dataset tab OR id
+            if (b.dataset.tab === tabName) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+
+        // Toggle Content
+        const contents = settingsModal.querySelectorAll('.settings-tab-content');
+        contents.forEach(c => c.style.display = 'none');
+
+        // Mappings
+        let contentId = '';
+        if (tabName === 'profile') contentId = 'profileSettingsTab';
+        else if (tabName === 'adminFeedback') contentId = 'adminFeedbackSettingsTab';
+        else if (tabName === 'users') contentId = 'usersSettingsTab';
+        // Absences often has special handling or missing container ID in this project context
+
+        // Try precise ID
+        let content = document.getElementById(contentId);
+        if (!content) {
+            // Try standard pattern
+            content = document.getElementById(tabName + 'SettingsTab');
+        }
+
+        if (content) {
+            content.style.display = 'block';
+            if (tabName === 'adminFeedback') {
+                this.loadAdminFeedback();
+            }
+        } else {
+            // Handling for bands/locations if standard ID isn't matching
+            // Just trying to be safe if I don't see all IDs
+        }
     },
 
     async handleCreateAbsenceFromSettings() {

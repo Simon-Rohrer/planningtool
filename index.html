@@ -396,6 +396,14 @@
                         </button>
                     </div>
 
+                    <!-- Feedback Button -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main" id="feedbackBtnSidebar">
+                            <span class="nav-icon">📢</span>
+                            <span class="nav-label">Feedback</span>
+                        </button>
+                    </div>
+
                     <!-- Logout Button moved here for consistent styling -->
                     <div class="nav-group logout-group" style="margin-top: auto;">
                         <button id="sidebarLogoutBtn" class="nav-item nav-main">
@@ -976,6 +984,25 @@
                         <button id="settingsTabBands" class="settings-tab-btn" data-tab="bands">Bandmanagement</button>
                         <button id="settingsTabUsers" class="settings-tab-btn" data-tab="users"
                             style="display: none;">Benutzerverwaltung</button>
+                        <button id="settingsTabAdminFeedback" class="settings-tab-btn" data-tab="adminFeedback"
+                            style="display: none; border-color: var(--color-warning); color: var(--color-warning);">Admin
+                            Feedback</button>
+                    </div>
+
+
+                    <!-- Admin Feedback Tab -->
+                    <div id="adminFeedbackSettingsTab" class="settings-tab-content">
+                        <div class="section">
+                            <h3>Feedback & Fehlerberichte</h3>
+                            <div class="view-controls" style="margin-bottom: 1rem;">
+                                <button id="refreshFeedbackBtn" class="btn btn-sm btn-secondary">🔄
+                                    Aktualisieren</button>
+                            </div>
+                            <div id="adminFeedbackList" style="display: flex; flex-direction: column; gap: 1rem;">
+                                <!-- Feedback items rendered here -->
+                                <div class="empty-state">Lade Daten...</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Profile Tab -->
@@ -2197,6 +2224,56 @@
     </div>
     </div>
 
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Feedback & Bugs</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button class="settings-tab-btn active" data-tab="feedback">Feedback</button>
+                    <button class="settings-tab-btn" data-tab="bug">Fehler melden</button>
+                </div>
+
+                <!-- Feedback Tab -->
+                <div id="feedbackTabContent" class="feedback-tab-content active" style="padding: 1rem 0;">
+                    <p style="margin-bottom: 1rem;">Wir freuen uns über dein Feedback zur App!</p>
+                    <form id="feedbackForm">
+                        <div class="form-group">
+                            <label for="feedbackMessage" style="font-weight: 600;">Deine Nachricht</label>
+                            <textarea id="feedbackMessage" rows="5" required
+                                placeholder="Was gefällt dir, was können wir besser machen?"
+                                style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-background); color: var(--color-text);"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Feedback senden</button>
+                    </form>
+                </div>
+
+                <!-- Bug Tab -->
+                <div id="bugTabContent" class="feedback-tab-content" style="display: none; padding: 1rem 0;">
+                    <p style="margin-bottom: 1rem;">Oh nein! Ein Fehler? Bitte beschreibe ihn uns.</p>
+                    <form id="bugReportForm">
+                        <div class="form-group">
+                            <label for="bugTitle" style="font-weight: 600;">Kurze Beschreibung (Titel)</label>
+                            <input type="text" id="bugTitle" required placeholder="z.B. Kalender lädt nicht"
+                                style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-background); color: var(--color-text); margin-bottom: 1rem;">
+                        </div>
+                        <div class="form-group">
+                            <label for="bugDescription" style="font-weight: 600;">Details & Schritte zur
+                                Reproduktion</label>
+                            <textarea id="bugDescription" rows="5" required
+                                placeholder="Was hast du gemacht, bevor der Fehler auftrat?"
+                                style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-background); color: var(--color-text);"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning" style="margin-top: 1rem;">Fehler melden</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     </div> <!-- End of mainApp -->
 
     <!-- Scripts -->
@@ -2234,6 +2311,7 @@
     <script src="js/musikpool.js?v=1.0.1"></script>
     <script src="js/ui.js?v=1.0.1"></script>
     <script src="js/logger.js?v=1.0.1"></script>
+    <script src="js/feedback-service.js?v=1.0.1"></script>
     <script src="js/app.js?v=1.0.1"></script>
 
 
