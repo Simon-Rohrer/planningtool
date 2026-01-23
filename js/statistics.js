@@ -1,48 +1,58 @@
 // Statistics Module
 
 const Statistics = {
+    loadingStates: {},
+
     // Render statistics for a rehearsal
     async renderStatistics(rehearsalId) {
-        const container = document.getElementById('statisticsContent');
-
-        if (!rehearsalId) {
-            UI.showEmptyState(container, '📊', 'Wähle einen Probetermin aus, um die Statistiken zu sehen');
+        if (this.loadingStates[rehearsalId]) {
+            console.log(`[Statistics] Already loading stats for ${rehearsalId}, skipping.`);
             return;
         }
+        this.loadingStates[rehearsalId] = true;
 
-        const rehearsal = await Storage.getRehearsal(rehearsalId);
-        if (!rehearsal) return;
+        try {
+            Logger.time('Statistics Load (Rehearsal)');
+            const container = document.getElementById('statisticsContent');
 
-        const band = await Storage.getBand(rehearsal.bandId);
-        const members = await Storage.getBandMembers(rehearsal.bandId);
-        const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
+            if (!rehearsalId) {
+                UI.showEmptyState(container, '📊', 'Wähle einen Probetermin aus, um die Statistiken zu sehen');
+                return;
+            }
 
-        // Calculate statistics for each date
-        const dateStats = rehearsal.proposedDates.map((date, index) => {
-            const dateVotes = votes.filter(v => v.dateIndex === index);
-            const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
-            const maybeCount = dateVotes.filter(v => v.availability === 'maybe').length;
-            const noCount = dateVotes.filter(v => v.availability === 'no').length;
-            const totalVotes = dateVotes.length;
-            const memberCount = members.length;
+            const rehearsal = await Storage.getRehearsal(rehearsalId);
+            if (!rehearsal) return;
 
-            return {
-                date,
-                index,
-                yesCount,
-                maybeCount,
-                noCount,
-                totalVotes,
-                memberCount,
-                score: yesCount + (maybeCount * 0.5) // Score for ranking
-            };
-        });
+            const band = await Storage.getBand(rehearsal.bandId);
+            const members = await Storage.getBandMembers(rehearsal.bandId);
+            const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
 
-        // Sort by score (best dates first)
-        const sortedDates = [...dateStats].sort((a, b) => b.score - a.score);
-        const bestDates = sortedDates.filter(d => d.score > 0).slice(0, 3);
+            // Calculate statistics for each date
+            const dateStats = rehearsal.proposedDates.map((date, index) => {
+                const dateVotes = votes.filter(v => v.dateIndex === index);
+                const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
+                const maybeCount = dateVotes.filter(v => v.availability === 'maybe').length;
+                const noCount = dateVotes.filter(v => v.availability === 'no').length;
+                const totalVotes = dateVotes.length;
+                const memberCount = members.length;
 
-        container.innerHTML = `
+                return {
+                    date,
+                    index,
+                    yesCount,
+                    maybeCount,
+                    noCount,
+                    totalVotes,
+                    memberCount,
+                    score: yesCount + (maybeCount * 0.5) // Score for ranking
+                };
+            });
+
+            // Sort by score (best dates first)
+            const sortedDates = [...dateStats].sort((a, b) => b.score - a.score);
+            const bestDates = sortedDates.filter(d => d.score > 0).slice(0, 3);
+
+            container.innerHTML = `
             <div class="stats-header">
                 <h3>${Bands.escapeHtml(rehearsal.title)}</h3>
                 <p class="stats-subtitle">🎸 ${Bands.escapeHtml(band?.name || '')} • ${members.length} Mitglieder</p>
@@ -85,10 +95,15 @@ const Statistics = {
                 ${this.renderMemberAvailability(rehearsal, members, votes)}
             </div>
         `;
+            Logger.timeEnd('Statistics Load (Rehearsal)');
+        } finally {
+            this.loadingStates[rehearsalId] = false;
+        }
     },
 
     // Render statistics for a band (overview)
     async renderBandStatistics(bandId) {
+        Logger.time('Statistics Load (Band)');
         const container = document.getElementById('statisticsContent');
         if (!bandId) {
             UI.showEmptyState(container, '📊', 'Wähle eine Band aus, um die Statistiken zu sehen');
@@ -137,6 +152,7 @@ const Statistics = {
                 </div>
             `}
         `;
+        Logger.timeEnd('Statistics Load (Band)');
     },
 
     // Render chart bar for a date

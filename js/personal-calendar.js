@@ -7,6 +7,7 @@ const PersonalCalendar = {
     rehearsals: [],
     userBands: [],
     currentMonth: new Date(),
+    isLoading: false,
 
     // Clear all cached data (called during logout)
     clearCache() {
@@ -16,15 +17,25 @@ const PersonalCalendar = {
     },
 
     async loadPersonalCalendar() {
+        Logger.time('Personal Calendar Load');
         // Nur laden, wenn noch keine Daten im Speicher
         if (this.events && this.events.length > 0 && this.rehearsals && this.rehearsals.length > 0 && this.userBands && this.userBands.length > 0) {
             this.renderCalendar();
+            Logger.timeEnd('Personal Calendar Load');
             return;
         }
+
+        if (this.isLoading) {
+            console.log('[PersonalCalendar] Already loading, skipping.');
+            return;
+        }
+        this.isLoading = true;
+
         console.log('[PersonalCalendar] loadPersonalCalendar called');
         const container = document.getElementById('personalCalendarContainer');
         if (!container) {
             console.error('[PersonalCalendar] Container not found!');
+            Logger.timeEnd('Personal Calendar Load');
             return;
         }
         container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Termine...</p></div>';
@@ -47,6 +58,7 @@ const PersonalCalendar = {
                         <p>Trete einer Band bei, um deine Termine zu sehen.</p>
                     </div>
                 `;
+                Logger.timeEnd('Personal Calendar Load');
                 return;
             }
             const bandIds = userBands.map(b => b.id || b.band_id || b.bandId);
@@ -62,6 +74,7 @@ const PersonalCalendar = {
             this.rehearsals = allRehearsals;
             this.userBands = userBands;
             this.renderCalendar();
+            Logger.timeEnd('Personal Calendar Load');
 
         } catch (error) {
             console.error('[PersonalCalendar] Error loading personal calendar:', error);
@@ -78,6 +91,7 @@ const PersonalCalendar = {
                 </div>
             `;
         } finally {
+            this.isLoading = false;
             // Lade-Overlay immer ausblenden
             if (overlay) {
                 overlay.style.opacity = '0';

@@ -303,7 +303,7 @@ const App = {
         const items = submenuMap[view] || [];
         const container = document.getElementById('headerSubmenu');
         if (!container) return;
-        container.innerHTML = items.map(i => `<button type="button" class="header-submenu-btn" data-view="${i.key}" onclick="App.navigateTo('${i.key}')"><span class=\"nav-icon\">${i.icon}</span><span class=\"header-submenu-label\">${i.label}</span></button>`).join('');
+        container.innerHTML = items.map(i => `<button type="button" class="header-submenu-btn" data-view="${i.key}"><span class=\"nav-icon\">${i.icon}</span><span class=\"header-submenu-label\">${i.label}</span></button>`).join('');
         console.log('[updateHeaderSubmenu] populated for', view, 'items:', items.map(i => i.key));
 
         // After rendering submenu buttons, set underline widths to match label+icon
@@ -322,10 +322,10 @@ const App = {
                 if (!viewKey) return;
                 try {
                     if (typeof App !== 'undefined' && App.navigateTo) {
-                        App.navigateTo(viewKey);
+                        App.navigateTo(viewKey, 'header-main-nav');
                         console.log('[HEADER SUBMENU] navigateTo invoked sync for', viewKey);
                     } else if (this && this.navigateTo) {
-                        this.navigateTo(viewKey);
+                        this.navigateTo(viewKey, 'header-main-nav');
                         console.log('[HEADER SUBMENU] this.navigateTo invoked sync for', viewKey);
                     } else {
                         console.warn('[HEADER SUBMENU] navigateTo not available for', viewKey);
@@ -382,7 +382,7 @@ const App = {
                 navigate: 'dashboard',
                 sel: '.dashboard-grid',
                 title: 'Dein Dashboard',
-                body: 'Hier siehst du auf einen Blick, was ansteht. Diese Karten sind INTERAKTIV! Klicke z.B. auf "Nächste Gigs", um direkt zu deinen Auftritten zu springen.'
+                body: 'Hier siehst du auf einen Blick, was ansteht. Diese Karten sind INTERAKTIV! Klicke z.B. auf "Nächste Auftritte", um direkt zu deinen Auftritten zu springen.'
             },
             {
                 navigate: 'dashboard',
@@ -395,7 +395,7 @@ const App = {
                 navigate: 'dashboard',
                 sel: '.app-sidebar', // Desktop
                 mobileSel: '#mobileMenuBtn', // Mobile fallback
-                body: 'Über die Seitenleiste (oder das Menü oben links auf dem Handy) erreichst du alle Bereiche: Bands, Planung, Gigs und mehr.'
+                body: 'Über die Seitenleiste (oder das Menü oben links auf dem Handy) erreichst du alle Bereiche: Bands, Planung, Auftritte und mehr.'
             },
             {
                 navigate: 'events',
@@ -473,7 +473,7 @@ const App = {
                 // Determine if we need to switch view
                 const currentView = document.querySelector('.view.active')?.id.replace('View', '');
                 if (currentView !== step.navigate) {
-                    await this.navigateTo(step.navigate);
+                    await this.navigateTo(step.navigate, 'tutorial-step');
                     await new Promise(r => setTimeout(r, 300)); // Wait for render
                 }
             }
@@ -618,7 +618,7 @@ const App = {
             return;
         }
 
-        console.log('[setupMobileSubmenuToggle] Initializing mobile submenu toggle');
+        Logger.info('[setupMobileSubmenuToggle] Initializing mobile submenu toggle');
 
         navBar.addEventListener('click', (e) => {
             // Findet das geklickte .nav-item (oder dessen Elternelement)
@@ -681,7 +681,7 @@ const App = {
             return;
         }
 
-        console.log('[setupSidebarNav] Initializing...');
+        Logger.info('[setupSidebarNav] Initializing...');
         const sidebarNav = document.querySelector('.sidebar-nav');
         if (!sidebarNav) {
             console.warn('[setupSidebarNav] No .sidebar-nav found');
@@ -697,7 +697,7 @@ const App = {
             e.preventDefault();
             e.stopPropagation();
 
-            console.log('[Sidebar Click]', navItem.textContent.trim());
+            Logger.action('Sidebar Click', navItem.textContent.trim());
 
             try {
                 // Handle main items with submenu (accordion behavior)
@@ -734,7 +734,7 @@ const App = {
                 // Handle navigation (subitems or regular nav items)
                 const view = navItem.dataset.view;
                 if (view) {
-                    console.log('[Sidebar] Navigating to:', view);
+                    Logger.info('Navigating via Sidebar', view);
 
                     // Close all expanded groups when navigating to a regular item or subitem
                     document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
@@ -846,7 +846,11 @@ const App = {
 
         // NOTE: tutorial banner will be shown after auth initialization below
 
-        await Auth.init();
+        try {
+            await Auth.init();
+        } catch (authErr) {
+            console.error('[App.init] Auth initialization failed:', authErr);
+        }
 
         // Apply saved theme on app start (and update icon if present)
         const savedTheme = localStorage.getItem('theme');
@@ -1218,12 +1222,12 @@ const App = {
                             };
                             const first = (submenuMap[mainView] && submenuMap[mainView][0]) || mainView;
                             try {
-                                await this.navigateTo(first);
+                                await this.navigateTo(first, 'mobile-nav-default');
                             } catch (navErr) {
                                 console.error('[MOBILE NAV] navigateTo error for', first, navErr);
                             }
                         }
-                        retrn;
+                        return;
                     }
 
                     if (isMobile && item.classList.contains('nav-subitem') && navGroup) {
@@ -1237,7 +1241,7 @@ const App = {
                         this.updateHeaderSubmenu(view);
                     }
                     const settingsTab = item.dataset.settingsTab;
-                    await App.navigateTo(view);
+                    await App.navigateTo(view, 'mobile-nav-bar');
                     if (view === 'settings' && settingsTab) {
                         setTimeout(() => {
                             const tabButton = document.querySelector(`.settings-tab-btn[data-tab="${settingsTab}"]`);
@@ -1883,12 +1887,13 @@ const App = {
         });
 
         // Settings tabs
-        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+        // Settings tabs - handled by initializeSettingsViewListeners to avoid duplicates
+        /* document.querySelectorAll('.settings-tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tabName = btn.dataset.tab;
                 this.switchSettingsTab(tabName);
             });
-        });
+        }); */
 
         // Add User Button (Admin only) - using event delegation
         document.addEventListener('click', (e) => {
@@ -1934,7 +1939,7 @@ const App = {
         const newsBannerButton = document.getElementById('newsBannerButton');
         if (newsBannerButton) {
             newsBannerButton.addEventListener('click', () => {
-                this.navigateTo('news');
+                this.navigateTo('news', 'app-init');
                 this.hideNewsBanner();
             });
         }
@@ -2005,10 +2010,10 @@ const App = {
 
 
     // Navigate to a specific view
-    async navigateTo(view) {
+    async navigateTo(view, triggerSource = 'unknown') {
         // Lade-Overlay wird nur noch in den jeweiligen Datenladefunktionen angezeigt
         try {
-            console.log('[navigateTo] called with view:', view);
+            Logger.info('Navigate To', `${view} (Trigger: ${triggerSource})`);
 
             // Declare overlay and loading flag at function start so they're accessible in all code paths
             const overlay = document.getElementById('globalLoadingOverlay');
@@ -2147,29 +2152,7 @@ const App = {
                 } else if (view === 'probeorte' || view === 'tonstudio') {
                     // Render dynamic calendar tabs first
                     await this.renderProbeorteCalendarTabs();
-
-                    // Ensure tonstudio tab and container are active first
-                    setTimeout(() => {
-                        const tonstudioTab = document.querySelector('.calendar-tab[data-calendar="tonstudio"]');
-                        const tonstudioContainer = document.getElementById('tonstudioCalendar');
-
-                        if (tonstudioTab) {
-                            document.querySelectorAll('.calendar-tab').forEach(t => t.classList.remove('active'));
-                            tonstudioTab.classList.add('active');
-                        }
-
-                        if (tonstudioContainer) {
-                            document.querySelectorAll('.calendar-container').forEach(c => c.classList.remove('active'));
-                            tonstudioContainer.classList.add('active');
-                        }
-
-                        // Load calendar when navigating to probeorte view
-                        if (typeof Calendar !== 'undefined' && Calendar.loadCalendar) {
-                            Calendar.loadCalendar('tonstudio');
-                        } else {
-                            console.error('Calendar object not found!');
-                        }
-                    }, 50);
+                    // Redundant loading logic removed - handled by renderProbeorteCalendarTabs
                 } else if (view === 'musikpool') {
                     // Musikerpool mit Timeout und garantiertem Ausblenden des Overlays laden
                     if (typeof Musikpool !== 'undefined' && Musikpool.loadGroupData) {
@@ -2259,7 +2242,7 @@ const App = {
 
     // Settings tab switching
     switchSettingsTab(tabName) {
-        console.log('[switchSettingsTab] Switching to:', tabName);
+        Logger.action('Switch Settings Tab', tabName);
         const tabs = document.querySelectorAll('.settings-tab-content');
         const btns = document.querySelectorAll('.settings-tab-btn');
 
@@ -2455,7 +2438,7 @@ const App = {
 
     // Handle adding a new user (Admin only)
     async handleAddUser() {
-        console.log('[handleAddUser] Starting...');
+        Logger.action('Add User Attempt');
         if (!Auth.isAdmin()) {
             UI.showToast('Keine Berechtigung', 'error');
             return;
@@ -2580,10 +2563,14 @@ const App = {
             overlay.style.display = 'flex';
             overlay.style.opacity = '1';
         }
-        console.log('[renderNewsView] Starting to render news...');
+        Logger.time('News Full Refresh'); // Added missing start timer
+        Logger.time('Render News');
         const newsItems = await Storage.getAllNews();
         this.newsItems = newsItems;
+        Logger.time('News Render');
         this.renderNewsList(newsItems);
+        Logger.timeEnd('News Render');
+        Logger.timeEnd('News Full Refresh');
     },
 
     renderNewsList(newsItems) {
@@ -3186,7 +3173,7 @@ const App = {
 
             for (let i = startIndex; i < lines.length; i++) {
                 let line = lines[i].trim();
-                console.log(`Checking line ${i}:`, line);
+
                 if (!line) continue;
 
                 // Detect delimiter
@@ -3195,7 +3182,7 @@ const App = {
                 // so we assume simple CSV first. 
                 // Remove quotes from start/end of parts
                 const parts = line.split(delimiter).map(p => p.trim().replace(/^"|"$/g, ''));
-                console.log(`Parsed parts for line ${i}:`, parts);
+
 
                 // Expected format: Titel, Interpret, BPM, Tonart, Lead Vocal, CCLI
                 if (parts.length >= 2) {
@@ -3219,10 +3206,10 @@ const App = {
                                 leadVocal: leadVocal,
                                 ccli: ccli
                             };
-                            console.log('Attempting to save song:', songData);
+                            Logger.info('Importing song', songData.title);
                             await Storage.createSong(songData);
                             successCount++;
-                            console.log('Save successful');
+
                         } catch (err) {
                             console.error('Import error for line:', line, err);
                             dbErrorCount++;
@@ -3377,7 +3364,7 @@ const App = {
         }
 
         const songs = await Storage.getEventSongs(eventId);
-        console.log('renderEventSongs - eventId:', eventId, 'songs:', songs);
+        Logger.time(`Render Event Songs ${eventId}`);
 
         // Get band ID from event to show band songs
         const event = await Storage.getById('events', eventId);
@@ -4024,7 +4011,7 @@ const App = {
 
         await this.updateDashboard();
         await this.updateNavigationVisibility();
-        this.navigateTo('dashboard');
+        this.navigateTo('dashboard', 'login-success');
         // Ensure create news button visibility immediately after login (so admins/leaders see it without navigating)
         const createNewsBtnGlobal = document.getElementById('createNewsBtn');
         if (createNewsBtnGlobal) {
@@ -4305,14 +4292,14 @@ const App = {
                         }
                     }
 
-                    console.log('Updating user profile with:', updates);
+                    Logger.action('Update Profile', updates);
 
                     if (password && password.trim() !== '') {
                         updates.password = password;
                     }
 
                     const updateResult = await Storage.updateUser(user.id, updates);
-                    console.log('Update result:', updateResult);
+
 
                     // Update email in Supabase Auth if changed
                     if (email !== user.email) {
@@ -4336,7 +4323,7 @@ const App = {
                     // Update current session user data
                     await Auth.updateCurrentUser();
                     const updatedUser = Auth.getCurrentUser();
-                    console.log('Updated user:', updatedUser);
+                    Logger.info('Profile Updated');
 
                     // Update header
                     const currentUserElem = document.getElementById('currentUserName');
@@ -4637,7 +4624,7 @@ const App = {
     },
 
     async openSettingsModal() {
-        console.log('[openSettingsModal] Starting...');
+        Logger.action('Open Settings Modal');
         const user = Auth.currentUser;
         if (!user) {
             console.warn('[openSettingsModal] No user found!');
@@ -6053,7 +6040,7 @@ const App = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        console.time('dashboard-load');
+        Logger.time('dashboard-load');
 
         // --- 1. Immediate Updates (Static / Local Data) ---
 
@@ -6066,10 +6053,10 @@ const App = {
         // Stat Cards Click Handlers
         const statCards = document.querySelectorAll('.stat-card');
         if (statCards.length >= 4) {
-            statCards[0].onclick = () => this.navigateTo('bands');
-            statCards[1].onclick = () => this.navigateTo('events');
-            statCards[2].onclick = () => this.navigateTo('rehearsals');
-            statCards[3].onclick = () => this.navigateTo('rehearsals');
+            statCards[0].onclick = () => this.navigateTo('bands', 'stats-card-bands');
+            statCards[1].onclick = () => this.navigateTo('events', 'stats-card-events');
+            statCards[2].onclick = () => this.navigateTo('rehearsals', 'stats-card-rehearsals');
+            statCards[3].onclick = () => this.navigateTo('rehearsals', 'stats-card-next-rehearsal');
         }
 
         // Quick Access (Sync) - Render Immediately
@@ -6281,7 +6268,7 @@ const App = {
                         const heroCard = document.getElementById('nextEventHero');
                         if (heroCard) {
                             heroCard.style.cursor = 'pointer';
-                            heroCard.onclick = () => this.navigateTo(nextItem.type === 'Gig' ? 'events' : 'rehearsals');
+                            heroCard.onclick = () => this.navigateTo(nextItem.type === 'Gig' ? 'events' : 'rehearsals', 'dashboard-hero-card');
                         }
                     } else {
                         nextEventContent.innerHTML = `<div class="next-event-placeholder">Keine anstehenden Termine ❤️</div>`;
@@ -6330,16 +6317,16 @@ const App = {
                     activitySection.querySelectorAll('.dashboard-activity-item.clickable').forEach(item => {
                         item.addEventListener('click', async () => {
                             const type = item.dataset.type;
-                            if (type === 'event') self.navigateTo('events');
-                            else if (type === 'rehearsal') self.navigateTo('rehearsals');
-                            else self.navigateTo('news');
+                            if (type === 'event') self.navigateTo('events', 'dashboard-upcoming-list-event');
+                            else if (type === 'rehearsal') self.navigateTo('rehearsals', 'dashboard-upcoming-list-rehearsal');
+                            else self.navigateTo('news', 'dashboard-upcoming-list-unknown');
                         });
                     });
                 }
             }
         });
 
-        console.timeEnd('dashboard-load');
+        Logger.timeEnd('dashboard-load');
     },
 
     // Render upcoming events and rehearsals sorted by date
@@ -6403,7 +6390,7 @@ const App = {
             }
 
             return `
-                <div class="upcoming-card" onclick="App.navigateTo('${item.type === 'event' ? 'events' : 'rehearsals'}')" style="cursor: pointer;">
+                <div class="upcoming-card" onclick="App.navigateTo('${item.type === 'event' ? 'events' : 'rehearsals'}', 'dashboard-card-upcoming')" style="cursor: pointer;">
                     <div class="upcoming-card-icon">${typeIcon}</div>
                     <div class="upcoming-card-content">
                         <div class="upcoming-card-title">${Bands.escapeHtml(item.title)}</div>
@@ -6460,7 +6447,7 @@ const App = {
             }
             // Navigate to bands view so user sees their new band
             if (typeof App.navigateTo === 'function') {
-                App.navigateTo('bands');
+                App.navigateTo('bands', 'dashboard-create-band-btn');
             }
         });
     },
@@ -6506,7 +6493,7 @@ const App = {
 
             // Wenn die aktuelle Ansicht "bands" ist, Ansicht neu laden
             if (this.currentView === 'bands') {
-                await this.navigateTo('bands');
+                await this.navigateTo('bands', 'dashboard-join-band-btn');
             }
 
             // Refresh band management list if admin

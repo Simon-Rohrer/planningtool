@@ -2,6 +2,10 @@
 // Storage Module - Supabase-only (no localStorage fallback)
 
 const Storage = {
+    calendarsCache: null,
+    calendarsCacheTimestamp: 0,
+    CACHE_DURATION: 300000, // 5 minutes cache
+
     // Löscht einen User aus der eigenen Datenbank
     async deleteUser(userId) {
         const sb = SupabaseClient.getClient();
@@ -694,6 +698,8 @@ const Storage = {
             const result = await response.json();
             console.log('[Storage.createCalendar] Created successfully:', result);
 
+            this.calendarsCache = null; // Invalidate cache
+
             return Array.isArray(result) ? result[0] : result;
         } catch (error) {
             console.error('[Storage.createCalendar] Fetch error:', error);
@@ -702,6 +708,11 @@ const Storage = {
     },
 
     async getAllCalendars() {
+        if (this.calendarsCache && (Date.now() - this.calendarsCacheTimestamp < this.CACHE_DURATION)) {
+            console.log('[Storage.getAllCalendars] Returning cached calendars');
+            return this.calendarsCache;
+        }
+
         console.log('[Storage.getAllCalendars] Using direct REST API call...');
         try {
             const sb = SupabaseClient.getClient();
@@ -715,7 +726,7 @@ const Storage = {
                     'apikey': supabaseKey,
                     'Authorization': `Bearer ${supabaseKey}`
                 },
-                cache: 'no-store'  // Prevent caching
+                // cache: 'no-store'  // Removed to allow browser caching if applicable (though we handle it manually)
             });
 
             if (!response.ok) {
@@ -726,6 +737,10 @@ const Storage = {
 
             const data = await response.json();
             console.log('[Storage.getAllCalendars] Loaded calendars:', data);
+
+            this.calendarsCache = data;
+            this.calendarsCacheTimestamp = Date.now();
+
             return data;
         } catch (error) {
             console.error('[Storage.getAllCalendars] Fetch error:', error);
@@ -776,6 +791,9 @@ const Storage = {
 
             const data = await response.json();
             console.log('[Storage.updateCalendar] Updated calendar:', data);
+
+            this.calendarsCache = null; // Invalidate cache
+
             return Array.isArray(data) ? data[0] : data;
         } catch (error) {
             console.error('[Storage.updateCalendar] Error:', error);
@@ -803,6 +821,9 @@ const Storage = {
             }
 
             console.log('[Storage.deleteCalendar] Calendar deleted successfully');
+
+            this.calendarsCache = null; // Invalidate cache
+
             return response.ok;
         } catch (error) {
             console.error('[Storage.deleteCalendar] Error:', error);

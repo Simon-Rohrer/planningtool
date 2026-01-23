@@ -36,6 +36,7 @@ const Bands = {
 
     // Render all user's bands
     async renderBands() {
+        Logger.time('Bands Load');
         // CRITICAL FIX: Always clear cached bands to force fresh data fetch
         // This prevents seeing old bands after logout/re-register
         this.bands = null;
@@ -108,6 +109,7 @@ const Bands = {
 
             // Update nav visibility based on current membership
             this.updateNavVisibility();
+            Logger.timeEnd('Bands Load');
 
         } catch (error) {
             console.error('Error rendering bands:', error);

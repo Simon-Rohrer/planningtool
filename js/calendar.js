@@ -109,15 +109,35 @@ const Calendar = {
     },
 
     async loadCalendar(calendarType = 'tonstudio') {
+        const timerLabel = 'Location Calendar Load: ' + calendarType;
+        Logger.time(timerLabel);
         const calendar = this.calendars[calendarType];
         if (!calendar) {
             console.error(`Calendar type "${calendarType}" not found`);
+            Logger.timeEnd(timerLabel);
             return;
         }
+
+        if (calendar.isLoading) {
+            console.log(`[Calendar] Already loading ${calendarType}, skipping...`);
+            Logger.timeEnd(timerLabel);
+            return;
+        }
+
+        // Prevent reload if already loaded (unless forced, but force logic isn't here yet)
+        if (calendar.events && calendar.events.length > 0) {
+            console.log(`[Calendar] ${calendarType} already loaded with ${calendar.events.length} events, skipping fetch.`);
+            this.renderMonthView(); // Just re-render
+            Logger.timeEnd(timerLabel);
+            return;
+        }
+
+        calendar.isLoading = true;
 
         const container = document.getElementById(calendar.containerId);
         if (!container) {
             console.error(`Container "${calendar.containerId}" not found`);
+            Logger.timeEnd(timerLabel);
             return;
         }
 
@@ -132,6 +152,7 @@ const Calendar = {
                     </p>
                 </div>
             `;
+            Logger.timeEnd(timerLabel);
             return;
         }
 
@@ -181,6 +202,7 @@ const Calendar = {
             console.log(`${calendarType} calendar loaded successfully with ${calendar.events.length} events`);
 
             this.renderMonthView();
+            Logger.timeEnd(timerLabel);
         } catch (error) {
             console.error(`Fehler beim Laden des ${calendarType} Kalenders:`, error);
             container.innerHTML = `

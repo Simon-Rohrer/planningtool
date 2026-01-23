@@ -15,6 +15,7 @@ const Rehearsals = {
         });
     },
     currentFilter: '',
+    isLoading: false,
     currentRehearsalId: null,
     expandedRehearsalId: null,
 
@@ -28,53 +29,69 @@ const Rehearsals = {
 
     // Render all rehearsals
     async renderRehearsals(filterBandId = '') {
-        // Nur laden, wenn noch keine Rehearsals im Speicher
-        if (this.rehearsals && Array.isArray(this.rehearsals) && this.rehearsals.length > 0 && !filterBandId) {
-            this.renderRehearsalsList(this.rehearsals);
+        if (this.isLoading) {
+            console.log('[Rehearsals] Already loading, skipping.');
             return;
         }
-        const user = Auth.getCurrentUser();
-        if (!user) return;
-        let rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
-        this.rehearsals = rehearsals;
-        // Apply filter
-        if (filterBandId) {
-            rehearsals = rehearsals.filter(r => r.bandId === filterBandId);
+        this.isLoading = true;
+        Logger.time('Load Rehearsals');
+
+        try {
+            // Nur laden, wenn noch keine Rehearsals im Speicher
+            if (this.rehearsals && Array.isArray(this.rehearsals) && this.rehearsals.length > 0 && !filterBandId) {
+                this.renderRehearsalsList(this.rehearsals);
+                Logger.timeEnd('Load Rehearsals');
+                return;
+            }
+            const user = Auth.getCurrentUser();
+            if (!user) {
+                Logger.timeEnd('Load Rehearsals');
+                return;
+            }
+            let rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
+            this.rehearsals = rehearsals;
+            // Apply filter
+            if (filterBandId) {
+                rehearsals = rehearsals.filter(r => r.bandId === filterBandId);
+            }
+            // Sort by effective date (Upcoming first, then past)
+            const now = new Date();
+            const getEffectiveDate = (r) => {
+                if (r.status === 'confirmed' && r.confirmedDate) {
+                    return r.confirmedDate.startTime ? new Date(r.confirmedDate.startTime) : new Date(r.confirmedDate);
+                }
+                if (r.proposedDates && r.proposedDates.length > 0) {
+                    // Find earliest proposed date
+                    return r.proposedDates.reduce((earliest, current) => {
+                        const d = current.startTime ? new Date(current.startTime) : new Date(current);
+                        return d < earliest ? d : earliest;
+                    }, new Date(8640000000000000));
+                }
+                return new Date(r.createdAt); // Fallback
+            };
+
+            rehearsals.sort((a, b) => {
+                const dateA = getEffectiveDate(a);
+                const dateB = getEffectiveDate(b);
+                const isPastA = dateA < now;
+                const isPastB = dateB < now;
+
+                if (isPastA && !isPastB) return 1; // Past at bottom
+                if (!isPastA && isPastB) return -1; // Future at top
+
+                if (!isPastA && !isPastB) {
+                    // Both future: Ascending (nearest first)
+                    return dateA - dateB;
+                } else {
+                    // Both past: Descending (most recent past first)
+                    return dateB - dateA;
+                }
+            });
+            await this.renderRehearsalsList(rehearsals);
+            Logger.timeEnd('Load Rehearsals');
+        } finally {
+            this.isLoading = false;
         }
-        // Sort by effective date (Upcoming first, then past)
-        const now = new Date();
-        const getEffectiveDate = (r) => {
-            if (r.status === 'confirmed' && r.confirmedDate) {
-                return r.confirmedDate.startTime ? new Date(r.confirmedDate.startTime) : new Date(r.confirmedDate);
-            }
-            if (r.proposedDates && r.proposedDates.length > 0) {
-                // Find earliest proposed date
-                return r.proposedDates.reduce((earliest, current) => {
-                    const d = current.startTime ? new Date(current.startTime) : new Date(current);
-                    return d < earliest ? d : earliest;
-                }, new Date(8640000000000000));
-            }
-            return new Date(r.createdAt); // Fallback
-        };
-
-        rehearsals.sort((a, b) => {
-            const dateA = getEffectiveDate(a);
-            const dateB = getEffectiveDate(b);
-            const isPastA = dateA < now;
-            const isPastB = dateB < now;
-
-            if (isPastA && !isPastB) return 1; // Past at bottom
-            if (!isPastA && isPastB) return -1; // Future at top
-
-            if (!isPastA && !isPastB) {
-                // Both future: Ascending (nearest first)
-                return dateA - dateB;
-            } else {
-                // Both past: Descending (most recent past first)
-                return dateB - dateA;
-            }
-        });
-        this.renderRehearsalsList(rehearsals);
     },
 
     // Rendering der Proben-Liste (inkl. Overlay-Ausblendung und Event-Handler)

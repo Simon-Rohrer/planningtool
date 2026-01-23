@@ -28,6 +28,12 @@ const Auth = {
     },
 
     async init() {
+        if (this.initialized) {
+            console.log('[Auth.init] Already initialized, skipping');
+            return;
+        }
+        this.initialized = true;
+
         // Set the single valid registration code
         const validCode = 'c2j5Dps!';
         localStorage.setItem('registrationCodes', JSON.stringify([validCode]));
@@ -36,9 +42,16 @@ const Auth = {
         // Check for existing Supabase session
         const sb = SupabaseClient.getClient();
         if (sb) {
-            const { data: { session } } = await sb.auth.getSession();
-            if (session) {
-                await this.setCurrentUser(session.user);
+            try {
+                const { data, error } = await sb.auth.getSession();
+                if (error) {
+                    console.warn('[Auth.init] Supabase session check error:', error);
+                } else if (data && data.session) {
+                    await this.setCurrentUser(data.session.user);
+                }
+            } catch (err) {
+                console.error('[Auth.init] Failed to get Supabase session (likely AbortError or network issue):', err);
+                // Proceed as logged out, do not crash
             }
         }
 
@@ -60,7 +73,7 @@ const Auth = {
         this.supabaseUser = supabaseAuthUser;
         // Load profile from users table
         const profile = await Storage.getById('users', supabaseAuthUser.id);
-        console.log('[Auth.setCurrentUser] Profile from storage:', profile);
+        // console.log('[Auth.setCurrentUser] Profile from storage:', profile);
 
         if (profile) {
             this.currentUser = profile;
@@ -74,7 +87,7 @@ const Auth = {
                 isAdmin: false // Explicitly set to false in fallback if unknown
             };
         }
-        console.log('[Auth.setCurrentUser] Final currentUser:', JSON.stringify(this.currentUser, null, 2));
+        // console.log('[Auth.setCurrentUser] Final currentUser:', JSON.stringify(this.currentUser, null, 2));
         console.log('[Auth.setCurrentUser] Is Admin?', this.currentUser.isAdmin);
     },
 
@@ -448,4 +461,5 @@ const Auth = {
 };
 
 // Initialize auth on load
-Auth.init();
+// Auth.init() is now called by App.init() in app.js
+// Auth.init();
