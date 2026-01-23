@@ -5945,19 +5945,150 @@ input:checked+.toggle-slider:before {
     word-wrap: break-word;
 }
 
+
+
+/* News Hero & Modern Layout */
+.news-modal-content {
+    background: var(--color-bg);
+    border-radius: var(--radius-lg);
+    position: relative;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.news-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 20;
+    color: white;
+    background: rgba(0, 0, 0, 0.3);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.news-modal-close:hover {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* Hero Section */
+.news-hero-section {
+    width: 100%;
+    height: 400px;
+    /* Default height */
+    position: relative;
+    background-color: var(--color-bg-secondary);
+    flex-shrink: 0;
+}
+
+.news-hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    cursor: pointer;
+}
+
+.news-hero-placeholder {
+    height: 120px;
+    /* Smaller if no image */
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+}
+
+.news-modal-body {
+    padding: var(--spacing-xl);
+    overflow-y: auto;
+}
+
+.news-header-block {
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--spacing-md);
+}
+
 #newsDetailTitle {
-    font-size: 1.75rem;
-    font-weight: var(--font-weight-bold);
+    font-size: 2.5rem;
+    font-weight: 800;
     color: var(--color-text);
-    margin-bottom: var(--spacing-sm);
-    line-height: 1.3;
+    margin-bottom: var(--spacing-xs);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
 #newsDetailDate {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     color: var(--color-text-secondary);
-    margin-bottom: var(--spacing-md);
+    font-weight: 500;
 }
+
+.news-content-modern {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--color-text);
+    max-width: 100%;
+    /* Ensure it fits */
+}
+
+/* Ensure inline images inside modern content work well */
+.news-content-modern img {
+    width: 100% !important;
+    height: auto;
+    border-radius: var(--radius-md);
+    margin: var(--spacing-lg) 0;
+    display: block;
+    cursor: pointer;
+    background: var(--color-bg-secondary);
+}
+
+.news-gallery-section {
+    margin-top: var(--spacing-2xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+}
+
+.news-modal-actions {
+    padding: var(--spacing-md) var(--spacing-xl);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+    background: var(--color-bg);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .news-hero-section {
+        height: 250px;
+    }
+
+    #newsDetailTitle {
+        font-size: 1.75rem;
+    }
+
+    .news-content-modern {
+        font-size: 1rem;
+    }
+
+    .news-modal-body {
+        padding: var(--spacing-lg);
+    }
+}
+
+
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
@@ -5994,6 +6125,10 @@ input:checked+.toggle-slider:before {
 @media (min-width: 769px) {
     #newsDetailModal .modal-content {
         max-width: 900px;
+        padding: 0;
+        /* Full bleed for hero */
+        overflow: hidden;
+        /* Round corners for hero */
     }
 
     #createNewsModal .modal-content {
@@ -6014,6 +6149,8 @@ input:checked+.toggle-slider:before {
 }
 
 .rte-button {
+    display: none !important;
+    /* Temporarily hidden per user request */
     min-width: 36px;
     height: 36px;
     padding: var(--spacing-xs) var(--spacing-sm);
@@ -6120,8 +6257,10 @@ input:checked+.toggle-slider:before {
 }
 
 /* Inline images in editor */
+/* Inline images in editor */
 .rte-editor img {
-    max-width: 100%;
+    max-width: 600px;
+    min-width: 300px;
     height: auto;
     border-radius: var(--radius-md);
     margin: var(--spacing-md) 0;
@@ -6182,10 +6321,79 @@ input:checked+.toggle-slider:before {
 }
 
 #newsDetailContent img {
-    max-width: 100%;
+    width: 100% !important;
     height: auto;
+    aspect-ratio: 16/9;
+    /* Force 16:9 aspect ratio */
+    object-fit: cover;
+    /* Crop to fill, avoiding distortion */
     border-radius: var(--radius-md);
     margin: var(--spacing-md) 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    background-color: #f0f0f0;
+    /* Fallback placeholder color */
+}
+
+#newsDetailContent img:hover {
+    transform: scale(1.01);
+}
+
+/* Lightbox Styles */
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    /* Hidden by default via JS removal/creation or display:none */
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.lightbox-overlay.visible {
+    opacity: 1;
+}
+
+.lightbox-content {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.lightbox-overlay.visible .lightbox-content {
+    transform: scale(1);
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.1);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 10001;
+}
+
+.lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* Responsive adjustments for RTE */

@@ -4,6 +4,8 @@
 
 /* ===== Rich Text Editor Helper ===== */
 const RichTextEditor = {
+    savedRange: null,  // Store current selection
+
     init() {
         console.log('[RichTextEditor] Initializing...');
 
@@ -13,32 +15,39 @@ const RichTextEditor = {
             const newBtn = btn.cloneNode(true);
             btn.parentNode.replaceChild(newBtn, btn);
 
-            newBtn.addEventListener('mousedown', (e) => {
-                e.preventDefault(); // Prevents focus loss from editor
+            newBtn.addEventListener('mousedown', (e) => {  // CRITICAL: mousedown preserves selection
+                e.preventDefault();
                 e.stopPropagation();
 
-                // Explicitly focus editor to ensure command works on selection
                 const editor = document.getElementById('newsContent');
-                if (editor) editor.focus();
+                if (!editor) return;
+
+                // Focus editor and restore selection
+                editor.focus();
+                if (this.savedRange) {
+                    this.restoreSelection(this.savedRange);
+                }
 
                 const command = newBtn.dataset.command;
+                const value = newBtn.dataset.value || null;
 
                 if (command === 'insertImage') {
-                    // Handled by specific ID listener or fallback here
                     const input = document.getElementById('rteImageInput');
                     if (input) input.click();
                 } else if (command === 'formatBlock') {
-                    document.execCommand(command, false, newBtn.dataset.value);
+                    document.execCommand(command, false, value);
                 } else {
-                    document.execCommand(command, false, null);
+                    document.execCommand(command, false, value);
                 }
+
+                // Save selection after command
+                this.savedRange = this.saveSelection();
 
                 // Update toolbar active states
                 this.updateToolbarState();
 
-                // Keep focus in editor (should persist due to preventDefault, but ensuring it)
-                // const editor = document.getElementById('newsContent');
-                // if (editor) editor.focus();
+                // Keep focus in editor
+                editor.focus();
             });
         });
 
@@ -47,7 +56,15 @@ const RichTextEditor = {
         if (imgBtn) {
             imgBtn.onclick = (e) => {
                 e.preventDefault();
-                document.getElementById('rteImageInput').click();
+                const input = document.getElementById('rteImageInput');
+                if (input) {
+                    const editor = document.getElementById('newsContent');
+                    if (editor) {
+                        editor.focus();
+                        this.savedRange = this.saveSelection();
+                    }
+                    input.click();
+                }
             };
         }
 
@@ -57,17 +74,20 @@ const RichTextEditor = {
             imgInput.onchange = (e) => this.handleImageUpload(e);
         }
 
-        // Editor events for toolbar state updates
+        // Editor events for toolbar state updates and selection tracking
         const editor = document.getElementById('newsContent');
         if (editor) {
-            editor.addEventListener('keyup', () => this.updateToolbarState());
-            editor.addEventListener('mouseup', () => this.updateToolbarState());
-            editor.addEventListener('click', () => this.updateToolbarState());
-
-            // Allow drag and drop of images
-            editor.addEventListener('drop', (e) => {
-                // Let browser handle internal D&D, but maybe we want to handle external files too?
-                // For now, default browser behavior is fine for internal structure elements
+            editor.addEventListener('keyup', () => {
+                this.savedRange = this.saveSelection();
+                this.updateToolbarState();
+            });
+            editor.addEventListener('mouseup', () => {
+                this.savedRange = this.saveSelection();
+                this.updateToolbarState();
+            });
+            editor.addEventListener('click', () => {
+                this.savedRange = this.saveSelection();
+                this.updateToolbarState();
             });
         }
     },
@@ -144,13 +164,35 @@ const RichTextEditor = {
     insertImage(src) {
         // Focus editor first
         const editor = document.getElementById('newsContent');
-        if (editor) editor.focus();
+        if (!editor) return;
+        editor.focus();
 
-        // Insert image at cursor
-        // Using execCommand 'insertImage' is simplest for compatibility
-        // But we want custom styling, so insertHTML is better
-        const imgHtml = `<img src="${src}" class="rte-inline-image" style="max-width:100%; border-radius:8px; margin: 10px 0; display:block;">`;
-        document.execCommand('insertHTML', false, imgHtml);
+        // If we have a saved range, restore it
+        if (this.savedRange) {
+            this.restoreSelection(this.savedRange);
+        }
+
+        // Create image element
+        const img = document.createElement('img');
+        img.src = src;
+        img.className = 'rte-inline-image';
+        img.style.maxWidth = '800px';
+        img.style.minWidth = '400px';
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        img.style.margin = '1rem 0';
+        img.style.borderRadius = '8px';
+        img.style.display = 'block';
+        img.style.cursor = 'pointer';
+
+        this.insertNodeAtCursor(img);
+
+        // Add a line break after image for easier text continuation
+        const br = document.createElement('br');
+        this.insertNodeAtCursor(br);
+
+        // Save new selection
+        this.savedRange = this.saveSelection();
     },
 
     getContent() {
@@ -170,6 +212,40 @@ const RichTextEditor = {
     clear() {
         const editor = document.getElementById('newsContent');
         if (editor) editor.innerHTML = '';
+    },
+
+    // Save current selection
+    saveSelection() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            return selection.getRangeAt(0);
+        }
+        return null;
+    },
+
+    // Restore saved selection
+    restoreSelection(range) {
+        if (range) {
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    },
+
+    // Insert node at cursor position
+    insertNodeAtCursor(node) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(node);
+
+        // Move cursor after inserted node
+        range.setStartAfter(node);
+        range.setEndAfter(node);
+        selection.removeAllRanges();
+        selection.addRange(range);
     },
 
     // Simple sanitization
@@ -1801,13 +1877,15 @@ const App = {
         }
 
         // Modal close buttons
-        document.querySelectorAll('.cancel').forEach(btn => {
-            btn.addEventListener('click', async () => {
+        // Modal close buttons - Event Delegation for dynamic content
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.cancel');
+            if (btn) {
+                e.preventDefault();
                 const modal = btn.closest('.modal');
                 if (modal) {
                     // If closing event modal, restore deleted songs
                     if (modal.id === 'createEventModal' && this.deletedEventSongs.length > 0) {
-                        // Wiederherstellen gelöschter Songs
                         for (const song of this.deletedEventSongs) {
                             await Storage.createSong(song);
                         }
@@ -1816,7 +1894,7 @@ const App = {
                     }
                     UI.closeModal(modal.id);
                 }
-            });
+            }
         });
 
         // Close modals on background click
@@ -2195,11 +2273,7 @@ const App = {
                 // Define parent-child relationships for navigation highlighting
                 const parentViewMap = {
                     'bands': 'dashboard',
-                    'musikpool': 'dashboard',
-                    'probeorte': 'rehearsals',
-                    'tonstudio': 'rehearsals',
-                    'kalender': 'rehearsals',
-                    'news': 'statistics'
+                    'musikpool': 'dashboard'
                 };
                 const parentView = parentViewMap[view];
 
@@ -3005,7 +3079,34 @@ const App = {
             return;
         }
 
-        // Populate modal with modern styling
+        // Reset Containers
+        const heroContainer = document.getElementById('newsDetailHero');
+        const imagesContainer = document.getElementById('newsDetailImages');
+        heroContainer.innerHTML = '';
+        imagesContainer.innerHTML = '';
+
+        // Determine Hero Image vs Gallery Images
+        let heroImgSrc = null;
+        let galleryImages = [];
+
+        if (news.images && Array.isArray(news.images) && news.images.length > 0) {
+            heroImgSrc = news.images[0]; // First image is Hero
+            galleryImages = news.images.slice(1); // Rest are gallery
+        }
+
+        // Render Hero
+        if (heroImgSrc) {
+            heroContainer.innerHTML = `<img src="${heroImgSrc}" class="news-hero-image" alt="Titelbild">`;
+        } else {
+            // Creative Placeholder
+            heroContainer.innerHTML = `
+                <div class="news-hero-placeholder">
+                    <span>📰</span>
+                </div>
+            `;
+        }
+
+        // Populate Text
         document.getElementById('newsDetailTitle').textContent = news.title || '';
 
         const date = new Date(news.createdAt).toLocaleDateString('de-DE', {
@@ -3018,22 +3119,20 @@ const App = {
         // Use innerHTML directly (content is sanitized on save by RichTextEditor)
         document.getElementById('newsDetailContent').innerHTML = news.content || '';
 
-        // Render images in modern gallery grid
-        const imagesContainer = document.getElementById('newsDetailImages');
-        imagesContainer.innerHTML = '';
-        if (news.images && Array.isArray(news.images) && news.images.length > 0) {
+        // Render remaining images in modern gallery grid
+        if (galleryImages.length > 0) {
             // Create gallery grid based on image count
-            const galleryClass = news.images.length === 1 ? 'news-gallery-grid-single' : 'news-gallery-grid';
+            const galleryClass = galleryImages.length === 1 ? 'news-gallery-grid-single' : 'news-gallery-grid';
             const gallery = document.createElement('div');
             gallery.className = galleryClass;
 
-            news.images.forEach(imgSrc => {
+            galleryImages.forEach(imgSrc => {
                 const imgWrapper = document.createElement('div');
                 imgWrapper.className = 'news-gallery-item';
 
                 const img = document.createElement('img');
                 img.src = imgSrc;
-                img.alt = 'News image';
+                img.alt = 'Galeriebild';
 
                 imgWrapper.appendChild(img);
                 gallery.appendChild(imgWrapper);
@@ -3057,6 +3156,71 @@ const App = {
 
         // Open modal
         UI.openModal('newsDetailModal');
+
+        // Attach Lightbox listeners to all images (Hero + Inline + Gallery)
+        setTimeout(() => {
+            const allImages = [
+                ...document.querySelectorAll('#newsDetailHero img'),
+                ...document.querySelectorAll('#newsDetailContent img'),
+                ...document.querySelectorAll('#newsDetailImages img')
+            ];
+
+            allImages.forEach(img => {
+                img.style.cursor = 'pointer'; // Ensure cursor shows interactivity
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent modal interactions
+                    this.renderLightbox(img.src);
+                });
+            });
+        }, 100); // Small delay to ensure DOM is updated
+    },
+
+    renderLightbox(imgSrc) {
+        // Remove existing lightbox if any
+        const existing = document.querySelector('.lightbox-overlay');
+        if (existing) existing.remove();
+
+        // Create elements
+        const overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+
+        const content = document.createElement('img');
+        content.className = 'lightbox-content';
+        content.src = imgSrc;
+
+        const closeBtn = document.createElement('div');
+        closeBtn.className = 'lightbox-close';
+        closeBtn.innerHTML = '×'; // or use an icon
+
+        // Assemble
+        overlay.appendChild(closeBtn);
+        overlay.appendChild(content);
+        document.body.appendChild(overlay);
+
+        // Animation entry
+        requestAnimationFrame(() => {
+            overlay.classList.add('visible');
+        });
+
+        // Close handlers
+        const closeLightbox = () => {
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.remove(), 300);
+        };
+
+        closeBtn.addEventListener('click', closeLightbox);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeLightbox();
+        });
+
+        // Escape key to close
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeLightbox();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
     },
 
     // Update the news nav item with an unread indicator for the current user

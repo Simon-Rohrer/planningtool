@@ -2254,22 +2254,29 @@
         </div>
 
         <!-- News Detail Modal -->
-        <div id="newsDetailModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="newsDetailTitle">News Details</h2>
-                    <button class="modal-close">&times;</button>
+        <div id="newsDetailModal" class="modal news-detail-modal">
+            <div class="modal-content news-modal-content">
+                <button class="modal-close news-modal-close">&times;</button>
+
+                <div id="newsDetailHero" class="news-hero-section">
+                    <!-- Hero Image injected here -->
                 </div>
-                <div class="modal-body">
-                    <p id="newsDetailDate"
-                        style="font-size: 0.875rem; color: var(--color-text-light); margin-bottom: var(--spacing-md);">
-                    </p>
-                    <div id="newsDetailImages"
-                        style="display:flex; gap:0.5rem; margin-bottom: var(--spacing-lg); flex-wrap:wrap;"></div>
-                    <p id="newsDetailContent" style="color: var(--color-text-secondary); white-space: pre-wrap;">
-                    </p>
+
+                <div class="modal-body news-modal-body">
+                    <div class="news-header-block">
+                        <h2 id="newsDetailTitle"></h2>
+                        <p id="newsDetailDate"></p>
+                    </div>
+
+                    <div id="newsDetailContent" class="news-content-modern">
+                    </div>
+
+                    <div id="newsDetailImages" class="news-gallery-section">
+                        <!-- Remaining images rendered here -->
+                    </div>
                 </div>
-                <div class="modal-actions">
+
+                <div class="modal-actions news-modal-actions">
                     <button type="button" class="btn btn-secondary cancel">Schließen</button>
                 </div>
             </div>
@@ -2433,7 +2440,7 @@
     <script src="js/ui.js?v=1.0.1"></script>
     <script src="js/logger.js?v=1.0.1"></script>
     <script src="js/feedback-service.js?v=1.0.1"></script>
-    <script src="js/app.js?v=1.0.4"></script>
+    <script src="js/app.js?v=1.0.20"></script>
 
 
     <!-- Service Worker Registration -->
