@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="css/calendar.css">
     <link rel="stylesheet" href="css/loader.css">
     <link rel="stylesheet" href="css/settings_modal.css">
+    <link rel="stylesheet" href="css/statistics.css">
 
     <!-- Supabase JS (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -388,19 +389,19 @@
                         </div>
                     </div>
 
-                    <!-- 6. EINSTELLUNGEN -->
-                    <div class="nav-group" style="margin-top: auto;">
-                        <button class="nav-item nav-main" id="openSettingsBtnSidebar">
-                            <span class="nav-icon">⚙️</span>
-                            <span class="nav-label">Einstellungen</span>
-                        </button>
-                    </div>
-
                     <!-- Feedback Button -->
-                    <div class="nav-group">
+                    <div class="nav-group" style="margin-top: auto;">
                         <button class="nav-item nav-main" id="feedbackBtnSidebar">
                             <span class="nav-icon">📢</span>
                             <span class="nav-label">Feedback</span>
+                        </button>
+                    </div>
+
+                    <!-- 6. EINSTELLUNGEN -->
+                    <div class="nav-group">
+                        <button class="nav-item nav-main" id="openSettingsBtnSidebar">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-label">Einstellungen</span>
                         </button>
                     </div>
 
@@ -767,19 +768,12 @@
                     <div id="statisticsView" class="view">
                         <div class="view-header">
                             <h2>Statistiken</h2>
-                            <div style="display:flex; gap: 0.5rem; align-items:center;">
-                                <select id="statsBandSelect" class="form-select">
-                                    <option value="">Band auswählen</option>
-                                </select>
-                                <select id="statsRehearsalSelect" class="form-select">
-                                    <option value="">Probetermin auswählen</option>
-                                </select>
-                            </div>
+                            <!-- Future: Date Range Picker or similar could go here -->
                         </div>
-                        <div id="statisticsContent" class="statistics-content">
-                            <div class="empty-state">
-                                <div class="empty-icon">📊</div>
-                                <p>Wähle einen Probetermin aus, um die Statistiken zu sehen</p>
+                        <div id="statisticsContent" class="statistics-content-modern">
+                            <!-- Helper container for the dashboard -->
+                            <div id="statsDashboardContainer" class="stats-dashboard-container">
+                                <!-- Content will be injected via JS -->
                             </div>
                         </div>
                     </div>

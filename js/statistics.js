@@ -3,6 +3,173 @@
 const Statistics = {
     loadingStates: {},
 
+    // NEW: Render General Statistics Dashboard
+    async renderGeneralStatistics() {
+        Logger.time('Statistics Load (General)');
+        const container = document.getElementById('statsDashboardContainer');
+        if (!container) return; // Should exist if HTML is updated
+
+        // Show loading state
+        container.innerHTML = '<div class="loader-spinner" style="margin:50px auto;"></div>';
+
+        try {
+            const user = Auth.getCurrentUser();
+            if (!user) return;
+
+            // 1. Fetch Data
+            const [bands, events, rehearsals, locations] = await Promise.all([
+                Storage.getUserBands(user.id),
+                Storage.getUserEvents(user.id),     // Gets all events accessible to user
+                Storage.getUserRehearsals(user.id), // Gets all rehearsals
+                Storage.getLocations()
+            ]);
+
+            // 2. Calculate Key Metrics
+            const totalEvents = events.length;
+            const totalRehearsals = rehearsals.length;
+            const totalBands = bands.length;
+
+            // Calculate "Songs Repertoire Size" (Unique songs in all bands)
+            // Note: This relies on songs being fetched per band or globally. 
+            // For now, let's estimate or fetch if possible.
+            // Let's iterate all bands and fetch songs to get a true unique count.
+            const allSongs = new Set();
+            for (const band of bands) {
+                const bandSongs = await Storage.getBandSongs(band.id);
+                bandSongs.forEach(s => allSongs.add(s.title.toLowerCase().trim()));
+            }
+            const repertoireSize = allSongs.size;
+
+            // 3. Fun Stats: Top Song & Favorite Location
+            const songCounts = {};
+            const locationCounts = {};
+
+            // Analyze Events
+            events.forEach(e => {
+                if (e.setlist) {
+                    e.setlist.forEach(s => {
+                        const title = s.title || s.name || 'Unknown';
+                        songCounts[title] = (songCounts[title] || 0) + 1;
+                    });
+                }
+                if (e.locationId) {
+                    locationCounts[e.locationId] = (locationCounts[e.locationId] || 0) + 1;
+                }
+            });
+
+            // Analyze Rehearsals (for location only, typically no setlist stored directly as simple array yet? 
+            // Actually rehearsal might have song list. Let's assume yes if available)
+            rehearsals.forEach(r => {
+                if (r.locationId) {
+                    locationCounts[r.locationId] = (locationCounts[r.locationId] || 0) + 1;
+                }
+            });
+
+            // Find Top Song
+            let topSong = { name: '-', count: 0 };
+            Object.entries(songCounts).forEach(([name, count]) => {
+                if (count > topSong.count) topSong = { name, count };
+            });
+
+            // Find Favorite Location
+            let favLocation = { name: '-', count: 0 };
+            Object.entries(locationCounts).forEach(([id, count]) => {
+                if (count > favLocation.count) {
+                    // Try to find name in locations list
+                    const locObj = locations.find(l => l.id === id);
+                    const name = locObj ? locObj.name : 'Unbekannter Ort';
+                    favLocation = { name, count };
+                }
+            });
+
+            // 4. Render Dashboard
+            container.innerHTML = `
+                <!-- Key Metrics Grid -->
+                <div class="stats-grid">
+                    <div class="stats-card-modern">
+                        <span class="stats-card-icon-bg">🎤</span>
+                        <div class="stats-metric-label">Auftritte Gesamt</div>
+                        <div class="stats-metric-value">${totalEvents}</div>
+                        <div class="stats-metric-trend positive">
+                            <span>📅 Dieses Jahr: ${events.filter(e => new Date(e.date).getFullYear() === new Date().getFullYear()).length}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-card-modern">
+                        <span class="stats-card-icon-bg">🎸</span>
+                        <div class="stats-metric-label">Proben Gesamt</div>
+                        <div class="stats-metric-value">${totalRehearsals}</div>
+                        <div class="stats-metric-trend neutral">
+                            <span>💪 Fleißig!</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-card-modern">
+                        <span class="stats-card-icon-bg">🎵</span>
+                        <div class="stats-metric-label">Repertoire Größe</div>
+                        <div class="stats-metric-value">${repertoireSize}</div>
+                        <div class="stats-metric-trend positive">
+                            <span>Songs in allen Bands</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-card-modern">
+                        <span class="stats-card-icon-bg">🏘️</span>
+                        <div class="stats-metric-label">Aktive Bands</div>
+                        <div class="stats-metric-value">${totalBands}</div>
+                    </div>
+                </div>
+
+                <!-- Fun Stats Section -->
+                <h3 style="margin-bottom: var(--spacing-md); color: var(--color-text);">🏆 Fun Facts</h3>
+                <div class="stats-fun-section">
+                    
+                    <!-- Top Song Card -->
+                    <div class="stats-card-modern stats-highlight-card">
+                        <span class="stats-card-icon-bg">⭐</span>
+                        <div class="stats-metric-label">Meistgespielter Song</div>
+                        <div class="stats-metric-value" style="font-size: 1.8rem; word-break: break-word;">
+                            ${topSong.count > 0 ? topSong.name : 'Noch keine Daten'}
+                        </div>
+                        <div class="stats-metric-trend">
+                            ${topSong.count > 0 ? `Gespielt ${topSong.count} mal` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Favorite Location Card -->
+                    <div class="stats-card-modern">
+                        <span class="stats-card-icon-bg">📍</span>
+                        <div class="stats-metric-label">Lieblings-Location</div>
+                        <div class="stats-metric-value" style="font-size: 1.8rem;">
+                            ${favLocation.count > 0 ? favLocation.name : '-'}
+                        </div>
+                        <div class="stats-metric-trend neutral">
+                            ${favLocation.count > 0 ? `${favLocation.count} Besuche` : ''}
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Recent Activity Helper -->
+                <div style="margin-top: var(--spacing-xl);">
+                    <h4 style="margin-bottom: var(--spacing-sm); color: var(--color-text-secondary);">💡 Tipp</h4>
+                    <p style="color: var(--color-text-secondary); font-size: 0.9rem;">
+                        Wusstest du? Deine Statistiken werden automatisch aktualisiert, sobald du neue Auftritte oder Proben anlegst.
+                    </p>
+                </div>
+            `;
+
+        } catch (error) {
+            console.error('[Statistics] Error rendering general stats:', error);
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <p>Fehler beim Laden der Statistiken.</p>
+                </div>
+            `;
+        }
+        Logger.timeEnd('Statistics Load (General)');
+    },
     // Render statistics for a rehearsal
     async renderStatistics(rehearsalId) {
         if (this.loadingStates[rehearsalId]) {

@@ -1649,36 +1649,7 @@ const App = {
             Rehearsals.renderRehearsals(e.target.value);
         });
 
-        // Statistics rehearsal select
 
-        document.getElementById('statsRehearsalSelect').addEventListener('change', (e) => {
-            const rehearsalId = e.target.value;
-            if (rehearsalId) {
-                Statistics.renderStatistics(rehearsalId);
-            } else {
-                // If a band is selected but no rehearsal, show band stats
-                const bandId = document.getElementById('statsBandSelect').value;
-                if (bandId) {
-                    Statistics.renderBandStatistics(bandId);
-                } else {
-                    const container = document.getElementById('statisticsContent');
-                    UI.showEmptyState(container, '📊', 'Wähle eine Band oder einen Probetermin aus, um die Statistiken zu sehen');
-                }
-            }
-        });
-
-        document.getElementById('statsBandSelect').addEventListener('change', (e) => {
-            const bandId = e.target.value;
-            const rehearsalId = document.getElementById('statsRehearsalSelect').value;
-            if (rehearsalId) {
-                Statistics.renderStatistics(rehearsalId);
-            } else if (bandId) {
-                Statistics.renderBandStatistics(bandId);
-            } else {
-                const container = document.getElementById('statisticsContent');
-                UI.showEmptyState(container, '📊', 'Wähle eine Band oder einen Probetermin aus, um die Statistiken zu sehen');
-            }
-        });
 
         // Create event button
         document.getElementById('createEventBtn').addEventListener('click', () => {
@@ -2316,8 +2287,7 @@ const App = {
                     await Bands.populateBandSelects();
                     await Rehearsals.renderRehearsals();
                 } else if (view === 'statistics') {
-                    await Bands.populateBandSelects();
-                    await Rehearsals.populateStatsSelect();
+                    await Statistics.renderGeneralStatistics();
                 } else if (view === 'news') {
                     await this.renderNewsView();
 
