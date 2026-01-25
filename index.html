@@ -443,7 +443,7 @@
                                 style="display:inline-block;vertical-align:middle;margin-right:0.5em;width:36px;height:36px;border-radius:50%;background:#e5e7eb;overflow:hidden;text-align:center;line-height:36px;font-weight:600;font-size:1.1em;color:#444;"></span>
                             <span id="currentUserName" class="user-name">User</span>
                             <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten"
-                                style="background: none; border: none; cursor: pointer; font-size: 1.3em; margin-left: 0.5em;">
+                                style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 1.25rem;">
                                 <span id="themeToggleIcon">🌙</span>
                             </button>
                             <button id="logoutBtn" class="btn btn-secondary">
@@ -522,7 +522,7 @@
                                 </button>
                                 <button class="nav-subitem" data-view="news">
                                     <span class="nav-icon">📰</span>
-                                    <span class="nav-label">News & Updates</span>
+                                    <span class="nav-label">News</span>
                                 </button>
                             </div>
                         </div>
@@ -1022,9 +1022,7 @@
                                         style="margin:0.25rem 0 1rem 0; color:var(--color-text-secondary); font-size:0.9rem;">
                                         Bearbeite deine Informationen</p>
 
-                                    <button type="button" id="deleteProfileImageBtn"
-                                        class="btn btn-outline-danger btn-sm"
-                                        style="border:none; background:transparent; font-size:0.85rem; padding:0.25rem 0.5rem;">
+                                    <button type="button" id="deleteProfileImageBtn" class="btn-image-remove">
                                         Bild entfernen
                                     </button>
                                 </div>
@@ -1106,21 +1104,19 @@
                                     </div>
 
                                     <!-- Actions -->
-                                    <div style="display:flex; justify-content:flex-end; padding-top:1rem;">
-                                        <button type="submit" class="btn btn-primary"
-                                            style="padding: 0.75rem 2rem; font-weight:600; display:flex; align-items:center; gap:0.5rem; border-radius:12px;">
+                                    <div class="settings-form-actions">
+                                        <button type="submit" class="btn btn-primary btn-save">
                                             <span>💾</span> Änderungen speichern
+                                        </button>
+                                        <button id="deleteAccountBtn" class="btn btn-danger-soft">
+                                            Account löschen
                                         </button>
                                     </div>
 
                                 </div>
                             </form>
                             <!-- (Tutorial and Donate moved to Admin tab) -->
-                            <div class="section" style="margin-top: 1rem;">
-                                <!-- Account löschen Button -->
-                                <button id="deleteAccountBtn" class="btn btn-danger" style="margin-top:2rem;">Account
-                                    löschen</button>
-                            </div>
+                            <!-- (Tutorial and Donate moved to Admin tab) -->
                         </div>
                     </div>
 
@@ -1167,14 +1163,12 @@
                                             placeholder="Urlaub, Krankheit, ..." required>
                                     </div>
 
-                                    <div style="display:flex; gap:0.5rem; margin-top:1.5rem;">
-                                        <button type="submit" id="saveAbsenceBtnSettings" class="btn btn-primary"
-                                            style="flex:1; justify-content:center;">
+                                    <div class="settings-form-actions absence-form-actions">
+                                        <button type="submit" id="saveAbsenceBtnSettings" class="btn btn-primary">
                                             Speichern
                                         </button>
                                         <button type="button" id="cancelEditAbsenceBtnSettings"
-                                            class="btn btn-secondary"
-                                            style="display:none; flex:1; justify-content:center;">
+                                            class="btn btn-secondary" style="display:none;">
                                             Abbrechen
                                         </button>
                                     </div>

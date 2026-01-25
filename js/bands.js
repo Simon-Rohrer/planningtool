@@ -136,7 +136,7 @@ const Bands = {
 
         // Show/Hide Image
         const imageHtml = band.image_url
-            ? `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" onclick="Bands.showImageLightbox('${band.image_url}')" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-surface); box-shadow: var(--shadow-sm); cursor: zoom-in; transition: transform 0.2s;">`
+            ? `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" onclick="UI.showLightbox('${band.image_url}')" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-surface); box-shadow: var(--shadow-sm); cursor: zoom-in; transition: transform 0.2s;">`
             : '';
 
         if (canEdit) {
@@ -969,47 +969,7 @@ const Bands = {
         return div.innerHTML;
     },
 
-    // Lightbox for Band Images
-    showImageLightbox(url) {
-        let lightbox = document.getElementById('globalLightbox');
-        if (!lightbox) {
-            lightbox = document.createElement('div');
-            lightbox.id = 'globalLightbox';
-            lightbox.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                background: rgba(0, 0, 0, 0.9);
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-                cursor: zoom-out;
-            `;
-            lightbox.innerHTML = `<img src="" style="max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); transform: scale(0.9); transition: transform 0.3s ease;">`;
-            document.body.appendChild(lightbox);
 
-            lightbox.addEventListener('click', () => {
-                lightbox.style.opacity = '0';
-                lightbox.querySelector('img').style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    lightbox.style.display = 'none';
-                }, 300);
-            });
-        }
-
-        const img = lightbox.querySelector('img');
-        img.src = url;
-        lightbox.style.display = 'flex';
-        // Trigger reflow
-        lightbox.offsetHeight;
-        lightbox.style.opacity = '1';
-        img.style.transform = 'scale(1)';
-    },
 
     // Add member to band
     async addMember(bandId, username, role) {

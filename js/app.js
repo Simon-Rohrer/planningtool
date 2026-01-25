@@ -354,64 +354,28 @@ const App = {
     setupDashboardFeatures() {
         this.setupQuickAccessEdit();
     },
-    // Update header submenu buttons depending on active main view
+    // Update header to show current page title instead of submenu buttons
     updateHeaderSubmenu(view) {
-        const submenuMap = {
-            dashboard: [
-                { key: 'dashboard', label: 'Dashboard', icon: '🏠' },
-                { key: 'bands', label: 'Meine Bands', icon: '🎸' },
-                { key: 'musikpool', label: 'Musikerpool', icon: '🎵' }
-            ],
-            rehearsals: [
-                { key: 'rehearsals', label: 'Probetermine', icon: '📅' },
-                { key: 'probeorte', label: 'Probeorte', icon: '🎙️' },
-                { key: 'kalender', label: 'Mein Kalender', icon: '📆' }
-            ],
-            events: [
-                { key: 'events', label: 'Auftritte', icon: '🎸' }
-            ],
-            statistics: [
-                { key: 'statistics', label: 'Statistiken', icon: '📊' },
-                { key: 'news', label: 'News', icon: '📰' }
-            ]
+        const titleMap = {
+            dashboard: { label: 'Dashboard', icon: '🏠' },
+            bands: { label: 'Meine Bands', icon: '🎸' },
+            musikpool: { label: 'Musikerpool', icon: '🎵' },
+            rehearsals: { label: 'Probetermine', icon: '📅' },
+            probeorte: { label: 'Probeorte', icon: '🎙️' },
+            tonstudio: { label: 'Tonstudio', icon: '🎙️' },
+            kalender: { label: 'Mein Kalender', icon: '📆' },
+            events: { label: 'Auftritte', icon: '🎸' },
+            statistics: { label: 'Statistiken', icon: '📊' },
+            news: { label: 'News', icon: '📰' },
+            settings: { label: 'Settings', icon: '⚙️' }
         };
 
-        const items = submenuMap[view] || [];
+        const info = titleMap[view] || { label: 'BandManager', icon: '🎸' };
         const container = document.getElementById('headerSubmenu');
         if (!container) return;
-        container.innerHTML = items.map(i => `<button type="button" class="header-submenu-btn" data-view="${i.key}"><span class=\"nav-icon\">${i.icon}</span><span class=\"header-submenu-label\">${i.label}</span></button>`).join('');
-        console.log('[updateHeaderSubmenu] populated for', view, 'items:', items.map(i => i.key));
 
-        // After rendering submenu buttons, set underline widths to match label+icon
-        setTimeout(() => {
-            try { this.updateHeaderUnderlineWidths(); } catch (e) { /* ignore */ }
-        }, 0);
-
-        // Attach a delegated click handler once to the container to reliably
-        // capture clicks on dynamically created buttons.
-        if (!container.dataset.delegationAttached) {
-            container.addEventListener('click', (e) => {
-                const btn = e.target.closest('.header-submenu-btn');
-                if (!btn) return;
-                const viewKey = btn.getAttribute('data-view');
-                console.log('[HEADER SUBMENU] delegated click sync', viewKey, 'target:', e.target);
-                if (!viewKey) return;
-                try {
-                    if (typeof App !== 'undefined' && App.navigateTo) {
-                        App.navigateTo(viewKey, 'header-main-nav');
-                        console.log('[HEADER SUBMENU] navigateTo invoked sync for', viewKey);
-                    } else if (this && this.navigateTo) {
-                        this.navigateTo(viewKey, 'header-main-nav');
-                        console.log('[HEADER SUBMENU] this.navigateTo invoked sync for', viewKey);
-                    } else {
-                        console.warn('[HEADER SUBMENU] navigateTo not available for', viewKey);
-                    }
-                } catch (err) {
-                    console.error('[HEADER SUBMENU] navigateTo error for', viewKey, err);
-                }
-            });
-            container.dataset.delegationAttached = 'true';
-        }
+        // Render Title
+        container.innerHTML = `<h2 class="header-page-title">${info.icon} ${info.label}</h2>`;
     },
 
     /* ===== Tutorial / Guided Tour ===== */
@@ -681,55 +645,68 @@ const App = {
     },
     setupMobileSubmenuToggle() {
         const navBar = document.getElementById('appNav');
-        if (!navBar) {
-            console.warn('Fehler: #appNav Element für mobile Navigation nicht gefunden.');
-            return;
-        }
+        if (!navBar) return;
 
-        // IMPORTANT: This function is ONLY for MOBILE navigation (appNav bottom bar)
-        // On desktop (> 768px), we use the sidebar (.sidebar-nav), NOT this old appNav system
-        // So we should SKIP this entire setup on desktop to avoid conflicts
-        if (window.innerWidth > 768) {
-            console.log('[setupMobileSubmenuToggle] Skipping - desktop detected (width > 768px)');
-            return;
-        }
+        Logger.info('[setupMobileSubmenuToggle] Initializing unified mobile nav delegation');
 
-        Logger.info('[setupMobileSubmenuToggle] Initializing mobile submenu toggle');
+        // Central delegation handler for ALL mobile bottom nav interactions
+        navBar.addEventListener('click', async (e) => {
+            // Safety check: Only run logic if navBar is actually visible/active (mobile mode)
+            if (window.innerWidth > 768) return;
+            const subitem = e.target.closest('.nav-subitem');
+            const mainitem = e.target.closest('.nav-item.nav-main');
 
-        navBar.addEventListener('click', (e) => {
-            // Findet das geklickte .nav-item (oder dessen Elternelement)
-            const clickedItem = e.target.closest('.nav-item');
-            if (!clickedItem) return;
+            // 1. CLICK ON A SUBMENU ITEM (The actual links in the bubble)
+            if (subitem) {
+                e.preventDefault();
+                const view = subitem.dataset.view;
+                const group = subitem.closest('.nav-group');
 
-            const navGroup = clickedItem.closest('.nav-group');
+                // Close menu
+                if (group) group.classList.remove('submenu-open');
 
-            // Prüfen, ob das geklickte Element Teil einer Gruppe mit Submenü ist
-            if (navGroup && navGroup.querySelector('.nav-submenu')) {
-                e.preventDefault(); // Verhindert, dass der Link (#) die Seite neu lädt oder springt
-                e.stopPropagation(); // Verhindert sofortiges Schließen durch globalen Handler
+                // Navigate
+                if (view) {
+                    await this.navigateTo(view, 'mobile-nav-sub');
+                }
+                return;
+            }
 
-                // 1. Alle anderen offenen Submenüs schließen
-                document.querySelectorAll('.app-nav .nav-group.submenu-open').forEach(group => {
-                    // Schließe nur, wenn es nicht die aktuell geklickte Gruppe ist
-                    if (group !== navGroup) {
-                        group.classList.remove('submenu-open');
+            // 2. CLICK ON A MAIN ICON (The bottom icons)
+            if (mainitem) {
+                e.preventDefault();
+                e.stopPropagation(); // Avoid global "close all" handler
+
+                const navGroup = mainitem.closest('.nav-group');
+                const hasSubmenu = navGroup && navGroup.querySelector('.nav-submenu');
+
+                if (hasSubmenu) {
+                    // TOGGLE SUBMENU logic
+                    // Close all other submenus first
+                    document.querySelectorAll('.app-nav .nav-group.submenu-open').forEach(g => {
+                        if (g !== navGroup) g.classList.remove('submenu-open');
+                    });
+
+                    navGroup.classList.toggle('submenu-open');
+                    return;
+                } else {
+                    // DIRECT NAVIGATION (e.g. for simple buttons without submenus)
+                    const view = mainitem.dataset.view;
+                    if (view) {
+                        await this.navigateTo(view, 'mobile-nav-main-direct');
                     }
-                });
-
-                // 2. Das geklickte Submenü öffnen/schließen (Toggle)
-                navGroup.classList.toggle('submenu-open');
+                }
             }
         });
 
-        // Submenüs schließen, wenn man irgendwo anders klickt (Globale Schließlogik)
-        // ONLY for mobile appNav submenus, not sidebar!
+        // Global click listener to close submenus when clicking "out" of the nav
+        // This should also only run on mobile
         document.addEventListener('click', (e) => {
-            const isClickInsideNav = e.target.closest('.app-nav');
-            const isClickInsideSubmenu = e.target.closest('.app-nav .nav-submenu');
-            // Schließe alle Submenüs, wenn der Klick NICHT in der Nav-Bar und NICHT im Submenü war
-            if (!isClickInsideNav && !isClickInsideSubmenu) {
-                document.querySelectorAll('.app-nav .nav-group.submenu-open').forEach(group => {
-                    group.classList.remove('submenu-open');
+            if (window.innerWidth > 768) return;
+
+            if (!e.target.closest('.app-nav')) {
+                document.querySelectorAll('.app-nav .nav-group.submenu-open').forEach(g => {
+                    g.classList.remove('submenu-open');
                 });
             }
         });
@@ -779,31 +756,18 @@ const App = {
                 // Handle main items with submenu (accordion behavior)
                 if (navItem.classList.contains('nav-main') && navItem.parentElement.classList.contains('has-submenu')) {
                     const group = navItem.parentElement;
-                    const isExpanded = group.classList.contains('expanded');
-
-                    console.log('[Sidebar] Accordion item clicked. Currently expanded?', isExpanded);
 
                     // Close all OTHER groups
                     document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(other => {
                         if (other !== group) {
                             other.classList.remove('expanded');
-                            console.log('[Sidebar] Closed other group');
                         }
                     });
 
                     // Toggle current group
                     group.classList.toggle('expanded');
-                    const isNowExpanded = group.classList.contains('expanded');
-
-                    console.log('[Sidebar] After toggle - expanded?', isNowExpanded);
-                    if (isNowExpanded) {
-                        console.log('[Sidebar] ✓ Submenu expanded');
-                    } else {
-                        console.log('[Sidebar] ✗ Submenu collapsed');
-                    }
 
                     // Don't navigate if it's just an accordion parent
-                    // (The items in this app don't have data-view on accordion parents)
                     return;
                 }
 
@@ -1392,79 +1356,10 @@ const App = {
             this.handleLogout();
         });
 
+        // Sidebar Navigation initialization (Desktop)
+        this.setupSidebarNav();
 
 
-        // Navigation - Main items and subitems
-        // Remove any logic that hides the 'Planung' tab based on band membership.
-        document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
-            item.addEventListener('click', async (e) => {
-                try {
-                    const isMobile = window.innerWidth <= 768;
-                    const isMainNav = item.classList.contains('nav-main');
-                    const navGroup = item.closest('.nav-group');
-                    const hasSubmenu = navGroup && navGroup.querySelector('.nav-submenu');
-
-                    if (isMobile && isMainNav && hasSubmenu) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const mainView = item.dataset.view;
-                        if (mainView) {
-                            this.updateHeaderSubmenu(mainView);
-                            const submenuMap = {
-                                dashboard: ['dashboard', 'bands', 'musikpool'],
-                                rehearsals: ['rehearsals', 'probeorte', 'kalender'],
-                                events: ['events'],
-                                statistics: ['statistics', 'news'],
-                                settings: ['settings']
-                            };
-                            const first = (submenuMap[mainView] && submenuMap[mainView][0]) || mainView;
-                            try {
-                                await this.navigateTo(first, 'mobile-nav-default');
-                            } catch (navErr) {
-                                console.error('[MOBILE NAV] navigateTo error for', first, navErr);
-                            }
-                        }
-                        return;
-                    }
-
-                    if (isMobile && item.classList.contains('nav-subitem') && navGroup) {
-                        navGroup.classList.remove('submenu-open');
-                    }
-
-                    e.stopPropagation();
-                    const view = item.dataset.view;
-                    if (!view) return;
-                    if (isMobile && item.classList.contains('nav-main')) {
-                        this.updateHeaderSubmenu(view);
-                    }
-                    const settingsTab = item.dataset.settingsTab;
-                    await App.navigateTo(view, 'mobile-nav-bar');
-                    if (view === 'settings' && settingsTab) {
-                        setTimeout(() => {
-                            const tabButton = document.querySelector(`.settings-tab-btn[data-tab="${settingsTab}"]`);
-                            if (tabButton) {
-                                tabButton.click();
-                            }
-                        }, 100);
-                    }
-                } catch (error) {
-                    console.error('[NAV CLICK] Error:', error);
-                }
-            });
-        });
-
-        // Close mobile submenus when clicking outside
-        document.addEventListener('click', (e) => {
-            const isMobile = window.innerWidth <= 768;
-            if (!isMobile) return;
-
-            const clickedInsideNav = e.target.closest('.app-nav');
-            if (!clickedInsideNav) {
-                document.querySelectorAll('.nav-group.submenu-open').forEach(g => {
-                    g.classList.remove('submenu-open');
-                });
-            }
-        });
 
         // Modal close buttons
         document.querySelectorAll('.modal-close').forEach(btn => {
@@ -2244,21 +2139,29 @@ const App = {
                 // Define parent-child relationships for navigation highlighting
                 const parentViewMap = {
                     'bands': 'dashboard',
-                    'musikpool': 'dashboard'
+                    'musikpool': 'dashboard',
+                    'probeorte': 'rehearsals',
+                    'kalender': 'rehearsals',
+                    'news': 'statistics'
                 };
                 const parentView = parentViewMap[view];
 
                 // Update active navigation (both main items and subitems)
                 document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
                     const itemView = item.dataset.view;
-                    if (itemView === view || (view === 'tonstudio' && itemView === 'probeorte') || (parentView && itemView === parentView)) {
+                    const isMain = item.classList.contains('nav-main');
+                    if (itemView === view || (view === 'tonstudio' && itemView === 'probeorte') || (isMain && parentView && itemView === parentView)) {
                         item.classList.add('active');
                     } else {
                         item.classList.remove('active');
                     }
                 });
 
-                // Update header submenu active state (underline) if present
+                // Update Header Title
+                this.updateHeaderSubmenu(view);
+
+                // Update header submenu active state (underline) if present -> Logic removed as buttons are gone
+                // (Keeping the try-catch block minimal just in case, but really we don't need it anymore)
                 try {
                     document.querySelectorAll('.header-submenu-btn').forEach(btn => {
                         const v = btn.getAttribute('data-view');
@@ -3120,13 +3023,15 @@ const App = {
             await this.updateNewsNavBadge();
 
             // Refresh the news list to remove "NEU" badge
-            this.newsItems = null;
-            await this.renderNewsView();
+            // Open modal
+            UI.openModal('newsDetailModal');
+
+            // Attach Lightbox listeners to all images (Hero + Inline + Gallery)
+            this.setupNewsLightbox();
         }
+    },
 
-        // Open modal
-        UI.openModal('newsDetailModal');
-
+    setupNewsLightbox() {
         // Attach Lightbox listeners to all images (Hero + Inline + Gallery)
         setTimeout(() => {
             const allImages = [
@@ -3136,61 +3041,13 @@ const App = {
             ];
 
             allImages.forEach(img => {
-                img.style.cursor = 'pointer'; // Ensure cursor shows interactivity
+                img.style.cursor = 'zoom-in'; // Ensure cursor shows interactivity
                 img.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevent modal interactions
-                    this.renderLightbox(img.src);
+                    UI.showLightbox(img.src);
                 });
             });
         }, 100); // Small delay to ensure DOM is updated
-    },
-
-    renderLightbox(imgSrc) {
-        // Remove existing lightbox if any
-        const existing = document.querySelector('.lightbox-overlay');
-        if (existing) existing.remove();
-
-        // Create elements
-        const overlay = document.createElement('div');
-        overlay.className = 'lightbox-overlay';
-
-        const content = document.createElement('img');
-        content.className = 'lightbox-content';
-        content.src = imgSrc;
-
-        const closeBtn = document.createElement('div');
-        closeBtn.className = 'lightbox-close';
-        closeBtn.innerHTML = '×'; // or use an icon
-
-        // Assemble
-        overlay.appendChild(closeBtn);
-        overlay.appendChild(content);
-        document.body.appendChild(overlay);
-
-        // Animation entry
-        requestAnimationFrame(() => {
-            overlay.classList.add('visible');
-        });
-
-        // Close handlers
-        const closeLightbox = () => {
-            overlay.classList.remove('visible');
-            setTimeout(() => overlay.remove(), 300);
-        };
-
-        closeBtn.addEventListener('click', closeLightbox);
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeLightbox();
-        });
-
-        // Escape key to close
-        const escapeHandler = (e) => {
-            if (e.key === 'Escape') {
-                closeLightbox();
-                document.removeEventListener('keydown', escapeHandler);
-            }
-        };
-        document.addEventListener('keydown', escapeHandler);
     },
 
     // Update the news nav item with an unread indicator for the current user
@@ -4798,24 +4655,24 @@ const App = {
             let html = '';
 
             // Section: Open
-            html += `<h4 style="margin: 1.5rem 0 1rem; color: var(--color-text); border-bottom: 2px solid var(--color-primary); padding-bottom: 0.5rem; display: inline-block;">
-                        Offene Tickets <span class="badge bg-primary" style="font-size: 0.8em; vertical-align: middle; margin-left: 0.5rem;">${openItems.length}</span>
+            html += `<h4 class="admin-sub-header">
+                        Offene Tickets <span class="badge bg-primary">${openItems.length}</span>
                      </h4>`;
 
             if (openItems.length === 0) {
-                html += '<div style="font-style: italic; color: var(--color-text-secondary); margin-bottom: 2rem;">Alles erledigt! 🎉</div>';
+                html += '<div class="user-no-bands">Alles erledigt! 🎉</div>';
             } else {
-                html += '<div class="feedback-grid" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">';
+                html += '<div class="feedback-grid">';
                 openItems.forEach(item => html += this._renderFeedbackCard(item));
                 html += '</div>';
             }
 
             // Section: Resolved
             if (resolvedItems.length > 0) {
-                html += `<h4 style="margin: 2rem 0 1rem; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); padding-bottom: 0.5rem;">
-                            Archiv / Erledigt <span class="badge bg-secondary" style="font-size: 0.8em; vertical-align: middle; margin-left: 0.5rem;">${resolvedItems.length}</span>
+                html += `<h4 class="admin-sub-header secondary">
+                            Archiv / Erledigt <span class="badge bg-secondary">${resolvedItems.length}</span>
                          </h4>`;
-                html += '<div class="feedback-grid resolved" style="display: flex; flex-direction: column; gap: 1rem; opacity: 0.7;">';
+                html += '<div class="feedback-grid resolved">';
                 resolvedItems.forEach(item => html += this._renderFeedbackCard(item));
                 html += '</div>';
             }
@@ -4823,14 +4680,13 @@ const App = {
             list.innerHTML = html;
 
             // Attach listeners
-            // Attach listeners
             // 1. Resolve Buttons
-            list.querySelectorAll('.resolve-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    e.stopPropagation(); // Prevent card expansion
+            list.querySelectorAll('.resolve-feedback-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
                     const id = btn.dataset.id;
                     const confirm = await UI.confirmAction(
-                        'Möchtest du dieses Ticket wirklich als erledigt markieren? Es wird ins Archiv verschoben.',
+                        'Ticket als erledigt markieren?',
                         'Ticket schließen',
                         'Ja, erledigt',
                         'btn-success'
@@ -4839,29 +4695,22 @@ const App = {
                     if (!confirm) return;
 
                     try {
-                        const originalContent = btn.innerHTML;
-                        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-                        btn.disabled = true;
-
                         await FeedbackService.updateStatus(id, 'resolved');
-
                         UI.showToast('Ticket als erledigt markiert', 'success');
-                        this.loadAdminFeedback(); // Reload
+                        this.loadAdminFeedback();
                     } catch (err) {
                         UI.showToast('Fehler: ' + err.message, 'error');
-                        btn.innerHTML = originalContent;
-                        btn.disabled = false;
                     }
-                });
+                };
             });
 
             // 1.5 Delete Buttons
-            list.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    e.stopPropagation(); // Prevent card expansion
+            list.querySelectorAll('.delete-feedback-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
                     const id = btn.dataset.id;
                     const confirm = await UI.confirmAction(
-                        'Möchtest du dieses Ticket wirklich unwiderruflich löschen?',
+                        'Ticket unwiderruflich löschen?',
                         'Ticket löschen',
                         'Ja, löschen',
                         'btn-danger'
@@ -4869,59 +4718,28 @@ const App = {
 
                     if (!confirm) return;
 
-                    let originalContent = btn.innerHTML; // Store before try block
                     try {
-                        // Show simple spinner or just disable
-                        btn.style.opacity = '0.5';
-                        btn.disabled = true;
-
                         await FeedbackService.deleteFeedback(id);
-
                         UI.showToast('Ticket gelöscht', 'success');
-                        this.loadAdminFeedback(); // Reload
+                        this.loadAdminFeedback();
                     } catch (err) {
                         UI.showToast('Fehler: ' + err.message, 'error');
-                        btn.innerHTML = originalContent;
-                        btn.style.opacity = '1';
-                        btn.disabled = false;
                     }
-                });
+                };
             });
 
-            // 2. Card Expansion (Toggle)
+            // 2. Expansion
             list.querySelectorAll('.feedback-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    // Don't toggle if selecting text
-                    if (window.getSelection().toString().length > 0) return;
-
+                card.onclick = (e) => {
+                    if (window.getSelection().toString().length > 0 || e.target.closest('button')) return;
                     const isExpanded = card.getAttribute('data-expanded') === 'true';
-                    const messageEl = card.querySelector('.feedback-message');
-                    const actionsEl = card.querySelector('.feedback-actions');
-                    const chevronEl = card.querySelector('.chevron-icon');
-
-                    if (isExpanded) {
-                        // Collapse
-                        card.setAttribute('data-expanded', 'false');
-                        messageEl.style.webkitLineClamp = '2';
-                        messageEl.style.overflow = 'hidden';
-                        messageEl.style.display = '-webkit-box';
-                        actionsEl.style.display = 'none';
-                        if (chevronEl) chevronEl.style.transform = 'rotate(0deg)';
-                    } else {
-                        // Expand
-                        card.setAttribute('data-expanded', 'true');
-                        messageEl.style.webkitLineClamp = 'unset';
-                        messageEl.style.overflow = 'visible';
-                        messageEl.style.display = 'block';
-                        actionsEl.style.display = 'flex'; // Restore flex
-                        if (chevronEl) chevronEl.style.transform = 'rotate(180deg)';
-                    }
-                });
+                    card.setAttribute('data-expanded', !isExpanded);
+                };
             });
 
         } catch (err) {
             console.error(err);
-            list.innerHTML = `<div class="error-state" style="color:red">Fehler beim Laden: ${err.message}</div>`;
+            list.innerHTML = `<div class="error-state" style="color:red">Fehler: ${err.message}</div>`;
         }
     },
 
@@ -4930,7 +4748,9 @@ const App = {
         const userLabel = item.users ?
             (item.users.first_name + ' ' + item.users.last_name) :
             'Unbekannter User';
-        const username = item.users ? item.users.username : '???';
+        const initials = item.users ?
+            ((item.users.first_name?.[0] || '') + (item.users.last_name?.[0] || '')).toUpperCase() || item.users.username[0].toUpperCase() :
+            '?';
 
         const date = new Date(item.created_at);
         const dateStr = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -4943,156 +4763,35 @@ const App = {
         const isResolved = item.status === 'resolved';
 
         return `
-            <div class="card feedback-card" data-expanded="false" style="
-                background: var(--color-card-bg); 
-                border: 1px solid var(--color-border);
-                border-radius: 16px;
-                padding: 1.5rem;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                transition: all 0.2s;
-                position: relative;
-                overflow: hidden;
-                cursor: pointer;
-            ">
-                <div style="
-                    position: absolute; 
-                    top: 0; 
-                    left: 0; 
-                    width: 6px; 
-                    height: 100%; 
-                    background: ${badgeColor};
-                "></div>
+            <div class="feedback-card" data-expanded="false" data-id="${item.id}">
+                <div class="feedback-card-accent" style="background: ${badgeColor};"></div>
                 
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; padding-left: 0.75rem;">
-                    <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <span style="
-                            background: ${badgeColor}20; 
-                            color: ${badgeColor}; 
-                            padding: 0.35rem 0.85rem; 
-                            border-radius: 999px; 
-                            font-size: 0.75rem; 
-                            font-weight: 700; 
-                            letter-spacing: 0.05em;
-                            display: inline-flex;
-                            align-items: center;
-                            gap: 0.4rem;
-                        ">
+                <div class="feedback-card-header">
+                    <div class="feedback-badge-row">
+                        <span class="feedback-badge" style="background: ${badgeColor}20; color: ${badgeColor};">
                             ${badgeIcon} ${badgeLabel.toUpperCase()}
                         </span>
-                        <span style="color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;">
-                            ${dateStr} • ${timeStr}
-                        </span>
+                        <span class="feedback-date">${dateStr} • ${timeStr}</span>
                     </div>
-                    <!-- Chevron for expansion indication -->
-                    <div class="chevron-icon" style="transition: transform 0.3s ease; color: var(--color-text-secondary); opacity: 0.5;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <div class="chevron-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
                 </div>
 
-                <div style="padding-left: 0.75rem;">
-                    ${item.title ? `<h3 style="margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.3;">${Bands.escapeHtml(item.title)}</h3>` : ''}
-                    
-                    <div class="feedback-message" style="
-                        background: var(--color-background); 
-                        padding: 1rem; 
-                        border-radius: 12px; 
-                        margin-bottom: 1rem;
-                        font-size: 1rem;
-                        line-height: 1.6;
-                        color: var(--color-text);
-                        border: 1px solid var(--color-border);
-                        /* Default Collapsed State */
-                        display: -webkit-box;
-                        -webkit-line-clamp: 2;
-                        -webkit-box-orient: vertical;
-                        overflow: hidden;
-                    ">${Bands.escapeHtml(item.message)}</div>
+                ${item.title ? `<h3 class="feedback-title">${Bands.escapeHtml(item.title)}</h3>` : ''}
+                
+                <div class="feedback-message-box">${Bands.escapeHtml(item.message)}</div>
 
-                    <div class="feedback-actions" style="
-                        display: none; /* Hidden by default */
-                        justify-content: space-between; 
-                        align-items: center; 
-                        padding-top: 0.5rem; 
-                        border-top: 1px solid var(--color-border);
-                        transition: opacity 0.3s ease;
-                    ">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <div style="
-                                width: 32px; 
-                                height: 32px; 
-                                background: linear-gradient(135deg, var(--color-primary), #4f46e5); 
-                                color: white; 
-                                border-radius: 50%; 
-                                display: flex; 
-                                align-items: center; 
-                                justify-content: center; 
-                                font-size: 0.85rem; 
-                                font-weight: bold;
-                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                            ">${userLabel.charAt(0)}</div>
-                            <div style="display: flex; flex-direction: column;">
-                                <span style="font-weight: 600; font-size: 0.95rem;">${userLabel}</span>
-                                <span style="font-size: 0.8rem; color: var(--color-text-secondary);">@${username}</span>
-                            </div>
-                        </div>
-
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <!-- Delete Button (Available for both open and resolved) -->
-                            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${item.id}" style="
-                                display: inline-flex;
-                                align-items: center;
-                                justify-content: center;
-                                width: 36px;
-                                height: 36px;
-                                border-radius: 50%;
-                                padding: 0;
-                                border: 1px solid #ef4444;
-                                color: #ef4444;
-                                background: transparent;
-                                transition: all 0.2s;
-                            " title="Löschen"
-                            onmouseover="this.style.background='#ef4444'; this.style.color='white'"
-                            onmouseout="this.style.background='transparent'; this.style.color='#ef4444'">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                            </button>
-
-                            ${!isResolved ? `
-                                <button class="btn resolve-btn" data-id="${item.id}" style="
-                                    display: inline-flex; 
-                                    align-items: center; 
-                                    gap: 0.6rem;
-                                    border-radius: 12px;
-                                    padding: 0.6rem 1.25rem;
-                                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                                    background: linear-gradient(to right, #10b981, #059669);
-                                    color: white;
-                                    border: none;
-                                    font-weight: 600;
-                                    font-size: 0.9rem;
-                                    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.15);
-                                    cursor: pointer;
-                                " 
-                                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 12px -1px rgba(16, 185, 129, 0.4)'" 
-                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(16, 185, 129, 0.3)'">
-                                    <span style="font-size: 1.1em;">✓</span> Als erledigt markieren
-                                </button>
-                            ` : `
-                                <div style="
-                                    color: #059669; 
-                                    font-weight: 700; 
-                                    display: flex; 
-                                    align-items: center; 
-                                    gap: 0.5rem; 
-                                    font-size: 0.95rem;
-                                    background: #ecfdf5;
-                                    padding: 0.5rem 1rem;
-                                    border-radius: 999px;
-                                    border: 1px solid #a7f3d0;
-                                ">
-                                    ✓ Erledigt
-                                </div>
-                            `}
-                        </div>
+                <div class="feedback-actions">
+                    <div class="feedback-user-info">
+                        <div class="feedback-avatar">${initials}</div>
+                        <span class="feedback-username">${Bands.escapeHtml(userLabel)}</span>
+                    </div>
+                    <div class="action-buttons" style="display: flex; gap: 0.4rem;">
+                        ${!isResolved ? `
+                            <button class="btn btn-sm btn-outline-success resolve-feedback-btn" data-id="${item.id}" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Erledigt</button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-outline-danger delete-feedback-btn" data-id="${item.id}" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Löschen</button>
                     </div>
                 </div>
             </div>
@@ -5260,6 +4959,7 @@ const App = {
         if (confirmed) {
             await Storage.deleteAbsence(absenceId);
             UI.showToast('Abwesenheit gelöscht', 'success');
+            await this.updateAbsenceIndicator(); // Update header immediately
             this.renderAbsencesListSettings();
         }
     },
@@ -5400,6 +5100,8 @@ const App = {
                 img.src = user.profile_image_url;
                 img.alt = 'Profilbild';
                 img.className = 'profile-avatar-preview'; // Use CSS class
+                img.style.cursor = 'zoom-in';
+                img.addEventListener('click', () => UI.showLightbox(user.profile_image_url));
                 container.appendChild(img);
             } else {
                 // Render initials
@@ -5494,17 +5196,17 @@ const App = {
             }
 
             const linkedBadge = linkedCalendar && calendarMap[linkedCalendar]
-                ? `<br><span style="color: var(--color-primary); font-size: 0.875rem;">🔗 ${calendarMap[linkedCalendar]}</span>`
-                : (linkedCalendar ? `<br><span class="text-muted" style="font-size: 0.875rem;">🔗 Unbekannter Kalender</span>` : '');
+                ? `<br><span class="location-link">🔗 ${calendarMap[linkedCalendar]}</span>`
+                : (linkedCalendar ? `<br><span class="location-link text-muted">🔗 Unbekannter Kalender</span>` : '');
 
             return `
-                <div class="location-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border);">
-                    <div>
+                <div class="location-item">
+                    <div class="location-info">
                         <strong>${Bands.escapeHtml(loc.name)}</strong>
                         ${loc.address ? `<br><small>${Bands.escapeHtml(loc.address)}</small>` : ''}
                         ${linkedBadge}
                     </div>
-                    <div style="display: flex; gap: 0.5rem;">
+                    <div class="location-actions">
                         <button class="btn-icon edit-location" data-id="${loc.id}" title="Bearbeiten">✏️</button>
                         <button class="btn-icon delete-location" data-id="${loc.id}" title="Löschen">🗑️</button>
                     </div>
@@ -5969,10 +5671,12 @@ const App = {
                 <div class="user-management-card">
                     <div class="user-card-header">
                         <div class="user-card-info">
-                            <h4>
-                                ${Bands.escapeHtml((user.first_name && user.last_name) ? `${user.first_name} ${user.last_name}` : user.username)}
+                            <div class="user-title-row">
+                                <h4>
+                                    ${Bands.escapeHtml((user.first_name && user.last_name) ? `${user.first_name} ${user.last_name}` : user.username)}
+                                </h4>
                                 ${user.isAdmin ? '<span class="admin-badge">👑 ADMIN</span>' : ''}
-                            </h4>
+                            </div>
                             <div class="user-meta">
                                 <span>👤 @${Bands.escapeHtml(user.username)}</span>
                                 <span>📧 ${Bands.escapeHtml(user.email)}</span>
@@ -6002,13 +5706,13 @@ const App = {
                             <div class="user-band-tags">
                                 ${userBands.map(band => `
                                     <span class="user-band-tag" style="border-left: 3px solid ${band.color || '#6366f1'}">
-                                        ${Bands.escapeHtml(band.name)}
+                                        <span class="ub-name">${Bands.escapeHtml(band.name)}</span>
                                         <span class="role-badge role-${band.role}">${UI.getRoleDisplayName(band.role)}</span>
                                     </span>
                                 `).join('')}
                             </div>
                         </div>
-                    ` : '<p class="text-muted" style="margin-top: var(--spacing-sm); font-size: 0.875rem;">Nicht in einer Band</p>'}
+                    ` : '<div class="user-no-bands">Nicht in einer Band</div>'}
                 </div>
             `;
         })).then(results => results.join(''));
@@ -7565,6 +7269,7 @@ const App = {
                 if (confirmed) {
                     await Storage.deleteAbsence(id);
                     UI.showToast('Abwesenheit gelöscht', 'success');
+                    await this.updateAbsenceIndicator(); // Update header immediately
                     await this.renderUserAbsences();
                     if (typeof Bands !== 'undefined' && Bands.currentBandId) {
                         Bands.renderBandAbsences(Bands.currentBandId);

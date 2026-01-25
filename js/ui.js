@@ -429,5 +429,54 @@ const UI = {
         if (!isActive) {
             section.classList.add('active');
         }
+    },
+
+    // Unified Lightbox for any image preview
+    showLightbox(imgSrc) {
+        // Remove existing lightbox if any
+        const existing = document.querySelector('.lightbox-overlay');
+        if (existing) existing.remove();
+
+        // Create elements
+        const overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+
+        const content = document.createElement('img');
+        content.className = 'lightbox-content';
+        content.src = imgSrc;
+
+        const closeBtn = document.createElement('div');
+        closeBtn.className = 'lightbox-close';
+        closeBtn.innerHTML = '×';
+
+        // Assemble
+        overlay.appendChild(closeBtn);
+        overlay.appendChild(content);
+        document.body.appendChild(overlay);
+
+        // Animation entry
+        requestAnimationFrame(() => {
+            overlay.classList.add('visible');
+        });
+
+        // Close handlers
+        const closeLightbox = () => {
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.remove(), 300);
+        };
+
+        closeBtn.addEventListener('click', closeLightbox);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeLightbox();
+        });
+
+        // Escape key to close
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeLightbox();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
     }
 };

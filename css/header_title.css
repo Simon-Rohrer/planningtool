@@ -1,0 +1,33 @@
+/* Page Title in Header */
+.header-page-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Ensure container doesn't overflow or look weird */
+.header-submenu-nav {
+    display: flex;
+    justify-content: center;
+    /* Center the title */
+    align-items: center;
+    min-height: 40px;
+}
