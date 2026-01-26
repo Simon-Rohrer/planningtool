@@ -37,7 +37,16 @@ const Storage = {
         if (!id) return null;
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from(key).select('*').eq('id', id).limit(1).maybeSingle();
-        if (error) { console.error('Supabase getById error', key, error); return null; }
+
+        if (error) {
+            // Check for network errors and warn instead of error
+            if (error.message && (error.message.includes('FetchError') || error.message.includes('network') || error.message.includes('connection'))) {
+                Logger.warn(`Network issue fetching ${key}: ${error.message}`);
+                return null;
+            }
+            console.error('Supabase getById error', key, error);
+            return null;
+        }
         return data || null;
     },
 
@@ -647,6 +656,14 @@ const Storage = {
 
         try {
             const sb = SupabaseClient.getClient();
+            if (!sb || !sb.supabaseUrl || !sb.supabaseKey) {
+                throw new Error('Supabase Client nicht korrekt initialisiert (URL/Key fehlen).');
+            }
+
+            // Create a timeout signal
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
             const response = await fetch(`${sb.supabaseUrl}/rest/v1/calendars`, {
                 method: 'POST',
                 headers: {
@@ -655,8 +672,10 @@ const Storage = {
                     'Authorization': `Bearer ${sb.supabaseKey}`,
                     'Prefer': 'return=representation'
                 },
-                body: JSON.stringify(calendar)
+                body: JSON.stringify(calendar),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -668,6 +687,9 @@ const Storage = {
             return Array.isArray(result) ? result[0] : result;
         } catch (error) {
             Logger.error('Storage.createCalendar error', error);
+            if (error.name === 'AbortError') {
+                throw new Error('Zeitüberschreitung beim Speichern (Timeout).');
+            }
             throw error;
         }
     },

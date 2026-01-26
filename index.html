@@ -1191,6 +1191,7 @@
                             </button>
                             <div class="admin-accordion-content">
                                 <div class="admin-section-inner">
+
                                     <div class="view-controls"
                                         style="margin-bottom: 1rem; display:flex; justify-content:flex-end;">
                                         <button id="refreshFeedbackBtn" class="btn btn-sm btn-secondary">🔄
@@ -1277,10 +1278,7 @@
                                                 <label for="newLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
                                                 <select id="newLocationLinkedCalendar"
                                                     class="form-select profile-form-input">
-                                                    <option value="">Nicht verknüpft</option>
-                                                    <option value="tonstudio">🎙️ Tonstudio</option>
-                                                    <option value="festhalle">🏛️ JMS Festhalle</option>
-                                                    <option value="ankersaal">⚓ Ankersaal</option>
+                                                    <option value="">Lade Kalender...</option>
                                                 </select>
                                             </div>
                                             <button type="submit" class="btn btn-primary"
@@ -1307,1034 +1305,1034 @@
                                 <div class="admin-section-inner">
                                     <!-- Tutorial -->
                                     <div id="adminTutorialSection"
-                                        style="display: none; padding-bottom:1.5rem; border-bottom:1px solid var(--color-border); margin-bottom:1.5rem;">
-                                        <h4>Onboarding</h4>
-                                        <p
-                                            style="color: var(--color-text-secondary); margin-top: 0.25rem; font-size:0.9rem;">
-                                            Als Admin kannst du das Onboarding/Tutorial anzeigen und testen.
-                                        </p>
+                                        style="display: flex; gap: 0.5rem; padding-bottom:1.5rem; border-bottom:1px solid var(--color-border); margin-bottom:1.5rem; flex-wrap: wrap;">
                                         <button id="adminShowTutorialBtn" class="btn btn-secondary btn-sm"
-                                            style="margin-top:0.75rem;">Tutorial anzeigen / testen</button>
+                                            onclick="Tutorial.start()">
+                                            Tutorial starten
+                                        </button>
+                                        <button id="adminTestNewsBannerBtn" class="btn btn-secondary btn-sm">
+                                            Test News Banner
+                                        </button>
                                     </div>
-                                    <!-- Spenden Link -->
-                                    <div id="donateLinkSection">
-                                        <h4>Spenden-Link</h4>
-                                        <div class="form-group" style="margin-top:0.75rem;">
-                                            <input type="url" id="donateLink"
-                                                placeholder="https://paypal.me/deinusername" value=""
-                                                class="profile-form-input">
-                                            <small
-                                                style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
-                                                Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich
-                                                angezeigt.
-                                            </small>
-                                        </div>
-                                        <button id="saveDonateLink" class="btn btn-primary"
-                                            style="margin-top:1rem; width:100%;">Spenden-Link speichern</button>
+                                    <h4>Onboarding</h4>
+                                    <p
+                                        style="color: var(--color-text-secondary); margin-top: 0.25rem; font-size:0.9rem;">
+                                        Als Admin kannst du das Onboarding/Tutorial anzeigen und testen.
+                                    </p>
+                                    <button id="adminShowTutorialBtn" class="btn btn-secondary btn-sm"
+                                        style="margin-top:0.75rem;">Tutorial anzeigen / testen</button>
+                                </div>
+                                <!-- Spenden Link -->
+                                <div id="donateLinkSection">
+                                    <h4>Spenden-Link</h4>
+                                    <div class="form-group" style="margin-top:0.75rem;">
+                                        <input type="url" id="donateLink" placeholder="https://paypal.me/deinusername"
+                                            value="" class="profile-form-input">
+                                        <small
+                                            style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
+                                            Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich
+                                            angezeigt.
+                                        </small>
                                     </div>
+                                    <button id="saveDonateLink" class="btn btn-primary"
+                                        style="margin-top:1rem; width:100%;">Spenden-Link speichern</button>
                                 </div>
                             </div>
                         </div>
-
-
-
                     </div>
 
+
+
                 </div>
+
             </div>
         </div>
+    </div>
 
 
 
-        <!-- Create Band Modal -->
-        <div id="createBandModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Neue Band erstellen</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <form id="createBandForm">
-                    <div class="form-group">
-                        <label for="bandName">Bandname</label>
-                        <input type="text" id="bandName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="bandDescription">Beschreibung</label>
-                        <textarea id="bandDescription" rows="3"></textarea>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Band erstellen</button>
-                    </div>
-                </form>
+    <!-- Create Band Modal -->
+    <div id="createBandModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Neue Band erstellen</h2>
+                <button class="modal-close">&times;</button>
             </div>
-        </div>
-
-        <!-- Edit Band Modal -->
-        <div id="editBandModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Band bearbeiten</h2>
-                    <button class="modal-close">&times;</button>
+            <form id="createBandForm">
+                <div class="form-group">
+                    <label for="bandName">Bandname</label>
+                    <input type="text" id="bandName" required>
                 </div>
-                <form id="editBandForm">
-                    <input type="hidden" id="editBandId">
-                    <div class="form-group">
-                        <label for="editBandName">Bandname</label>
-                        <input type="text" id="editBandName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editBandDescription">Beschreibung</label>
-                        <textarea id="editBandDescription" rows="3"></textarea>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Speichern</button>
-                    </div>
-                </form>
+                <div class="form-group">
+                    <label for="bandDescription">Beschreibung</label>
+                    <textarea id="bandDescription" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Band erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Band Modal -->
+    <div id="editBandModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Band bearbeiten</h2>
+                <button class="modal-close">&times;</button>
             </div>
-        </div>
-
-        <!-- Edit Location Modal -->
-        <div id="editLocationModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Probeort bearbeiten</h2>
-                    <button class="modal-close">&times;</button>
+            <form id="editBandForm">
+                <input type="hidden" id="editBandId">
+                <div class="form-group">
+                    <label for="editBandName">Bandname</label>
+                    <input type="text" id="editBandName" required>
                 </div>
-                <form id="editLocationForm">
-                    <input type="hidden" id="editLocationId">
-                    <div class="form-group">
-                        <label for="editLocationName">Name</label>
-                        <input type="text" id="editLocationName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editLocationAddress">Adresse</label>
-                        <input type="text" id="editLocationAddress">
-                    </div>
-                    <div class="form-group">
-                        <label for="editLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
-                        <select id="editLocationLinkedCalendar" class="form-select">
-                            <option value="">Nicht verknüpft</option>
-                            <option value="tonstudio">🎙️ Tonstudio</option>
-                            <option value="festhalle">🏛️ JMS Festhalle</option>
-                            <option value="ankersaal">⚓ Ankersaal</option>
-                        </select>
-                        <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu
-                            prüfen.
-                        </p>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Speichern</button>
-                    </div>
-                </form>
+                <div class="form-group">
+                    <label for="editBandDescription">Beschreibung</label>
+                    <textarea id="editBandDescription" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Location Modal -->
+    <div id="editLocationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Probeort bearbeiten</h2>
+                <button class="modal-close">&times;</button>
             </div>
-        </div>
-
-        <!-- Band Details Modal -->
-        <div id="bandDetailsModal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2 id="bandDetailsName"></h2>
-                    <button class="modal-close">&times;</button>
+            <form id="editLocationForm">
+                <input type="hidden" id="editLocationId">
+                <div class="form-group">
+                    <label for="editLocationName">Name</label>
+                    <input type="text" id="editLocationName" required>
                 </div>
-                <div class="modal-body">
-                    <div class="tab-buttons">
-                        <button class="tab-btn active" data-tab="members">Mitglieder</button>
-                        <button class="tab-btn" data-tab="setlist">Setlist</button>
-                        <!-- Abwesenheiten-Tab (sichtbar für Leiter/Co-Leiter) -->
-                        <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn"
-                            style="display: none;">Abwesenheiten</button>
-                        <button class="tab-btn" data-tab="settings">Settings</button>
-                    </div>
-
-                    <!-- Members Tab -->
-                    <div id="membersTab" class="tab-content active">
-                        <div class="section">
-                            <div class="section-header">
-                                <h3>Bandmitglieder</h3>
-                                <button id="addMemberBtn" class="btn btn-primary btn-sm">+ Mitglied
-                                    hinzufügen</button>
-                            </div>
-                            <div id="membersList" class="members-list"></div>
-                        </div>
-                    </div>
-
-                    <!-- Setlist Tab -->
-                    <div id="setlistTab" class="tab-content">
-                        <div class="section">
-                            <div class="section-header">
-                                <h3>Songs</h3>
-                                <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song
-                                    hinzufügen</button>
-                            </div>
-                            <div id="bandSongsList"></div>
-                        </div>
-                    </div>
-
-                    <!-- Settings Tab -->
-                    <div id="settingsTab" class="tab-content">
-                        <div class="section" id="bandSettingsSection">
-                            <h3>Band-Einstellungen</h3>
-                            <div class="settings-actions">
-                                <div style="margin-bottom:0.5em;color:#b91c1c;font-weight:bold;; font-size: smaller;">
-                                    Achtung: Beim Löschen werden alle zugehörigen Songs, Probetermine und Auftritte
-                                    <u>unwiderruflich</u> entfernt!
-                                </div>
-                                <button id="deleteBandBtn" class="btn btn-danger" style="width: 150px;">Band
-                                    löschen</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Absences Tab (for leaders/co-leaders) -->
-                    <div id="absencesTab" class="tab-content">
-                        <div class="section">
-                            <h3>Abwesenheiten der Mitglieder</h3>
-                            <div id="bandAbsencesList">Keine Abwesenheiten vorhanden.</div>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label for="editLocationAddress">Adresse</label>
+                    <input type="text" id="editLocationAddress">
                 </div>
-            </div>
-        </div>
-
-        <!-- Add Member Modal -->
-        <div id="addMemberModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Mitglied hinzufügen</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <form id="addMemberForm">
-                    <div class="form-group">
-                        <label for="memberUsername">Benutzername</label>
-                        <input type="text" id="memberUsername" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="memberRole">Rolle</label>
-                        <select id="memberRole" required>
-                            <option value="member">Mitglied</option>
-                            <option value="co-leader">Co-Leiter</option>
-                            <option value="leader">Leiter</option>
-                        </select>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Hinzufügen</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Import Songs Modal -->
-        <div id="importSongsModal" class="modal">
-            <div class="modal-content" style="max-width: 600px;">
-                <div class="modal-header">
-                    <h2>Songs importieren</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin-bottom: 1rem;">Du kannst mehrere Songs gleichzeitig per CSV-Datei importieren.
+                <div class="form-group">
+                    <label for="editLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
+                    <select id="editLocationLinkedCalendar" class="form-select">
+                        <option value="">Nicht verknüpft</option>
+                        <option value="tonstudio">🎙️ Tonstudio</option>
+                        <option value="festhalle">🏛️ JMS Festhalle</option>
+                        <option value="ankersaal">⚓ Ankersaal</option>
+                    </select>
+                    <p class="help-text">Wähle einen Kalender, um bei der Probe-Erstellung die Verfügbarkeit zu
+                        prüfen.
                     </p>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-                    <div
-                        style="background: var(--color-background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
-                        <h4 style="margin-bottom: 0.5rem; color: var(--color-text-muted);">Erforderliches Format:
-                        </h4>
-                        <div style="overflow-x: auto;">
-                            <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
-                                <thead style="background: var(--color-surface);">
-                                    <tr>
-                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Titel</th>
-                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Interpret
-                                        </th>
-                                        <th style="padding: 8px; border: 1px solid var(--color-border);">BPM</th>
-                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Tonart</th>
-                                        <th style="padding: 8px; border: 1px solid var(--color-border);">Lead Vocal
-                                        </th>
-                                        <th style="padding: 8px; border: 1px solid var(--color-border);">CCLI</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td style="padding: 8px; border: 1px solid var(--color-border);">Amazing
-                                            Grace
-                                        </td>
-                                        <td style="padding: 8px; border: 1px solid var(--color-border);">John Newton
-                                        </td>
-                                        <td style="padding: 8px; border: 1px solid var(--color-border);">80</td>
-                                        <td style="padding: 8px; border: 1px solid var(--color-border);">G</td>
-                                        <td style="padding: 8px; border: 1px solid var(--color-border);">John</td>
-                                        <td style="padding: 8px; border: 1px solid var(--color-border);">123456</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+    <!-- Band Details Modal -->
+    <div id="bandDetailsModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="bandDetailsName"></h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="members">Mitglieder</button>
+                    <button class="tab-btn" data-tab="setlist">Setlist</button>
+                    <!-- Abwesenheiten-Tab (sichtbar für Leiter/Co-Leiter) -->
+                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn"
+                        style="display: none;">Abwesenheiten</button>
+                    <button class="tab-btn" data-tab="settings">Settings</button>
+                </div>
+
+                <!-- Members Tab -->
+                <div id="membersTab" class="tab-content active">
+                    <div class="section">
+                        <div class="section-header">
+                            <h3>Bandmitglieder</h3>
+                            <button id="addMemberBtn" class="btn btn-primary btn-sm">+ Mitglied
+                                hinzufügen</button>
                         </div>
-                        <p style="margin-top: 0.5rem; font-size: 0.85em; color: var(--color-text-muted);">
-                            ⚠️ Wichtig: Wenn du Excel oder Numbers verwendest, wähle bitte "Exportieren als CSV".
-                        </p>
+                        <div id="membersList" class="members-list"></div>
                     </div>
+                </div>
 
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel"
-                            onclick="UI.closeModal('importSongsModal')">Abbrechen</button>
-                        <button type="button" class="btn btn-primary"
-                            onclick="document.getElementById('csvSongUpload').click()">
-                            📂 CSV-Datei auswählen
-                        </button>
+                <!-- Setlist Tab -->
+                <div id="setlistTab" class="tab-content">
+                    <div class="section">
+                        <div class="section-header">
+                            <h3>Songs</h3>
+                            <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song
+                                hinzufügen</button>
+                        </div>
+                        <div id="bandSongsList"></div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settingsTab" class="tab-content">
+                    <div class="section" id="bandSettingsSection">
+                        <h3>Band-Einstellungen</h3>
+                        <div class="settings-actions">
+                            <div style="margin-bottom:0.5em;color:#b91c1c;font-weight:bold;; font-size: smaller;">
+                                Achtung: Beim Löschen werden alle zugehörigen Songs, Probetermine und Auftritte
+                                <u>unwiderruflich</u> entfernt!
+                            </div>
+                            <button id="deleteBandBtn" class="btn btn-danger" style="width: 150px;">Band
+                                löschen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Absences Tab (for leaders/co-leaders) -->
+                <div id="absencesTab" class="tab-content">
+                    <div class="section">
+                        <h3>Abwesenheiten der Mitglieder</h3>
+                        <div id="bandAbsencesList">Keine Abwesenheiten vorhanden.</div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Add User Modal (Admin Only) -->
-        <div id="addUserModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Neues Mitglied anlegen</h2>
-                    <button class="modal-close">&times;</button>
+    <!-- Add Member Modal -->
+    <div id="addMemberModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Mitglied hinzufügen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="addMemberForm">
+                <div class="form-group">
+                    <label for="memberUsername">Benutzername</label>
+                    <input type="text" id="memberUsername" required>
                 </div>
-                <form id="addUserForm">
-                    <div class="form-group">
-                        <label for="newUserFirstName">Vorname <span style="color:red;"
-                                title="Pflichtfeld">*</span></label>
-                        <input type="text" id="newUserFirstName" required>
+                <div class="form-group">
+                    <label for="memberRole">Rolle</label>
+                    <select id="memberRole" required>
+                        <option value="member">Mitglied</option>
+                        <option value="co-leader">Co-Leiter</option>
+                        <option value="leader">Leiter</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Import Songs Modal -->
+    <div id="importSongsModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Songs importieren</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem;">Du kannst mehrere Songs gleichzeitig per CSV-Datei importieren.
+                </p>
+
+                <div
+                    style="background: var(--color-background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
+                    <h4 style="margin-bottom: 0.5rem; color: var(--color-text-muted);">Erforderliches Format:
+                    </h4>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                            <thead style="background: var(--color-surface);">
+                                <tr>
+                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Titel</th>
+                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Interpret
+                                    </th>
+                                    <th style="padding: 8px; border: 1px solid var(--color-border);">BPM</th>
+                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Tonart</th>
+                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Lead Vocal
+                                    </th>
+                                    <th style="padding: 8px; border: 1px solid var(--color-border);">CCLI</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid var(--color-border);">Amazing
+                                        Grace
+                                    </td>
+                                    <td style="padding: 8px; border: 1px solid var(--color-border);">John Newton
+                                    </td>
+                                    <td style="padding: 8px; border: 1px solid var(--color-border);">80</td>
+                                    <td style="padding: 8px; border: 1px solid var(--color-border);">G</td>
+                                    <td style="padding: 8px; border: 1px solid var(--color-border);">John</td>
+                                    <td style="padding: 8px; border: 1px solid var(--color-border);">123456</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="form-group">
-                        <label for="newUserLastName">Nachname <span style="color:red;"
-                                title="Pflichtfeld">*</span></label>
-                        <input type="text" id="newUserLastName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="newUserEmail">E-Mail <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <input type="email" id="newUserEmail" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="newUserUsername">Benutzername <span style="color:red;"
-                                title="Pflichtfeld">*</span></label>
-                        <input type="text" id="newUserUsername" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="newUserPassword">Passwort <span style="color:red;"
-                                title="Pflichtfeld">*</span></label>
-                        <input type="password" id="newUserPassword" required minlength="6">
-                        <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Mindestens 6
-                            Zeichen</small>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="newUserIsAdmin">
-                            Als Admin anlegen
-                        </label>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Mitglied anlegen</button>
-                    </div>
-                </form>
+                    <p style="margin-top: 0.5rem; font-size: 0.85em; color: var(--color-text-muted);">
+                        ⚠️ Wichtig: Wenn du Excel oder Numbers verwendest, wähle bitte "Exportieren als CSV".
+                    </p>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel"
+                        onclick="UI.closeModal('importSongsModal')">Abbrechen</button>
+                    <button type="button" class="btn btn-primary"
+                        onclick="document.getElementById('csvSongUpload').click()">
+                        📂 CSV-Datei auswählen
+                    </button>
+                </div>
             </div>
         </div>
+    </div>
 
-        <!-- Create Rehearsal Modal -->
-        <div id="createRehearsalModal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2 id="rehearsalModalTitle">Neuen Probetermin vorschlagen</h2>
-                    <button class="modal-close">&times;</button>
+    <!-- Add User Modal (Admin Only) -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Neues Mitglied anlegen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label for="newUserFirstName">Vorname <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="text" id="newUserFirstName" required>
                 </div>
-                <form id="createRehearsalForm">
-                    <input type="hidden" id="editRehearsalId">
+                <div class="form-group">
+                    <label for="newUserLastName">Nachname <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="text" id="newUserLastName" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserEmail">E-Mail <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="email" id="newUserEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserUsername">Benutzername <span style="color:red;"
+                            title="Pflichtfeld">*</span></label>
+                    <input type="text" id="newUserUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserPassword">Passwort <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="password" id="newUserPassword" required minlength="6">
+                    <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Mindestens 6
+                        Zeichen</small>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="newUserIsAdmin">
+                        Als Admin anlegen
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Mitglied anlegen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Rehearsal Modal -->
+    <div id="createRehearsalModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="rehearsalModalTitle">Neuen Probetermin vorschlagen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="createRehearsalForm">
+                <input type="hidden" id="editRehearsalId">
+                <div class="form-group">
+                    <label for="rehearsalBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <select id="rehearsalBand" required>
+                        <option value="">Band auswählen</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rehearsalTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="text" id="rehearsalTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="rehearsalLocation">Ort (Optional)</label>
+                    <select id="rehearsalLocation">
+                        <option value="">Kein Ort ausgewählt</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rehearsalDescription">Beschreibung</label>
+                    <textarea id="rehearsalDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="rehearsalEvent">Zugewiesener Auftritt (Optional)</label>
+                    <select id="rehearsalEvent">
+                        <option value="">Kein Auftritt ausgewählt</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Terminvorschläge</label>
+                    <div id="dateProposals" class="date-proposals">
+                        <div class="date-proposal-item" data-confirmed="false">
+                            <div class="date-time-range">
+                                <input type="date" class="date-input-date" id="dateInputDate">
+                                <input type="time" class="date-input-start" id="dateInputStart">
+                                <span class="time-separator">bis</span>
+                                <input type="time" class="date-input-end" id="dateInputEnd">
+                            </div>
+                            <span class="date-availability" style="margin-left:8px"></span>
+                            <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
+                            <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
+                        </div>
+                    </div>
+                    <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin
+                        hinzufügen</button>
+                </div>
+                <div class="form-group checkbox-group" id="notifyMembersGroup" style="display: none;">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="notifyMembersOnUpdate">
+                        <label for="notifyMembersOnUpdate">Update-E-Mail an alle Beteiligten senden</label>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="button" class="btn btn-danger" id="deleteRehearsalBtn"
+                        style="display:none; margin-right: auto;">🗑️ Löschen</button>
+                    <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag
+                        erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rehearsal Details Modal -->
+    <div id="rehearsalDetailsModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="rehearsalDetailsTitle"></h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="rehearsalDetailsContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Rehearsal Modal -->
+    <!-- Time Suggestion Modal -->
+    <div id="timeSuggestionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Uhrzeit vorschlagen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="suggestTimeRehearsalId">
+                <input type="hidden" id="suggestTimeDateIndex">
+
+                <div class="form-group">
+                    <label for="suggestedTimeInput">Welche Uhrzeit würdest du vorschlagen?</label>
+                    <input type="time" id="suggestedTimeInput" class="form-control" required>
+                    <small class="help-text">Wähle eine Uhrzeit aus, die besser für dich passt</small>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="button" id="deleteTimeSuggestionBtn" class="btn btn-secondary"
+                        style="display: none;">🗑️ Vorschlag löschen</button>
+                    <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">💾
+                        Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Rehearsal Modal -->
+    <div id="confirmRehearsalModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Probe bestätigen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="confirmRehearsalId">
+                <input type="hidden" id="confirmDateIndex">
+
+                <div class="section">
+                    <h3>Probendetails bearbeiten</h3>
                     <div class="form-group">
-                        <label for="rehearsalBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <select id="rehearsalBand" required>
+                        <label for="confirmRehearsalTitle">Titel <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
+                        <input type="text" id="confirmRehearsalTitle" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmRehearsalDescription">Beschreibung (optional)</label>
+                        <textarea id="confirmRehearsalDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmRehearsalStartTime">Von (Start) <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
+                        <input type="datetime-local" id="confirmRehearsalStartTime" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmRehearsalEndTime">Bis (Ende) <span style="color:red;"
+                                title="Pflichtfeld">*</span></label>
+                        <input type="datetime-local" id="confirmRehearsalEndTime" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Probeort auswählen</h3>
+                    <select id="confirmRehearsalLocation" class="form-select">
+                        <option value="">Kein Ort ausgewählt</option>
+                    </select>
+                </div>
+
+                <div class="section">
+                    <h3>Bandmitglieder benachrichtigen</h3>
+                    <p class="help-text">Wähle aus, welche Bandmitglieder eine Bestätigungs-E-Mail erhalten
+                        sollen:
+                    </p>
+                    <div id="confirmMembersList" class="confirm-members-list"></div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="button" id="sendConfirmationBtn" class="btn btn-primary">✅ Probe bestätigen &
+                        E-Mail
+                        senden</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Conflict Warning Modal -->
+    <div id="locationConflictModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚠️ Probeort belegt</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem;">
+                    <strong>Der gewählte Probeort ist zu dieser Zeit bereits belegt!</strong>
+                </p>
+
+                <div id="conflictDetails" class="conflict-details"></div>
+
+                <p style="margin-top: 1rem; color: var(--color-text-secondary);">
+                    Möchtest du trotzdem fortfahren?
+                </p>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel" id="abortConfirmationBtn">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" id="proceedAnywayBtn">Trotzdem
+                        fortfahren</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Calendar Modal -->
+    <div id="calendarModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="calendarModalTitle">Neuen Kalender hinzufügen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="calendarForm">
+                <input type="hidden" id="editCalendarId">
+                <div class="form-group">
+                    <label for="calendarName">Name <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="text" id="calendarName" placeholder="z.B. Mein Proberaum" required>
+                </div>
+                <div class="form-group">
+                    <label for="calendarIcon">Icon (Emoji)</label>
+                    <input type="text" id="calendarIcon" placeholder="📅" maxlength="2"
+                        style="font-size: 1.5rem; text-align: center;">
+                    <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
+                        Optional: Ein Emoji zur visuellen Kennzeichnung
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="calendarUrl">iCal URL <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="url" id="calendarUrl" placeholder="https://..." required>
+                    <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
+                        Die öffentliche iCal-URL des Kalenders (z.B. von Google Calendar, Outlook, etc.)
+                    </small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Add Calendar Modal (from location form) -->
+    <div id="quickAddCalendarModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ Neuen Kalender hinzufügen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="quickAddCalendarForm">
+                <div class="form-group">
+                    <label for="quickCalendarName">Name <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="text" id="quickCalendarName" placeholder="z.B. Mein Proberaum" required>
+                </div>
+                <div class="form-group">
+                    <label for="quickCalendarIcon">Icon (Emoji)</label>
+                    <input type="text" id="quickCalendarIcon" placeholder="📅" maxlength="2"
+                        style="font-size: 1.5rem; text-align: center;">
+                </div>
+                <div class="form-group">
+                    <label for="quickCalendarUrl">iCal URL <span style="color:red;" title="Pflichtfeld">*</span></label>
+                    <input type="url" id="quickCalendarUrl" placeholder="https://..." required>
+                    <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
+                        Die öffentliche iCal-URL des Kalenders
+                    </small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Kalender erstellen & verknüpfen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Event Modal -->
+    <div id="createEventModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="eventModalTitle">Neuen Auftritt erstellen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="createEventForm">
+                <input type="hidden" id="editEventId">
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="eventBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
+                        <select id="eventBand" required>
                             <option value="">Band auswählen</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="rehearsalTitle">Titel <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <input type="text" id="rehearsalTitle" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="rehearsalLocation">Ort (Optional)</label>
-                        <select id="rehearsalLocation">
-                            <option value="">Kein Ort ausgewählt</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="rehearsalDescription">Beschreibung</label>
-                        <textarea id="rehearsalDescription" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="rehearsalEvent">Zugewiesener Auftritt (Optional)</label>
-                        <select id="rehearsalEvent">
-                            <option value="">Kein Auftritt ausgewählt</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Terminvorschläge</label>
-                        <div id="dateProposals" class="date-proposals">
-                            <div class="date-proposal-item" data-confirmed="false">
-                                <div class="date-time-range">
-                                    <input type="date" class="date-input-date" id="dateInputDate">
-                                    <input type="time" class="date-input-start" id="dateInputStart">
-                                    <span class="time-separator">bis</span>
-                                    <input type="time" class="date-input-end" id="dateInputEnd">
-                                </div>
-                                <span class="date-availability" style="margin-left:8px"></span>
-                                <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
-                                <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
-                            </div>
-                        </div>
-                        <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin
-                            hinzufügen</button>
-                    </div>
-                    <div class="form-group checkbox-group" id="notifyMembersGroup" style="display: none;">
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="notifyMembersOnUpdate">
-                            <label for="notifyMembersOnUpdate">Update-E-Mail an alle Beteiligten senden</label>
-                        </div>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="button" class="btn btn-danger" id="deleteRehearsalBtn"
-                            style="display:none; margin-right: auto;">🗑️ Löschen</button>
-                        <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag
-                            erstellen</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Rehearsal Details Modal -->
-        <div id="rehearsalDetailsModal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2 id="rehearsalDetailsTitle"></h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div id="rehearsalDetailsContent"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Confirm Rehearsal Modal -->
-        <!-- Time Suggestion Modal -->
-        <div id="timeSuggestionModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Uhrzeit vorschlagen</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="suggestTimeRehearsalId">
-                    <input type="hidden" id="suggestTimeDateIndex">
-
-                    <div class="form-group">
-                        <label for="suggestedTimeInput">Welche Uhrzeit würdest du vorschlagen?</label>
-                        <input type="time" id="suggestedTimeInput" class="form-control" required>
-                        <small class="help-text">Wähle eine Uhrzeit aus, die besser für dich passt</small>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="button" id="deleteTimeSuggestionBtn" class="btn btn-secondary"
-                            style="display: none;">🗑️ Vorschlag löschen</button>
-                        <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">💾
-                            Speichern</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Confirm Rehearsal Modal -->
-        <div id="confirmRehearsalModal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2>Probe bestätigen</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="confirmRehearsalId">
-                    <input type="hidden" id="confirmDateIndex">
-
-                    <div class="section">
-                        <h3>Probendetails bearbeiten</h3>
-                        <div class="form-group">
-                            <label for="confirmRehearsalTitle">Titel <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="text" id="confirmRehearsalTitle" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="confirmRehearsalDescription">Beschreibung (optional)</label>
-                            <textarea id="confirmRehearsalDescription" class="form-control" rows="2"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="confirmRehearsalStartTime">Von (Start) <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="datetime-local" id="confirmRehearsalStartTime" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="confirmRehearsalEndTime">Bis (Ende) <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="datetime-local" id="confirmRehearsalEndTime" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <div class="section">
-                        <h3>Probeort auswählen</h3>
-                        <select id="confirmRehearsalLocation" class="form-select">
-                            <option value="">Kein Ort ausgewählt</option>
-                        </select>
-                    </div>
-
-                    <div class="section">
-                        <h3>Bandmitglieder benachrichtigen</h3>
-                        <p class="help-text">Wähle aus, welche Bandmitglieder eine Bestätigungs-E-Mail erhalten
-                            sollen:
-                        </p>
-                        <div id="confirmMembersList" class="confirm-members-list"></div>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="button" id="sendConfirmationBtn" class="btn btn-primary">✅ Probe bestätigen &
-                            E-Mail
-                            senden</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Location Conflict Warning Modal -->
-        <div id="locationConflictModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>⚠️ Probeort belegt</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin-bottom: 1rem;">
-                        <strong>Der gewählte Probeort ist zu dieser Zeit bereits belegt!</strong>
-                    </p>
-
-                    <div id="conflictDetails" class="conflict-details"></div>
-
-                    <p style="margin-top: 1rem; color: var(--color-text-secondary);">
-                        Möchtest du trotzdem fortfahren?
-                    </p>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel" id="abortConfirmationBtn">Abbrechen</button>
-                        <button type="button" class="btn btn-primary" id="proceedAnywayBtn">Trotzdem
-                            fortfahren</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add/Edit Calendar Modal -->
-        <div id="calendarModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="calendarModalTitle">Neuen Kalender hinzufügen</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <form id="calendarForm">
-                    <input type="hidden" id="editCalendarId">
-                    <div class="form-group">
-                        <label for="calendarName">Name <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <input type="text" id="calendarName" placeholder="z.B. Mein Proberaum" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="calendarIcon">Icon (Emoji)</label>
-                        <input type="text" id="calendarIcon" placeholder="📅" maxlength="2"
-                            style="font-size: 1.5rem; text-align: center;">
-                        <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
-                            Optional: Ein Emoji zur visuellen Kennzeichnung
-                        </small>
-                    </div>
-                    <div class="form-group">
-                        <label for="calendarUrl">iCal URL <span style="color:red;" title="Pflichtfeld">*</span></label>
-                        <input type="url" id="calendarUrl" placeholder="https://..." required>
-                        <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
-                            Die öffentliche iCal-URL des Kalenders (z.B. von Google Calendar, Outlook, etc.)
-                        </small>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Speichern</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Quick Add Calendar Modal (from location form) -->
-        <div id="quickAddCalendarModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>➕ Neuen Kalender hinzufügen</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <form id="quickAddCalendarForm">
-                    <div class="form-group">
-                        <label for="quickCalendarName">Name <span style="color:red;"
+                        <label for="eventTitle">Titel / Anlass <span style="color:red;"
                                 title="Pflichtfeld">*</span></label>
-                        <input type="text" id="quickCalendarName" placeholder="z.B. Mein Proberaum" required>
+                        <input type="text" id="eventTitle" placeholder="z.B. Hochzeit, Firmenfeier..." required>
                     </div>
                     <div class="form-group">
-                        <label for="quickCalendarIcon">Icon (Emoji)</label>
-                        <input type="text" id="quickCalendarIcon" placeholder="📅" maxlength="2"
-                            style="font-size: 1.5rem; text-align: center;">
-                    </div>
-                    <div class="form-group">
-                        <label for="quickCalendarUrl">iCal URL <span style="color:red;"
+                        <label for="eventDate">Datum und Uhrzeit <span style="color:red;"
                                 title="Pflichtfeld">*</span></label>
-                        <input type="url" id="quickCalendarUrl" placeholder="https://..." required>
-                        <small style="color: var(--color-text-secondary); font-size: 0.875rem;">
-                            Die öffentliche iCal-URL des Kalenders
-                        </small>
+                        <input type="datetime-local" id="eventDate" required>
                     </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Kalender erstellen & verknüpfen</button>
+                    <div class="form-group">
+                        <label for="eventLocation">📍 Ort / Adresse</label>
+                        <input type="text" id="eventLocation" placeholder="Musterstadt, Hauptstr 1">
                     </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Create Event Modal -->
-        <div id="createEventModal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2 id="eventModalTitle">Neuen Auftritt erstellen</h2>
-                    <button class="modal-close">&times;</button>
                 </div>
-                <form id="createEventForm">
-                    <input type="hidden" id="editEventId">
 
+                <div class="form-section-divider"></div>
+
+                <div class="form-group toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="eventShowExtras">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <label for="eventShowExtras" class="toggle-label">Weitere Infos (Soundcheck, Technik,
+                        Event-Infos)</label>
+                </div>
+
+                <div id="eventExtrasFields" class="form-optional-section" style="display:none;">
+                    <div class="form-group">
+                        <label for="eventSoundcheckLocation">🎚️ Soundcheck Infos</label>
+                        <input type="text" id="eventSoundcheckLocation"
+                            placeholder="Uhrzeit, konkreter Ort im Gebäude...">
+                    </div>
                     <div class="form-grid-2">
                         <div class="form-group">
-                            <label for="eventBand">Band <span style="color:red;" title="Pflichtfeld">*</span></label>
-                            <select id="eventBand" required>
-                                <option value="">Band auswählen</option>
-                            </select>
+                            <label for="eventInfo">ℹ️ Event-Infos</label>
+                            <textarea id="eventInfo" rows="3" placeholder="Ablauf, Ansprechpartner..."></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="eventTitle">Titel / Anlass <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="text" id="eventTitle" placeholder="z.B. Hochzeit, Firmenfeier..." required>
-                        </div>
-                        <div class="form-group">
-                            <label for="eventDate">Datum und Uhrzeit <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="datetime-local" id="eventDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="eventLocation">📍 Ort / Adresse</label>
-                            <input type="text" id="eventLocation" placeholder="Musterstadt, Hauptstr 1">
+                            <label for="eventTechInfo">🔧 Technik / PA</label>
+                            <textarea id="eventTechInfo" rows="3"
+                                placeholder="Was wird benötigt? Monitoring?"></textarea>
                         </div>
                     </div>
+                </div>
 
-                    <div class="form-section-divider"></div>
+                <div class="form-section-divider"></div>
 
-                    <div class="form-group toggle-group">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="eventShowExtras">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <label for="eventShowExtras" class="toggle-label">Weitere Infos (Soundcheck, Technik,
-                            Event-Infos)</label>
-                    </div>
+                <div class="form-group">
+                    <label class="section-title">👥 Beteiligte Bandmitglieder</label>
+                    <div id="eventBandMembers" class="checkbox-list members-grid"></div>
+                </div>
 
-                    <div id="eventExtrasFields" class="form-optional-section" style="display:none;">
-                        <div class="form-group">
-                            <label for="eventSoundcheckLocation">🎚️ Soundcheck Infos</label>
-                            <input type="text" id="eventSoundcheckLocation"
-                                placeholder="Uhrzeit, konkreter Ort im Gebäude...">
+                <div class="form-group toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="eventShowGuests">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <label for="eventShowGuests" class="toggle-label">Gäste / Aushilfen dabei?</label>
+                </div>
+
+                <div id="eventGuestsField" class="form-optional-section" style="display:none;">
+                    <label for="eventGuests">🎭 Gästeliste</label>
+                    <textarea id="eventGuests" rows="2" placeholder="Name (Instrument/Rolle)"></textarea>
+                </div>
+
+                <div class="form-section-divider"></div>
+
+                <div class="form-group setlist-section">
+                    <div class="section-header-row">
+                        <label class="section-title">🎵 Setlist</label>
+                        <div class="section-actions">
+                            <button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm"
+                                style="display: none;">
+                                📋 Band-Pool
+                            </button>
+                            <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">
+                                + Neuer Song
+                            </button>
                         </div>
-                        <div class="form-grid-2">
-                            <div class="form-group">
-                                <label for="eventInfo">ℹ️ Event-Infos</label>
-                                <textarea id="eventInfo" rows="3" placeholder="Ablauf, Ansprechpartner..."></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label for="eventTechInfo">🔧 Technik / PA</label>
-                                <textarea id="eventTechInfo" rows="3"
-                                    placeholder="Was wird benötigt? Monitoring?"></textarea>
-                            </div>
-                        </div>
                     </div>
+                    <div id="eventSongsList" class="compact-song-list"></div>
+                </div>
 
-                    <div class="form-section-divider"></div>
-
-                    <div class="form-group">
-                        <label class="section-title">👥 Beteiligte Bandmitglieder</label>
-                        <div id="eventBandMembers" class="checkbox-list members-grid"></div>
-                    </div>
-
-                    <div class="form-group toggle-group">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="eventShowGuests">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <label for="eventShowGuests" class="toggle-label">Gäste / Aushilfen dabei?</label>
-                    </div>
-
-                    <div id="eventGuestsField" class="form-optional-section" style="display:none;">
-                        <label for="eventGuests">🎭 Gästeliste</label>
-                        <textarea id="eventGuests" rows="2" placeholder="Name (Instrument/Rolle)"></textarea>
-                    </div>
-
-                    <div class="form-section-divider"></div>
-
-                    <div class="form-group setlist-section">
-                        <div class="section-header-row">
-                            <label class="section-title">🎵 Setlist</label>
-                            <div class="section-actions">
-                                <button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm"
-                                    style="display: none;">
-                                    📋 Band-Pool
-                                </button>
-                                <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">
-                                    + Neuer Song
-                                </button>
-                            </div>
-                        </div>
-                        <div id="eventSongsList" class="compact-song-list"></div>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt speichern</button>
-                    </div>
-                </form>
-            </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt speichern</button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <!-- Song Management Modal -->
-        <div id="songModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="song ModalTitle">Song hinzufügen</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <form id="songForm">
-                    <input type="hidden" id="songId">
-                    <input type="hidden" id="songEventId">
-                    <input type="hidden" id="songBandId">
-                    <div class="form-group">
-                        <label for="songTitle">Titel</label>
-                        <input type="text" id="songTitle" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="songArtist">Interpret</label>
-                        <input type="text" id="songArtist" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="songBPM">BPM</label>
-                        <input type="number" id="songBPM" min="1" placeholder="z.B. 120">
-                    </div>
-                    <div class="form-group">
-                        <label for="songKey">Tonart</label>
-                        <select id="songKey">
-                            <option value="">— Auswahl —</option>
-                            <!-- Major keys -->
-                            <option value="C">C</option>
-                            <option value="C#">C# / Db</option>
-                            <option value="D">D</option>
-                            <option value="D#">D# / Eb</option>
-                            <option value="E">E</option>
-                            <option value="F">F</option>
-                            <option value="F#">F# / Gb</option>
-                            <option value="G">G</option>
-                            <option value="G#">G# / Ab</option>
-                            <option value="A">A</option>
-                            <option value="A#">A# / Bb</option>
-                            <option value="B">B</option>
-                            <!-- Minor keys -->
-                            <option value="Cm">Cm</option>
-                            <option value="C#m">C#m / Dbm</option>
-                            <option value="Dm">Dm</option>
-                            <option value="D#m">D#m / Ebm</option>
-                            <option value="Em">Em</option>
-                            <option value="Fm">Fm</option>
-                            <option value="F#m">F#m / Gbm</option>
-                            <option value="Gm">Gm</option>
-                            <option value="G#m">G#m / Abm</option>
-                            <option value="Am">Am</option>
-                            <option value="A#m">A#m / Bbm</option>
-                            <option value="Bm">Bm</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="songCcli">Songselect CCLI Nummer (optional)</label>
-                        <input type="text" id="songCcli" placeholder="CCLI Nummer">
-                    </div>
-                    <div class="form-group">
-                        <label for="songLeadVocal">Lead Vocal</label>
-                        <input type="text" id="songLeadVocal" placeholder="Name des Lead-Sängers">
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Speichern</button>
-                    </div>
-                </form>
+    <!-- Song Management Modal -->
+    <div id="songModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="song ModalTitle">Song hinzufügen</h2>
+                <button class="modal-close">&times;</button>
             </div>
-        </div>
-
-        <!-- Event Details Modal -->
-        <div id="eventDetailsModal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2 id="eventDetailsTitle"></h2>
-                    <button class="modal-close">&times;</button>
+            <form id="songForm">
+                <input type="hidden" id="songId">
+                <input type="hidden" id="songEventId">
+                <input type="hidden" id="songBandId">
+                <div class="form-group">
+                    <label for="songTitle">Titel</label>
+                    <input type="text" id="songTitle" required>
                 </div>
-                <div class="modal-body">
-                    <div id="eventDetailsContent"></div>
+                <div class="form-group">
+                    <label for="songArtist">Interpret</label>
+                    <input type="text" id="songArtist" required>
                 </div>
-            </div>
-        </div>
-
-        <!-- Join Band Modal -->
-        <div id="joinBandModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Band beitreten</h2>
-                    <button class="modal-close">&times;</button>
+                <div class="form-group">
+                    <label for="songBPM">BPM</label>
+                    <input type="number" id="songBPM" min="1" placeholder="z.B. 120">
                 </div>
-                <form id="joinBandForm">
-                    <div class="form-group">
-                        <label for="joinBandCode">Band-Beitrittscode</label>
-                        <input type="text" id="joinBandCode" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="XXXXXX"
-                            required style="text-transform: uppercase;">
-                        <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem
-                            6-stelligen
-                            Code</small>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Beitreten</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Absence Management Modal -->
-        <div id="absenceModal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2>Meine Abwesenheiten</h2>
-                    <button class="modal-close">&times;</button>
+                <div class="form-group">
+                    <label for="songKey">Tonart</label>
+                    <select id="songKey">
+                        <option value="">— Auswahl —</option>
+                        <!-- Major keys -->
+                        <option value="C">C</option>
+                        <option value="C#">C# / Db</option>
+                        <option value="D">D</option>
+                        <option value="D#">D# / Eb</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="F#">F# / Gb</option>
+                        <option value="G">G</option>
+                        <option value="G#">G# / Ab</option>
+                        <option value="A">A</option>
+                        <option value="A#">A# / Bb</option>
+                        <option value="B">B</option>
+                        <!-- Minor keys -->
+                        <option value="Cm">Cm</option>
+                        <option value="C#m">C#m / Dbm</option>
+                        <option value="Dm">Dm</option>
+                        <option value="D#m">D#m / Ebm</option>
+                        <option value="Em">Em</option>
+                        <option value="Fm">Fm</option>
+                        <option value="F#m">F#m / Gbm</option>
+                        <option value="Gm">Gm</option>
+                        <option value="G#m">G#m / Abm</option>
+                        <option value="Am">Am</option>
+                        <option value="A#m">A#m / Bbm</option>
+                        <option value="Bm">Bm</option>
+                    </select>
                 </div>
-                <div class="modal-body">
-                    <!-- Create Absence Section -->
-                    <div class="section">
-                        <h3>Neue Abwesenheit eintragen</h3>
-                        <form id="createAbsenceForm">
-                            <input type="hidden" id="editAbsenceId">
-                            <div class="form-group">
-                                <label for="absenceStart">Von (Datum)</label>
-                                <input type="date" id="absenceStart" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="absenceEnd">Bis (Datum)</label>
-                                <input type="date" id="absenceEnd" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="absenceReason">Grund (optional)</label>
-                                <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
-                            </div>
-                            <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit
-                                    hinzufügen</button>
-                                <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
-                                    style="display:none;">Abbrechen</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- List Absences Section -->
-                    <div class="section">
-                        <h3>Meine eingetragenen Abwesenheiten</h3>
-                        <div id="absencesList"></div>
-                    </div>
+                <div class="form-group">
+                    <label for="songCcli">Songselect CCLI Nummer (optional)</label>
+                    <input type="text" id="songCcli" placeholder="CCLI Nummer">
                 </div>
-            </div>
-        </div>
-
-        <!-- Create News Modal -->
-        <div id="createNewsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>News erstellen</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <form id="createNewsForm">
-                    <input type="hidden" id="editNewsId">
-                    <div class="form-group">
-                        <label for="newsTitle">Titel</label>
-                        <input type="text" id="newsTitle" required placeholder="z.B. Neue Feature: Abwesenheiten">
-                    </div>
-                    <div class="form-group">
-                        <label for="newsContent">Inhalt</label>
-                        <!-- Rich Text Editor Toolbar -->
-                        <div class="rte-toolbar">
-                            <button type="button" class="rte-button" data-command="bold" title="Fett (Strg+B)">
-                                <strong>B</strong>
-                            </button>
-                            <button type="button" class="rte-button" data-command="italic" title="Kursiv (Strg+I)">
-                                <em>I</em>
-                            </button>
-                            <button type="button" class="rte-button" data-command="underline"
-                                title="Unterstrichen (Strg+U)">
-                                <u>U</u>
-                            </button>
-                            <span class="rte-divider"></span>
-                            <button type="button" class="rte-button" data-command="formatBlock" data-value="h3"
-                                title="Überschrift 3">
-                                H3
-                            </button>
-                            <button type="button" class="rte-button" data-command="formatBlock" data-value="h4"
-                                title="Überschrift 4">
-                                H4
-                            </button>
-                            <button type="button" class="rte-button" data-command="formatBlock" data-value="p"
-                                title="Normal">
-                                P
-                            </button>
-                            <span class="rte-divider"></span>
-                            <button type="button" class="rte-button" data-command="insertUnorderedList"
-                                title="Aufzählung">
-                                • List
-                            </button>
-                            <button type="button" class="rte-button" data-command="insertOrderedList"
-                                title="Nummerierte Liste">
-                                1. List
-                            </button>
-                            <span class="rte-divider"></span>
-                            <button type="button" class="rte-button" id="rteInsertImageBtn" title="Bild einfügen">
-                                🖼️ Bild
-                            </button>
-                        </div>
-                        <!-- Rich Text Editor Content Area -->
-                        <div id="newsContent" class="rte-editor" contenteditable="true" role="textbox"
-                            aria-label="News content editor"
-                            data-placeholder="Beschreibe das Update oder Feature... Du kannst Text formatieren und Bilder einfügen.">
-                        </div>
-                        <!-- Hidden file input for inline images -->
-                        <input type="file" id="rteImageInput" accept="image/*" style="display:none;">
-                    </div>
-                    <div class="form-group">
-                        <label for="newsImages">Bilder (optional)</label>
-                        <input type="file" id="newsImages" accept="image/*" multiple>
-                        <div id="newsImagesPreview"
-                            style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
-                        </div>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn cancel">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary">Veröffentlichen</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- News Detail Modal -->
-        <div id="newsDetailModal" class="modal news-detail-modal">
-            <div class="modal-content news-modal-content">
-                <button class="modal-close news-modal-close">&times;</button>
-
-                <div id="newsDetailHero" class="news-hero-section">
-                    <!-- Hero Image injected here -->
-                </div>
-
-                <div class="modal-body news-modal-body">
-                    <div class="news-header-block">
-                        <h2 id="newsDetailTitle"></h2>
-                        <p id="newsDetailDate"></p>
-                    </div>
-
-                    <div id="newsDetailContent" class="news-content-modern">
-                    </div>
-
-                    <div id="newsDetailImages" class="news-gallery-section">
-                        <!-- Remaining images rendered here -->
-                    </div>
-                </div>
-
-                <div class="modal-actions news-modal-actions">
-                    <button type="button" class="btn btn-secondary cancel">Schließen</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Confirm Delete Modal -->
-        <div id="confirmDeleteModal" class="modal">
-            <div class="modal-content" style="max-width: 400px;">
-                <div class="modal-header">
-                    <h2 id="confirmDeleteTitle">Wirklich löschen?</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p id="confirmDeleteMessage" style="margin: 0; color: var(--color-text-secondary);">
-                        Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht
-                        werden.
-                    </p>
+                <div class="form-group">
+                    <label for="songLeadVocal">Lead Vocal</label>
+                    <input type="text" id="songLeadVocal" placeholder="Name des Lead-Sängers">
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn cancel" id="confirmDeleteCancel">Abbrechen</button>
-                    <button type="button" class="btn btn-danger" id="confirmDeleteConfirm">Löschen</button>
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="eventDetailsModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="eventDetailsTitle"></h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="eventDetailsContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Band Modal -->
+    <div id="joinBandModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Band beitreten</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="joinBandForm">
+                <div class="form-group">
+                    <label for="joinBandCode">Band-Beitrittscode</label>
+                    <input type="text" id="joinBandCode" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="XXXXXX"
+                        required style="text-transform: uppercase;">
+                    <small style="color: var(--color-text-secondary);">Frag deinen Bandleiter nach dem
+                        6-stelligen
+                        Code</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Beitreten</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Absence Management Modal -->
+    <div id="absenceModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Meine Abwesenheiten</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Create Absence Section -->
+                <div class="section">
+                    <h3>Neue Abwesenheit eintragen</h3>
+                    <form id="createAbsenceForm">
+                        <input type="hidden" id="editAbsenceId">
+                        <div class="form-group">
+                            <label for="absenceStart">Von (Datum)</label>
+                            <input type="date" id="absenceStart" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="absenceEnd">Bis (Datum)</label>
+                            <input type="date" id="absenceEnd" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="absenceReason">Grund (optional)</label>
+                            <input type="text" id="absenceReason" placeholder="z.B. Urlaub, Krankheit...">
+                        </div>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <button type="submit" id="saveAbsenceBtn" class="btn btn-primary">Abwesenheit
+                                hinzufügen</button>
+                            <button type="button" id="cancelEditAbsenceBtn" class="btn cancel"
+                                style="display:none;">Abbrechen</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- List Absences Section -->
+                <div class="section">
+                    <h3>Meine eingetragenen Abwesenheiten</h3>
+                    <div id="absencesList"></div>
                 </div>
             </div>
         </div>
+    </div>
 
-
-
-        <!-- Calendar Event Detail Modal -->
-        <div id="calendarEventModal" class="modal">
-            <div class="modal-content" style="max-width: 500px;">
-                <div class="modal-header">
-                    <h2 id="eventModalTitle">Event Details</h2>
-                    <button class="modal-close">&times;</button>
+    <!-- Create News Modal -->
+    <div id="createNewsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>News erstellen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="createNewsForm">
+                <input type="hidden" id="editNewsId">
+                <div class="form-group">
+                    <label for="newsTitle">Titel</label>
+                    <input type="text" id="newsTitle" required placeholder="z.B. Neue Feature: Abwesenheiten">
                 </div>
-                <div class="modal-body">
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div>
-                            <strong style="color: var(--color-text-secondary);">Titel:</strong>
-                            <p id="eventModalSummary" style="margin: 0.25rem 0 0 0;"></p>
-                        </div>
-                        <div>
-                            <strong style="color: var(--color-text-secondary);">Zeit:</strong>
-                            <p id="eventModalTime" style="margin: 0.25rem 0 0 0;"></p>
-                        </div>
-                        <div id="eventModalDescriptionContainer" style="display: none;">
-                            <strong style="color: var(--color-text-secondary);">Beschreibung:</strong>
-                            <p id="eventModalDescription" style="margin: 0.25rem 0 0 0; white-space: pre-wrap;"></p>
-                        </div>
-                        <div id="eventModalLocationContainer" style="display: none;">
-                            <strong style="color: var(--color-text-secondary);">Ort:</strong>
-                            <p id="eventModalLocation" style="margin: 0.25rem 0 0 0;"></p>
-                        </div>
+                <div class="form-group">
+                    <label for="newsContent">Inhalt</label>
+                    <!-- Rich Text Editor Toolbar -->
+                    <div class="rte-toolbar">
+                        <button type="button" class="rte-button" data-command="bold" title="Fett (Strg+B)">
+                            <strong>B</strong>
+                        </button>
+                        <button type="button" class="rte-button" data-command="italic" title="Kursiv (Strg+I)">
+                            <em>I</em>
+                        </button>
+                        <button type="button" class="rte-button" data-command="underline"
+                            title="Unterstrichen (Strg+U)">
+                            <u>U</u>
+                        </button>
+                        <span class="rte-divider"></span>
+                        <button type="button" class="rte-button" data-command="formatBlock" data-value="h3"
+                            title="Überschrift 3">
+                            H3
+                        </button>
+                        <button type="button" class="rte-button" data-command="formatBlock" data-value="h4"
+                            title="Überschrift 4">
+                            H4
+                        </button>
+                        <button type="button" class="rte-button" data-command="formatBlock" data-value="p"
+                            title="Normal">
+                            P
+                        </button>
+                        <span class="rte-divider"></span>
+                        <button type="button" class="rte-button" data-command="insertUnorderedList" title="Aufzählung">
+                            • List
+                        </button>
+                        <button type="button" class="rte-button" data-command="insertOrderedList"
+                            title="Nummerierte Liste">
+                            1. List
+                        </button>
+                        <span class="rte-divider"></span>
+                        <button type="button" class="rte-button" id="rteInsertImageBtn" title="Bild einfügen">
+                            🖼️ Bild
+                        </button>
+                    </div>
+                    <!-- Rich Text Editor Content Area -->
+                    <div id="newsContent" class="rte-editor" contenteditable="true" role="textbox"
+                        aria-label="News content editor"
+                        data-placeholder="Beschreibe das Update oder Feature... Du kannst Text formatieren und Bilder einfügen.">
+                    </div>
+                    <!-- Hidden file input for inline images -->
+                    <input type="file" id="rteImageInput" accept="image/*" style="display:none;">
+                </div>
+                <div class="form-group">
+                    <label for="newsImages">Bilder (optional)</label>
+                    <input type="file" id="newsImages" accept="image/*" multiple>
+                    <div id="newsImagesPreview" style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Veröffentlichen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- News Detail Modal -->
+    <div id="newsDetailModal" class="modal news-detail-modal">
+        <div class="modal-content news-modal-content">
+            <button class="modal-close news-modal-close">&times;</button>
+
+            <div id="newsDetailHero" class="news-hero-section">
+                <!-- Hero Image injected here -->
+            </div>
+
+            <div class="modal-body news-modal-body">
+                <div class="news-header-block">
+                    <h2 id="newsDetailTitle"></h2>
+                    <p id="newsDetailDate"></p>
+                </div>
+
+                <div id="newsDetailContent" class="news-content-modern">
+                </div>
+
+                <div id="newsDetailImages" class="news-gallery-section">
+                    <!-- Remaining images rendered here -->
+                </div>
+            </div>
+
+            <div class="modal-actions news-modal-actions">
+                <button type="button" class="btn btn-secondary cancel">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="confirmDeleteModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="confirmDeleteTitle">Wirklich löschen?</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmDeleteMessage" style="margin: 0; color: var(--color-text-secondary);">
+                    Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht
+                    werden.
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn cancel" id="confirmDeleteCancel">Abbrechen</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteConfirm">Löschen</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Calendar Event Detail Modal -->
+    <div id="calendarEventModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="eventModalTitle">Event Details</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <strong style="color: var(--color-text-secondary);">Titel:</strong>
+                        <p id="eventModalSummary" style="margin: 0.25rem 0 0 0;"></p>
+                    </div>
+                    <div>
+                        <strong style="color: var(--color-text-secondary);">Zeit:</strong>
+                        <p id="eventModalTime" style="margin: 0.25rem 0 0 0;"></p>
+                    </div>
+                    <div id="eventModalDescriptionContainer" style="display: none;">
+                        <strong style="color: var(--color-text-secondary);">Beschreibung:</strong>
+                        <p id="eventModalDescription" style="margin: 0.25rem 0 0 0; white-space: pre-wrap;"></p>
+                    </div>
+                    <div id="eventModalLocationContainer" style="display: none;">
+                        <strong style="color: var(--color-text-secondary);">Ort:</strong>
+                        <p id="eventModalLocation" style="margin: 0.25rem 0 0 0;"></p>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Profile Image Preview Modal -->
-        <div id="profileImageModal" class="modal">
-            <div class="modal-content" style="max-width: 600px; text-align: center;">
-                <div class="modal-header">
-                    <h2>Profilbild</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <img id="profileImagePreview" src="" alt="Profilbild"
-                        style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
-                </div>
+    <!-- Profile Image Preview Modal -->
+    <div id="profileImageModal" class="modal">
+        <div class="modal-content" style="max-width: 600px; text-align: center;">
+            <div class="modal-header">
+                <h2>Profilbild</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <img id="profileImagePreview" src="" alt="Profilbild"
+                    style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
             </div>
         </div>
+    </div>
     </div>
     </div>
     </div>
@@ -2449,7 +2447,16 @@
 
 
     <!-- Capacitor JS (will be injected by Capacitor on iOS, safe to fail in browser) -->
-    <script src="capacitor.js" onerror="console.log('Capacitor not available (running in browser)')"></script>
+    <!-- Capacitor Core -->
+    <script>
+        // Dynamically load capacitor.js only if likely in a native environment to avoid 404s in browser
+        if (window.location.protocol === 'file:' || window.location.protocol === 'capacitor:') {
+            var script = document.createElement('script');
+            script.src = 'capacitor.js';
+            script.onerror = function () { console.log('Capacitor not available (running in browser mode)'); };
+            document.head.appendChild(script);
+        }
+    </script>
     <!-- Dynamic Stage Effects for "Sound Check" -->
     <div id="stageEffectsContainer" class="stage-lights-overlay">
         <!-- Reaching Stage Beams -->

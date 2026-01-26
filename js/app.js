@@ -1,6 +1,5 @@
 // Main Application Controller
-
-// Main Application Controller
+window.APP_START_TIME = performance.now();
 
 /* ===== Rich Text Editor Helper ===== */
 const RichTextEditor = {
@@ -647,6 +646,12 @@ const App = {
         if (!navBar) return;
 
         Logger.info('[setupMobileSubmenuToggle] Initializing unified mobile nav delegation');
+
+        // Log total app load time
+        if (window.APP_START_TIME) {
+            const loadTime = ((performance.now() - window.APP_START_TIME) / 1000).toFixed(3);
+            Logger.info(`🚀 Application fully loaded in ${loadTime}s`);
+        }
 
         // Central delegation handler for ALL mobile bottom nav interactions
         navBar.addEventListener('click', async (e) => {
@@ -2002,6 +2007,25 @@ const App = {
             });
         }
 
+        const adminTestNewsBannerBtn = document.getElementById('adminTestNewsBannerBtn');
+        if (adminTestNewsBannerBtn) {
+            adminTestNewsBannerBtn.addEventListener('click', () => {
+                const banner = document.getElementById('newsBanner');
+                const message = document.getElementById('newsBannerMessage');
+                if (banner && message) {
+                    message.textContent = '🎉 Dies ist ein Test-Banner für neue News!';
+                    banner.style.display = 'block';
+
+                    // Reset animation to play it again
+                    banner.style.animation = 'none';
+                    banner.offsetHeight; /* trigger reflow */
+                    banner.style.animation = 'slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+
+                    UI.showToast('News Banner eingeblendet');
+                }
+            });
+        }
+
         // Create Band Button (in Bands View)
         document.addEventListener('click', (e) => {
             if (e.target && e.target.id === 'createBandBtnView') {
@@ -3014,20 +3038,26 @@ const App = {
             imagesContainer.appendChild(gallery);
         }
 
-        // Mark as read
+        // Open modal IMMEDIATELY for perceived performance
+        UI.openModal('newsDetailModal');
+
+        // Attach Lightbox listeners
+        this.setupNewsLightbox();
+
+        // Mark as read in BACKGROUND (don't await to block UI)
         const user = Auth.getCurrentUser();
         if (user) {
-            await Storage.markNewsRead(newsId, user.id);
-
-            // Update badge and banner
-            await this.updateNewsNavBadge();
-
-            // Refresh the news list to remove "NEU" badge
-            // Open modal
-            UI.openModal('newsDetailModal');
-
-            // Attach Lightbox listeners to all images (Hero + Inline + Gallery)
-            this.setupNewsLightbox();
+            // We use a non-blocking async function inside
+            (async () => {
+                try {
+                    await Storage.markNewsRead(newsId, user.id);
+                    // Update badge and banner silently
+                    await this.updateNewsNavBadge();
+                    // Optional: refresh list if needed, but avoid layout shift
+                } catch (error) {
+                    console.error('Error marking news as read:', error);
+                }
+            })();
         }
     },
 
@@ -4586,8 +4616,8 @@ const App = {
             });
         }
 
-        // Edit location form (scoped to settings view)
-        const editLocationForm = root.querySelector('#editLocationForm');
+        // Edit location form (GLOBAL modal, not scoped)
+        const editLocationForm = document.querySelector('#editLocationForm');
         if (editLocationForm) {
             // Clone to remove all old event listeners
             const newEditForm = editLocationForm.cloneNode(true);
@@ -5161,6 +5191,10 @@ const App = {
     async renderLocationsList() {
         const startTime = performance.now();
         const container = document.getElementById('locationsList');
+
+        // Ensure dropdowns are populated with latest calendars
+        await this.populateCalendarDropdowns();
+
         const locations = await Storage.getLocations();
 
         const badge = document.getElementById('adminLocationCount');
@@ -6085,11 +6119,7 @@ const App = {
         const address = addressInput.value;
         const linkedCalendar = linkedCalendarSelect.value;
 
-        // Check if user wants to add a new calendar
-        if (linkedCalendar === '__add_new__') {
-            await this.openQuickAddCalendarModal();
-            return;
-        }
+
 
         if (name) {
             await Storage.createLocation({ name, address, linkedCalendar });
@@ -6117,7 +6147,6 @@ const App = {
             const currentValue = dropdown.value;
             dropdown.innerHTML = `
                 <option value="">Nicht verknüpft</option>
-                <option value="__add_new__">➕ Neuen Kalender hinzufügen...</option>
                 <option disabled>──────────</option>
             `;
 
