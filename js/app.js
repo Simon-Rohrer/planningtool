@@ -940,45 +940,33 @@ const App = {
 
         // NOTE: tutorial banner will be shown after auth initialization below
 
-        try {
-            await Auth.init();
-        } catch (authErr) {
+        // Start Auth initialization in background (non-blocking)
+        Auth.init().then(() => {
+            // After auth is ready, check if authenticated and show appropriate view
+            if (Auth.isAuthenticated()) {
+                this.showApp().then(() => {
+                    // Pre-load standard calendars after login (delayed to not block UI)
+                    setTimeout(() => {
+                        this.preloadStandardCalendars();
+                    }, 2000);
+                    // Clean up past events and rehearsals (Run in background)
+                    Storage.cleanupPastItems();
+
+                    // Show tutorial suggest banner for admins (if not dismissed)
+                    try {
+                        if (Auth.isAdmin && Auth.isAdmin()) {
+                            setTimeout(() => this.showTutorialSuggestBanner(), 350);
+                        }
+                    } catch (err) { /* ignore */ }
+                });
+            } else {
+                this.showAuth();
+            }
+        }).catch(authErr => {
             console.error('[App.init] Auth initialization failed:', authErr);
-        }
-
-        // Apply saved theme on app start (and update icon if present)
-        const savedTheme = localStorage.getItem('theme');
-        const themeToggleHeader = document.getElementById('themeToggleHeader');
-        const themeToggleIcon = document.getElementById('themeToggleIcon');
-        let isDark = false;
-        if (savedTheme) {
-            isDark = savedTheme === 'dark';
-        } else {
-            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        }
-        document.documentElement.classList.toggle('theme-dark', isDark);
-        if (themeToggleIcon && themeToggleHeader) {
-            themeToggleIcon.textContent = isDark ? '☀️' : '🌙';
-            themeToggleHeader.title = isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren';
-        }
-
-        // Check authentication
-        if (Auth.isAuthenticated()) {
-            await this.showApp();
-            // Pre-load standard calendars after login
-            this.preloadStandardCalendars();
-            // Clean up past events and rehearsals (Run in background)
-            Storage.cleanupPastItems();
-
-            // Show tutorial suggest banner for admins (if not dismissed)
-            try {
-                if (Auth.isAdmin && Auth.isAdmin()) {
-                    setTimeout(() => this.showTutorialSuggestBanner(), 350);
-                }
-            } catch (err) { /* ignore */ }
-        } else {
+            // Show auth page on error
             this.showAuth();
-        }
+        });
 
         // Setup event listeners
         this.setupEventListeners();
@@ -4133,25 +4121,29 @@ const App = {
         // Update sidebar profile
         this.updateSidebarProfile();
 
-        await this.updateDashboard();
-        await this.updateNavigationVisibility();
+        // Run in background for faster login
+        this.updateDashboard();
+        this.updateNavigationVisibility();
         this.navigateTo('dashboard', 'login-success');
         // Ensure create news button visibility immediately after login (so admins/leaders see it without navigating)
         const createNewsBtnGlobal = document.getElementById('createNewsBtn');
         if (createNewsBtnGlobal) {
-            const user = Auth.getCurrentUser();
-            let canCreate = Auth.isAdmin();
-            if (!canCreate && user) {
-                const userBands = await Storage.getUserBands(user.id);
-                canCreate = Array.isArray(userBands) && userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
-            }
-            createNewsBtnGlobal.style.display = canCreate ? 'inline-flex' : 'none';
+            // Run in background
+            (async () => {
+                const user = Auth.getCurrentUser();
+                let canCreate = Auth.isAdmin();
+                if (!canCreate && user) {
+                    const userBands = await Storage.getUserBands(user.id);
+                    canCreate = Array.isArray(userBands) && userBands.some(b => b.role === 'leader' || b.role === 'co-leader');
+                }
+                createNewsBtnGlobal.style.display = canCreate ? 'inline-flex' : 'none';
+            })();
         }
-        // Update unread news badge
-        await this.updateNewsNavBadge();
+        // Update unread news badge (background)
+        this.updateNewsNavBadge();
 
-        // Check for unread news and show banner
-        await this.checkAndShowNewsBanner();
+        // Check for unread news and show banner (background)
+        this.checkAndShowNewsBanner();
 
         // Load calendar right after login so it is ready without manual refresh
         if (document.getElementById('tonstudioView')) {
