@@ -63,7 +63,7 @@ const Bands = {
             this.bands = bands;
 
             // Log which bands were loaded for debugging
-            console.log('[Bands.renderBands] Loaded', bands.length, 'bands for user', user.username || user.id);
+            Logger.info(`[Bands.renderBands] Loaded ${bands.length} bands for user ${user.username || user.id}`);
 
             if (bands.length === 0) {
                 UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');

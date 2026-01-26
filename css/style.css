@@ -728,22 +728,67 @@ body.global-stage-mode .stage-lights-overlay {
         flex-direction: column;
     }
 
-    .landing-left,
+    /* Optimized for "Above the Fold" Login - Modern & Sleek */
+    .landing-left {
+        padding: 2rem 1.5rem 0.5rem 1.5rem;
+        flex: 0 0 auto;
+        text-align: center;
+        background: transparent;
+        /* Seamless integration */
+    }
+
     .landing-right {
-        padding: 3rem 1.5rem;
+        padding: 0.5rem 1.5rem 2rem 1.5rem;
+        background: transparent;
+        /* Seamless integration */
+    }
+
+    /* Unify with body background for 'App-like' feel */
+    .landing-container {
+        background: transparent;
+        box-shadow: none;
+        /* Remove card shadow on mobile for full-screen feel */
+        border-radius: 0;
+    }
+
+    /* Hide non-essential content on mobile to save space */
+    .feature-grid,
+    .hero-actions,
+    .hero-subtitle {
+        display: none;
+    }
+
+    .welcome-logo {
+        font-size: 3.5rem;
+        /* Larger, confident */
+        margin-bottom: 0.5rem;
+        display: inline-block;
+        filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.3));
+        /* Subtle glow */
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .welcome-content {
+        margin-bottom: 0;
     }
 
     .welcome-content h1 {
-        font-size: 2rem;
+        font-size: 1.5rem;
+        margin-bottom: 0px;
+        font-weight: 600;
+        /* Lighter, more modern */
+        letter-spacing: -0.02em;
+        /* Tighter tracking */
+        color: var(--color-text);
     }
 
     .welcome-content h2 {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
 
     .welcome-content p,
     .feature-list li {
-        font-size: 1rem;
+        font-size: 0.95rem;
     }
 }
 
@@ -1988,14 +2033,22 @@ input:checked+.slider:before {
     grid-template-columns: 1.5fr 1fr;
     gap: var(--spacing-xl);
     margin-bottom: var(--spacing-2xl);
-    /* Softer Gradient (Slate/Dark Blue instead of heavy Purple) */
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    /* Light Mode Default */
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     padding: var(--spacing-2xl);
     border-radius: var(--radius-2xl);
-    color: white;
-    box-shadow: var(--shadow-xl);
+    color: var(--color-text);
+    box-shadow: var(--shadow-lg);
     position: relative;
     overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+:root.theme-dark .dashboard-hero {
+    /* Dark Mode Override */
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    box-shadow: var(--shadow-xl);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -2022,6 +2075,10 @@ input:checked+.slider:before {
     /* Restored size */
     font-weight: 800;
     margin-bottom: var(--spacing-xs);
+    color: inherit;
+}
+
+:root.theme-dark .welcome-text {
     color: white !important;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
@@ -2030,25 +2087,38 @@ input:checked+.slider:before {
     font-size: 1.1rem;
     /* Restored size */
     opacity: 0.95;
+    color: inherit;
+}
+
+:root.theme-dark .hero-subtitle {
     color: white !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .next-event-hero-card {
-    background: rgba(255, 255, 255, 0.1);
-    /* Slightly more transparent */
+    /* Light Mode Default */
+    background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: var(--radius-xl);
     padding: var(--spacing-xl);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
     transition: transform 0.3s ease;
     min-width: 0;
-    /* Reset min/max width constraints */
     max-width: none;
+    color: var(--color-text);
+    box-shadow: var(--shadow-sm);
+}
+
+:root.theme-dark .next-event-hero-card {
+    /* Dark Mode Override */
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    box-shadow: none;
 }
 
 .next-event-hero-card:hover {
@@ -2066,6 +2136,8 @@ input:checked+.slider:before {
     font-weight: 700;
     text-transform: uppercase;
     margin-bottom: 0;
+    color: white;
+    /* Ensure text is visible on pink */
 }
 
 
@@ -2088,6 +2160,10 @@ input:checked+.slider:before {
 .next-event-info {
     font-size: 0.9rem;
     opacity: 0.95;
+    color: inherit;
+}
+
+:root.theme-dark .next-event-info {
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
@@ -6670,7 +6746,7 @@ input:checked+.toggle-slider:before {
     display: inline-flex;
     align-items: center;
     gap: var(--spacing-xs);
-    background: white;
+    background: var(--color-surface);
     color: var(--color-text);
     border: 1px solid var(--color-border);
     padding: 6px 14px;

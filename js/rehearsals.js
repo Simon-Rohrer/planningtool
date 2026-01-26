@@ -30,7 +30,7 @@ const Rehearsals = {
     // Render all rehearsals
     async renderRehearsals(filterBandId = '') {
         if (this.isLoading) {
-            console.log('[Rehearsals] Already loading, skipping.');
+            Logger.warn('[Rehearsals] Already loading, skipping.');
             return;
         }
         this.isLoading = true;

@@ -52,7 +52,7 @@ const FeedbackService = {
      * @returns {Promise<Array>}
      */
     async getAllFeedback() {
-        console.log('[FeedbackService] Getting all feedback (manual join)...');
+        Logger.info('[FeedbackService] Getting all feedback (manual join)...');
         const sb = SupabaseClient.getClient();
         if (!sb) {
             console.error('[FeedbackService] No Supabase client');

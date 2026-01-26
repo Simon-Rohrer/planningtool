@@ -690,6 +690,12 @@ const App = {
                     return;
                 } else {
                     // DIRECT NAVIGATION (e.g. for simple buttons without submenus)
+
+                    // Close any open submenus
+                    document.querySelectorAll('.app-nav .nav-group.submenu-open').forEach(g => {
+                        g.classList.remove('submenu-open');
+                    });
+
                     const view = mainitem.dataset.view;
                     if (view) {
                         await this.navigateTo(view, 'mobile-nav-main-direct');
@@ -775,6 +781,22 @@ const App = {
             if (view) {
                 e.preventDefault();
                 e.stopPropagation();
+
+                // Sichertstellen: Schließe alle offenen Dropdowns bei Navigation zu einem anderen Punkt
+                // Aber NICHT, wenn wir auf ein Subitem innerhalb eines offenen Dropdowns klicken
+                // Obwohl... wenn wir auf ein Subitem klicken, navigieren wir weg.
+                // Der User möchte: "wenn ich auf einen menüpunkt gehe ... soll sich das offne dropdown menü geschlossen werden"
+                // Das impliziert, dass wenn man auf "Dashboard" klickt, "Planung" zugeht.
+                // Wenn man auf "Probetermine" (im Dropdown) klickt, sollte es wohl offen bleiben?
+                // Oder auch zugehen, weil wir navigieren? Typischerweise bleiben aktive Accordions offen.
+                // Aber wenn wir auf einen *anderen* Main-Punkt klicken, muss es zugehen.
+
+                // Check if clicked item is a MAIN item (top level)
+                if (navItem.classList.contains('sidebar-main')) {
+                    document.querySelectorAll('.sidebar-nav .sidebar-group.expanded').forEach(g => {
+                        g.classList.remove('expanded');
+                    });
+                }
 
                 this.navigateTo(view, 'sidebar').catch(err => {
                     console.error('[Sidebar Nav Error]:', err);
@@ -4877,6 +4899,9 @@ const App = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
+        // Cleanup past absences first
+        await this.cleanupPastAbsences(user.id);
+
         const absences = await Storage.getUserAbsences(user.id) || [];
 
         if (absences.length === 0) {
@@ -7256,11 +7281,51 @@ const App = {
         }
     },
 
+
+    // Helper: Cleanup past absences (end date < today)
+    async cleanupPastAbsences(userId) {
+        if (!userId) return;
+
+        // Only run cleanup once per session/reload to save requests?
+        // Or run every time view is opened? Let's run every time to be safe.
+        // But optimizing: fetch only if needed.
+
+        // Actually, we need to fetch all to check dates. 
+        // Logic:
+        // 1. Fetch all absences locally (Storage.getUserAbsences usually fetches fresh)
+        // 2. Filter for past ones
+        // 3. Delete them parallel
+
+        const absences = await Storage.getUserAbsences(userId);
+        if (!absences || absences.length === 0) return;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of today
+
+        const promises = [];
+        for (const abs of absences) {
+            const endDate = new Date(abs.endDate);
+            // If end date is strictly before today (meaning it ended yesterday or earlier)
+            if (endDate < today) {
+                Logger.info(`[Cleanup] Deleting past absence: ${abs.startDate} - ${abs.endDate} (${abs.reason})`);
+                promises.push(Storage.deleteAbsence(abs.id));
+            }
+        }
+
+        if (promises.length > 0) {
+            await Promise.all(promises);
+            Logger.info(`[Cleanup] Deleted ${promises.length} past absences.`);
+        }
+    },
+
     // Render the current user's absences into the Absence modal
     async renderUserAbsences() {
         const container = document.getElementById('absencesList');
         const user = Auth.getCurrentUser();
         if (!container || !user) return;
+
+        // Cleanup past absences first
+        await this.cleanupPastAbsences(user.id);
 
         const absences = await Storage.getUserAbsences(user.id);
         if (!absences || absences.length === 0) {
