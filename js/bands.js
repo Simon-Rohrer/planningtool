@@ -217,11 +217,11 @@ const Bands = {
                         </div>
                         <div style="flex: 1; min-width: 200px;">
                             <p class="help-text" style="margin-bottom: var(--spacing-sm);">
-                                Lade ein Bild hoch, das neben dem Bandnamen angezeigt wird. (Max. 5MB)
+                                Lade ein Bild hoch (Max. 5MB). Das Bild wird automatisch hochgeladen.
                             </p>
                             <input type="file" id="settingsBandImage" accept="image/*" style="margin-bottom: var(--spacing-sm); display: block; width: 100%;">
-                            <div style="display: flex; gap: var(--spacing-sm);">
-                                <button class="btn btn-primary btn-sm" id="saveBandImageBtn">Bild speichern</button>
+                            <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+                                <span id="uploadStatus" style="font-size: 0.875rem; color: var(--color-text-secondary);"></span>
                                 ${band.image_url ? `<button class="btn btn-danger btn-sm" id="deleteBandImageBtn">Bild löschen</button>` : ''}
                             </div>
                         </div>
@@ -229,30 +229,58 @@ const Bands = {
                 `;
                 settingsTab.insertBefore(imageSection, settingsTab.firstChild);
 
-                // Add listeners
-                const saveBtn = imageSection.querySelector('#saveBandImageBtn');
-                const deleteBtn = imageSection.querySelector('#deleteBandImageBtn');
+                // Auto-upload on file selection
                 const fileInput = imageSection.querySelector('#settingsBandImage');
+                const deleteBtn = imageSection.querySelector('#deleteBandImageBtn');
 
-                if (saveBtn) {
-                    saveBtn.addEventListener('click', async () => {
-                        if (fileInput.files.length === 0) {
-                            UI.showToast('Bitte wähle zuerst ein Bild aus', 'info');
-                            return;
+                if (fileInput) {
+                    fileInput.addEventListener('change', async () => {
+                        if (fileInput.files.length > 0) {
+                            const statusSpan = imageSection.querySelector('#uploadStatus');
+                            if (statusSpan) {
+                                statusSpan.innerHTML = '⏳ Wird hochgeladen...';
+                                statusSpan.style.color = 'var(--color-primary)';
+                            }
+                            fileInput.disabled = true;
+
+                            // Call App.handleUpdateBandImage with timeout
+                            let success = false;
+
+                            // Timeout Promise
+                            const timeout = new Promise((resolve) => {
+                                setTimeout(() => resolve('TIMEOUT'), 30000); // 30s timeout
+                            });
+
+                            if (typeof App.handleUpdateBandImage === 'function') {
+                                // Race between upload and timeout
+                                const result = await Promise.race([
+                                    App.handleUpdateBandImage(bandId, fileInput.files[0]),
+                                    timeout
+                                ]);
+
+                                if (result === 'TIMEOUT') {
+                                    console.error('Upload timed out');
+                                    success = false;
+                                    UI.showToast('Zeitüberschreitung beim Upload', 'error');
+                                } else {
+                                    success = result;
+                                }
+                            } else {
+                                console.error('App.handleUpdateBandImage is missing!');
+                            }
+
+                            fileInput.disabled = false;
+                            if (statusSpan) {
+                                if (success) {
+                                    statusSpan.innerHTML = '✅ Erfolgreich';
+                                    statusSpan.style.color = '#10b981'; // Green
+                                    // Modal reloads anyway on success
+                                } else {
+                                    statusSpan.innerHTML = '❌ Fehler beim Upload';
+                                    statusSpan.style.color = '#ef4444'; // Red
+                                }
+                            }
                         }
-                        const btnText = saveBtn.innerHTML;
-                        saveBtn.innerHTML = '⏳ Speichert...';
-                        saveBtn.disabled = true;
-
-                        // Explicitly call App.handleUpdateBandImage
-                        if (typeof App.handleUpdateBandImage === 'function') {
-                            await App.handleUpdateBandImage(bandId, fileInput.files[0]);
-                        } else {
-                            console.error('App.handleUpdateBandImage is missing!');
-                        }
-
-                        saveBtn.innerHTML = btnText;
-                        saveBtn.disabled = false;
                     });
                 }
 

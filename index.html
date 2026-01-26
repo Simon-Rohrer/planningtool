@@ -322,7 +322,7 @@
 
                     <!-- 2. BANDS -->
                     <div class="sidebar-group has-submenu">
-                        <button class="sidebar-item sidebar-main" >
+                        <button class="sidebar-item sidebar-main">
                             <span class="sidebar-icon">👥</span>
                             <span class="sidebar-label">Bands</span>
                             <span class="submenu-arrow">▼</span>
@@ -341,19 +341,19 @@
 
                     <!-- 3. PLANUNG -->
                     <div class="sidebar-group has-submenu">
-                        <button class="sidebar-item sidebar-main" >
+                        <button class="sidebar-item sidebar-main">
                             <span class="sidebar-icon">🗓️</span>
                             <span class="sidebar-label">Planung</span>
                             <span class="submenu-arrow">▼</span>
                         </button>
                         <div class="sidebar-submenu">
-                            <button class="sidebar-subitem" data-view="kalender">
-                                <span class="sidebar-icon">📆</span>
-                                <span class="sidebar-label">Kalender</span>
-                            </button>
                             <button class="sidebar-subitem" data-view="rehearsals">
                                 <span class="sidebar-icon">📅</span>
                                 <span class="sidebar-label">Probetermine</span>
+                            </button>
+                            <button class="sidebar-subitem" data-view="kalender">
+                                <span class="sidebar-icon">📆</span>
+                                <span class="sidebar-label">Mein Kalender</span>
                             </button>
                             <button class="sidebar-subitem" data-view="probeorte">
                                 <span class="sidebar-icon">📍</span>
@@ -372,7 +372,7 @@
 
                     <!-- 5. ANALYSE -->
                     <div class="sidebar-group has-submenu">
-                        <button class="sidebar-item sidebar-main" >
+                        <button class="sidebar-item sidebar-main">
                             <span class="sidebar-icon">📊</span>
                             <span class="sidebar-label">Analyse</span>
                             <span class="submenu-arrow">▼</span>
@@ -2437,7 +2437,7 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .then((registration) => {
-                        console.log('Service Worker registered:', registration);
+
                     })
                     .catch((error) => {
                         console.error('Service Worker registration failed:', error);

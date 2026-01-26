@@ -58,7 +58,7 @@ const Auth = {
         // Listen for auth state changes
         if (sb) {
             sb.auth.onAuthStateChange(async (event, session) => {
-                console.log('Auth state changed:', event);
+                Logger.info('Auth State Changed', event);
                 if (event === 'SIGNED_IN' && session) {
                     await this.setCurrentUser(session.user);
                 } else if (event === 'SIGNED_OUT') {
@@ -88,7 +88,7 @@ const Auth = {
             };
         }
         // console.log('[Auth.setCurrentUser] Final currentUser:', JSON.stringify(this.currentUser, null, 2));
-        console.log('[Auth.setCurrentUser] Is Admin?', this.currentUser.isAdmin);
+
     },
 
     async register(registrationCode, firstName, lastName, email, username, password, instrument = "") {

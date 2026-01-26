@@ -79,6 +79,7 @@ const Logger = {
      * @param {any} [data] 
      */
     warn: function (message, data = null) {
+        if (!this.debugMode) return;
         const style = 'color: #f59e0b; font-weight: bold;'; // Orange
         if (data) {
             console.warn(`%c[WARN] ${message}`, style, data);

@@ -7,7 +7,6 @@ const RichTextEditor = {
     savedRange: null,  // Store current selection
 
     init() {
-        console.log('[RichTextEditor] Initializing...');
 
         // Toolbar buttons
         document.querySelectorAll('.rte-button').forEach(btn => {
@@ -826,7 +825,7 @@ const App = {
         }
 
         this._sidebarNavInitialized = true;
-        console.log('[setupSidebarNav] ✓ Initialization complete');
+
     },
 
     setupFeedbackModal() {
@@ -6867,6 +6866,29 @@ const App = {
         if (!file || !bandId) return;
 
         try {
+            const sb = SupabaseClient.getClient();
+
+            // DELETE OLD IMAGE FIRST
+            const band = await Storage.getBand(bandId);
+            if (band && band.image_url) {
+                // Extract filename from URL
+                const oldUrl = band.image_url;
+                const urlParts = oldUrl.split('/');
+                const oldFileName = urlParts[urlParts.length - 1];
+
+                // Delete old image from storage
+                if (oldFileName && oldFileName.startsWith('band-')) {
+                    const { error: deleteError } = await sb.storage
+                        .from('band-images')
+                        .remove([oldFileName]);
+
+                    if (deleteError) {
+                        console.warn('Could not delete old band image:', deleteError);
+                        // Continue anyway - not critical
+                    }
+                }
+            }
+
             // Compress
             try {
                 file = await this.compressImage(file);
@@ -6876,7 +6898,6 @@ const App = {
 
             const fileExt = 'jpg';
             const fileName = `band-${bandId}-${Date.now()}.${fileExt}`;
-            const sb = SupabaseClient.getClient();
 
             // Upload
             const { error: uploadError } = await sb.storage
@@ -6929,19 +6950,47 @@ const App = {
         const confirm = await UI.confirmDelete('Möchtest du das Band-Profilbild wirklich entfernen?');
         if (!confirm) return;
 
-        // Ensure we update with null, NOT undefined
-        const success = await Storage.updateBand(bandId, { image_url: null });
+        try {
+            const sb = SupabaseClient.getClient();
 
-        if (success) {
-            UI.showToast('Profilbild entfernt', 'success');
-            // Refresh views
-            if (Bands.currentBandId === bandId) {
-                await Bands.showBandDetails(bandId);
+            // Get current band to extract image filename
+            const band = await Storage.getBand(bandId);
+            if (band && band.image_url) {
+                // Extract filename from URL
+                const oldUrl = band.image_url;
+                const urlParts = oldUrl.split('/');
+                const fileName = urlParts[urlParts.length - 1];
+
+                // Delete from storage
+                if (fileName && fileName.startsWith('band-')) {
+                    const { error: deleteError } = await sb.storage
+                        .from('band-images')
+                        .remove([fileName]);
+
+                    if (deleteError) {
+                        console.warn('Could not delete band image from storage:', deleteError);
+                        // Continue anyway to remove URL from DB
+                    }
+                }
             }
-            Bands.bands = null;
-            await Bands.renderBands();
-        } else {
-            UI.showToast('Fehler beim Löschen', 'error');
+
+            // Update DB to remove URL
+            const success = await Storage.updateBand(bandId, { image_url: null });
+
+            if (success) {
+                UI.showToast('Profilbild entfernt', 'success');
+                // Refresh views
+                if (Bands.currentBandId === bandId) {
+                    await Bands.showBandDetails(bandId);
+                }
+                Bands.bands = null;
+                await Bands.renderBands();
+            } else {
+                UI.showToast('Fehler beim Löschen', 'error');
+            }
+        } catch (err) {
+            console.error('Error in handleDeleteBandImage:', err);
+            UI.showToast('Ein Fehler ist aufgetreten', 'error');
         }
     },
 

@@ -23,7 +23,7 @@ const SupabaseClient = {
             const key = localStorage.getItem('supabase.anonKey');
             if (url && key && window.supabase) {
                 this.client = window.supabase.createClient(url, key);
-                console.log('Supabase client initialized');
+
             } else {
                 this.client = null;
             }
