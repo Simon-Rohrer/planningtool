@@ -743,69 +743,43 @@ const App = {
 
         // Use event delegation - single listener on the parent
         sidebarNav.addEventListener('click', (e) => {
-            // Find the clicked nav item or subitem
-            const navItem = e.target.closest('.nav-item, .nav-subitem');
+            // Find the clicked sidebar item or subitem
+            const navItem = e.target.closest('.sidebar-item, .sidebar-subitem');
             if (!navItem) return;
 
-            e.preventDefault();
-            e.stopPropagation();
+            const view = navItem.dataset.view;
+            const isMainWithSubmenu = navItem.classList.contains('sidebar-main') && navItem.parentElement.classList.contains('has-submenu');
 
-            Logger.action('Sidebar Click', navItem.textContent.trim());
+            // Handle main items with submenu BUT NO data-view (pure accordion toggles)
+            if (isMainWithSubmenu && !view) {
+                e.preventDefault();
+                e.stopPropagation();
 
-            try {
-                // Handle main items with submenu (accordion behavior)
-                if (navItem.classList.contains('nav-main') && navItem.parentElement.classList.contains('has-submenu')) {
-                    const group = navItem.parentElement;
+                const group = navItem.parentElement;
 
-                    // Close all OTHER groups
-                    document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(other => {
-                        if (other !== group) {
-                            other.classList.remove('expanded');
-                        }
-                    });
+                // Toggle current group
+                const isExpanded = group.classList.contains('expanded');
 
-                    // Toggle current group
-                    group.classList.toggle('expanded');
+                // Close all groups
+                document.querySelectorAll('.sidebar-nav .sidebar-group.expanded').forEach(g => {
+                    g.classList.remove('expanded');
+                });
 
-                    // Don't navigate if it's just an accordion parent
-                    return;
+                // Expand clicked if it wasn't expanded
+                if (!isExpanded) {
+                    group.classList.add('expanded');
                 }
+                return;
+            }
 
-                // Handle navigation (subitems or regular nav items)
-                const view = navItem.dataset.view;
-                if (view) {
-                    Logger.info('Navigating via Sidebar', view);
+            // Handle navigation (subitems or regular nav items with data-view)
+            if (view) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                    // Close all expanded groups when navigating to a regular item or subitem
-                    document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
-                        group.classList.remove('expanded');
-                    });
-
-                    this.navigateTo(view).catch(err => {
-                        console.error('[Sidebar Nav Error]:', err);
-                    });
-
-                    // Update active states
-                    document.querySelectorAll('.sidebar-nav .nav-item, .sidebar-nav .nav-subitem').forEach(el => {
-                        el.classList.remove('active');
-                    });
-                    navItem.classList.add('active');
-
-                    // If it's a subitem, also mark parent as active and keep it expanded
-                    if (navItem.classList.contains('nav-subitem')) {
-                        const parentGroup = navItem.closest('.nav-group');
-                        if (parentGroup) {
-                            const parentMain = parentGroup.querySelector('.nav-main');
-                            if (parentMain) {
-                                parentMain.classList.add('active');
-                            }
-                            // Keep parent group expanded
-                            parentGroup.classList.add('expanded');
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('[Sidebar] Click handler error:', error);
+                this.navigateTo(view, 'sidebar').catch(err => {
+                    console.error('[Sidebar Nav Error]:', err);
+                });
             }
         });
 
@@ -993,8 +967,8 @@ const App = {
             await this.showApp();
             // Pre-load standard calendars after login
             this.preloadStandardCalendars();
-            // Clean up past events and rehearsals
-            await Storage.cleanupPastItems();
+            // Clean up past events and rehearsals (Run in background)
+            Storage.cleanupPastItems();
 
             // Show tutorial suggest banner for admins (if not dismissed)
             try {
@@ -1356,8 +1330,6 @@ const App = {
             this.handleLogout();
         });
 
-        // Sidebar Navigation initialization (Desktop)
-        this.setupSidebarNav();
 
 
 
@@ -2136,27 +2108,46 @@ const App = {
                     console.error('[navigateTo] UI.showView error:', uiErr);
                 }
 
-                // Define parent-child relationships for navigation highlighting
-                const parentViewMap = {
-                    'bands': 'dashboard',
-                    'musikpool': 'dashboard',
-                    'probeorte': 'rehearsals',
-                    'kalender': 'rehearsals',
-                    'news': 'statistics'
-                };
-                const parentView = parentViewMap[view];
 
-                // Update active navigation (both main items and subitems)
-                document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
+
+                // Update active navigation - SEPARATE LOGIC for Desktop Sidebar and Mobile Nav
+
+                // 1. DESKTOP SIDEBAR (.sidebar-*)
+                document.querySelectorAll('.sidebar-item, .sidebar-subitem').forEach(item => {
+                    item.classList.remove('active');
                     const itemView = item.dataset.view;
-                    const isMain = item.classList.contains('nav-main');
-                    if (itemView === view || (view === 'tonstudio' && itemView === 'probeorte') || (isMain && parentView && itemView === parentView)) {
+
+                    // Activate if view matches
+                    if (itemView === view || (view === 'tonstudio' && itemView === 'probeorte')) {
                         item.classList.add('active');
-                    } else {
-                        item.classList.remove('active');
+
+                        // If it's a subitem, also activate its parent main item and expand the group
+                        if (item.classList.contains('sidebar-subitem')) {
+                            const group = item.closest('.sidebar-group');
+                            if (group) {
+                                const mainItem = group.querySelector('.sidebar-main');
+                                if (mainItem) {
+                                    mainItem.classList.add('active');
+                                }
+                                // Expand group on desktop
+                                if (window.innerWidth > 768) {
+                                    group.classList.add('expanded');
+                                }
+                            }
+                        }
                     }
                 });
 
+                // 2. MOBILE NAV (.app-nav .nav-*)
+                document.querySelectorAll('.app-nav .nav-item, .app-nav .nav-subitem').forEach(item => {
+                    item.classList.remove('active');
+                    const itemView = item.dataset.view;
+
+                    // Activate if view matches
+                    if (itemView === view || (view === 'tonstudio' && itemView === 'probeorte')) {
+                        item.classList.add('active');
+                    }
+                });
                 // Update Header Title
                 this.updateHeaderSubmenu(view);
 
