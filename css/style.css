@@ -1651,6 +1651,9 @@ input:checked+.slider:before {
         left: 20px !important;
         right: 20px !important;
         top: auto !important;
+        width: auto !important;
+        /* Fix for asymmetrical spacing */
+        box-sizing: border-box !important;
         z-index: 1000 !important;
         padding: 5px 10px;
         justify-content: space-around;
