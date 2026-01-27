@@ -7692,3 +7692,53 @@ body.no-scroll {
         /* Larger touch target */
     }
 }
+
+/* ===== Mobile Calendar Optimization ===== */
+@media (max-width: 768px) {
+
+    /* Reduce day cell size */
+    .calendar-day {
+        min-height: 50px !important;
+        padding: 2px !important;
+    }
+
+    .calendar-day-number {
+        font-size: 0.7rem !important;
+        margin-bottom: 2px !important;
+        text-align: right;
+        padding-right: 2px;
+    }
+
+    /* Single line for events */
+    .calendar-event {
+        padding: 2px 4px !important;
+        margin-bottom: 2px !important;
+        border-radius: 3px !important;
+        border-left-width: 3px !important;
+    }
+
+    /* Hide Type and Band labels on mobile to save space */
+    .calendar-event-type,
+    .calendar-event-band {
+        display: none !important;
+    }
+
+    /* Style the Title to be the main visible element */
+    .calendar-event-title {
+        font-size: 0.65rem !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Add icon content via CSS to replace the hidden Type div */
+    .calendar-event.event-type .calendar-event-title::before {
+        content: '🎤 ';
+    }
+
+    .calendar-event.rehearsal-type .calendar-event-title::before {
+        content: '📅 ';
+    }
+}

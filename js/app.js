@@ -1867,12 +1867,7 @@ const App = {
         }
 
         // Subscribe calendar button
-        const subscribeCalendarBtn = document.getElementById('subscribeCalendarBtn');
-        if (subscribeCalendarBtn) {
-            subscribeCalendarBtn.addEventListener('click', () => {
-                this.showCalendarSubscriptionModal();
-            });
-        }
+        // Subscription button handled inline via onclick now
 
         // Cancel edit absence button
         const cancelEditBtn = document.getElementById('cancelEditAbsenceBtn');
@@ -7229,6 +7224,12 @@ const App = {
             }
             // Always update dashboard after event changes
             await this.updateDashboard();
+
+            // Clear Personal Calendar cache and sync to cloud
+            if (window.PersonalCalendar) {
+                window.PersonalCalendar.clearCache();
+                window.PersonalCalendar.syncCalendarBackground();
+            }
         };
 
         // Only check absences for selected members

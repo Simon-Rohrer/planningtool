@@ -824,12 +824,7 @@
 
                     <!-- Kalender View -->
                     <div id="kalenderView" class="view">
-                        <div class="view-actions-bar">
-                            <button id="subscribeCalendarBtn" class="btn btn-secondary"
-                                style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                                🔗 Kalender abonnieren
-                            </button>
-                        </div>
+
                         <div class="section">
                             <div id="personalCalendarContainer">
                                 <!-- Personal calendar will be rendered here -->
@@ -841,7 +836,8 @@
                                     mehr
                                     zu verpassen!
                                     <br></span>
-                                <button id="subscribeCalendarBtn" class="btn btn-secondary"
+                                <button id="subscribePersonalCalendarBtn" class="btn btn-secondary"
+                                    onclick="PersonalCalendar.exportICS()"
                                     style="display: inline-flex; align-items: center; gap: 0.5rem;">
                                     🔗 Kalender abonnieren
                                 </button>

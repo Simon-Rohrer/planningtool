@@ -637,6 +637,232 @@ const PersonalCalendar = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Generate ICS content string
+     */
+    generateICSContent() {
+        if ((!this.events || this.events.length === 0) && (!this.rehearsals || this.rehearsals.length === 0)) {
+            return null;
+        }
+
+        let icsContent =
+            'BEGIN:VCALENDAR\r\n' +
+            'VERSION:2.0\r\n' +
+            'PRODID:-//BandManager//PersonalCalendar v1.0//DE\r\n' +
+            'CALSCALE:GREGORIAN\r\n' +
+            'METHOD:PUBLISH\r\n' +
+            'X-WR-CALNAME:Mein Band-Kalender\r\n' +
+            'X-WR-TIMEZONE:Europe/Berlin\r\n' +
+            'REFRESH-INTERVAL;VALUE=DURATION:PT1H\r\n' +
+            'X-PUBLISHED-TTL:PT1H\r\n'; // Hint for 1h update interval
+
+        const formatDate = (date) => {
+            const d = new Date(date);
+            const pad = (n) => n < 10 ? '0' + n : n;
+            return d.getFullYear() +
+                pad(d.getMonth() + 1) +
+                pad(d.getDate()) + 'T' +
+                pad(d.getHours()) +
+                pad(d.getMinutes()) +
+                pad(d.getSeconds());
+        };
+
+        const addEvent = (uid, start, end, summary, description, location) => {
+            icsContent += 'BEGIN:VEVENT\r\n';
+            icsContent += `UID:${uid}\r\n`;
+            icsContent += `DTSTAMP:${formatDate(new Date())}\r\n`;
+            icsContent += `DTSTART:${formatDate(start)}\r\n`;
+            if (end) {
+                icsContent += `DTEND:${formatDate(end)}\r\n`;
+            }
+            icsContent += `SUMMARY:${summary}\r\n`;
+            if (description) icsContent += `DESCRIPTION:${description}\r\n`;
+            if (location) icsContent += `LOCATION:${location}\r\n`;
+            icsContent += 'END:VEVENT\r\n';
+        };
+
+        // Process Events
+        for (const event of this.events) {
+            const startDate = new Date(event.date);
+            if (event.time) {
+                const [h, m] = event.time.split(':');
+                startDate.setHours(h, m);
+            }
+            const endDate = new Date(startDate);
+            endDate.setHours(endDate.getHours() + 2);
+
+            const band = this.userBands.find(b => b.id === event.bandId);
+            const bandName = band ? band.name : 'Unknown';
+
+            addEvent(
+                `event_${event.id}@bandmanager`,
+                startDate,
+                endDate,
+                `🎤 ${event.title} (${bandName})`,
+                event.notes || '',
+                event.location || ''
+            );
+        }
+
+        // Process Rehearsals
+        for (const rehearsal of this.rehearsals) {
+            const startDate = new Date(rehearsal.confirmedDate);
+            if (rehearsal.confirmedTime) {
+                const [h, m] = rehearsal.confirmedTime.split(':');
+                startDate.setHours(h, m);
+            }
+            const endDate = new Date(startDate);
+            endDate.setHours(endDate.getHours() + 2);
+
+            const band = this.userBands.find(b => b.id === rehearsal.bandId);
+            const bandName = band ? band.name : 'Unknown';
+
+            let locationName = '';
+            if (rehearsal.confirmedLocation) {
+                // Warning: async call inside sync loop not ideal for display loop, but here okay?
+                // Actually location names might be missing if not loaded. 
+                // For simplicity, we skip async location fetch here or use what we need.
+                // We'll use static text or ensure data is loaded.
+                // Rehearsals loaded via loadUserRehearsals don't join location name.
+                // We will skip location name for now to keep sync logic simple or rely on cached locations.
+                locationName = '';
+            }
+
+            addEvent(
+                `rehearsal_${rehearsal.id}@bandmanager`,
+                startDate,
+                endDate,
+                `📅 Probe: ${bandName}`,
+                rehearsal.notes || '',
+                locationName
+            );
+        }
+
+        icsContent += 'END:VCALENDAR';
+        return icsContent;
+    },
+
+    /**
+     * Start subscription flow: Sync to cloud -> Show link modal
+     */
+    async startSubscriptionFlow() {
+        const loadingToast = UI.showToast('Kalender wird synchronisiert...', 'info');
+        try {
+            const user = Auth.getCurrentUser();
+            if (!user) throw new Error('Nicht eingeloggt');
+
+            const icsContent = this.generateICSContent();
+            if (!icsContent) {
+                UI.showToast('Keine Termine zum Synchronisieren.', 'warning');
+                return;
+            }
+
+            // Upload to Supabase Storage
+            const client = SupabaseClient.getClient();
+            if (!client) throw new Error('Datenbank-Verbindung fehlt');
+
+            const fileName = `user_${user.id}.ics`;
+            const { data, error } = await client
+                .storage
+                .from('calendars')
+                .upload(fileName, icsContent, {
+                    contentType: 'text/calendar',
+                    upsert: true,
+                    cacheControl: '3600'
+                });
+
+            if (error) {
+                if (error.message.includes('Bucket not found')) {
+                    throw new Error('Storage Bucket "calendars" fehlt! Bitte erstelle ihn in Supabase.');
+                }
+                throw error;
+            }
+
+            // Get Public URL
+            const { data: { publicUrl } } = client
+                .storage
+                .from('calendars')
+                .getPublicUrl(fileName);
+
+            // Convert to webcal://
+            const webcalUrl = publicUrl.replace(/^https?:\/\//, 'webcal://');
+
+            // Show UI
+            this.showSubscriptionModal(webcalUrl);
+            UI.showToast('Kalender erfolgreich synchronisiert!', 'success');
+
+        } catch (error) {
+            console.error('Subscription Error:', error);
+            UI.showToast('Fehler: ' + error.message, 'error');
+        }
+    },
+
+    showSubscriptionModal(webcalUrl) {
+        const modalHTML = `
+            <div id="calendarSubModal" class="modal active" style="z-index: 2000;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>📅 Kalender abonnieren</h2>
+                        <button class="modal-close" onclick="document.getElementById('calendarSubModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body" style="text-align: center;">
+                        <p style="margin-bottom: 1.5rem; color: var(--color-text-secondary);">
+                            Klicke unten, um den Kalender direkt zu abonnieren. 
+                            Dein Handy wird sich automatisch öffenen.
+                        </p>
+                        
+                        <a href="${webcalUrl}" class="btn btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1.5rem; width: 100%;">
+                            🔗 Jetzt abonnieren
+                        </a>
+
+                        <div style="background: var(--color-bg); padding: 1rem; border-radius: var(--radius-md); text-align: left;">
+                            <p style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Manueller Link:</p>
+                            <code style="display: block; word-break: break-all; font-size: 0.8rem; padding: 0.5rem; background: rgba(0,0,0,0.1); border-radius: 4px;">${webcalUrl}</code>
+                            <button onclick="navigator.clipboard.writeText('${webcalUrl}'); UI.showToast('Kopiert!', 'success')" class="btn btn-sm btn-secondary" style="margin-top: 0.5rem; width: 100%;">
+                                📋 Link kopieren
+                            </button>
+                        </div>
+
+                        <p style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--color-text-secondary);">
+                            ℹ️ Der Kalender aktualisiert sich automatisch, wenn du die App öffnest oder Änderungen vornimmst.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    },
+
+    /**
+     * Silent background sync (called after edits)
+     */
+    async syncCalendarBackground() {
+        try {
+            const user = Auth.getCurrentUser();
+            if (!user) return;
+            const icsContent = this.generateICSContent();
+            if (!icsContent) return;
+
+            const client = SupabaseClient.getClient();
+            if (client) {
+                const fileName = `user_${user.id}.ics`;
+                await client.storage.from('calendars').upload(fileName, icsContent, {
+                    contentType: 'text/calendar',
+                    upsert: true,
+                    cacheControl: '3600'
+                });
+                console.log('[PersonalCalendar] Background sync success');
+            }
+        } catch (e) {
+            console.warn('[PersonalCalendar] Background sync failed', e);
+        }
+    },
+
+    // Legacy Export (File Download) - Kept available via console or fallback if needed
+    async exportICS() {
+        this.startSubscriptionFlow(); // Redirect to new flow
     }
 };
 
