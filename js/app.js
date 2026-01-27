@@ -655,11 +655,7 @@ const App = {
 
         Logger.info('[setupMobileSubmenuToggle] Initializing unified mobile nav delegation');
 
-        // Log total app load time
-        if (window.APP_START_TIME) {
-            const loadTime = ((performance.now() - window.APP_START_TIME) / 1000).toFixed(3);
-            Logger.info(`🚀 Application fully loaded in ${loadTime}s`);
-        }
+
 
         // Central delegation handler for ALL mobile bottom nav interactions
         navBar.addEventListener('click', async (e) => {
@@ -980,8 +976,13 @@ const App = {
             if (Auth.isAuthenticated()) {
                 this.showApp().then(() => {
                     // Pre-load standard calendars after login (delayed to not block UI)
-                    setTimeout(() => {
-                        this.preloadStandardCalendars();
+                    setTimeout(async () => {
+                        await this.preloadStandardCalendars();
+                        // Log total app load time (after everything including calendars is ready)
+                        if (window.APP_START_TIME) {
+                            const loadTime = ((performance.now() - window.APP_START_TIME) / 1000).toFixed(3);
+                            Logger.info(`🚀 Application fully loaded in ${loadTime}s`);
+                        }
                     }, 2000);
                     // Clean up past events and rehearsals (Run in background)
                     Storage.cleanupPastItems();
@@ -995,6 +996,11 @@ const App = {
                 });
             } else {
                 this.showAuth();
+                // Log total app load time (Auth Screen ready)
+                if (window.APP_START_TIME) {
+                    const loadTime = ((performance.now() - window.APP_START_TIME) / 1000).toFixed(3);
+                    Logger.info(`🚀 Application fully loaded in ${loadTime}s`);
+                }
             }
         }).catch(authErr => {
             console.error('[App.init] Auth initialization failed:', authErr);
@@ -1025,7 +1031,7 @@ const App = {
         });
     },
 
-    preloadStandardCalendars() {
+    async preloadStandardCalendars() {
         // Pre-load Tonstudio, JMS Festhalle, and Ankersaal calendars
         if (typeof Calendar !== 'undefined' && Calendar.ensureLocationCalendar) {
             const standardCalendars = [
@@ -1034,11 +1040,14 @@ const App = {
                 { id: 'ankersaal', name: 'Ankersaal' }
             ];
 
-            standardCalendars.forEach(cal => {
+            const promises = standardCalendars.map(cal =>
                 Calendar.ensureLocationCalendar(cal.id, cal.name)
-                    .catch(err => console.error(`[App] Kalender konnte nicht geladen werden: ${cal.name}`, err));
-            });
+                    .catch(err => console.error(`[App] Kalender konnte nicht geladen werden: ${cal.name}`, err))
+            );
+
+            return Promise.all(promises);
         }
+        return Promise.resolve();
     },
 
     // Update absence indicator in header

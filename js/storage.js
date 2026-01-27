@@ -44,7 +44,7 @@ const Storage = {
                 Logger.warn(`Network issue fetching ${key}: ${error.message}`);
                 return null;
             }
-            console.error('Supabase getById error', key, error);
+            console.error('Supabase getById error', key, { message: error.message, code: error.code, details: error.details, hint: error.hint } || error);
             return null;
         }
         return data || null;
