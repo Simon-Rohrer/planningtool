@@ -369,11 +369,19 @@ const App = {
         };
 
         const info = titleMap[view] || { label: 'BandManager', icon: '🎸' };
-        const container = document.getElementById('headerSubmenu');
-        if (!container) return;
 
-        // Render Title
-        container.innerHTML = `<h2 class="header-page-title">${info.icon} ${info.label}</h2>`;
+        // Update Header Title (used in mobile and now desktop)
+        const headerTitle = document.getElementById('headerPageTitle');
+        if (headerTitle) {
+            headerTitle.innerHTML = `<h2 class="header-page-title">${info.icon} ${info.label}</h2>`;
+        }
+
+        // Original submenu container - we might still want to use it for other things, 
+        // but for now we've hidden it on mobile. On desktop it's also redundant if we show title in header.
+        const container = document.getElementById('headerSubmenu');
+        if (container) {
+            container.innerHTML = `<h2 class="header-page-title desktop-only">${info.icon} ${info.label}</h2>`;
+        }
     },
 
     /* ===== Tutorial / Guided Tour ===== */
@@ -3912,16 +3920,16 @@ const App = {
             <tbody id="bandSongsTableBody">
                 ${songs.map(song => `
                     <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: var(--spacing-sm); text-align: center;">
+                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
                             <input type="checkbox" class="band-song-checkbox-row" value="${song.id}">
                         </td>
-                        <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
-                        <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.artist)}</td>
-                        <td style="padding: var(--spacing-sm);">${song.bpm || '-'}</td>
-                        <td style="padding: var(--spacing-sm);">${song.key || '-'}</td>
-                        <td style="padding: var(--spacing-sm);">${song.leadVocal || '-'}</td>
-                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;">${song.ccli || '-'}</td>
-                        <td style="padding: var(--spacing-sm); text-align: center;">
+                        <td style="padding: var(--spacing-sm);" data-label="Titel">${this.escapeHtml(song.title)}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="BPM">${song.bpm || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Tonart">${song.key || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Lead Vocal">${song.leadVocal || '-'}</td>
+                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
+                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
                             <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
                             <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
                         </td>
@@ -3997,18 +4005,27 @@ const App = {
         // Search functionality
         const searchInput = document.getElementById('bandSongSearch');
         if (searchInput) {
+            console.log('Search input found, attaching listener');
             searchInput.addEventListener('input', (e) => {
                 const term = e.target.value.toLowerCase();
-                const rows = document.getElementById('bandSongsTableBody').querySelectorAll('tr');
+                console.log('Search term:', term);
+                const tableBody = document.getElementById('bandSongsTableBody');
+                if (!tableBody) {
+                    console.error('Table body not found!');
+                    return;
+                }
+                const rows = tableBody.querySelectorAll('tr');
+                console.log('Rows found:', rows.length);
                 rows.forEach(row => {
-                    const title = row.children[1].textContent.toLowerCase(); // Index 1 because 0 is checkbox
-                    const artist = row.children[2].textContent.toLowerCase(); // Index 2
+                    const titleEl = row.querySelector('[data-label="Titel"]');
+                    const artistEl = row.querySelector('[data-label="Interpret"]');
+                    const title = (titleEl ? titleEl.textContent : (row.cells[1] ? row.cells[1].textContent : '')).toLowerCase();
+                    const artist = (artistEl ? artistEl.textContent : (row.cells[2] ? row.cells[2].textContent : '')).toLowerCase();
+
                     if (title.includes(term) || artist.includes(term)) {
-                        row.style.display = '';
+                        row.style.setProperty('display', '', 'important');
                     } else {
-                        row.style.display = 'none';
-                        // Uncheck hidden rows if needed, or leave them.
-                        // For UX, maybe better not to uncheck but that's complex. keeping simple.
+                        row.style.setProperty('display', 'none', 'important');
                     }
                 });
             });
@@ -6644,13 +6661,12 @@ const App = {
                 });
                 if (hasOpenProposal) openPollsCount++;
             }
-            const pendingVotesEl = document.getElementById('pendingVotes');
-            if (pendingVotesEl) pendingVotesEl.textContent = openPollsCount;
 
-            // Confirmed Rehearsals Count
+            // Total Rehearsals Count (open polls + confirmed)
             const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
-            const confirmedRehearsalsEl = document.getElementById('confirmedRehearsals');
-            if (confirmedRehearsalsEl) confirmedRehearsalsEl.textContent = confirmedRehearsals.length;
+            const totalRehearsalsCount = openPollsCount + confirmedRehearsals.length;
+            const totalRehearsalsEl = document.getElementById('totalRehearsals');
+            if (totalRehearsalsEl) totalRehearsalsEl.textContent = totalRehearsalsCount;
 
             // Next Event Hero
             const nextEventContent = document.getElementById('nextEventContent');

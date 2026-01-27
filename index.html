@@ -438,9 +438,13 @@
                             <span class="absence-text">Abwesend bis <span id="absenceEndDate"></span></span>
                         </div>
 
+                        <div id="headerPageTitle" class="header-page-title-main"></div>
+
+                        <!-- Profile Image (separate for mobile left positioning) -->
+                        <span id="headerProfileImage" class="profile-avatar"
+                            style="display:inline-block;vertical-align:middle;margin-right:0.5em;width:36px;height:36px;border-radius:50%;background:#e5e7eb;overflow:hidden;text-align:center;line-height:36px;font-weight:600;font-size:1.1em;color:#444;"></span>
+
                         <div class="header-actions">
-                            <span id="headerProfileImage" class="profile-avatar"
-                                style="display:inline-block;vertical-align:middle;margin-right:0.5em;width:36px;height:36px;border-radius:50%;background:#e5e7eb;overflow:hidden;text-align:center;line-height:36px;font-weight:600;font-size:1.1em;color:#444;"></span>
                             <span id="currentUserName" class="user-name">User</span>
                             <button id="themeToggleHeader" class="btn btn-icon" title="Dark Mode umschalten"
                                 style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 1.25rem;">
@@ -572,14 +576,11 @@
                 <main class="app-main">
                     <!-- Dashboard View -->
                     <div id="dashboardView" class="view active">
-                        <div class="view-header">
-                            <h2>Dashboard</h2>
-                        </div>
                         <!-- Dashboard Hero Section -->
                         <div id="dashboardHero" class="dashboard-hero">
                             <div class="hero-welcome">
-                                <h2 class="welcome-text">Hallo <span id="welcomeUserName">Musiker</span>, bereit zum
-                                    Rocken? 🤘</h2>
+                                <h2 class="welcome-text">Hallo <span id="welcomeUserName">Musiker</span>, Ready für den
+                                    nächsten Gig? 🎸</h2>
                                 <p class="hero-subtitle">Hier ist der Überblick für deine musikalische Woche.</p>
                             </div>
                             <div id="nextEventHero" class="next-event-hero-card">
@@ -623,32 +624,19 @@
                                 </div>
                             </div>
                             <div class="dashboard-card stat-card">
-                                <div class="card-icon icon-votes">
+                                <div class="card-icon icon-rehearsals">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                         stroke-linejoin="round">
-                                        <path
-                                            d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3">
-                                        </path>
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
                                     </svg>
                                 </div>
                                 <div class="card-content">
-                                    <h3>Votings offen</h3>
-                                    <p class="card-stat" id="pendingVotes">0</p>
-                                </div>
-                            </div>
-                            <div class="dashboard-card stat-card">
-                                <div class="card-icon icon-confirmed">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Bestätigt</h3>
-                                    <p class="card-stat" id="confirmedRehearsals">0</p>
+                                    <h3>Proben</h3>
+                                    <p class="card-stat" id="totalRehearsals">0</p>
                                 </div>
                             </div>
                         </div>
@@ -707,44 +695,35 @@
 
                     <!-- Bands View -->
                     <div id="bandsView" class="view">
-                        <div class="view-header">
-                            <h2>Meine Bands</h2>
-                            <div class="view-controls">
-                                <button id="createBandBtnView" class="btn btn-primary">
-                                    + Band erstellen
-                                </button>
-                                <button id="joinBandBtn" class="btn btn-secondary btn-bands-join-modal">
-                                    Band beitreten
-                                </button>
-                            </div>
+                        <div class="view-actions-bar">
+                            <button id="createBandBtnView" class="btn btn-primary">
+                                + Band erstellen
+                            </button>
+                            <button id="joinBandBtn" class="btn btn-secondary btn-bands-join-modal">
+                                Band beitreten
+                            </button>
                         </div>
                         <div id="bandsList" class="bands-grid"></div>
                     </div>
 
                     <!-- Events View -->
                     <div id="eventsView" class="view">
-                        <div class="view-header">
-                            <h2>Auftritte</h2>
-                            <div class="view-controls">
-                                <select id="eventBandFilter" class="form-select">
-                                    <option value="">Alle Bands</option>
-                                </select>
-                                <button id="createEventBtn" class="btn btn-primary">+ Neuer Auftritt</button>
-                            </div>
+                        <div class="view-actions-bar">
+                            <select id="eventBandFilter" class="form-select">
+                                <option value="">Alle Bands</option>
+                            </select>
+                            <button id="createEventBtn" class="btn btn-primary">+ Neuer Auftritt</button>
                         </div>
                         <div id="eventsList" class="events-list"></div>
                     </div>
 
                     <!-- Rehearsals View -->
                     <div id="rehearsalsView" class="view">
-                        <div class="view-header">
-                            <h2>Probetermine</h2>
-                            <div class="view-controls">
-                                <select id="bandFilter" class="form-select">
-                                    <option value="">Alle Bands</option>
-                                </select>
-                                <button id="createRehearsalBtn" class="btn btn-primary">+ Neuer Probetermin</button>
-                            </div>
+                        <div class="view-actions-bar">
+                            <select id="bandFilter" class="form-select">
+                                <option value="">Alle Bands</option>
+                            </select>
+                            <button id="createRehearsalBtn" class="btn btn-primary">+ Neuer Probetermin</button>
                         </div>
                         <div id="rehearsalsListPendingHeader" class="rehearsal-section-header">
                             <h3>👋 Offene Abstimmungen</h3>
@@ -766,9 +745,15 @@
 
                     <!-- Statistics View -->
                     <div id="statisticsView" class="view">
-                        <div class="view-header">
-                            <h2>Statistiken</h2>
-                            <!-- Future: Date Range Picker or similar could go here -->
+                        <div class="view-actions-bar">
+                            <div style="display:flex; gap: 0.5rem; align-items:center; width: 100%;">
+                                <select id="statsBandSelect" class="form-select" style="flex:1;">
+                                    <option value="">Band auswählen</option>
+                                </select>
+                                <select id="statsRehearsalSelect" class="form-select" style="flex:1;">
+                                    <option value="">Probetermin auswählen</option>
+                                </select>
+                            </div>
                         </div>
                         <div id="statisticsContent" class="statistics-content-modern">
                             <!-- Helper container for the dashboard -->
@@ -780,16 +765,13 @@
 
                     <!-- News & Updates View -->
                     <div id="newsView" class="view">
-                        <div class="view-header">
-                            <h2>News & Updates</h2>
-                            <div class="view-controls">
-                                <a href="#" id="donateBtn" class="btn btn-secondary"
-                                    style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
-                                    💖 Spenden
-                                </a>
-                                <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News
-                                    erstellen</button>
-                            </div>
+                        <div class="view-actions-bar">
+                            <a href="#" id="donateBtn" class="btn btn-secondary"
+                                style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                                💖 Spenden
+                            </a>
+                            <button id="createNewsBtn" class="btn btn-primary" style="display: none;">+ News
+                                erstellen</button>
                         </div>
                         <div id="newsContainer" class="news-content">
                             <div class="empty-state">
@@ -801,9 +783,6 @@
                     </div>
                     <!-- Probeorte View -->
                     <div id="probeorteView" class="view">
-                        <div class="view-header">
-                            <h2>JMS Probeorte Kalender</h2>
-                        </div>
 
                         <!-- Submenu for calendar selection -->
                         <div class="calendar-submenu">
@@ -845,8 +824,11 @@
 
                     <!-- Kalender View -->
                     <div id="kalenderView" class="view">
-                        <div class="view-header">
-                            <h2>📅 Mein Kalender</h2>
+                        <div class="view-actions-bar">
+                            <button id="subscribeCalendarBtn" class="btn btn-secondary"
+                                style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                🔗 Kalender abonnieren
+                            </button>
                         </div>
                         <div class="section">
                             <div id="personalCalendarContainer">
@@ -869,8 +851,11 @@
 
                     <!-- Musikerpool View -->
                     <div id="musikpoolView" class="view">
-                        <div class="view-header">
-                            <h2>Musikerpool</h2>
+                        <div class="view-actions-bar">
+                            <button id="refreshMusikpoolBtn" class="btn btn-secondary"
+                                style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                🔄 Aktualisieren
+                            </button>
                         </div>
 
                         <!-- Eigene Mitglieder Section -->
