@@ -165,7 +165,7 @@ const Events = {
             detailsHtml += `
                 <div class="setlist-section">
                     <div class="setlist-header">
-                        <div class="setlist-title">🎵 Setlist (${eventSongs.length})</div>
+                        <div class="setlist-title">🎵 Setlist</div>
                         <button type="button" class="btn-pdf download-setlist-pdf" data-event-id="${event.id}">
                             📥 Als PDF herunterladen
                         </button>
@@ -406,154 +406,25 @@ const Events = {
             const band = await Storage.getBand(event.bandId);
             const bandName = band ? band.name : 'Unbekannte Band';
 
-            // Build HTML content
-            let songsTableHTML = '';
-            songs.forEach((song, idx) => {
-                songsTableHTML += `
-                    <tr style="border-bottom: 1px solid #ddd;">
-                        <td style="padding: 8px; text-align: left; font-weight: bold;">${idx + 1}</td>
-                        <td style="padding: 8px; text-align: left;">${Bands.escapeHtml(song.title)}</td>
-                        <td style="padding: 8px; text-align: left;">${Bands.escapeHtml(song.artist || '-')}</td>
-                        <td style="padding: 8px; text-align: center;">${song.bpm || '-'}</td>
-                        <td style="padding: 8px; text-align: center;">${song.key || '-'}</td>
-                        <td style="padding: 8px; text-align: left;">${Bands.escapeHtml(song.leadVocal || '-')}</td>
-                    </tr>
-                `;
-            });
-
-            let additionalInfoHTML = '';
-            if (songs.some(s => s.ccli || s.notes)) {
-                additionalInfoHTML = '<div style="margin-top: 30px; background-color: #f9f9f9; padding: 15px; border-radius: 5px;"><h3 style="margin-top: 0; color: #333;">Zusätzliche Informationen</h3>';
-                songs.forEach((song, idx) => {
-                    if (song.ccli || song.notes) {
-                        additionalInfoHTML += `
-                            <div style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                                <strong>${idx + 1}. ${Bands.escapeHtml(song.title)}</strong>
-                                ${song.ccli ? `<p style="margin: 5px 0; color: #666;">CCLI: ${Bands.escapeHtml(song.ccli)}</p>` : ''}
-                                ${song.notes ? `<p style="margin: 5px 0; color: #666; font-style: italic;">📝 ${Bands.escapeHtml(song.notes)}</p>` : ''}
-                            </div>
-                        `;
-                    }
-                });
-                additionalInfoHTML += '</div>';
+            // Prepare Metadata for Header (as HTML strings)
+            const metaInfo = [
+                `🎸 <b>${Bands.escapeHtml(bandName)}</b>`,
+                `📅 ${UI.formatDate(event.date)}`
+            ];
+            if (event.location) {
+                metaInfo.push(`📍 ${Bands.escapeHtml(event.location)}`);
             }
 
-            // Create PDF HTML element
-            const element = document.createElement('div');
-            element.innerHTML = `
-                <div style="font-family: 'Inter', Arial, sans-serif; padding: 40px; background: white; color: #111827; max-width: 800px; margin: 0 auto;">
-                    <!-- Header Accent -->
-                    <div style="height: 6px; background: #8B5CF6; border-radius: 3px; margin-bottom: 25px;"></div>
-
-                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 35px; border-bottom: 1px solid #E5E7EB; padding-bottom: 25px;">
-                        <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">${Bands.escapeHtml(event.title)}</h1>
-                        <div style="display: flex; gap: 20px; margin-top: 12px; color: #6B7280; font-size: 14px;">
-                            <span>🎸 <b>${Bands.escapeHtml(bandName)}</b></span>
-                            <span>📅 ${UI.formatDate(event.date)}</span>
-                            ${event.location ? `<span>📍 ${Bands.escapeHtml(event.location)}</span>` : ''}
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
-                        <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827; text-transform: uppercase; letter-spacing: 0.05em;">Setlist</h2>
-                        <span style="color: #9CA3AF; font-size: 13px;">${songs.length} Songs</span>
-                    </div>
-
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 13px; table-layout: fixed;">
-                        <thead>
-                            <tr style="background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB;">
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 35px; color: #4B5563;">#</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; color: #4B5563;">Titel</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; color: #4B5563;">Interpret</th>
-                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">BPM</th>
-                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">Key</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 100px; color: #4B5563;">Lead</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${songs.map((song, idx) => `
-                                <tr style="border-bottom: 1px solid #F3F4F6; ${idx % 2 === 0 ? '' : 'background-color: #FAFAFA;'}">
-                                    <td style="padding: 10px; color: #9CA3AF; font-weight: 500;">${idx + 1}</td>
-                                    <td style="padding: 10px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Bands.escapeHtml(song.title)}</td>
-                                    <td style="padding: 10px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Bands.escapeHtml(song.artist || '-')}</td>
-                                    <td style="padding: 10px; text-align: center; font-weight: 500;">${song.bpm || '-'}</td>
-                                    <td style="padding: 10px; text-align: center; font-weight: 500; color: #8B5CF6;">${song.key || '-'}</td>
-                                    <td style="padding: 10px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Bands.escapeHtml(song.leadVocal || '-')}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-
-                    ${songs.some(s => s.ccli || s.notes) ? `
-                        <div style="margin-top: 40px; border-radius: 12px; border: 1px solid #E5E7EB; overflow: hidden;">
-                            <div style="background: #F9FAFB; padding: 12px 20px; border-bottom: 1px solid #E5E7EB;">
-                                <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: #111827;">Zusätzliche Informationen</h3>
-                            </div>
-                            <div style="padding: 10px 20px;">
-                                ${songs.filter(s => s.ccli || s.notes).map((song, idx) => `
-                                    <div style="padding: 12px 0; ${idx !== 0 ? 'border-top: 1px dashed #E5E7EB;' : ''}">
-                                        <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: #111827;">${Bands.escapeHtml(song.title)}</div>
-                                        <div style="display: flex; gap: 15px; font-size: 12px; color: #6B7280;">
-                                            ${song.ccli ? `<span><b>CCLI:</b> ${Bands.escapeHtml(song.ccli)}</span>` : ''}
-                                            ${song.notes ? `<span><b>Notiz:</b> ${Bands.escapeHtml(song.notes)}</span>` : ''}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #E5E7EB; color: #9CA3AF; font-size: 11px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>Erstellt mit <b>Band Manager</b></div>
-                        <div>Stand: ${new Date().toLocaleString('de-DE')}</div>
-                    </div>
-                </div>
-            `;
-
-            element.style.backgroundColor = 'white';
-            element.style.padding = '0';
-            element.style.margin = '0';
-            element.style.color = 'black';
-
-            // Append to body temporarily
-            document.body.appendChild(element);
-
-            // Wait for rendering
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            // Generate canvas
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#ffffff',
-                logging: false
-            });
-
-            // Create PDF
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/png');
-            const imgWidth = 210; // A4 width in mm
-            const pageHeight = 297; // A4 height in mm
-            let heightLeft = canvas.height * imgWidth / canvas.width;
-            let position = 0;
-
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
-            heightLeft -= pageHeight;
-
-            while (heightLeft >= 0) {
-                position = heightLeft - canvas.height * imgWidth / canvas.width;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
-                heightLeft -= pageHeight;
-            }
-
-            // Save PDF
             const filename = `Setlist_${Bands.escapeHtml(event.title)}_${UI.formatDateShort(event.date)}.pdf`;
-            pdf.save(filename);
 
-            // Cleanup
-            document.body.removeChild(element);
+            await PDFGenerator.generateSetlistPDF({
+                title: event.title,
+                subtitle: '',
+                metaInfo: metaInfo,
+                songs: songs,
+                showNotes: true,
+                filename: filename
+            });
 
             UI.showToast('Setlist-PDF heruntergeladen!', 'success');
         } catch (error) {

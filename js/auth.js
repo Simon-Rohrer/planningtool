@@ -83,6 +83,8 @@ const Auth = {
                 id: supabaseAuthUser.id,
                 email: supabaseAuthUser.email,
                 username: supabaseAuthUser.user_metadata?.username || supabaseAuthUser.email.split('@')[0],
+                first_name: supabaseAuthUser.user_metadata?.first_name || '',
+                last_name: supabaseAuthUser.user_metadata?.last_name || '',
                 name: supabaseAuthUser.user_metadata?.name || supabaseAuthUser.email.split('@')[0],
                 isAdmin: false // Explicitly set to false in fallback if unknown
             };

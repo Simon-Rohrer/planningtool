@@ -1474,7 +1474,8 @@ input:checked+.slider:before {
 .app-sidebar {
     width: 280px;
     /* Sidebar width */
-    background: var(--color-surface);
+    background: #0f172a;
+    /* Modern Dark Slate */
     border-right: 1px solid var(--color-border);
     position: fixed;
     /* Fixed position */
@@ -1527,6 +1528,14 @@ input:checked+.slider:before {
     flex-direction: column;
     position: relative;
     overflow: visible;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    /* Subtle separator */
+    margin-bottom: var(--spacing-xs);
+    padding-bottom: var(--spacing-xs);
+}
+
+.nav-group:last-child {
+    border-bottom: none;
 }
 
 .nav-item {
@@ -5598,8 +5607,10 @@ s .time-suggestions-compact {
 /* ===== Responsive Adjustments ===== */
 @media (max-width: 768px) {
     .accordion-header {
-        padding: var(--spacing-md);
-        margin: calc(var(--spacing-lg) * -1);
+        padding: var(--spacing-sm) var(--spacing-md);
+        /* Reduced vertical padding */
+        margin: calc(var(--spacing-md) * -1);
+        /* Adjusted margin match */
         margin-bottom: 0;
     }
 
@@ -5615,13 +5626,28 @@ s .time-suggestions-compact {
         align-items: flex-start;
     }
 
+    .event-details-expanded {
+        gap: var(--spacing-xs);
+    }
+
     .detail-row {
-        flex-direction: column;
-        gap: var(--spacing-sm);
+        flex-direction: row;
+        /* Try row instead of column for compactness */
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-sm);
+        align-items: baseline;
     }
 
     .detail-label {
+        font-size: 0.9rem;
         min-width: auto;
+        color: var(--color-text-secondary);
+        margin-right: var(--spacing-xs);
+    }
+
+    .detail-value {
+        font-size: 0.95rem;
     }
 
     .rehearsal-action-buttons,
@@ -7618,5 +7644,51 @@ body.no-scroll {
 
     .news-header-block h2 {
         font-size: 1.5rem;
+    }
+}
+
+/* Mobile Optimization for Edit Event Modal */
+@media (max-width: 768px) {
+
+    /* Guest List Fix */
+    #eventGuestsField,
+    .form-optional-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        margin-bottom: var(--spacing-md);
+    }
+
+    #eventGuestsField label {
+        margin-bottom: 0;
+        font-weight: 600;
+    }
+
+    #eventGuestsField textarea {
+        width: 100%;
+        min-height: 60px;
+    }
+
+    /* Setlist Header Fix */
+    .section-header-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .section-actions {
+        width: 100%;
+        display: flex;
+        gap: var(--spacing-sm);
+    }
+
+    .section-actions button {
+        flex: 1;
+        /* Make buttons grow */
+        justify-content: center;
+        padding: var(--spacing-md) var(--spacing-sm);
+        /* Larger touch target */
     }
 }

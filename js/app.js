@@ -351,6 +351,24 @@ const App = {
     // Call this after DOMContentLoaded
     setupDashboardFeatures() {
         this.setupQuickAccessEdit();
+
+        // Add interactive click handlers to stat cards
+        const ids = [
+            { id: 'bandCount', view: 'bands' },
+            { id: 'upcomingEvents', view: 'events' },
+            { id: 'totalRehearsals', view: 'rehearsals' }
+        ];
+
+        ids.forEach(item => {
+            const el = document.getElementById(item.id);
+            if (el) {
+                const card = el.closest('.dashboard-card');
+                if (card) {
+                    card.style.cursor = 'pointer';
+                    card.onclick = () => this.navigateTo(item.view, 'dashboard');
+                }
+            }
+        });
     },
     // Update header to show current page title instead of submenu buttons
     updateHeaderSubmenu(view) {
@@ -960,6 +978,36 @@ const App = {
     },
 
     async init() {
+        // Implement unsaved changes check
+        window.isProfileDirty = false;
+        if (typeof UI !== 'undefined' && !UI._originalCloseModal) {
+            UI._originalCloseModal = UI.closeModal;
+            UI.closeModal = (modalId) => {
+                if (modalId === 'settingsModal' && window.isProfileDirty) {
+                    UI.showConfirm(
+                        'Du hast ungespeicherte Änderungen. Möchtest du das Fenster wirklich schließen?',
+                        () => {
+                            window.isProfileDirty = false;
+                            UI._originalCloseModal.call(UI, modalId);
+                        }
+                    );
+                    return;
+                }
+                UI._originalCloseModal.call(UI, modalId);
+            };
+        }
+
+        // Setup dirty tracking for profile form
+        const profileForm = document.getElementById('updateProfileForm');
+        if (profileForm) {
+            profileForm.addEventListener('input', () => {
+                const settingsModal = document.getElementById('settingsModal');
+                if (settingsModal && settingsModal.classList.contains('active')) {
+                    window.isProfileDirty = true;
+                }
+            });
+        }
+
         // Initialisierung
         this.setupDashboardFeatures();
 
@@ -3208,114 +3256,15 @@ const App = {
                 return;
             }
 
-            // Build HTML content
-            let songsTableHTML = '';
-            songs.forEach((song, idx) => {
-                songsTableHTML += `
-                    <tr style="border-bottom: 1px solid #ddd;">
-                        <td style="padding: 8px; text-align: left; font-weight: bold;">${idx + 1}</td>
-                        <td style="padding: 8px; text-align: left;">${this.escapeHtml(song.title)}</td>
-                        <td style="padding: 8px; text-align: left;">${this.escapeHtml(song.artist || '-')}</td>
-                        <td style="padding: 8px; text-align: center;">${song.bpm || '-'}</td>
-                        <td style="padding: 8px; text-align: center;">${song.key || '-'}</td>
-                        <td style="padding: 8px; text-align: left;">${this.escapeHtml(song.leadVocal || '-')}</td>
-                    </tr>
-                `;
-            });
-
-            // Create PDF HTML element
-            const element = document.createElement('div');
-            element.innerHTML = `
-                <div style="font-family: 'Inter', Arial, sans-serif; padding: 40px; background: white; color: #111827; max-width: 800px; margin: 0 auto;">
-                    <!-- Header Accent -->
-                    <div style="height: 6px; background: #8B5CF6; border-radius: 3px; margin-bottom: 25px;"></div>
-
-                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 35px; border-bottom: 1px solid #E5E7EB; padding-bottom: 25px;">
-                        <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">${this.escapeHtml(title)}</h1>
-                        ${subtitle ? `<div style="margin-top: 8px; color: #6B7280; font-size: 14px; font-weight: 500;">${this.escapeHtml(subtitle)}</div>` : ''}
-                    </div>
-
-                    <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
-                        <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827; text-transform: uppercase; letter-spacing: 0.05em;">Songliste</h2>
-                        <span style="color: #9CA3AF; font-size: 13px;">${songs.length} Songs</span>
-                    </div>
-
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 13px; table-layout: fixed;">
-                        <thead>
-                            <tr style="background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB;">
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 35px; color: #4B5563;">#</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; color: #4B5563;">Titel</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; color: #4B5563;">Interpret</th>
-                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">BPM</th>
-                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">Key</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 100px; color: #4B5563;">Lead</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${songs.map((song, idx) => `
-                                <tr style="border-bottom: 1px solid #F3F4F6; ${idx % 2 === 0 ? '' : 'background-color: #FAFAFA;'}">
-                                    <td style="padding: 10px; color: #9CA3AF; font-weight: 500;">${idx + 1}</td>
-                                    <td style="padding: 10px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(song.title)}</td>
-                                    <td style="padding: 10px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(song.artist || '-')}</td>
-                                    <td style="padding: 10px; text-align: center; font-weight: 500;">${song.bpm || '-'}</td>
-                                    <td style="padding: 10px; text-align: center; font-weight: 500; color: #8B5CF6;">${song.key || '-'}</td>
-                                    <td style="padding: 10px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(song.leadVocal || '-')}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-
-                    <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #E5E7EB; color: #9CA3AF; font-size: 11px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>Erstellt mit <b>Band Manager</b></div>
-                        <div>Stand: ${new Date().toLocaleString('de-DE')}</div>
-                    </div>
-                </div>
-            `;
-
-            element.style.backgroundColor = 'white';
-            element.style.padding = '0';
-            element.style.margin = '0';
-            element.style.color = 'black';
-
-            // Append to body temporarily
-            document.body.appendChild(element);
-
-            // Wait for rendering
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            // Generate canvas
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#ffffff',
-                logging: false
-            });
-
-            // Create PDF
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/png');
-            const imgWidth = 210; // A4 width in mm
-            const pageHeight = 297; // A4 height in mm
-            let heightLeft = canvas.height * imgWidth / canvas.width;
-            let position = 0;
-
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
-            heightLeft -= pageHeight;
-
-            while (heightLeft >= 0) {
-                position = heightLeft - canvas.height * imgWidth / canvas.width;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
-                heightLeft -= pageHeight;
-            }
-
-            // Save PDF
             const filename = `Setlist_${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
-            pdf.save(filename);
 
-            // Cleanup
-            document.body.removeChild(element);
+            await PDFGenerator.generateSetlistPDF({
+                title: title,
+                subtitle: subtitle,
+                songs: songs,
+                filename: filename
+            });
+
             UI.showToast('PDF heruntergeladen!', 'success');
         } catch (error) {
             console.error('Error generating PDF:', error);
@@ -4430,25 +4379,39 @@ const App = {
             updateProfileForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                const firstName = (root.querySelector('#profileFirstName') || {}).value;
-                const lastName = (root.querySelector('#profileLastName') || {}).value;
-                const username = (root.querySelector('#profileUsername') || {}).value;
-                const email = (root.querySelector('#profileEmail') || {}).value;
-                const instrument = (root.querySelector('#profileInstrument') || {}).value;
-                const password = (root.querySelector('#profilePassword') || {}).value;
-                const passwordConfirm = (root.querySelector('#profilePasswordConfirm') || {}).value;
-
-                // Validate password confirmation
-                if (password && password.trim() !== '') {
-                    if (password !== passwordConfirm) {
-                        UI.showToast('Passwörter stimmen nicht überein', 'error');
-                        return;
-                    }
+                const submitBtn = updateProfileForm.querySelector('button[type="submit"]');
+                // Ensure we don't capture the loading state if button was already stuck
+                let originalBtnText = submitBtn ? submitBtn.innerHTML : 'Speichern';
+                if (originalBtnText.includes('spinner-border') || originalBtnText.includes('Speichern...')) {
+                    originalBtnText = 'Speichern';
                 }
 
-                UI.showLoading('Profil wird aktualisiert...');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Speichern...';
+                }
 
                 try {
+
+                    const firstName = (root.querySelector('#profileFirstName') || {}).value;
+                    const lastName = (root.querySelector('#profileLastName') || {}).value;
+                    const username = (root.querySelector('#profileUsername') || {}).value;
+                    const email = (root.querySelector('#profileEmail') || {}).value;
+                    const instrument = (root.querySelector('#profileInstrument') || {}).value;
+                    const password = (root.querySelector('#profilePassword') || {}).value;
+                    const passwordConfirm = (root.querySelector('#profilePasswordConfirm') || {}).value;
+
+                    // Validate password confirmation
+                    if (password && password.trim() !== '') {
+                        if (password !== passwordConfirm) {
+                            UI.showToast('Passwörter stimmen nicht überein', 'error');
+                            return;
+                        }
+                    }
+
+                    UI.showLoading('Profil wird aktualisiert...');
+
+
                     // Update in users table
                     const updates = {
                         first_name: firstName,
@@ -4537,6 +4500,12 @@ const App = {
                     if (currentUserElem) currentUserElem.textContent = updatedUser.username;
                     this.renderProfileImageHeader(updatedUser);
 
+                    // Update Dashboard Welcome Message immediately
+                    const welcomeUserName = document.getElementById('welcomeUserName');
+                    if (welcomeUserName) {
+                        welcomeUserName.textContent = updatedUser.first_name || updatedUser.username || 'Musiker';
+                    }
+
                     // Clear password field (scoped to settings view)
                     const pwdEl = root.querySelector('#profilePassword');
                     const pwdConfirmEl = root.querySelector('#profilePasswordConfirm');
@@ -4554,6 +4523,7 @@ const App = {
                     if (instrumentEl) instrumentEl.value = updatedUser.instrument || '';
 
                     UI.showToast('Profil erfolgreich aktualisiert!', 'success');
+                    window.isProfileDirty = false;
 
                     // Render updated profile image
                     this.renderProfileImageSettings(updatedUser);
@@ -4561,6 +4531,12 @@ const App = {
                     console.error('Error updating profile:', error);
                     UI.showToast('Fehler beim Aktualisieren: ' + error.message, 'error');
                 } finally {
+                    // Re-query button to be safe
+                    const btn = updateProfileForm ? updateProfileForm.querySelector('button[type="submit"]') : null;
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalBtnText;
+                    }
                     UI.hideLoading();
                 }
             });
