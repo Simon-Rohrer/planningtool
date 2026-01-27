@@ -128,7 +128,10 @@ const Bands = {
         const band = await Storage.getBand(bandId);
         const user = Auth.getCurrentUser();
 
-        if (!band) return;
+        if (!band) {
+            console.error('bandDetails: Band not found in storage', bandId);
+            return;
+        }
 
         // Set band name and add edit button if allowed
         const nameHeader = document.getElementById('bandDetailsName');
@@ -768,6 +771,10 @@ const Bands = {
                 }
             }
             UI.closeModal('createBandModal');
+
+            // Short delay to allow DB propagation
+            await new Promise(r => setTimeout(r, 500));
+
             await this.renderBands();
 
             // Update navigation visibility to show band tabs

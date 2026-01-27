@@ -252,6 +252,57 @@
                         </div>
                         <button type="submit" class="btn btn-primary">Registrieren</button>
                     </form>
+
+                    <!-- Forgot Password Modal (Inline style hidden) -->
+                    <div id="forgotPasswordModal" class="modal">
+                        <div class="modal-content" style="max-width: 400px;">
+                            <div class="modal-header">
+                                <h2>Passwort vergessen</h2>
+                                <button class="modal-close" onclick="UI.closeModal('forgotPasswordModal')">×</button>
+                            </div>
+                            <div class="modal-body">
+                                <p style="margin-bottom: 1rem; color: var(--color-text-secondary);">
+                                    Gib deinen Benutzernamen oder deine E-Mail-Adresse ein. Wir senden dir einen Link
+                                    zum Zurücksetzen deines Passworts.
+                                </p>
+                                <form id="forgotPasswordForm">
+                                    <div class="form-group">
+                                        <label for="forgotIdentifier">Benutzername oder E-Mail</label>
+                                        <input type="text" id="forgotIdentifier" required
+                                            placeholder="z.B. max.mustermann">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" style="width: 100%;">Link
+                                        anfordern</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reset Password Modal -->
+                    <div id="resetPasswordModal" class="modal">
+                        <div class="modal-content" style="max-width: 400px;">
+                            <div class="modal-header">
+                                <h2>Neues Passwort setzen</h2>
+                            </div>
+                            <div class="modal-body">
+                                <p style="margin-bottom: 1rem; color: var(--color-text-secondary);">
+                                    Bitte gib dein neues Passwort ein.
+                                </p>
+                                <form id="resetPasswordForm">
+                                    <div class="form-group">
+                                        <label for="newPassword">Neues Passwort</label>
+                                        <input type="password" id="newPassword" required minlength="6">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="newPasswordConfirm">Passwort bestätigen</label>
+                                        <input type="password" id="newPasswordConfirm" required minlength="6">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" style="width: 100%;">Passwort
+                                        speichern</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -737,7 +788,7 @@
 
                         <div id="rehearsalsListResolvedHeader" class="rehearsal-section-header"
                             style="margin-top: 2rem; opacity: 0.8;">
-                            <h3>🏁 Erledigte Proben</h3>
+                            <h3>✅ Bestätigte Proben</h3>
                         </div>
                         <div id="rehearsalsListResolved" class="rehearsal-list resolved-list" style="opacity: 0.8;">
                         </div>

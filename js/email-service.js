@@ -50,13 +50,25 @@ const EmailService = {
             }
             emailjs.init(this.config.publicKey);
 
+            // Map to User's specific EmailJS template variables from screenshot
             const templateParams = {
-                to_email: toEmail,
-                to_name: toName,
-                subject: subject,
-                message: message,
-                from_name: 'Band Planning Tool',
-                reply_to: 'noreply@bandplanning.local'
+                // {{user}} -> Recipient Email
+                user: toEmail,
+
+                // {{title}} -> Email Subject
+                title: subject,
+
+                // {{content}} -> Main message body
+                content: message,
+
+                // {{name}} -> Sender Name (Fixed as System Name)
+                name: 'Band Planning Tool',
+
+                // {{email}} -> Reply-To / Sender Email (Fixed)
+                email: 'noreply@bandplanning.local',
+
+                // Keep original params just in case functionality changes
+                to_name: toName
             };
 
             // Add optional details
@@ -112,31 +124,23 @@ const EmailService = {
     },
 
     async sendRehearsalConfirmation(rehearsal, selectedDate, selectedMembers) {
-        if (!this.isConfigured()) {
-            console.warn('EmailJS not configured. Skipping email send.');
-            return {
-                success: false,
-                message: 'EmailJS ist nicht konfiguriert'
-            };
-        }
+        if (!this.isConfigured()) return { success: false, message: 'EmailJS nicht konfiguriert' };
 
         try {
-            if (typeof emailjs === 'undefined') {
-                await this.loadEmailJS();
-            }
+            if (typeof emailjs === 'undefined') await this.loadEmailJS();
             emailjs.init(this.config.publicKey);
 
             const band = Storage.getBand(rehearsal.bandId);
             const dateFormatted = UI.formatDate(selectedDate);
 
+            // Get Location Name
             let locationName = 'Kein Ort angegeben';
+            let locationAddress = '';
             if (rehearsal.locationId) {
                 const location = Storage.getLocation(rehearsal.locationId);
                 if (location) {
                     locationName = location.name;
-                    if (location.address) {
-                        locationName += ` (${location.address})`;
-                    }
+                    locationAddress = location.address ? `\nAdresse: ${location.address}` : '';
                 }
             }
 
@@ -144,25 +148,28 @@ const EmailService = {
                 const user = Storage.getById('users', member.userId);
                 if (!user || !user.email) return null;
 
-                const details = [
-                    { label: '🎸 Band', value: band.name },
-                    { label: '📅 Datum', value: dateFormatted },
-                    { label: '📍 Ort', value: locationName }
-                ];
+                // Create beautiful plain-text content
+                const message = `Hallo ${user.name || user.username},
 
-                if (rehearsal.description) {
-                    details.push({ label: '📝 Beschreibung', value: rehearsal.description });
-                }
+Deine Probe wurde bestätigt! 🎸
+
+Hier sind die Details:
+
+Titel: ${rehearsal.title}
+Band: ${band.name}
+Datum: ${dateFormatted}
+Ort: ${locationName}${locationAddress}
+${rehearsal.description ? `\nInfo: ${rehearsal.description}` : ''}
+
+Bitte sei pünktlich. Wir freuen uns auf dich!
+
+Dein Band Planning Tool`;
 
                 const result = await this.sendEmail(
                     user.email,
                     user.name,
                     `Probe bestätigt: ${rehearsal.title}`,
-                    `Die Probe "${rehearsal.title}" wurde bestätigt!`,
-                    {
-                        details: details,
-                        detailsTitle: 'Proben-Details'
-                    }
+                    message
                 );
 
                 return {
@@ -175,50 +182,47 @@ const EmailService = {
 
             const results = await Promise.all(promises);
             const successCount = results.filter(r => r && r.success).length;
-            const totalCount = results.filter(r => r !== null).length;
 
             return {
                 success: successCount > 0,
-                message: `${successCount} von ${totalCount} E-Mails erfolgreich versendet`,
+                message: `${successCount} E-Mails versendet`,
                 results
             };
 
         } catch (error) {
             console.error('EmailJS error:', error);
-            return {
-                success: false,
-                message: 'Fehler beim Versenden der E-Mails: ' + error.message
-            };
+            return { success: false, message: error.message };
         }
     },
 
     async sendEventNotification(toEmail, toName, event, band) {
-        const details = [
-            { label: '🎸 Band', value: band.name },
-            { label: '📅 Datum', value: UI.formatDate(event.date) }
-        ];
+        const dateFormatted = UI.formatDate(event.date);
 
-        if (event.time) {
-            details.push({ label: '🕐 Uhrzeit', value: event.time });
-        }
+        const message = `Hallo ${toName},
 
-        if (event.location) {
-            details.push({ label: '📍 Ort', value: event.location });
-        }
+Du wurdest zu einem neuen Auftritt eingeladen! 🎤
 
-        if (event.soundcheck) {
-            details.push({ label: '🎚️ Soundcheck', value: event.soundcheck });
-        }
+Hier sind die Details:
+
+Titel: ${event.title}
+Band: ${band.name}
+Datum: ${dateFormatted}
+${event.time ? `Priorität/Zeit: ${event.time}` : ''}
+${event.location ? `Ort: ${event.location}` : ''}
+${event.soundcheck ? `Soundcheck: ${event.soundcheck}` : ''}
+
+${event.info ? `Infos:\n${event.info}` : ''}
+
+Bitte checke die App für weitere Details.
+
+Rock on! 🤘
+Dein Band Planning Tool`;
 
         return await this.sendEmail(
             toEmail,
             toName,
-            `Auftritt: ${event.title}`,
-            `Du wurdest für den Auftritt "${event.title}" eingeladen!`,
-            {
-                details: details,
-                detailsTitle: 'Auftritts-Details'
-            }
+            `Neuer Auftritt: ${event.title}`,
+            message
         );
     },
 

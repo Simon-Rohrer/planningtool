@@ -5,6 +5,9 @@ window.APP_START_TIME = performance.now();
 const RichTextEditor = {
     savedRange: null,  // Store current selection
 
+    // State flags
+    isPasswordRecoveryMode: false,
+
     init() {
 
         // Toolbar buttons
@@ -1019,7 +1022,22 @@ const App = {
         // NOTE: tutorial banner will be shown after auth initialization below
 
         // Start Auth initialization in background (non-blocking)
+
+        // CRITICAL FIX: Check for password recovery mode in URL hash BEFORE Auth.init
+        if (window.location.hash && window.location.hash.includes('type=recovery')) {
+            console.log('Detected Password Recovery Mode from URL hash');
+            this.isPasswordRecoveryMode = true;
+        }
+
         Auth.init().then(() => {
+            // Check if we are in recovery mode (set by URL check above or Auth event)
+            if (this.isPasswordRecoveryMode) {
+                console.log('In recovery mode - skipping app load and triggering UI');
+                // Ensure UI listener is triggered
+                window.dispatchEvent(new CustomEvent('auth:password_recovery'));
+                return;
+            }
+
             // After auth is ready, check if authenticated and show appropriate view
             if (Auth.isAuthenticated()) {
                 this.showApp().then(() => {
@@ -1325,6 +1343,147 @@ const App = {
             const rememberMe = document.getElementById('loginRememberMe')?.checked;
             await this.handleLogin(undefined, undefined, rememberMe);
         });
+
+        // Listen for password recovery event
+        window.addEventListener('auth:password_recovery', () => {
+            console.log('Opening reset password modal (Recovery Mode)');
+            this.isPasswordRecoveryMode = true;
+
+            // Hide main app
+            const app = document.getElementById('mainApp');
+            if (app) app.style.display = 'none';
+
+            // Ensure landing page is visible but hide its normal content
+            const landing = document.getElementById('landingPage');
+            if (landing) {
+                landing.classList.add('active');
+
+                // Hide Hero and Auth Container standard elements
+                const hero = document.getElementById('heroArea');
+                if (hero) hero.style.display = 'none';
+
+                const authTabs = document.querySelector('.auth-tabs');
+                if (authTabs) authTabs.style.display = 'none';
+
+                // Hide all auth forms
+                document.querySelectorAll('.auth-form').forEach(f => f.style.display = 'none');
+
+                // Ensure auth container is visible (parent of modal)
+                const authContainer = document.querySelector('.auth-container');
+                if (authContainer) authContainer.style.display = 'block';
+            }
+
+            // Close other modals if any
+            document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+
+            // Open reset modal
+            const modal = document.getElementById('resetPasswordModal');
+            if (modal) {
+                UI.openModal('resetPasswordModal');
+                // Hide close button in this mode
+                const closeBtn = modal.querySelector('.modal-close');
+                if (closeBtn) closeBtn.style.display = 'none';
+            }
+        });
+
+        // Forgot Password Button
+        const forgotBtn = document.querySelector('.forgot-password');
+        if (forgotBtn) {
+            forgotBtn.addEventListener('click', () => {
+                UI.openModal('forgotPasswordModal');
+            });
+        }
+
+        // Forgot Password Form Submit
+        const forgotForm = document.getElementById('forgotPasswordForm');
+        if (forgotForm) {
+            forgotForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const identifier = document.getElementById('forgotIdentifier').value.trim();
+                if (!identifier) return;
+
+                const submitBtn = forgotForm.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = 'Sende...';
+                submitBtn.disabled = true;
+
+                try {
+                    let email = identifier;
+                    // If not email, lookup username
+                    if (!identifier.includes('@')) {
+                        const user = await Storage.getUserByUsername(identifier);
+                        if (!user) throw new Error('Benutzer nicht gefunden');
+                        email = user.email;
+                    }
+
+                    await Auth.requestPasswordReset(email);
+                    UI.showToast('E-Mail gesendet! Bitte prüfe deinen Posteingang.', 'success', 5000);
+                    UI.closeModal('forgotPasswordModal');
+                } catch (error) {
+                    console.error('Reset request failed:', error);
+                    UI.showToast(error.message || 'Fehler beim Anfordern des Links', 'error');
+                } finally {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+
+        // Reset Password Form Submit
+        const resetForm = document.getElementById('resetPasswordForm');
+        if (resetForm) {
+            resetForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newPass = document.getElementById('newPassword').value;
+                const confirmPass = document.getElementById('newPasswordConfirm').value;
+
+                if (newPass !== confirmPass) {
+                    UI.showToast('Passwörter stimmen nicht überein', 'error');
+                    return;
+                }
+
+                if (newPass.length < 6) {
+                    UI.showToast('Mindestens 6 Zeichen', 'error');
+                    return;
+                }
+
+                const submitBtn = resetForm.querySelector('button[type="submit"]');
+                submitBtn.textContent = 'Speichere...';
+                submitBtn.disabled = true;
+
+                try {
+                    await Auth.updatePassword(newPass);
+
+                    // Special flow for Recovery Mode
+                    if (this.isPasswordRecoveryMode) {
+                        UI.showToast('Passwort geändert!', 'success');
+                        setTimeout(async () => {
+                            alert('Dein Passwort wurde erfolgreich geändert. Du kannst diese Seite jetzt schließen und dich neu anmelden.');
+
+                            await Auth.logout();
+                            this.isPasswordRecoveryMode = false;
+                            // Reload to clean URL and state
+                            window.location.href = window.location.origin;
+                        }, 500);
+                        return;
+                    }
+
+                    UI.showToast('Passwort erfolgreich geändert! Du bist jetzt eingeloggt.', 'success');
+                    UI.closeModal('resetPasswordModal');
+                    // Check location hash
+                    if (window.location.hash.includes('reset-password')) {
+                        window.history.replaceState(null, null, ' ');
+                    }
+                    this.showMainView();
+                } catch (error) {
+                    console.error('Password update failed:', error);
+                    UI.showToast('Fehler beim Speichern: ' + (error.message || 'Unbekannt'), 'error');
+                } finally {
+                    submitBtn.textContent = 'Passwort speichern';
+                    submitBtn.disabled = false;
+                }
+            });
+        }
 
         // Register form
         const registerPasswordInput = document.getElementById('registerPassword');
@@ -2239,6 +2398,17 @@ const App = {
                     // Activate if view matches
                     if (itemView === view || (view === 'tonstudio' && itemView === 'probeorte')) {
                         item.classList.add('active');
+
+                        // FIX: If it's a subitem, also activate its parent main item (like desktop sidebar)
+                        if (item.classList.contains('nav-subitem')) {
+                            const group = item.closest('.nav-group');
+                            if (group) {
+                                const mainItem = group.querySelector('.nav-main');
+                                if (mainItem) {
+                                    mainItem.classList.add('active');
+                                }
+                            }
+                        }
                     }
                 });
                 // Update Header Title
@@ -4056,7 +4226,14 @@ const App = {
     },
 
     // Show main application
+    // Show main application
     async showApp() {
+        // Block if in password recovery mode
+        if (this.isPasswordRecoveryMode) {
+            console.log('App view blocked due to password recovery mode');
+            return;
+        }
+
         // Hide landing page and show main app
         const landingPage = document.getElementById('landingPage');
         const mainApp = document.getElementById('mainApp');
@@ -6662,11 +6839,22 @@ const App = {
                     if (nextItem) {
                         const dateStr = nextItem.date.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' });
                         const timeStr = nextItem.date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+                        // Handle location (Event = string, Rehearsal = object via join)
+                        let locName = 'Kein Ort angegeben';
+                        if (nextItem.location) {
+                            if (typeof nextItem.location === 'object' && nextItem.location.name) {
+                                locName = nextItem.location.name;
+                            } else if (typeof nextItem.location === 'string') {
+                                locName = nextItem.location;
+                            }
+                        }
+
                         nextEventContent.innerHTML = `
                         <div class="next-event-item">
                             <div class="next-event-title">${Bands.escapeHtml(nextItem.title || nextItem.name || 'Ohne Titel')}</div>
                             <div class="next-event-info">📅 ${dateStr} um ${timeStr} Uhr</div>
-                            <div class="next-event-info">📍 ${Bands.escapeHtml(nextItem.location || 'Kein Ort angegeben')}</div>
+                            <div class="next-event-info">📍 ${Bands.escapeHtml(locName)}</div>
                         </div>`;
                         const heroCard = document.getElementById('nextEventHero');
                         if (heroCard) {
@@ -6743,6 +6931,10 @@ const App = {
         const events = cachedEvents || (await Storage.getUserEvents(user.id)) || [];
         const rehearsals = cachedRehearsals || (await Storage.getUserRehearsals(user.id)) || [];
 
+        // Pre-fetch locations once (cached) to avoid N+1 lookups
+        const allLocations = await Storage.getLocations();
+        const locationMap = new Map(allLocations.map(l => [l.id, l]));
+
         const upcomingEvents = events
             .filter(e => new Date(e.date) >= now)
             .map(e => ({
@@ -6750,6 +6942,7 @@ const App = {
                 date: new Date(e.date).toISOString(),
                 title: e.title,
                 bandId: e.bandId,
+                band: e.band, // Pass through joined band data
                 location: e.location || null,
                 id: e.id
             }));
@@ -6763,6 +6956,7 @@ const App = {
                     date: dateIso,
                     title: r.title,
                     bandId: r.bandId,
+                    band: r.band, // Pass through joined band data
                     locationId: r.locationId || null,
                     id: r.id
                 };
@@ -6778,9 +6972,10 @@ const App = {
             return;
         }
 
-        const rows = await Promise.all(combined.map(async item => {
-            const band = await Storage.getBand(item.bandId);
-            const bandName = band?.name || 'Band';
+        const rows = combined.map(item => {
+            // Use joined band data if available, fallback to "Band"
+            // Note: getUserEvents/Rehearsals now returns { ..., band: { name: ... } }
+            const bandName = item.band ? item.band.name : 'Band';
             const typeIcon = item.type === 'event' ? '🎤' : '📅';
             const typeLabel = item.type === 'event' ? 'Auftritt' : 'Probetermin';
 
@@ -6788,12 +6983,16 @@ const App = {
             if (item.type === 'event') {
                 locationText = item.location ? Bands.escapeHtml(item.location) : '-';
             } else if (item.type === 'rehearsal' && item.locationId) {
-                const loc = await Storage.getLocation(item.locationId);
-                locationText = loc ? Bands.escapeHtml(loc.name) : '-';
+                // Use client-side lookup from cached map
+                const loc = locationMap.get(item.locationId);
+                if (loc) locationText = Bands.escapeHtml(loc.name);
             }
 
+            // Get band color
+            const bandColor = item.band ? (item.band.color || '#e11d48') : '#e11d48';
+
             return `
-                <div class="upcoming-card" onclick="App.navigateTo('${item.type === 'event' ? 'events' : 'rehearsals'}', 'dashboard-card-upcoming')" style="cursor: pointer;">
+                <div class="upcoming-card" onclick="App.navigateTo('${item.type === 'event' ? 'events' : 'rehearsals'}', 'dashboard-card-upcoming')" style="cursor: pointer; border-left: 4px solid ${bandColor}">
                     <div class="upcoming-card-icon">${typeIcon}</div>
                     <div class="upcoming-card-content">
                         <div class="upcoming-card-title">${Bands.escapeHtml(item.title)}</div>
@@ -6801,15 +7000,14 @@ const App = {
                             <span style="font-weight:600; color:var(--color-primary);">${typeLabel}</span> • ${UI.formatDate(item.date)}
                         </div>
                         <div class="upcoming-card-meta">
-                            🎸 ${Bands.escapeHtml(bandName)} • 📍 ${locationText}
+                            <span style="color: ${bandColor}">🎸 ${Bands.escapeHtml(bandName)}</span> • 📍 ${locationText}
                         </div>
                     </div>
                     <div class="upcoming-card-action">
                          <button class="btn btn-sm btn-secondary">➜</button>
                     </div>
-                </div>
-            `;
-        }));
+                </div>`;
+        });
 
         container.innerHTML = rows.join('');
     },

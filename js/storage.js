@@ -4,7 +4,9 @@
 const Storage = {
     calendarsCache: null,
     calendarsCacheTimestamp: 0,
-    CACHE_DURATION: 300000, // 5 minutes cache
+    locationsCache: null,
+    locationsCacheTimestamp: 0,
+    CACHE_DURATION: 300000, // 5 Minutes
 
     // Löscht einen User aus der eigenen Datenbank
     async deleteUser(userId) {
@@ -91,14 +93,26 @@ const Storage = {
 
     async getUserByUsername(username) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('users').select('*').ilike('username', username).limit(1).maybeSingle();
+        // Optimized columns (removed avatar_url)
+        const { data, error } = await sb
+            .from('users')
+            .select('id, username, email, first_name, last_name, profile_image_url')
+            .ilike('username', username)
+            .limit(1)
+            .maybeSingle();
         if (error) { console.error('Supabase getUserByUsername error', error); return null; }
         return data || null;
     },
 
     async getUserByEmail(email) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('users').select('*').ilike('email', email).limit(1).maybeSingle();
+        // Optimized columns (removed avatar_url)
+        const { data, error } = await sb
+            .from('users')
+            .select('id, username, email, first_name, last_name, profile_image_url')
+            .ilike('email', email)
+            .limit(1)
+            .maybeSingle();
         if (error) { console.error('Supabase getUserByEmail error', error); return null; }
         return data || null;
     },
@@ -162,7 +176,12 @@ const Storage = {
 
     async getBandByJoinCode(joinCode) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('bands').select('*').eq('joinCode', joinCode).limit(1).maybeSingle();
+        const { data, error } = await sb
+            .from('bands')
+            .select('id, name, color, joinCode')
+            .eq('joinCode', joinCode)
+            .limit(1)
+            .maybeSingle();
         if (error) { console.error('Supabase getBandByJoinCode error', error); return null; }
         return data || null;
     },
@@ -197,26 +216,45 @@ const Storage = {
 
     async getBandMembers(bandId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('bandMembers').select('*').eq('bandId', bandId);
+        // Optimized: Select only necessary columns
+        const { data, error } = await sb
+            .from('bandMembers')
+            .select('id, bandId, userId, role, joinedAt')
+            .eq('bandId', bandId);
         if (error) { console.error('Supabase getBandMembers error', error); return []; }
         return data || [];
     },
 
     async getUserBands(userId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('bandMembers').select('*').eq('userId', userId);
+        // Optimized: Join bands table directly (1 request instead of N+1)
+        const { data, error } = await sb
+            .from('bandMembers')
+            .select('role, band:bands(*)')
+            .eq('userId', userId);
+
         if (error) { console.error('Supabase getUserBands error', error); return []; }
-        const memberships = data || [];
-        const bands = await Promise.all(memberships.map(async m => {
-            const band = await this.getBand(m.bandId);
-            return band ? { ...band, role: m.role } : null;
-        }));
-        return bands.filter(b => b !== null);
+
+        // Transform result: {role, band: {...}} -> {...band, role}
+        const bands = (data || []).map(m => {
+            if (!m.band) return null;
+            return { ...m.band, role: m.role };
+        }).filter(b => b !== null);
+
+        return bands;
     },
 
     async getUserRoleInBand(userId, bandId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('bandMembers').select('*').eq('userId', userId).eq('bandId', bandId).limit(1).maybeSingle();
+        // Optimized: Only need role
+        const { data, error } = await sb
+            .from('bandMembers')
+            .select('role')
+            .eq('userId', userId)
+            .eq('bandId', bandId)
+            .limit(1)
+            .maybeSingle();
+
         if (error) { console.error('Supabase getUserRoleInBand error', error); return null; }
         return data ? data.role : null;
     },
@@ -251,7 +289,11 @@ const Storage = {
 
     async getBandEvents(bandId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('events').select('*').eq('bandId', bandId);
+        // Optimized: Reverted to * to ensure members (JSON) and other fields are present
+        const { data, error } = await sb
+            .from('events')
+            .select('*')
+            .eq('bandId', bandId);
         if (error) { console.error('Supabase getBandEvents error', error); return []; }
         return data || [];
     },
@@ -259,8 +301,15 @@ const Storage = {
     async getUserEvents(userId) {
         const userBands = await this.getUserBands(userId);
         const bandIds = userBands.map(b => b.id);
+        if (bandIds.length === 0) return [];
+
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('events').select('*').in('bandId', bandIds);
+        // Optimized: Fetch event + band name/color in one go
+        const { data, error } = await sb
+            .from('events')
+            .select('*, band:bands(name, color)')
+            .in('bandId', bandIds);
+
         if (error) { console.error('Supabase getUserEvents error', error); return []; }
         return data || [];
     },
@@ -290,7 +339,11 @@ const Storage = {
 
     async getBandRehearsals(bandId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('rehearsals').select('*').eq('bandId', bandId);
+        // Optimized: Reverted to * to ensure all fields (proposedBy, description etc) are present
+        const { data, error } = await sb
+            .from('rehearsals')
+            .select('*')
+            .eq('bandId', bandId);
         if (error) { console.error('Supabase getBandRehearsals error', error); return []; }
         return data || [];
     },
@@ -298,8 +351,15 @@ const Storage = {
     async getUserRehearsals(userId) {
         const userBands = await this.getUserBands(userId);
         const bandIds = userBands.map(b => b.id);
+        if (bandIds.length === 0) return [];
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('rehearsals').select('*').in('bandId', bandIds);
+        // Optimized: Fetch rehearsal + band name/color (Location fetch removed due to missing FK)
+        const { data, error } = await sb
+            .from('rehearsals')
+            // Reverted to * (plus band join) to avoid missing column errors
+            .select('*, band:bands(name, color)')
+            .in('bandId', bandIds);
+
         if (error) { console.error('Supabase getUserRehearsals error', error); return []; }
         return data || [];
     },
@@ -326,7 +386,11 @@ const Storage = {
 
     async getRehearsalVotes(rehearsalId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('votes').select('*').eq('rehearsalId', rehearsalId);
+        // Reverted to * due to column mismatch 'vote'
+        const { data, error } = await sb
+            .from('votes')
+            .select('*')
+            .eq('rehearsalId', rehearsalId);
         if (error) { console.error('Supabase getRehearsalVotes error', error); return []; }
         return data || [];
     },
@@ -361,7 +425,12 @@ const Storage = {
 
     async getTimeSuggestionsForDate(rehearsalId, dateIndex) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('timeSuggestions').select('*').eq('rehearsalId', rehearsalId).eq('dateIndex', dateIndex);
+        // Reverted to * due to column mismatch 'startTime'
+        const { data, error } = await sb
+            .from('timeSuggestions')
+            .select('*')
+            .eq('rehearsalId', rehearsalId)
+            .eq('dateIndex', dateIndex);
         if (error) { console.error('Supabase getTimeSuggestionsForDate error', error); return []; }
         return data || [];
     },
@@ -388,7 +457,17 @@ const Storage = {
     },
 
     async getLocations() {
-        return await this.getAll('locations');
+        if (this.locationsCache && (Date.now() - this.locationsCacheTimestamp < this.CACHE_DURATION)) {
+            return this.locationsCache;
+        }
+
+        const data = await this.getAll('locations'); // uses select('*')
+
+        if (data) {
+            this.locationsCache = data;
+            this.locationsCacheTimestamp = Date.now();
+        }
+        return data;
     },
 
     async getLocation(locationId) {
@@ -418,7 +497,10 @@ const Storage = {
 
     async getUserAbsences(userId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('absences').select('*').eq('userId', userId);
+        const { data, error } = await sb
+            .from('absences')
+            .select('id, userId, startDate, endDate, reason')
+            .eq('userId', userId);
         if (error) { console.error('Supabase getUserAbsences error', error); return []; }
         return data || [];
     },
@@ -438,8 +520,14 @@ const Storage = {
     },
 
     async getAbsentUsersDuringRange(userIds, startDate, endDate) {
+        if (!userIds || userIds.length === 0) return [];
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('absences').select('*').in('userId', userIds);
+        // Optimized columns
+        const { data, error } = await sb
+            .from('absences')
+            .select('id, userId, startDate, endDate, reason')
+            .in('userId', userIds);
+
         if (error) { console.error('Supabase getAbsentUsersDuringRange error', error); return []; }
 
         const absences = data || [];
@@ -474,7 +562,13 @@ const Storage = {
 
     async getLatestNews(limit = 5) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('news').select('*').order('createdAt', { ascending: false }).limit(limit);
+        // Optimized: distinct columns, exclude heavy 'images'
+        const { data, error } = await sb
+            .from('news')
+            .select('id, title, content, createdAt, createdBy, readBy')
+            .order('createdAt', { ascending: false })
+            .limit(limit);
+
         if (error) { console.error('Supabase getLatestNews error', error); return []; }
         return data || [];
     },
@@ -525,14 +619,23 @@ const Storage = {
 
     async getEventSongs(eventId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('songs').select('*').eq('eventId', eventId);
+        // Optimized: Reverted to * due to unknown duration column name
+        const { data, error } = await sb
+            .from('songs')
+            .select('*')
+            .eq('eventId', eventId);
+
         if (error) { console.error('Supabase getEventSongs error', error); return []; }
         return (data || []).sort((a, b) => a.order - b.order);
     },
 
     async getBandSongs(bandId) {
         const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from('songs').select('*').eq('bandId', bandId);
+        const { data, error } = await sb
+            .from('songs')
+            .select('*')
+            .eq('bandId', bandId);
+
         if (error) { console.error('Supabase getBandSongs error', error); return []; }
         return data || [];
     },

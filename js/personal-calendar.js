@@ -654,19 +654,20 @@ const PersonalCalendar = {
             'CALSCALE:GREGORIAN\r\n' +
             'METHOD:PUBLISH\r\n' +
             'X-WR-CALNAME:Mein Band-Kalender\r\n' +
-            'X-WR-TIMEZONE:Europe/Berlin\r\n' +
+            'X-WR-TIMEZONE:UTC\r\n' + // Changed to UTC to be safe
             'REFRESH-INTERVAL;VALUE=DURATION:PT1H\r\n' +
-            'X-PUBLISHED-TTL:PT1H\r\n'; // Hint for 1h update interval
+            'X-PUBLISHED-TTL:PT1H\r\n';
 
+        // Use UTC for all dates to avoid timezone issues
         const formatDate = (date) => {
             const d = new Date(date);
             const pad = (n) => n < 10 ? '0' + n : n;
-            return d.getFullYear() +
-                pad(d.getMonth() + 1) +
-                pad(d.getDate()) + 'T' +
-                pad(d.getHours()) +
-                pad(d.getMinutes()) +
-                pad(d.getSeconds());
+            return d.getUTCFullYear() +
+                pad(d.getUTCMonth() + 1) +
+                pad(d.getUTCDate()) + 'T' +
+                pad(d.getUTCHours()) +
+                pad(d.getUTCMinutes()) +
+                pad(d.getUTCSeconds()) + 'Z';
         };
 
         const addEvent = (uid, start, end, summary, description, location) => {
@@ -678,8 +679,10 @@ const PersonalCalendar = {
                 icsContent += `DTEND:${formatDate(end)}\r\n`;
             }
             icsContent += `SUMMARY:${summary}\r\n`;
-            if (description) icsContent += `DESCRIPTION:${description}\r\n`;
-            if (location) icsContent += `LOCATION:${location}\r\n`;
+            icsContent += `DESCRIPTION:${description}\r\n`;
+            if (location) {
+                icsContent += `LOCATION:${location}\r\n`;
+            }
             icsContent += 'END:VEVENT\r\n';
         };
 
@@ -691,10 +694,11 @@ const PersonalCalendar = {
                 startDate.setHours(h, m);
             }
             const endDate = new Date(startDate);
-            endDate.setHours(endDate.getHours() + 2);
+            endDate.setHours(endDate.getHours() + 3); // Default 3h duration
 
-            const band = this.userBands.find(b => b.id === event.bandId);
-            const bandName = band ? band.name : 'Unknown';
+            // Band name lookup
+            const band = this.userBands.find(b => b.id === (event.bandId || (event.band ? event.band.id : null)));
+            const bandName = band ? band.name : (event.band ? event.band.name : 'Band');
 
             addEvent(
                 `event_${event.id}@bandmanager`,
@@ -716,19 +720,12 @@ const PersonalCalendar = {
             const endDate = new Date(startDate);
             endDate.setHours(endDate.getHours() + 2);
 
-            const band = this.userBands.find(b => b.id === rehearsal.bandId);
-            const bandName = band ? band.name : 'Unknown';
+            const band = this.userBands.find(b => b.id === (rehearsal.bandId || (rehearsal.band ? rehearsal.band.id : null)));
+            const bandName = band ? band.name : (rehearsal.band ? rehearsal.band.name : 'Unknown');
 
             let locationName = '';
-            if (rehearsal.confirmedLocation) {
-                // Warning: async call inside sync loop not ideal for display loop, but here okay?
-                // Actually location names might be missing if not loaded. 
-                // For simplicity, we skip async location fetch here or use what we need.
-                // We'll use static text or ensure data is loaded.
-                // Rehearsals loaded via loadUserRehearsals don't join location name.
-                // We will skip location name for now to keep sync logic simple or rely on cached locations.
-                locationName = '';
-            }
+            // Only try to use location name if we have it or could look it up
+            // For now, leave empty to avoid complexity in sync
 
             addEvent(
                 `rehearsal_${rehearsal.id}@bandmanager`,
@@ -786,6 +783,17 @@ const PersonalCalendar = {
                 .from('calendars')
                 .getPublicUrl(fileName);
 
+            // Verify if bucket is actually public
+            try {
+                const check = await fetch(publicUrl, { method: 'HEAD' });
+                if (!check.ok) {
+                    UI.showToast('⚠️ WICHTIG: Dein "calendars" Bucket ist privacy (privat). Bitte stelle ihn in Supabase auf "Public"!', 'warning', 10000);
+                    // Don't throw, let them see the link anyway, but warn heavily
+                }
+            } catch (e) {
+                console.warn('Verification of public URL failed', e);
+            }
+
             // Convert to webcal://
             const webcalUrl = publicUrl.replace(/^https?:\/\//, 'webcal://');
 
@@ -840,19 +848,42 @@ const PersonalCalendar = {
      */
     async syncCalendarBackground() {
         try {
+            console.log('[PersonalCalendar] Starting background sync...');
             const user = Auth.getCurrentUser();
             if (!user) return;
+
+            // CRITICAL FIX: Reload data if cache is empty!
+            if (!this.events || this.events.length === 0 || !this.rehearsals || this.rehearsals.length === 0) {
+                const userBands = await Storage.getUserBands(user.id);
+                if (userBands && Array.isArray(userBands) && userBands.length > 0) {
+                    this.userBands = userBands;
+                    const bandIds = userBands.map(b => b.id);
+                    const [allEvents, allRehearsals] = await Promise.all([
+                        this.loadUserEvents(bandIds),
+                        this.loadUserRehearsals(bandIds)
+                    ]);
+                    this.events = allEvents || [];
+                    this.rehearsals = allRehearsals || [];
+                    console.log(`[PersonalCalendar] Reloaded ${this.events.length} events and ${this.rehearsals.length} rehearsals for sync`);
+                }
+            }
+
             const icsContent = this.generateICSContent();
-            if (!icsContent) return;
+            if (!icsContent) {
+                console.warn('[PersonalCalendar] No content generated for sync');
+                return;
+            }
 
             const client = SupabaseClient.getClient();
             if (client) {
                 const fileName = `user_${user.id}.ics`;
-                await client.storage.from('calendars').upload(fileName, icsContent, {
+                const { error } = await client.storage.from('calendars').upload(fileName, icsContent, {
                     contentType: 'text/calendar',
                     upsert: true,
-                    cacheControl: '3600'
+                    cacheControl: '0' // NO CACHE to ensure updates are seen immediately
                 });
+
+                if (error) throw error;
                 console.log('[PersonalCalendar] Background sync success');
             }
         } catch (e) {

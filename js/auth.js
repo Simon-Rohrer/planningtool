@@ -64,6 +64,12 @@ const Auth = {
                 } else if (event === 'SIGNED_OUT') {
                     this.currentUser = null;
                     this.supabaseUser = null;
+                } else if (event === 'PASSWORD_RECOVERY') {
+                    // Trigger UI to show reset modal
+                    console.log('Password recovery mode detected');
+                    setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('auth:password_recovery'));
+                    }, 500);
                 }
             });
         }
@@ -459,6 +465,36 @@ const Auth = {
             'member': 4
         };
         return hierarchy[role] || 999;
+    },
+
+    // Password Reset Flow
+    async requestPasswordReset(email) {
+        const sb = SupabaseClient.getClient();
+        if (!sb) throw new Error('Supabase client missing');
+
+        // CRITICAL FIX: Do NOT append #hash here. Supabase appends #access_token=...
+        // If we append #reset-password, we get #reset-password#access_token=... which breaks parsing.
+        // We rely on the PASSWORD_RECOVERY event to detect the state.
+        const redirectTo = window.location.origin + window.location.pathname;
+
+        const { data, error } = await sb.auth.resetPasswordForEmail(email, {
+            redirectTo: redirectTo
+        });
+
+        if (error) throw error;
+        return data;
+    },
+
+    async updatePassword(newPassword) {
+        const sb = SupabaseClient.getClient();
+        if (!sb) throw new Error('Supabase client missing');
+
+        const { data, error } = await sb.auth.updateUser({
+            password: newPassword
+        });
+
+        if (error) throw error;
+        return data;
     }
 };
 

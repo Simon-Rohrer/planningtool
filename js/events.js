@@ -65,10 +65,15 @@ const Events = {
 
     // Render single event card
     async renderEventCard(event) {
-        const band = await Storage.getBand(event.bandId);
+        // Use joined band data if available, otherwise fetch
+        const band = event.band || await Storage.getBand(event.bandId);
+
         const isPast = new Date(event.date) < new Date();
         const isExpanded = this.expandedEventId === event.id;
         const canManage = await Auth.canManageEvents(event.bandId);
+
+        // Get band color with fallback
+        const bandColor = band ? (band.color || '#e11d48') : '#e11d48'; // Default pink-ish for events if no band color
 
         // Get member info and absences
         const members = await Promise.all(event.members.map(async memberId => {
@@ -227,11 +232,11 @@ const Events = {
         }
 
         return `
-            <div class="event-card accordion-card ${isPast ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}">
+            <div class="event-card accordion-card ${isPast ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}" style="border-left: 4px solid ${bandColor}">
                 <div class="accordion-header" data-event-id="${event.id}">
                     <div class="accordion-title">
                         <h3>${Bands.escapeHtml(event.title)}</h3>
-                        <div class="event-band">
+                        <div class="event-band" style="color: ${bandColor}">
                             🎸 ${Bands.escapeHtml(band?.name || 'Unbekannte Band')}
                         </div>
                     </div>

@@ -181,7 +181,8 @@ const Rehearsals = {
 
     // Render single rehearsal card
     async renderRehearsalCard(rehearsal) {
-        const band = await Storage.getBand(rehearsal.bandId);
+        // Use joined band data if available, otherwise fetch
+        const band = rehearsal.band || await Storage.getBand(rehearsal.bandId);
         // Use createdBy for "Erstellt von" as requested, fallback to proposedBy
         const creatorId = rehearsal.createdBy || rehearsal.proposedBy;
         const creator = creatorId ? await Storage.getById('users', creatorId) : null;
@@ -1084,6 +1085,9 @@ const Rehearsals = {
 
         UI.closeModal('confirmRehearsalModal');
         UI.closeModal('locationConflictModal'); // Close conflict modal if it was open
+
+        // Force refresh of data
+        this.rehearsals = null;
         await this.renderRehearsals(this.currentFilter);
 
         if (typeof App !== 'undefined' && App.updateDashboard) {
