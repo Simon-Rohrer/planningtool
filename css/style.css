@@ -8147,3 +8147,29 @@ tr.drag-over {
     transform: translateY(0);
   }
 }
+/* Specific Mobile Adjustment for Band Members Header (Added by Agent) */
+@media (max-width: 768px) {
+    .section-header.section-header-mobile-adjust {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 0.5rem !important;
+        margin-bottom: var(--spacing-lg) !important;
+    }
+
+    .section-header.section-header-mobile-adjust h3 {
+        margin: 0 !important;
+        white-space: nowrap;
+    }
+
+    .section-header.section-header-mobile-adjust .btn {
+        width: auto !important;
+        padding: 4px 8px !important;
+        font-size: 0.8rem !important;
+        min-height: 28px !important;
+    }
+
+    .section-header.section-header-mobile-adjust .mobile-hidden-text {
+        display: none;
+    }
+}
