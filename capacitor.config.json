@@ -6,8 +6,8 @@
     "hostname": "localhost"
   },
   "ios": {
-    "contentInset": "always",
-    "backgroundColor": "#f8fafc",
+    "contentInset": "automatic",
+    "backgroundColor": "#111827",
     "allowsLinkPreview": false,
     "scrollEnabled": true
   },

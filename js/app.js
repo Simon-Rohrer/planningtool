@@ -7264,7 +7264,7 @@ const App = {
                     })),
                     (news || []).map(n => ({ type: 'news', date: n.createdAt, title: n.title, id: n.id }))
                 );
-                activities = activities.filter(a => a.date).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+                activities = activities.filter(a => a.date).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
 
                 if (activities.length === 0) {
                     activitySection.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>Keine neue Aktivität.</p></div>';

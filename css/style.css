@@ -389,16 +389,36 @@ body {
     color: var(--color-text);
     font-size: 16px;
     line-height: 1.6;
-    overflow-x: hidden;
+    overflow: hidden;
+    /* Lock body */
+    overscroll-behavior-y: none;
+    /* No bounce on body */
+    height: 100%;
+    /* Full height */
+    width: 100%;
+    position: fixed;
+    /* Nuclear option to prevent any body scroll interaction */
     font-weight: var(--font-weight-normal);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior-y: none;
+}
+
 /* ===== Landing Page Styles ===== */
 .landing-page {
     display: none;
-    min-height: 100vh;
+    height: 100%;
+    /* Fill viewport locked body */
+    overflow-y: auto;
+    /* Internal scroll */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    /* Bounce here is ok */
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
@@ -816,6 +836,10 @@ body.global-stage-mode .stage-lights-overlay {
 /* Main App Container (hidden by default) */
 .main-app {
     display: none;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    /* Container doesn't scroll, children do */
 }
 
 .main-app.active {
@@ -1247,10 +1271,12 @@ input:checked+.slider:before {
 
 /* ===== App Container ===== */
 .app-container {
-    min-height: 100vh;
+    height: 100%;
+    /* Fill main-app */
     display: flex;
     flex-direction: row;
     padding: 0;
+    overflow: hidden;
 }
 
 /* ===== Header ===== */
@@ -1262,6 +1288,7 @@ input:checked+.slider:before {
     top: 0;
     z-index: 100;
     overflow: visible;
+    padding-top: env(safe-area-inset-top);
 }
 
 .admin-badge {
@@ -1451,7 +1478,10 @@ input:checked+.slider:before {
     }
 
     .header-content {
-        padding: var(--spacing-sm) var(--spacing-md) !important;
+        padding: 0 var(--spacing-md) !important;
+        /* Zero vertical padding for max height */
+        min-height: 50px;
+        /* Ensure minimal touch size */
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
@@ -1815,6 +1845,7 @@ input:checked+.slider:before {
     }
 
     /* Liquid Glass Mobile Navigation - Advanced iOS 26 Style */
+    /* Liquid Glass Mobile Navigation - Advanced iOS 26 Style */
     .app-nav {
         position: fixed !important;
         bottom: calc(8px + env(safe-area-inset-bottom)) !important;
@@ -1868,7 +1899,8 @@ input:checked+.slider:before {
     .app-main {
         padding-left: 10px;
         padding-right: 10px;
-        padding-bottom: 110px;
+        padding-bottom: 250px !important;
+        /* Huge padding to force clear */
     }
 
     .nav-group {
@@ -2226,6 +2258,12 @@ input:checked+.slider:before {
     margin: 0 auto;
     width: 100%;
     padding: calc(var(--spacing-xl) * 1.1);
+    height: 100%;
+    /* Fill container */
+    overflow-y: auto;
+    /* THIS is the scroller */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
 }
 
 .view {
@@ -8004,7 +8042,9 @@ tr.drag-over {
 
 .drag-handle:active {
     cursor: grabbing;
-}/* Import Songs Modal Styling */
+}
+
+/* Import Songs Modal Styling */
 .import-info-box {
     background: var(--color-background);
     padding: 1rem;
@@ -8064,89 +8104,92 @@ tr.drag-over {
 
 :root.theme-dark .import-table td {
     color: var(--color-text-secondary);
-}/* Premium Loading Overlay */
+}
+
+/* Premium Loading Overlay */
 #globalLoader {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  /* Initial state handling is done via JS (display: none/block) */
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    /* Initial state handling is done via JS (display: none/block) */
 }
 
 .loader-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s ease-out;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
 }
 
 .loader-content {
-  background: var(--color-surface);
-  padding: 1.5rem 2rem;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-2xl);
-  border: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  min-width: 200px;
-  transform: translateY(0);
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    background: var(--color-surface);
+    padding: 1.5rem 2rem;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-2xl);
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    min-width: 200px;
+    transform: translateY(0);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .loader-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
 }
 
 .loader-message {
-  margin: 0;
-  font-weight: 600;
-  color: var(--color-text);
-  font-size: 1rem;
-  letter-spacing: -0.01em;
+    margin: 0;
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 1rem;
+    letter-spacing: -0.01em;
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
+    0% {
+        transform: rotate(0deg);
+    }
 
-  100% {
-    transform: rotate(360deg);
-  }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
+    from {
+        opacity: 0;
+    }
 
-  to {
-    opacity: 1;
-  }
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
+
 /* Specific Mobile Adjustment for Band Members Header (Added by Agent) */
 @media (max-width: 768px) {
     .section-header.section-header-mobile-adjust {
