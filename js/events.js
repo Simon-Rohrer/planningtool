@@ -197,28 +197,37 @@ const Events = {
                                     <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
                                     <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
                                     <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Key</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Lead Vocal</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Time</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Orig.</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
+                                    <th style="padding: var(--spacing-sm); text-align: left;" data-label="Infos">Infos</th>
                                     <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${eventSongs.map((s, idx) => `
                                     <tr style="border-bottom: 1px solid var(--color-border);">
-                                        <td style="padding: var(--spacing-sm); text-align: center;">
+                                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
                                             <input type="checkbox" class="event-song-checkbox" data-event-id="${event.id}" value="${s.id}">
                                         </td>
-                                        <td style="padding: var(--spacing-sm);">${Bands.escapeHtml(s.title)}</td>
-                                        <td style="padding: var(--spacing-sm);">${s.artist ? Bands.escapeHtml(s.artist) : '-'}</td>
-                                        <td style="padding: var(--spacing-sm);">${s.bpm || '-'}</td>
-                                        <td style="padding: var(--spacing-sm);">${s.key || '-'}</td>
-                                        <td style="padding: var(--spacing-sm);">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : '-'}</td>
-                                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;">${s.ccli || '-'}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="Titel">${Bands.escapeHtml(s.title)}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="Interpret">${s.artist ? Bands.escapeHtml(s.artist) : '-'}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="BPM">${s.bpm || '-'}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="Time">${s.timeSignature || '-'}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="Tonart">${s.key || '-'}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="Orig.">${s.originalKey || '-'}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="Lead">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : '-'}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="Sprache">${s.language || '-'}</td>
+                                        <td style="padding: var(--spacing-sm);" data-label="Tracks">${s.tracks === 'yes' ? 'Ja' : (s.tracks === 'no' ? 'Nein' : '-')}</td>
+                                        <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${s.info ? Bands.escapeHtml(s.info) : '-'}</td>
+                                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${s.ccli || '-'}</td>
                                     </tr>
-                                    ${(s.ccli || s.notes) ? `
+                                    ${(s.notes) ? `
                                         <tr>
-                                            <td colspan="7" style="padding: 0 var(--spacing-sm) var(--spacing-sm) var(--spacing-sm); color: var(--color-text-secondary); font-size: 0.85em;">
-                                                ${s.ccli ? `<span style="margin-right: 1rem;">CCLI: ${Bands.escapeHtml(s.ccli)}</span>` : ''}
+                                            <td colspan="12" style="padding: 0 var(--spacing-sm) var(--spacing-sm) var(--spacing-sm); color: var(--color-text-secondary); font-size: 0.85em;">
                                                 ${s.notes ? `<span style="font-style:italic;">📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
                                             </td>
                                         </tr>

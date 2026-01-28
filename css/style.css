@@ -917,6 +917,11 @@ input:checked+.slider:before {
     max-width: 800px;
 }
 
+.modal-xl {
+    max-width: 1400px;
+    width: 95%;
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -7741,4 +7746,115 @@ body.no-scroll {
     .calendar-event.rehearsal-type .calendar-event-title::before {
         content: '📅 ';
     }
+}
+
+/* ===== Setlist Table Refinements ===== */
+.songs-table {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .songs-table {
+        min-width: 1500px;
+        /* Force even wider horizontal scroll */
+    }
+
+    .songs-table th,
+    .songs-table td {
+        padding: 10px 8px !important;
+        /* More compact padding */
+        font-size: 14px !important;
+        /* Compact font size */
+        white-space: nowrap !important;
+        /* Strictly prevent text wrapping on all columns */
+    }
+
+    /* Reduce font size for Infos column even more and allow wrapping */
+    .songs-table th[data-label="Infos"],
+    .songs-table td[data-label="Infos"] {
+        font-size: 12px !important;
+        white-space: normal !important;
+        min-width: 120px;
+        max-width: 200px;
+        line-height: 1.3;
+    }
+
+    .songs-table input[type="checkbox"] {
+        transform: scale(1);
+        /* Default size */
+        margin: 0;
+    }
+
+    .songs-table .btn-icon {
+        font-size: 1.4rem !important;
+        /* Larger buttons */
+        padding: 10px !important;
+    }
+
+    /* Fix Bulk Actions Bar on Mobile */
+    #eventSongsBulkActions,
+    #bandSongsBulkActions,
+    .bulk-actions-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+        height: auto !important;
+        padding: 1rem !important;
+    }
+
+    #eventSongsBulkActions>div,
+    #bandSongsBulkActions>div,
+    .bulk-actions-bar>div {
+        width: 100%;
+        justify-content: center;
+        display: flex;
+    }
+
+    #eventSongsBulkActions>div:last-child,
+    #bandSongsBulkActions>div:last-child,
+    .bulk-actions-bar>div:last-child {
+        flex-wrap: wrap;
+        /* Ensure buttons wrap if needed */
+        gap: 0.5rem;
+        /* Ensure gap between buttons */
+    }
+}
+
+.songs-table th,
+.songs-table td {
+    border-right: 1px solid var(--color-border);
+}
+
+.songs-table th:last-child,
+.songs-table td:last-child {
+    border-right: none;
+}
+
+/* ===== Drag and Drop Setlist Styles ===== */
+tr[draggable="true"] {
+    cursor: grab;
+}
+
+tr[draggable="true"].dragging {
+    opacity: 0.4;
+    background-color: var(--color-background-hover);
+}
+
+tr.drag-over {
+    border-top: 2px solid var(--color-primary) !important;
+}
+
+.drag-handle {
+    cursor: grab;
+    font-size: 1.2em;
+    color: var(--color-text-muted);
+    user-select: none;
+}
+
+.drag-handle:hover {
+    color: var(--color-text);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }

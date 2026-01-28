@@ -33,7 +33,7 @@ const PDFGenerator = {
             // Layout Configuration
             // box-sizing: border-box ensures padding is included in width
             const styles = {
-                container: "font-family: 'Inter', Arial, sans-serif; padding: 20px; background: white; color: #111827; width: 800px; margin: 0 auto; box-sizing: border-box;",
+                container: "font-family: 'Inter', Arial, sans-serif; padding: 20px; background: white; color: #111827; width: 1100px; margin: 0 auto; box-sizing: border-box;",
                 headerAccent: "height: 6px; background: #8B5CF6; border-radius: 3px; margin-bottom: 25px;",
                 header: "display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 15px;", // Reduced margin/padding
                 h1: "margin: 0; font-size: 28px; font-weight: 700; color: #111827; letter-spacing: -0.025em; text-align: center;",
@@ -73,21 +73,20 @@ const PDFGenerator = {
                 </tr>
             `).join('');
 
-            // Additional Info Section (CCLI/Notes)
+            // Additional Info Section (Notes only, CCLI is in table)
             let additionalInfoHTML = '';
-            if (showNotes && songs.some(s => s.ccli || s.notes)) {
+            if (showNotes && songs.some(s => s.notes)) {
                 additionalInfoHTML = `
                     <div style="margin-top: 40px; border-radius: 12px; border: 1px solid #E5E7EB; overflow: hidden;">
                         <div style="background: #F9FAFB; padding: 12px 20px; border-bottom: 1px solid #E5E7EB;">
                             <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: #111827;">Zusätzliche Informationen</h3>
                         </div>
                         <div style="padding: 10px 20px;">
-                            ${songs.filter(s => s.ccli || s.notes).map((song, idx) => `
+                            ${songs.filter(s => s.notes).map((song, idx) => `
                                 <div style="padding: 12px 0; ${idx !== 0 ? 'border-top: 1px dashed #E5E7EB;' : ''}">
                                     <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: #111827;">${this.escapeHtml(song.title)}</div>
-                                    <div style="display: flex; gap: 15px; font-size: 12px; color: #6B7280;">
-                                        ${song.ccli ? `<span><b>CCLI:</b> ${this.escapeHtml(song.ccli)}</span>` : ''}
-                                        ${song.notes ? `<span><b>Notiz:</b> ${this.escapeHtml(song.notes)}</span>` : ''}
+                                    <div style="font-size: 12px; color: #6B7280;">
+                                        <span><b>Notiz:</b> ${this.escapeHtml(song.notes)}</span>
                                     </div>
                                 </div>
                             `).join('')}
@@ -115,16 +114,37 @@ const PDFGenerator = {
                     <table style="${styles.table}">
                         <thead>
                             <tr style="${styles.th}">
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 35px; color: #4B5563;">#</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 300px; color: #4B5563;">Titel</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 225px; color: #4B5563;">Interpret</th>
-                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">BPM</th>
-                                <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 50px; color: #4B5563;">Key</th>
-                                <th style="padding: 12px 10px; text-align: left; font-weight: 600; width: 100px; color: #4B5563;">Lead</th>
+                                <th style="padding: 12px 5px; text-align: left; font-weight: 600; width: 30px; color: #4B5563;">#</th>
+                                <th style="padding: 12px 5px; text-align: left; font-weight: 600; width: 220px; color: #4B5563;">Titel</th>
+                                <th style="padding: 12px 5px; text-align: left; font-weight: 600; width: 140px; color: #4B5563;">Interpret</th>
+                                <th style="padding: 12px 5px; text-align: center; font-weight: 600; width: 40px; color: #4B5563;">BPM</th>
+                                <th style="padding: 12px 5px; text-align: center; font-weight: 600; width: 40px; color: #4B5563;">Time</th>
+                                <th style="padding: 12px 5px; text-align: center; font-weight: 600; width: 40px; color: #4B5563;">Key</th>
+                                <th style="padding: 12px 5px; text-align: center; font-weight: 600; width: 40px; color: #4B5563;">Orig.</th>
+                                <th style="padding: 12px 5px; text-align: left; font-weight: 600; width: 80px; color: #4B5563;">Lead</th>
+                                <th style="padding: 12px 5px; text-align: left; font-weight: 600; width: 60px; color: #4B5563;">Sprache</th>
+                                <th style="padding: 12px 5px; text-align: left; font-weight: 600; width: 40px; color: #4B5563;">Tracks</th>
+                                <th style="padding: 12px 5px; text-align: left; font-weight: 600; width: 200px; color: #4B5563;">Infos</th>
+                                <th style="padding: 12px 5px; text-align: left; font-weight: 600; width: 80px; color: #4B5563;">CCLI</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${songsRows}
+                            ${songs.map((song, idx) => `
+                <tr style="border-bottom: 1px solid #F3F4F6; ${idx % 2 === 0 ? '' : 'background-color: #FAFAFA;'}">
+                    <td style="padding: 8px 5px; color: #9CA3AF; font-weight: 500; vertical-align: top;">${idx + 1}</td>
+                    <td style="padding: 8px 5px; font-weight: 600; color: #111827; vertical-align: top;">${this.escapeHtml(song.title)}</td>
+                    <td style="padding: 8px 5px; color: #4B5563; vertical-align: top;">${this.escapeHtml(song.artist || '-')}</td>
+                    <td style="padding: 8px 5px; text-align: center; font-weight: 500; vertical-align: top;">${song.bpm || '-'}</td>
+                    <td style="padding: 8px 5px; text-align: center; font-weight: 500; vertical-align: top;">${song.timeSignature || '-'}</td>
+                    <td style="padding: 8px 5px; text-align: center; font-weight: 500; color: #8B5CF6; vertical-align: top;">${song.key || '-'}</td>
+                    <td style="padding: 8px 5px; text-align: center; font-weight: 500; vertical-align: top;">${song.originalKey || '-'}</td>
+                    <td style="padding: 8px 5px; color: #4B5563; vertical-align: top;">${this.escapeHtml(song.leadVocal || '-')}</td>
+                    <td style="padding: 8px 5px; color: #4B5563; vertical-align: top;">${this.escapeHtml(song.language || '-')}</td>
+                    <td style="padding: 8px 5px; color: #4B5563; vertical-align: top;">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                    <td style="padding: 8px 5px; color: #4B5563; vertical-align: top; word-break: break-word;">${this.escapeHtml(song.info || '-')}</td>
+                    <td style="padding: 8px 5px; color: #4B5563; vertical-align: top; font-family: monospace;">${this.escapeHtml(song.ccli || '-')}</td>
+                </tr>
+            `).join('')}
                         </tbody>
                     </table>
 
@@ -145,7 +165,7 @@ const PDFGenerator = {
             element.style.position = 'absolute'; // Prevent it from messing with layout while rendering
             element.style.left = '-9999px';
             element.style.top = '0';
-            element.style.width = '800px'; // Enforce width on container
+            element.style.width = '1100px'; // Wider for Landscape
 
             // Append to body temporarily
             document.body.appendChild(element);
@@ -160,16 +180,16 @@ const PDFGenerator = {
                 allowTaint: true,
                 backgroundColor: '#ffffff',
                 logging: false,
-                width: 800, // Enforce canvas width
-                windowWidth: 800 // Mock window width
+                width: 1100, // Matching width
+                windowWidth: 1100
             });
 
             // Create PDF
-            // p = portrait, mm = millimeters, a4 = format
-            const pdf = new window.jsPDF('p', 'mm', 'a4');
+            // l = landscape, mm = millimeters, a4 = format
+            const pdf = new window.jsPDF('l', 'mm', 'a4');
             const imgData = canvas.toDataURL('image/png');
-            const imgWidth = 210; // A4 width in mm
-            const pageHeight = 297; // A4 height in mm
+            const imgWidth = 297; // A4 width in mm (landscape)
+            const pageHeight = 210; // A4 height in mm (landscape)
             let heightLeft = canvas.height * imgWidth / canvas.width;
             let position = 0;
 

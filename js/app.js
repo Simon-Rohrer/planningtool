@@ -3476,14 +3476,19 @@ const App = {
                 const parts = line.split(delimiter).map(p => p.trim().replace(/^"|"$/g, ''));
 
 
-                // Expected format: Titel, Interpret, BPM, Tonart, Lead Vocal, CCLI
+                // Expected format: Titel, Interpret, BPM, Time, Tonart, Tonart Original, Leadvocal, Sprache, Tracks, Songsinfos, CCLI
                 if (parts.length >= 2) {
                     const title = parts[0];
                     const artist = parts[1];
                     const bpm = parts[2] || '';
-                    const key = parts[3] || '';
-                    const leadVocal = parts[4] || '';
-                    const ccli = parts[5] || '';
+                    const timeSignature = parts[3] || '';
+                    const key = parts[4] || '';
+                    const originalKey = parts[5] || '';
+                    const leadVocal = parts[6] || '';
+                    const language = parts[7] || '';
+                    const tracks = parts[8] || ''; // Expect yes/no or similar
+                    const info = parts[9] || '';
+                    const ccli = parts[10] || '';
 
                     console.log(`Extracted data: Title="${title}", Artist="${artist}"`);
 
@@ -3494,8 +3499,13 @@ const App = {
                                 title: title,
                                 artist: artist,
                                 bpm: bpm,
+                                timeSignature: timeSignature,
                                 key: key,
+                                originalKey: originalKey,
                                 leadVocal: leadVocal,
+                                language: language,
+                                tracks: tracks,
+                                info: info,
                                 ccli: ccli
                             };
                             Logger.info('Importing song', songData.title);
@@ -3540,15 +3550,24 @@ const App = {
                 document.getElementById('songArtist').value = song.artist;
                 document.getElementById('songBPM').value = song.bpm || '';
                 document.getElementById('songKey').value = song.key || '';
+                document.getElementById('songOriginalKey').value = song.originalKey || '';
+                document.getElementById('songTimeSignature').value = song.timeSignature || '';
+                document.getElementById('songLanguage').value = song.language || '';
+                document.getElementById('songTracks').value = song.tracks || '';
+                document.getElementById('songInfo').value = song.info || '';
                 document.getElementById('songCcli').value = song.ccli || '';
                 document.getElementById('songLeadVocal').value = song.leadVocal || '';
             }
         } else {
             // New song
-            document.getElementById('songTitle').value = '';
             document.getElementById('songArtist').value = '';
             document.getElementById('songBPM').value = '';
             document.getElementById('songKey').value = '';
+            document.getElementById('songOriginalKey').value = '';
+            document.getElementById('songTimeSignature').value = '';
+            document.getElementById('songLanguage').value = '';
+            document.getElementById('songTracks').value = '';
+            document.getElementById('songInfo').value = '';
             document.getElementById('songCcli').value = '';
             document.getElementById('songLeadVocal').value = '';
         }
@@ -3564,6 +3583,11 @@ const App = {
         const artist = document.getElementById('songArtist').value;
         const bpm = document.getElementById('songBPM').value;
         const key = document.getElementById('songKey').value;
+        const originalKey = document.getElementById('songOriginalKey').value;
+        const timeSignature = document.getElementById('songTimeSignature').value;
+        const language = document.getElementById('songLanguage').value;
+        const tracks = document.getElementById('songTracks').value;
+        const info = document.getElementById('songInfo').value;
         const ccli = document.getElementById('songCcli').value;
         const leadVocal = document.getElementById('songLeadVocal').value;
         const user = Auth.getCurrentUser();
@@ -3573,6 +3597,11 @@ const App = {
             artist,
             bpm: bpm ? parseInt(bpm) : null,
             key: key || null,
+            originalKey: originalKey || null,
+            timeSignature: timeSignature || null,
+            language: language || null,
+            tracks: tracks || null,
+            info: info || null,
             ccli: ccli || null,
             leadVocal: leadVocal || null,
             createdBy: user.id
@@ -3603,6 +3632,11 @@ const App = {
                         artist: created.artist,
                         bpm: created.bpm,
                         key: created.key,
+                        originalKey: created.originalKey,
+                        timeSignature: created.timeSignature,
+                        language: created.language,
+                        tracks: created.tracks,
+                        info: created.info,
                         ccli: created.ccli,
                         leadVocal: created.leadVocal,
                         bandId: event.bandId,
@@ -3676,16 +3710,8 @@ const App = {
         let html = '';
 
         if (Array.isArray(songs) && songs.length > 0) {
-            // PDF Export button for ALL songs in event
-            const eventInfo = await Storage.getById('events', eventId);
-            const eventTitle = eventInfo ? eventInfo.title : 'Event';
 
             html += `
-                <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
-                     <button class="btn btn-secondary btn-sm" id="eventSongsExportPDF">
-                        📥 Als PDF herunterladen
-                    </button>
-                </div>
 
                 <!-- Bulk Actions Bar -->
                 <div id="eventSongsBulkActions" style="display: none; background: var(--color-surface); padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem; align-items: center; justify-content: space-between; border: 1px solid var(--color-accent);">
@@ -3698,32 +3724,47 @@ const App = {
                     </div>
                 </div>
 
+                <div style="overflow-x: auto;">
                 <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
                     <thead>
                         <tr style="border-bottom: 2px solid var(--color-border);">
+                            <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">Pos.</th>
                             <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">
                                 <input type="checkbox" id="selectAllEventSongs">
                             </th>
                             <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Time</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
-                            <th style="padding: var(--spacing-sm); text-align: left;">Lead Vocal</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Orig.</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">Infos</th>
+                            <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
                             <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${songs.map(song => `
-                            <tr style="border-bottom: 1px solid var(--color-border);">
-                                <td style="padding: var(--spacing-sm); text-align: center;">
+                    <tbody id="eventSongsTableBody">
+                        ${songs.map((song, idx) => `
+                            <tr style="border-bottom: 1px solid var(--color-border);" draggable="true" data-song-id="${song.id}">
+                                <td style="padding: var(--spacing-sm); text-align: center; cursor: grab;" class="drag-handle" data-label="Pos.">☰</td>
+                                <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
                                     <input type="checkbox" class="event-song-checkbox-row" value="${song.id}">
                                 </td>
-                                <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.title)}</td>
-                                <td style="padding: var(--spacing-sm);">${this.escapeHtml(song.artist)}</td>
-                                <td style="padding: var(--spacing-sm);">${song.bpm || '-'}</td>
-                                <td style="padding: var(--spacing-sm);">${song.key || '-'}</td>
-                                <td style="padding: var(--spacing-sm);">${song.leadVocal || '-'}</td>
-                                <td style="padding: var(--spacing-sm); text-align: center;">
+                                <td style="padding: var(--spacing-sm); font-weight: bold;" data-label="Titel">${this.escapeHtml(song.title)}</td>
+                                <td style="padding: var(--spacing-sm);" data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
+                                <td style="padding: var(--spacing-sm);" data-label="BPM">${song.bpm || '-'}</td>
+                                <td style="padding: var(--spacing-sm);" data-label="Time">${song.timeSignature || '-'}</td>
+                                <td style="padding: var(--spacing-sm); color: var(--color-primary); font-weight: bold;" data-label="Tonart">${song.key || '-'}</td>
+                                <td style="padding: var(--spacing-sm);" data-label="Orig.">${song.originalKey || '-'}</td>
+                                <td style="padding: var(--spacing-sm);" data-label="Lead">${song.leadVocal || '-'}</td>
+                                <td style="padding: var(--spacing-sm);" data-label="Sprache">${song.language || '-'}</td>
+                                <td style="padding: var(--spacing-sm);" data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                                <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(song.info || '-')}</td>
+                                <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
+                                <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
                                     <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
                                     <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
                                 </td>
@@ -3731,6 +3772,7 @@ const App = {
                         `).join('')}
                     </tbody>
                 </table>
+                </div>
             `;
         }
 
@@ -3743,13 +3785,6 @@ const App = {
 
 
         // --- Event Listeners for Bulk Actions and Checkboxes ---
-        // Permanent PDF Export
-        const exportBtn = document.getElementById('eventSongsExportPDF');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                this.downloadSongListPDF(this.currentEventSongs, eventName, 'Gesamte Setliste');
-            });
-        }
 
         const checkboxRows = container.querySelectorAll('.event-song-checkbox-row');
         const selectAll = document.getElementById('selectAllEventSongs');
@@ -3809,6 +3844,107 @@ const App = {
                 this.openSongModal(eventId, null, btn.dataset.id);
             });
         });
+
+        // --- Drag and Drop Logic ---
+        const tbody = document.getElementById('eventSongsTableBody');
+        let dragSrcEl = null;
+
+        if (tbody) {
+            const rows = tbody.querySelectorAll('tr[draggable="true"]');
+
+            const handleDragStart = (e) => {
+                dragSrcEl = e.currentTarget;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', e.currentTarget.dataset.songId);
+                e.currentTarget.classList.add('dragging');
+            };
+
+            const handleDragOver = (e) => {
+                if (e.preventDefault) {
+                    e.preventDefault(); // Necessary. Allows us to drop.
+                }
+                e.dataTransfer.dropEffect = 'move';
+
+                // Visual feedback: find row we are over
+                const targetRow = e.target.closest('tr');
+                if (targetRow && targetRow !== dragSrcEl) {
+                    // Could add class 'drag-over' here if desired
+                }
+
+                return false;
+            };
+
+            const handleDragEnter = (e) => {
+                const targetRow = e.target.closest('tr');
+                if (targetRow && targetRow !== dragSrcEl) {
+                    targetRow.classList.add('drag-over');
+                }
+            };
+
+            const handleDragLeave = (e) => {
+                const targetRow = e.target.closest('tr');
+                if (targetRow) {
+                    targetRow.classList.remove('drag-over');
+                }
+            };
+
+            const handleDrop = async (e) => {
+                if (e.stopPropagation) {
+                    e.stopPropagation(); // Stops some browsers from redirecting.
+                }
+
+                const targetRow = e.target.closest('tr');
+                // Remove visual feedback
+                rows.forEach(row => {
+                    row.classList.remove('dragging');
+                    row.classList.remove('drag-over');
+                });
+
+                if (dragSrcEl !== targetRow && targetRow && targetRow.draggable) {
+                    // Reorder DOM
+                    const allRows = Array.from(tbody.querySelectorAll('tr[draggable="true"]'));
+                    const srcIndex = allRows.indexOf(dragSrcEl);
+                    const targetIndex = allRows.indexOf(targetRow);
+
+                    if (srcIndex < targetIndex) {
+                        tbody.insertBefore(dragSrcEl, targetRow.nextSibling);
+                    } else {
+                        tbody.insertBefore(dragSrcEl, targetRow);
+                    }
+
+                    // Calculate new order
+                    const newOrderIds = Array.from(tbody.querySelectorAll('tr[draggable="true"]')).map(row => row.dataset.songId);
+
+                    try {
+                        UI.showLoading('Speichere Reihenfolge...');
+
+                        // Update all songs with new index
+                        const updatePromises = newOrderIds.map((id, index) => {
+                            return Storage.updateSong(id, { order: index });
+                        });
+
+                        await Promise.all(updatePromises);
+                        UI.showToast('Reihenfolge gespeichert', 'success');
+                    } catch (error) {
+                        console.error('Error saving order:', error);
+                        UI.showToast('Fehler beim Speichern der Reihenfolge', 'error');
+                        // Re-render to restore correct state
+                        this.renderEventSongs(eventId);
+                    } finally {
+                        UI.hideLoading();
+                    }
+                }
+                return false;
+            };
+
+            rows.forEach(row => {
+                row.addEventListener('dragstart', handleDragStart);
+                row.addEventListener('dragenter', handleDragEnter);
+                row.addEventListener('dragover', handleDragOver);
+                row.addEventListener('dragleave', handleDragLeave);
+                row.addEventListener('drop', handleDrop);
+            });
+        }
 
         container.querySelectorAll('.delete-song').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -3963,8 +4099,14 @@ const App = {
                     title: bandSong.title,
                     artist: bandSong.artist,
                     bpm: bandSong.bpm,
+                    timeSignature: bandSong.timeSignature,
                     key: bandSong.key,
+                    originalKey: bandSong.originalKey,
                     leadVocal: bandSong.leadVocal,
+                    language: bandSong.language,
+                    tracks: bandSong.tracks,
+                    info: bandSong.info,
+                    ccli: bandSong.ccli,
                     eventId: eventId,
                     createdBy: user.id
                 };
@@ -4034,8 +4176,13 @@ const App = {
                     <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Time</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Lead Vocal</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Orig.</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Infos</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
                     <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
                 </tr>
@@ -4049,8 +4196,13 @@ const App = {
                         <td style="padding: var(--spacing-sm);" data-label="Titel">${this.escapeHtml(song.title)}</td>
                         <td style="padding: var(--spacing-sm);" data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
                         <td style="padding: var(--spacing-sm);" data-label="BPM">${song.bpm || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Time">${song.timeSignature || '-'}</td>
                         <td style="padding: var(--spacing-sm);" data-label="Tonart">${song.key || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Orig.">${song.originalKey || '-'}</td>
                         <td style="padding: var(--spacing-sm);" data-label="Lead Vocal">${song.leadVocal || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Sprache">${song.language || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                        <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${song.info ? this.escapeHtml(song.info) : '-'}</td>
                         <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
                         <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
                             <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
@@ -4182,30 +4334,134 @@ const App = {
             return;
         }
 
-        const items = this.draftEventSongIds.map((songId, idx) => {
-            const s = Storage.getById('songs', songId);
-            if (!s) return '';
-            return `
-    < div class="draft-song-item" data - id="${songId}" style = "display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0;" >
-                    <div>
-                        <strong>${idx + 1}. ${this.escapeHtml(s.title)}</strong>
-                        ${s.artist ? ` — <span>${this.escapeHtml(s.artist)}</span>` : ''}
-                        ${s.bpm ? ` | <span>${this.escapeHtml(s.bpm)} BPM</span>` : ''}
-                        ${s.key ? ` | <span>${this.escapeHtml(s.key)}</span>` : ''}
-                        ${s.leadVocal ? ` | <span>Lead: ${this.escapeHtml(s.leadVocal)}</span>` : ''}
-                        ${s.ccli ? ` | <span>CCLI: ${this.escapeHtml(s.ccli)}</span>` : ''}
-                    </div>
-                    <div>
-                        <button class="btn btn-sm btn-secondary remove-draft-song" data-id="${songId}">Entfernen</button>
-                    </div>
-                </div >
-    `;
-        }).join('');
+        const songs = this.draftEventSongIds.map(id => Storage.getById('songs', id)).filter(s => s);
 
-        container.innerHTML = items;
+        container.innerHTML = `
+        <div style="overflow-x: auto;">
+        <table class="songs-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--color-border);">
+                    <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">Pos.</th>
+                    <th style="padding: var(--spacing-sm); text-align: left; width: 30px;">#</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
+                    <th style="padding: var(--spacing-sm); text-align: center;">BPM</th>
+                    <th style="padding: var(--spacing-sm); text-align: center;">Time</th>
+                    <th style="padding: var(--spacing-sm); text-align: center;">Key</th>
+                    <th style="padding: var(--spacing-sm); text-align: center;">Orig.</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">Infos</th>
+                    <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
+                    <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
+                </tr>
+            </thead>
+            <tbody id="draftEventSongsTableBody">
+                ${songs.map((song, idx) => `
+                    <tr style="border-bottom: 1px solid var(--color-border);" draggable="true" data-song-id="${song.id}">
+                        <td style="padding: var(--spacing-sm); text-align: center; cursor: grab;" class="drag-handle" data-label="Pos.">☰</td>
+                        <td style="padding: var(--spacing-sm); color: var(--color-text-muted);" data-label="#">${idx + 1}</td>
+                        <td style="padding: var(--spacing-sm); font-weight: bold;" data-label="Titel">${this.escapeHtml(song.title)}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
+                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="BPM">${song.bpm || '-'}</td>
+                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Time">${song.timeSignature || '-'}</td>
+                        <td style="padding: var(--spacing-sm); text-align: center; color: var(--color-primary); font-weight: bold;" data-label="Key">${song.key || '-'}</td>
+                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Orig.">${song.originalKey || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Lead">${song.leadVocal || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Sprache">${song.language || '-'}</td>
+                        <td style="padding: var(--spacing-sm);" data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                        <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(song.info || '-')}</td>
+                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
+                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
+                            <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen">❌</button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        </div>
+        `;
+
+        // --- Drag and Drop Logic for Draft Songs ---
+        const tbody = document.getElementById('draftEventSongsTableBody');
+        let dragSrcEl = null;
+
+        if (tbody) {
+            const rows = tbody.querySelectorAll('tr[draggable="true"]');
+
+            const handleDragStart = (e) => {
+                dragSrcEl = e.currentTarget;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', e.currentTarget.dataset.songId);
+                e.currentTarget.classList.add('dragging');
+            };
+
+            const handleDragOver = (e) => {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            };
+
+            const handleDragEnter = (e) => {
+                const targetRow = e.target.closest('tr');
+                if (targetRow && targetRow !== dragSrcEl) {
+                    targetRow.classList.add('drag-over');
+                }
+            };
+
+            const handleDragLeave = (e) => {
+                const targetRow = e.target.closest('tr');
+                if (targetRow) {
+                    targetRow.classList.remove('drag-over');
+                }
+            };
+
+            const handleDrop = async (e) => {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                const targetRow = e.target.closest('tr');
+                // Remove visual feedback
+                rows.forEach(row => {
+                    row.classList.remove('dragging');
+                    row.classList.remove('drag-over');
+                });
+
+                if (dragSrcEl !== targetRow && targetRow && targetRow.draggable) {
+                    // Get current Order from Array
+                    const srcId = dragSrcEl.dataset.songId;
+                    const targetId = targetRow.dataset.songId;
+
+                    const srcIndex = this.draftEventSongIds.indexOf(srcId);
+                    const targetIndex = this.draftEventSongIds.indexOf(targetId);
+
+                    if (srcIndex > -1 && targetIndex > -1) {
+                        // Move element in array
+                        this.draftEventSongIds.splice(srcIndex, 1);
+                        this.draftEventSongIds.splice(targetIndex, 0, srcId);
+
+                        // Re-render
+                        this.renderDraftEventSongs();
+                    }
+                }
+                return false;
+            };
+
+            rows.forEach(row => {
+                row.addEventListener('dragstart', handleDragStart);
+                row.addEventListener('dragenter', handleDragEnter);
+                row.addEventListener('dragover', handleDragOver);
+                row.addEventListener('dragleave', handleDragLeave);
+                row.addEventListener('drop', handleDrop);
+            });
+        }
 
         container.querySelectorAll('.remove-draft-song').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent form submit if inside form
                 const id = btn.dataset.id;
                 this.draftEventSongIds = this.draftEventSongIds.filter(x => x !== id);
                 this.renderDraftEventSongs();
@@ -4863,9 +5119,9 @@ const App = {
             let html = '';
 
             // Section: Open
-            html += `<h4 class="admin-sub-header">
-                        Offene Tickets <span class="badge bg-primary">${openItems.length}</span>
-                     </h4>`;
+            html += `< h4 class="admin-sub-header" >
+    Offene Tickets < span class="badge bg-primary" > ${openItems.length}</span >
+                     </h4 > `;
 
             if (openItems.length === 0) {
                 html += '<div class="user-no-bands">Alles erledigt! 🎉</div>';
@@ -4877,9 +5133,9 @@ const App = {
 
             // Section: Resolved
             if (resolvedItems.length > 0) {
-                html += `<h4 class="admin-sub-header secondary">
-                            Archiv / Erledigt <span class="badge bg-secondary">${resolvedItems.length}</span>
-                         </h4>`;
+                html += `< h4 class="admin-sub-header secondary" >
+    Archiv / Erledigt < span class="badge bg-secondary" > ${resolvedItems.length}</span >
+                         </h4 > `;
                 html += '<div class="feedback-grid resolved">';
                 resolvedItems.forEach(item => html += this._renderFeedbackCard(item));
                 html += '</div>';
@@ -4947,7 +5203,7 @@ const App = {
 
         } catch (err) {
             console.error(err);
-            list.innerHTML = `<div class="error-state" style="color:red">Fehler: ${err.message}</div>`;
+            list.innerHTML = `< div class="error-state" style = "color:red" > Fehler: ${err.message}</div > `;
         }
     },
 
@@ -4971,7 +5227,7 @@ const App = {
         const isResolved = item.status === 'resolved';
 
         return `
-            <div class="feedback-card" data-expanded="false" data-id="${item.id}">
+    < div class="feedback-card" data - expanded="false" data - id="${item.id}" >
                 <div class="feedback-card-accent" style="background: ${badgeColor};"></div>
                 
                 <div class="feedback-card-header">
@@ -5002,8 +5258,8 @@ const App = {
                         <button class="btn btn-sm btn-outline-danger delete-feedback-btn" data-id="${item.id}" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Löschen</button>
                     </div>
                 </div>
-            </div>
-        `;
+            </div >
+    `;
     },
 
     switchSettingsTab(tabName) {
@@ -5114,7 +5370,7 @@ const App = {
         }
 
         container.innerHTML = absences.map(absence => `
-            <div class="absence-item-card" data-absence-id="${absence.id}">
+    < div class="absence-item-card" data - absence - id="${absence.id}" >
                 <div class="absence-info">
                     <div class="absence-date-range">
                         <span style="margin-right:0.25rem;">📅</span>
@@ -5126,8 +5382,8 @@ const App = {
                     <button class="btn btn-sm btn-icon edit-absence-settings" data-absence-id="${absence.id}" title="Bearbeiten" style="background:transparent; border:none; font-size:1.1rem; padding:0.25rem;">✏️</button>
                     <button class="btn btn-sm btn-icon delete-absence-settings" data-absence-id="${absence.id}" title="Löschen" style="background:transparent; border:none; font-size:1.1rem; padding:0.25rem;">🗑️</button>
                 </div>
-            </div>
-        `).join('');
+            </div >
+    `).join('');
 
         // Attach event listeners
         container.querySelectorAll('.edit-absence-settings').forEach(btn => {
