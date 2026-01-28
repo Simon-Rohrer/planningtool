@@ -354,9 +354,9 @@ const UI = {
         });
     },
 
-    // Loading spinner: delayed appearance if operation exceeds delayMs (default 1s)
+    // Loading spinner: delayed appearance if operation exceeds delayMs (default 0ms for immediate feedback)
     _loaderTimer: null,
-    showLoading(message = 'Lädt...', delayMs = 1000) {
+    showLoading(message = 'Lädt...', delayMs = 0) {
         // Clear previous timer
         if (this._loaderTimer) {
             clearTimeout(this._loaderTimer);
@@ -367,29 +367,26 @@ const UI = {
             loader = document.createElement('div');
             loader.id = 'globalLoader';
             loader.style.display = 'none';
-            loader.style.position = 'fixed';
-            loader.style.inset = '0';
-            loader.style.zIndex = '9999';
             loader.innerHTML = `
-                <div class="loader-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
-                    <div class="loader-content" style="background:#fff;padding:16px 20px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.15);display:flex;align-items:center;gap:12px;">
-                        <div class="spinner" style="width:22px;height:22px;border:3px solid #ddd;border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-                        <p class="loader-message" style="margin:0;font-weight:600;color:#111;">${message}</p>
+                <div class="loader-overlay">
+                    <div class="loader-content">
+                        <div class="loader-spinner"></div>
+                        <p class="loader-message">${message}</p>
                     </div>
                 </div>
             `;
             document.body.appendChild(loader);
-            // Spinner keyframes
-            const style = document.createElement('style');
-            style.textContent = '@keyframes spin {from{transform:rotate(0)} to{transform:rotate(360deg)}}';
-            document.head.appendChild(style);
         } else {
             loader.querySelector('.loader-message').textContent = message;
         }
-        // Show after delay
-        this._loaderTimer = setTimeout(() => {
+
+        if (delayMs > 0) {
+            this._loaderTimer = setTimeout(() => {
+                loader.style.display = 'block';
+            }, delayMs);
+        } else {
             loader.style.display = 'block';
-        }, delayMs);
+        }
     },
 
     hideLoading() {

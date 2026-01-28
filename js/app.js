@@ -980,6 +980,57 @@ const App = {
         return username || '?';
     },
 
+    setupPDFPreviewModal() {
+        const modal = document.getElementById('pdfPreviewModal');
+        if (!modal) return;
+
+        const downloadBtn = document.getElementById('pdfPreviewDownload');
+        const cancelBtn = document.getElementById('pdfPreviewCancel');
+
+        downloadBtn.addEventListener('click', () => {
+            if (this.currentPDFData && this.currentPDFData.pdf) {
+                this.currentPDFData.pdf.save(this.currentPDFData.filename || 'setlist.pdf');
+                UI.closeModal('pdfPreviewModal');
+                UI.showToast('PDF heruntergeladen!', 'success');
+                this.cleanupPDFPreview();
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            UI.closeModal('pdfPreviewModal');
+            this.cleanupPDFPreview();
+        });
+
+        // Cleanup on close when clicking X
+        const closeBtn = modal.querySelector('.modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.cleanupPDFPreview();
+            });
+        }
+    },
+
+    cleanupPDFPreview() {
+        if (this.currentPDFData && this.currentPDFData.blobUrl) {
+            URL.revokeObjectURL(this.currentPDFData.blobUrl);
+            this.currentPDFData = null;
+        }
+    },
+
+    showPDFPreview(pdfData) {
+        const iframe = document.getElementById('pdfPreviewFrame');
+        if (!iframe) return;
+
+        this.cleanupPDFPreview(); // Ensure previous is cleaned up
+        this.currentPDFData = pdfData;
+
+        // Add PDF view parameters for better fitting (Fit to page)
+        const viewParams = '#view=Fit';
+        iframe.src = pdfData.blobUrl + viewParams;
+
+        UI.openModal('pdfPreviewModal');
+    },
+
     async init() {
         // Implement unsaved changes check
         window.isProfileDirty = false;
@@ -1018,6 +1069,7 @@ const App = {
         this.setupMobileSubmenuToggle();
         this.setupSidebarNav();
         this.setupFeedbackModal();
+        this.setupPDFPreviewModal();
 
         // NOTE: tutorial banner will be shown after auth initialization below
 
@@ -2476,6 +2528,19 @@ const App = {
                     await this.renderProbeorteCalendarTabs();
                     // Redundant loading logic removed - handled by renderProbeorteCalendarTabs
                 } else if (view === 'musikpool') {
+                    // Check if user is admin - Musikerpool is restricted
+                    const musikpoolSection = document.getElementById('churchToolsMusikpoolSection');
+                    if (!Auth.isAdmin()) {
+                        if (musikpoolSection) musikpoolSection.style.display = 'none';
+                        if (overlay && shouldShowLoading) {
+                            overlay.style.opacity = '0';
+                            setTimeout(() => overlay.style.display = 'none', 400);
+                        }
+                        return;
+                    }
+
+                    if (musikpoolSection) musikpoolSection.style.display = 'block';
+
                     // Musikerpool mit Timeout und garantiertem Ausblenden des Overlays laden
                     if (typeof Musikpool !== 'undefined' && Musikpool.loadGroupData) {
                         let overlayTimeout;
@@ -3414,7 +3479,7 @@ const App = {
     },
 
     // Generic PDF Download for Song Lists
-    async downloadSongListPDF(songs, title, subtitle = '') {
+    async downloadSongListPDF(songs, title, subtitle = '', preview = true) {
         try {
             if (!Array.isArray(songs) || songs.length === 0) {
                 UI.showToast('Keine Songs für PDF vorhanden', 'warning');
@@ -3423,14 +3488,19 @@ const App = {
 
             const filename = `Setlist_${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
 
-            await PDFGenerator.generateSetlistPDF({
+            const pdfData = await PDFGenerator.generateSetlistPDF({
                 title: title,
                 subtitle: subtitle,
                 songs: songs,
-                filename: filename
+                filename: filename,
+                previewOnly: preview
             });
 
-            UI.showToast('PDF heruntergeladen!', 'success');
+            if (preview && pdfData && pdfData.blobUrl) {
+                this.showPDFPreview(pdfData);
+            } else if (!preview) {
+                UI.showToast('PDF heruntergeladen!', 'success');
+            }
         } catch (error) {
             console.error('Error generating PDF:', error);
             UI.showToast('Fehler bei PDF-Erstellung', 'error');
@@ -3451,22 +3521,29 @@ const App = {
             // Simple CSV parsing (assumes comma or semicolon delimiter)
             // Skip header if present (heuristic)
             const startIndex = lines[0].toLowerCase().includes('titel') ? 1 : 0;
+            const totalLines = lines.length - startIndex;
 
-            UI.showToast('Importiere Songs...', 'info');
+            UI.showLoading(`Importiere Songs (0/${totalLines})...`);
 
             // Basic Binary Check to prevent crashing with XLS/Numbers files
             // "PK" at the start usually indicates a Zip/Office/Numbers file
             if (text.startsWith('PK') || text.includes(String.fromCharCode(0))) {
+                UI.hideLoading();
                 UI.showToast('Fehler: Das ist keine gültige CSV-Datei.', 'error');
                 console.error('Binary file detected (PK header or null bytes). Likely an Excel (.xlsx) or Numbers file.');
                 alert('Es sieht so aus, als hätten Sie eine Excel- oder Numbers-Datei hochgeladen.\n\nBitte öffnen Sie die Datei in Ihrem Programm und wählen Sie "Datei > Exportieren > CSV" (Kommagetrennte Werte).');
                 return;
             }
 
+            let processed = 0;
+
             for (let i = startIndex; i < lines.length; i++) {
                 let line = lines[i].trim();
 
-                if (!line) continue;
+                if (!line) {
+                    processed++;
+                    continue;
+                }
 
                 // Detect delimiter
                 const delimiter = line.includes(';') ? ';' : ',';
@@ -3492,12 +3569,12 @@ const App = {
 
                     console.log(`Extracted data: Title="${title}", Artist="${artist}"`);
 
-                    if (title && artist) {
+                    if (title) {
                         try {
                             const songData = {
                                 bandId: bandId,
                                 title: title,
-                                artist: artist,
+                                artist: artist || '', // Allow empty artist
                                 bpm: bpm,
                                 timeSignature: timeSignature,
                                 key: key,
@@ -3517,16 +3594,26 @@ const App = {
                             dbErrorCount++;
                         }
                     } else {
-                        console.warn('Skipping line: Title or Artist missing');
+                        console.warn('Skipping line: Title missing');
                     }
                 } else {
                     console.warn('Skipping line: Not enough columns');
                 }
+
+                processed++;
+                if (processed % 5 === 0) {
+                    UI.showLoading(`Importiere Songs (${processed}/${totalLines})...`);
+                    // allow UI update
+                    await new Promise(r => setTimeout(r, 0));
+                }
             }
+
+            UI.hideLoading();
 
             if (successCount > 0) {
                 UI.showToast(`${successCount} Songs erfolgreich importiert!`, 'success');
-                this.renderBandSongs(bandId); // Refresh list
+                await this.renderBandSongs(bandId); // Refresh list
+                UI.closeModal('importSongsModal');
             } else if (dbErrorCount > 0) {
                 UI.showToast('Fehler beim Importieren. Prüfe die Konsole.', 'error');
             } else {
@@ -3830,7 +3917,7 @@ const App = {
             bulkPDFBtn.addEventListener('click', () => {
                 const selectedIds = Array.from(container.querySelectorAll('.event-song-checkbox-row:checked')).map(cb => cb.value);
                 const selectedSongs = this.currentEventSongs.filter(s => selectedIds.includes(s.id));
-                this.downloadSongListPDF(selectedSongs, eventName, 'Ausgewählte Songs');
+                this.downloadSongListPDF(selectedSongs, eventName, 'Ausgewählte Songs', true);
             });
         }
         // ----------------------------------------------------
@@ -4124,34 +4211,60 @@ const App = {
         if (!container) return;
 
         const songs = await Storage.getBandSongs(bandId);
+        if (Array.isArray(songs)) {
+            songs.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        }
         const band = await Storage.getBand(bandId);
         const bandName = band ? band.name : 'Unbekannte Band';
 
-        if (!Array.isArray(songs) || songs.length === 0) {
-            container.innerHTML = '<p class="text-muted">Noch keine Songs hinzugefügt.</p>';
-            return;
-        }
+        const tableRows = (Array.isArray(songs) && songs.length > 0) ?
+            songs.map(song => `
+                <tr style="border-bottom: 1px solid var(--color-border);">
+                    <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
+                        <input type="checkbox" class="band-song-checkbox-row" value="${song.id}">
+                    </td>
+                    <td style="padding: var(--spacing-sm); white-space: nowrap;" data-label="Titel">${this.escapeHtml(song.title)}</td>
+                    <td style="padding: var(--spacing-sm);" data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
+                    <td style="padding: var(--spacing-sm);" data-label="BPM">${song.bpm || '-'}</td>
+                    <td style="padding: var(--spacing-sm);" data-label="Time">${song.timeSignature || '-'}</td>
+                    <td style="padding: var(--spacing-sm);" data-label="Tonart">${song.key || '-'}</td>
+                    <td style="padding: var(--spacing-sm);" data-label="Orig.">${song.originalKey || '-'}</td>
+                    <td style="padding: var(--spacing-sm);" data-label="Lead Vocal">${song.leadVocal || '-'}</td>
+                    <td style="padding: var(--spacing-sm);" data-label="Sprache">${song.language || '-'}</td>
+                    <td style="padding: var(--spacing-sm);" data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                    <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${song.info ? this.escapeHtml(song.info) : '-'}</td>
+                    <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
+                    <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
+                        <div style="display: flex; gap: 8px; justify-content: center;">
+                            <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
+                            <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('') :
+            '<tr><td colspan="13" style="padding: var(--spacing-xl); text-align: center; color: var(--color-text-light);">Noch keine Songs hinzugefügt. Nutze den Import oder füge manuell einen Song hinzu.</td></tr>';
 
         // Store songs for PDF export
-        this.currentBandSongs = songs;
+        this.currentBandSongs = Array.isArray(songs) ? songs : [];
 
         container.innerHTML = `
-        <div class="song-search-container" style="margin-bottom: 1rem; display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-            <div class="search-wrapper" style="flex: 1; min-width: 200px;">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="bandSongSearch" placeholder="Setliste durchsuchen..." class="modern-search-input" style="width: 100%;">
-            </div>
-            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
-                <span style="font-size: 0.85em; color: var(--color-text-muted);">Wie möchtest du deine Songs bequem importieren?</span>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-secondary btn-sm" id="bandSongsExportPDF" title="Gesamte Setliste als PDF">
-                        📥 Als PDF herunterladen
-                    </button>
-                    <input type="file" id="csvSongUpload" accept=".csv" style="display: none;">
-                    <button class="btn btn-secondary btn-sm" onclick="UI.openModal('importSongsModal')" title="Import-Anleitung anzeigen">
-                        📥 CSV Import
-                    </button>
+        <div class="song-search-container" style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0;">
+                <h3 class="btn-text-mobile-hide" style="margin: 0; white-space: nowrap; font-size: 1.25rem;">Songs (${this.currentBandSongs.length})</h3>
+                <div class="search-wrapper" style="flex: 1; min-width: 150px; max-width: 600px;">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="bandSongSearch" placeholder="Setliste durchsuchen..." class="modern-search-input" style="width: 100%;">
                 </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+                <button class="btn btn-secondary btn-sm" id="bandSongsExportPDF" title="Gesamte Setliste als PDF">
+                    <img src="images/pdf-download.png" class="btn-icon-img" alt="PDF icon"><span class="btn-text-mobile-hide"> Als PDF herunterladen</span>
+                </button>
+                <input type="file" id="csvSongUpload" accept=".csv" style="display: none;">
+                <button class="btn btn-secondary btn-sm" onclick="UI.openModal('importSongsModal')" title="Import-Anleitung anzeigen">
+                    <img src="images/csv-import.png" class="btn-icon-img" alt="CSV icon"><span class="btn-text-mobile-hide"> CSV Import</span>
+                </button>
+                <button id="addBandSongBtn" class="btn btn-primary btn-sm" style="white-space: nowrap;">+ Song hinzufügen</button>
             </div>
         </div>
 
@@ -4182,43 +4295,40 @@ const App = {
                     <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Infos</th>
+                    <th style="padding: var(--spacing-sm); text-align: left; min-width: 250px;">Infos</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
                     <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
                 </tr>
             </thead>
             <tbody id="bandSongsTableBody">
-                ${songs.map(song => `
-                    <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
-                            <input type="checkbox" class="band-song-checkbox-row" value="${song.id}">
-                        </td>
-                        <td style="padding: var(--spacing-sm);" data-label="Titel">${this.escapeHtml(song.title)}</td>
-                        <td style="padding: var(--spacing-sm);" data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
-                        <td style="padding: var(--spacing-sm);" data-label="BPM">${song.bpm || '-'}</td>
-                        <td style="padding: var(--spacing-sm);" data-label="Time">${song.timeSignature || '-'}</td>
-                        <td style="padding: var(--spacing-sm);" data-label="Tonart">${song.key || '-'}</td>
-                        <td style="padding: var(--spacing-sm);" data-label="Orig.">${song.originalKey || '-'}</td>
-                        <td style="padding: var(--spacing-sm);" data-label="Lead Vocal">${song.leadVocal || '-'}</td>
-                        <td style="padding: var(--spacing-sm);" data-label="Sprache">${song.language || '-'}</td>
-                        <td style="padding: var(--spacing-sm);" data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
-                        <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${song.info ? this.escapeHtml(song.info) : '-'}</td>
-                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
-                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
-                            <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
-                            <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('')}
+                ${tableRows}
             </tbody>
         </table>
         </div>
 `;
 
+        // Wire up add button
+        const addBtn = document.getElementById('addBandSongBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                this.openSongModal(null, bandId, null);
+            });
+        }
+
         // PDF Export
         document.getElementById('bandSongsExportPDF').addEventListener('click', () => {
-            this.downloadSongListPDF(this.currentBandSongs || [], `Gesamtsetlist der Band ${bandName}`, 'Repertoire Export');
+            this.downloadSongListPDF(this.currentBandSongs || [], `Gesamtsetlist der Band ${bandName}`, 'Repertoire Export', true);
         });
+
+        // CSV Import
+        const csvUpload = document.getElementById('csvSongUpload');
+        if (csvUpload) {
+            csvUpload.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    this.handleCSVUpload(e.target.files[0], bandId);
+                }
+            });
+        }
 
         // Bulk Actions Logic
         const checkboxRows = container.querySelectorAll('.band-song-checkbox-row');
@@ -4260,11 +4370,19 @@ const App = {
                 if (selectedIds.length === 0) return;
 
                 if (await UI.confirmDelete(`${selectedIds.length} Songs wirklich löschen?`)) {
-                    for (const id of selectedIds) {
-                        await Storage.deleteSong(id);
+                    UI.showLoading(`${selectedIds.length} Songs werden gelöscht...`);
+                    try {
+                        for (const id of selectedIds) {
+                            await Storage.deleteSong(id);
+                        }
+                        UI.hideLoading();
+                        UI.showToast(`${selectedIds.length} Songs gelöscht`, 'success');
+                        await this.renderBandSongs(bandId);
+                    } catch (error) {
+                        UI.hideLoading();
+                        console.error('Error deleting songs:', error);
+                        UI.showToast('Fehler beim Löschen', 'error');
                     }
-                    UI.showToast(`${selectedIds.length} Songs gelöscht`, 'success');
-                    this.renderBandSongs(bandId);
                 }
             });
         }
@@ -4273,24 +4391,18 @@ const App = {
             bulkPDFBtn.addEventListener('click', () => {
                 const selectedIds = Array.from(container.querySelectorAll('.band-song-checkbox-row:checked')).map(cb => cb.value);
                 const selectedSongs = this.currentBandSongs.filter(s => selectedIds.includes(s.id));
-                this.downloadSongListPDF(selectedSongs, `Ausgewählte Songs der Band ${bandName}`, 'Teil-Repertoire Export');
+                this.downloadSongListPDF(selectedSongs, `Ausgewählte Songs der Band ${bandName}`, 'Teil-Repertoire Export', true);
             });
         }
 
         // Search functionality
         const searchInput = document.getElementById('bandSongSearch');
         if (searchInput) {
-            console.log('Search input found, attaching listener');
             searchInput.addEventListener('input', (e) => {
                 const term = e.target.value.toLowerCase();
-                console.log('Search term:', term);
                 const tableBody = document.getElementById('bandSongsTableBody');
-                if (!tableBody) {
-                    console.error('Table body not found!');
-                    return;
-                }
+                if (!tableBody) return;
                 const rows = tableBody.querySelectorAll('tr');
-                console.log('Rows found:', rows.length);
                 rows.forEach(row => {
                     const titleEl = row.querySelector('[data-label="Titel"]');
                     const artistEl = row.querySelector('[data-label="Interpret"]');
@@ -4317,9 +4429,17 @@ const App = {
             btn.addEventListener('click', async () => {
                 const confirmed = await UI.confirmDelete('Möchtest du diesen Song wirklich löschen?');
                 if (confirmed) {
-                    await Storage.deleteSong(btn.dataset.id);
-                    UI.showToast('Song gelöscht', 'success');
-                    await this.renderBandSongs(bandId);
+                    UI.showLoading('Song wird gelöscht...');
+                    try {
+                        await Storage.deleteSong(btn.dataset.id);
+                        UI.hideLoading();
+                        UI.showToast('Song gelöscht', 'success');
+                        await this.renderBandSongs(bandId);
+                    } catch (error) {
+                        UI.hideLoading();
+                        console.error('Error deleting song:', error);
+                        UI.showToast('Fehler beim Löschen des Songs', 'error');
+                    }
                 }
             });
         });

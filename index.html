@@ -927,8 +927,12 @@
                         </div>
 
                         <!-- ChurchTools Pool Section -->
-                        <div class="section">
-                            <h3>ChurchTools Musikpool</h3>
+                        <div id="churchToolsMusikpoolSection" class="section">
+                            <div
+                                style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: var(--spacing-lg);">
+                                <h3 style="margin-bottom: 0;">ChurchTools Musikpool</h3>
+                                <span class="admin-badge">Nur für Admins sichtbar</span>
+                            </div>
                             <button id="refreshMusikpoolBtn" class="btn btn-secondary"
                                 style="display: inline-flex; align-items: center; gap: 0.5rem;">
                                 🔄 Aktualisieren
@@ -1501,11 +1505,6 @@
                 <!-- Setlist Tab -->
                 <div id="setlistTab" class="tab-content">
                     <div class="section">
-                        <div class="section-header">
-                            <h3>Songs</h3>
-                            <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song
-                                hinzufügen</button>
-                        </div>
                         <div id="bandSongsList"></div>
                     </div>
                 </div>
@@ -1575,45 +1574,43 @@
                 <p style="margin-bottom: 1rem;">Du kannst mehrere Songs gleichzeitig per CSV-Datei importieren.
                 </p>
 
-                <div
-                    style="background: var(--color-background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
-                    <h4 style="margin-bottom: 0.5rem; color: var(--color-text-muted);">Erforderliches Format:
-                    </h4>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
-                            <thead style="background: var(--color-surface);">
+                <div class="import-info-box">
+                    <h4 class="import-info-title">Erforderliches Format:</h4>
+                    <div class="import-table-wrapper">
+                        <table class="import-table">
+                            <thead>
                                 <tr>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Titel</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Interpret</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">BPM</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Time</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Key</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Orig.</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Lead</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Sprache</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Tracks</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">Infos</th>
-                                    <th style="padding: 8px; border: 1px solid var(--color-border);">CCLI</th>
+                                    <th>Titel</th>
+                                    <th>Interpret</th>
+                                    <th>BPM</th>
+                                    <th>Time</th>
+                                    <th>Key</th>
+                                    <th>Orig.</th>
+                                    <th>Lead</th>
+                                    <th>Sprache</th>
+                                    <th>Tracks</th>
+                                    <th>Infos</th>
+                                    <th>CCLI</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">Amazing Grace</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">John Newton</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">80</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">4/4</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">G</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">C</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">John</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">DE</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">Nein</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">Start ruhig</td>
-                                    <td style="padding: 8px; border: 1px solid var(--color-border);">123456</td>
+                                    <td>Amazing Grace</td>
+                                    <td>John Newton</td>
+                                    <td>80</td>
+                                    <td>4/4</td>
+                                    <td>G</td>
+                                    <td>C</td>
+                                    <td>John</td>
+                                    <td>DE</td>
+                                    <td>Nein</td>
+                                    <td>Start ruhig</td>
+                                    <td>123456</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <p style="margin-top: 0.5rem; font-size: 0.85em; color: var(--color-text-muted);">
+                    <p class="import-hint">
                         ⚠️ Wichtig: Wenn du Excel oder Numbers verwendest, wähle bitte "Exportieren als CSV".
                     </p>
                 </div>
@@ -2420,6 +2417,23 @@
             <div class="modal-body">
                 <img id="profileImagePreview" src="" alt="Profilbild"
                     style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Preview Modal -->
+    <div id="pdfPreviewModal" class="modal">
+        <div class="modal-content pdf-preview-modal-content">
+            <div class="modal-header">
+                <h2>PDF Vorschau</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body pdf-preview-body">
+                <iframe id="pdfPreviewFrame" class="pdf-preview-frame"></iframe>
+            </div>
+            <div class="modal-footer pdf-preview-footer">
+                <button id="pdfPreviewCancel" class="btn btn-secondary">Abbrechen</button>
+                <button id="pdfPreviewDownload" class="btn btn-primary">📥 Jetzt herunterladen</button>
             </div>
         </div>
     </div>

@@ -25,7 +25,7 @@ const PDFGenerator = {
      * @param {boolean} data.showNotes - Whether to show CCLI/Notes section at bottom
      * @param {string} data.filename - Desired filename
      */
-    async generateSetlistPDF({ title, subtitle, metaInfo = [], songs = [], showNotes = false, filename = 'setlist.pdf' }) {
+    async generateSetlistPDF({ title, subtitle, metaInfo = [], songs = [], showNotes = false, filename = 'setlist.pdf', previewOnly = false }) {
         try {
             // Build HTML content
             const element = document.createElement('div');
@@ -203,11 +203,16 @@ const PDFGenerator = {
                 heightLeft -= pageHeight;
             }
 
-            pdf.save(filename);
-
             // Cleanup
             document.body.removeChild(element);
 
+            if (previewOnly) {
+                const blob = pdf.output('blob');
+                const blobUrl = URL.createObjectURL(blob);
+                return { pdf, blobUrl, filename };
+            }
+
+            pdf.save(filename);
             return true;
 
         } catch (error) {

@@ -90,7 +90,7 @@ const Bands = {
                                 ${UI.getRoleDisplayName(band.role)}
                             </span>
                         </div>
-                        <p>${this.escapeHtml(band.description || 'Keine Beschreibung')}</p>
+                        ${band.description ? `<p>${this.escapeHtml(band.description)}</p>` : ''}
                         <div class="band-card-footer">
                             <span>👥 ${memberCount} Mitglied${memberCount !== 1 ? 'er' : ''}</span>
                             <span>${UI.formatRelativeTime(band.createdAt)}</span>
@@ -385,15 +385,7 @@ const Bands = {
             })();
         });
 
-        // Wire up song button
-        const addBandSongBtn = document.getElementById('addBandSongBtn');
-        if (addBandSongBtn) {
-            const newBtn = addBandSongBtn.cloneNode(true);
-            addBandSongBtn.parentNode.replaceChild(newBtn, addBandSongBtn);
-            newBtn.addEventListener('click', () => {
-                App.openSongModal(null, bandId, null);
-            });
-        }
+
 
         // Render band songs
         App.renderBandSongs(bandId);
@@ -600,32 +592,33 @@ const Bands = {
             const instrumentIcon = user.instrument ? (this.instrumentIcons[user.instrument] || '') : '';
 
             return `
-                <div class="member-item animated-fade-in" style="animation-delay: ${index * 0.1}s">
-                    <div class="member-info">
-                        <div class="member-avatar-wrapper">
-                            <div class="member-avatar" style="${user.profile_image_url ? 'background: none;' : `background: ${UI.getAvatarColor(displayName)};`}">
-                                ${user.profile_image_url ?
+                <div class="member-row animated-fade-in" style="animation-delay: ${index * 0.1}s">
+                    <div class="member-avatar-col">
+                        <div class="member-avatar" style="${user.profile_image_url ? 'background: none;' : `background: ${UI.getAvatarColor(displayName)};`}">
+                            ${user.profile_image_url ?
                     `<img src="${user.profile_image_url}" alt="${this.escapeHtml(displayName)}" class="avatar-img">` :
                     `<span class="avatar-initials">${UI.getUserInitials(displayName)}</span>`}
-                            </div>
-                            ${member.role === 'leader' ? '<div class="leader-indicator" title="Bandleiter">👑</div>' : ''}
                         </div>
-                        <div class="member-details">
-                            <div class="member-name-row">
-                                <h4>${this.escapeHtml(displayName)}</h4>
-                                ${isCurrentUser ? '<span class="self-badge">DU</span>' : ''}
-                            </div>
-                            <p class="member-email">📧 ${this.escapeHtml(user.email)}</p>
-                            ${instrumentIcon ? `<p class="member-instrument-label">${instrumentIcon} ${this.getInstrumentName(user.instrument)}</p>` : ''}
+                        ${member.role === 'leader' ? '<div class="leader-badge-overlay" title="Bandleiter">👑</div>' : ''}
+                    </div>
+                    
+                    <div class="member-main-col">
+                        <div class="member-name-row">
+                            <span class="member-name">${this.escapeHtml(displayName)}</span>
+                            ${isCurrentUser ? '<span class="self-status-badge">DU</span>' : ''}
+                        </div>
+                        <div class="member-meta-row">
+                            ${instrumentIcon ? `<span class="member-instrument-pill">${instrumentIcon} ${this.getInstrumentName(user.instrument)}</span>` : ''}
                         </div>
                     </div>
-                    <div class="member-actions-wrapper">
-                        <div class="member-role-area">
+
+                    <div class="member-actions-col">
+                        <div class="member-role-selector">
                             ${roleDisplay}
                         </div>
                         ${canRemove ? `
-                            <button class="btn-icon remove-member-btn" data-user-id="${user.id}" title="Aus Band entfernen">
-                                <span>🗑️</span>
+                            <button class="member-remove-btn" data-user-id="${user.id}" title="Entfernen">
+                                <span class="icon">🗑️</span>
                             </button>
                         ` : ''}
                     </div>
@@ -634,7 +627,7 @@ const Bands = {
         }).join('');
 
         // Add remove handlers
-        container.querySelectorAll('.remove-member-btn').forEach(btn => {
+        container.querySelectorAll('.member-remove-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const userId = btn.dataset.userId;

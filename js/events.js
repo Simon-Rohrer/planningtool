@@ -172,7 +172,7 @@ const Events = {
                     <div class="setlist-header">
                         <div class="setlist-title">🎵 Setlist</div>
                         <button type="button" class="btn-pdf download-setlist-pdf" data-event-id="${event.id}">
-                            📥 Als PDF herunterladen
+                            <img src="images/pdf-download.png" class="btn-icon-img" alt="PDF icon"><span class="btn-text-mobile-hide"> Als PDF herunterladen</span>
                         </button>
                     </div>
 
@@ -398,7 +398,7 @@ const Events = {
     },
 
     // Download setlist as PDF
-    async downloadSetlistPDF(eventId, selectedIds = null) {
+    async downloadSetlistPDF(eventId, selectedIds = null, preview = true) {
         try {
             const event = await Storage.getById('events', eventId);
             if (!event) {
@@ -431,16 +431,26 @@ const Events = {
 
             const filename = `Setlist_${Bands.escapeHtml(event.title)}_${UI.formatDateShort(event.date)}.pdf`;
 
-            await PDFGenerator.generateSetlistPDF({
+            const pdfData = await PDFGenerator.generateSetlistPDF({
                 title: event.title,
                 subtitle: '',
                 metaInfo: metaInfo,
                 songs: songs,
                 showNotes: true,
-                filename: filename
+                filename: filename,
+                previewOnly: preview
             });
 
-            UI.showToast('Setlist-PDF heruntergeladen!', 'success');
+            if (preview && pdfData && pdfData.blobUrl) {
+                if (typeof App !== 'undefined' && App.showPDFPreview) {
+                    App.showPDFPreview(pdfData);
+                } else {
+                    // Fallback
+                    pdfData.pdf.save(filename);
+                }
+            } else if (!preview) {
+                UI.showToast('Setlist-PDF heruntergeladen!', 'success');
+            }
         } catch (error) {
             console.error('Error downloading setlist PDF:', error);
             UI.showToast('Fehler beim Erstellen der PDF: ' + error.message, 'error');
