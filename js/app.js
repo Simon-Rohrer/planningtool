@@ -5239,9 +5239,9 @@ const App = {
             let html = '';
 
             // Section: Open
-            html += `< h4 class="admin-sub-header" >
-    Offene Tickets < span class="badge bg-primary" > ${openItems.length}</span >
-                     </h4 > `;
+            html += `<h4 class="admin-sub-header">
+    Offene Tickets <span class="badge bg-primary">${openItems.length}</span>
+                     </h4>`;
 
             if (openItems.length === 0) {
                 html += '<div class="user-no-bands">Alles erledigt! 🎉</div>';
@@ -5253,9 +5253,9 @@ const App = {
 
             // Section: Resolved
             if (resolvedItems.length > 0) {
-                html += `< h4 class="admin-sub-header secondary" >
-    Archiv / Erledigt < span class="badge bg-secondary" > ${resolvedItems.length}</span >
-                         </h4 > `;
+                html += `<h4 class="admin-sub-header secondary">
+    Archiv / Erledigt <span class="badge bg-secondary">${resolvedItems.length}</span>
+                         </h4>`;
                 html += '<div class="feedback-grid resolved">';
                 resolvedItems.forEach(item => html += this._renderFeedbackCard(item));
                 html += '</div>';
@@ -5323,7 +5323,7 @@ const App = {
 
         } catch (err) {
             console.error(err);
-            list.innerHTML = `< div class="error-state" style = "color:red" > Fehler: ${err.message}</div > `;
+            list.innerHTML = `<div class="error-state" style="color:red">Fehler: ${err.message}</div>`;
         }
     },
 
@@ -5347,7 +5347,7 @@ const App = {
         const isResolved = item.status === 'resolved';
 
         return `
-    < div class="feedback-card" data - expanded="false" data - id="${item.id}" >
+            <div class="feedback-card" data-expanded="false" data-id="${item.id}">
                 <div class="feedback-card-accent" style="background: ${badgeColor};"></div>
                 
                 <div class="feedback-card-header">
@@ -5378,7 +5378,7 @@ const App = {
                         <button class="btn btn-sm btn-outline-danger delete-feedback-btn" data-id="${item.id}" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Löschen</button>
                     </div>
                 </div>
-            </div >
+            </div>
     `;
     },
 
@@ -5420,10 +5420,10 @@ const App = {
                 this.renderUsersList();
                 this.renderCalendarsList(); // Don't forget calendars!
 
-                // Open first accordion by default
-                setTimeout(() => {
+                // Open first accordion by default - DISABLED
+                /* setTimeout(() => {
                     UI.toggleAdminAccordion('adminSectionFeedback');
-                }, 50);
+                }, 50); */
             }
         } else {
             // Handling for bands/locations if standard ID isn't matching
@@ -5490,7 +5490,7 @@ const App = {
         }
 
         container.innerHTML = absences.map(absence => `
-    < div class="absence-item-card" data - absence - id="${absence.id}" >
+            <div class="absence-item-card" data-absence-id="${absence.id}">
                 <div class="absence-info">
                     <div class="absence-date-range">
                         <span style="margin-right:0.25rem;">📅</span>
@@ -5502,7 +5502,7 @@ const App = {
                     <button class="btn btn-sm btn-icon edit-absence-settings" data-absence-id="${absence.id}" title="Bearbeiten" style="background:transparent; border:none; font-size:1.1rem; padding:0.25rem;">✏️</button>
                     <button class="btn btn-sm btn-icon delete-absence-settings" data-absence-id="${absence.id}" title="Löschen" style="background:transparent; border:none; font-size:1.1rem; padding:0.25rem;">🗑️</button>
                 </div>
-            </div >
+            </div>
     `).join('');
 
         // Attach event listeners
