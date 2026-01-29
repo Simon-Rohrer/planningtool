@@ -613,19 +613,6 @@
                     </div>
                 </div>
 
-                <!-- Tutorial Slide-In Banner -->
-                <div id="tutorialSlideBanner" class="tutorial-slide-banner" style="display: none;">
-                    <span class="banner-icon">🎓</span>
-                    <div class="banner-content">
-                        <strong>Neu hier?</strong>
-                        <p>Starte eine kurze Tour durch die App.</p>
-                        <p class="banner-hint">Jederzeit in den Einstellungen wiederholbar.</p>
-                    </div>
-                    <div class="banner-actions">
-                        <button id="tutorialStartSlideBtn" class="btn btn-primary btn-sm">Tour starten</button>
-                        <button id="tutorialDismissSlideBtn" class="banner-close" title="Schließen">×</button>
-                    </div>
-                </div>
 
                 <!-- Main Content -->
                 <main class="app-main">
@@ -801,14 +788,9 @@
                     <!-- Statistics View -->
                     <div id="statisticsView" class="view">
                         <div class="view-actions-bar">
-                            <div style="display:flex; gap: 0.5rem; align-items:center; width: 100%;">
-                                <select id="statsBandSelect" class="form-select" style="flex:1;">
-                                    <option value="">Band auswählen</option>
-                                </select>
-                                <select id="statsRehearsalSelect" class="form-select" style="flex:1;">
-                                    <option value="">Probetermin auswählen</option>
-                                </select>
-                            </div>
+                            <select id="statsBandSelect" class="form-select" style="width: 100%;">
+                                <option value="">Band auswählen</option>
+                            </select>
                         </div>
                         <div id="statisticsContent" class="statistics-content-modern">
                             <!-- Helper container for the dashboard -->
@@ -1338,59 +1320,43 @@
                             </div>
                         </div>
 
-                        <!-- 5. Tutorial & Spenden -->
+                        <!-- 5. Spenden -->
                         <div class="admin-accordion-card" id="adminSectionExtras">
                             <button class="admin-accordion-header"
                                 onclick="UI.toggleAdminAccordion('adminSectionExtras')">
-                                <h3><span>🎓</span> Tutorial & Extras</h3>
+                                <h3><span>💝</span> Spenden</h3>
                                 <span class="admin-accordion-toggle-icon">▼</span>
                             </button>
                             <div class="admin-accordion-content">
                                 <div class="admin-section-inner">
-                                    <!-- Tutorial -->
-                                    <div id="adminTutorialSection"
-                                        style="display: flex; gap: 0.5rem; padding-bottom:1.5rem; border-bottom:1px solid var(--color-border); margin-bottom:1.5rem; flex-wrap: wrap;">
-                                        <button id="adminShowTutorialBtn" class="btn btn-secondary btn-sm"
-                                            onclick="Tutorial.start()">
-                                            Tutorial starten
-                                        </button>
-                                        <button id="adminTestNewsBannerBtn" class="btn btn-secondary btn-sm">
-                                            Test News Banner
-                                        </button>
+                                    <!-- Spenden Link -->
+                                    <div id="donateLinkSection">
+                                        <h4>Spenden-Link</h4>
+                                        <div class="form-group" style="margin-top:0.75rem;">
+                                            <input type="url" id="donateLink"
+                                                placeholder="https://paypal.me/deinusername" value=""
+                                                class="profile-form-input">
+                                            <small
+                                                style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
+                                                Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich
+                                                angezeigt.
+                                            </small>
+                                        </div>
+                                        <button id="saveDonateLink" class="btn btn-primary"
+                                            style="margin-top:1rem; width:100%;">Spenden-Link speichern</button>
                                     </div>
-                                    <h4>Onboarding</h4>
-                                    <p
-                                        style="color: var(--color-text-secondary); margin-top: 0.25rem; font-size:0.9rem;">
-                                        Als Admin kannst du das Onboarding/Tutorial anzeigen und testen.
-                                    </p>
-                                    <button id="adminShowTutorialBtn" class="btn btn-secondary btn-sm"
-                                        style="margin-top:0.75rem;">Tutorial anzeigen / testen</button>
-                                </div>
-                                <!-- Spenden Link -->
-                                <div id="donateLinkSection">
-                                    <h4>Spenden-Link</h4>
-                                    <div class="form-group" style="margin-top:0.75rem;">
-                                        <input type="url" id="donateLink" placeholder="https://paypal.me/deinusername"
-                                            value="" class="profile-form-input">
-                                        <small
-                                            style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
-                                            Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich
-                                            angezeigt.
-                                        </small>
-                                    </div>
-                                    <button id="saveDonateLink" class="btn btn-primary"
-                                        style="margin-top:1rem; width:100%;">Spenden-Link speichern</button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-
-
                 </div>
 
+
+
             </div>
+
         </div>
+    </div>
     </div>
 
 
@@ -1663,14 +1629,6 @@
                 <div class="form-group">
                     <label for="newUserPassword">Passwort <span style="color:red;" title="Pflichtfeld">*</span></label>
                     <input type="password" id="newUserPassword" required minlength="6">
-                    <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Mindestens 6
-                        Zeichen</small>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="newUserIsAdmin">
-                        Als Admin anlegen
-                    </label>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
@@ -1726,19 +1684,34 @@
                                 <input type="time" class="date-input-end" id="dateInputEnd">
                             </div>
                             <span class="date-availability" style="margin-left:8px"></span>
-                            <button type="button" class="btn btn-sm confirm-proposal-btn">✓ Bestätigen</button>
+                            <button type="button" class="btn btn-sm confirm-proposal-btn">✓
+                                Bestätigen</button>
                             <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
                         </div>
                     </div>
-                    <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin
+                    <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren
+                        Termin
                         hinzufügen</button>
                 </div>
                 <div class="form-group checkbox-group" id="notifyMembersGroup" style="display: none;">
                     <div class="checkbox-item">
                         <input type="checkbox" id="notifyMembersOnUpdate">
-                        <label for="notifyMembersOnUpdate">Update-E-Mail an alle Beteiligten senden</label>
+                        <label for="notifyMembersOnUpdate">Update-E-Mail an alle Beteiligten
+                            senden</label>
                     </div>
                 </div>
+
+                <!-- Update Email Section (only for confirmed rehearsals when editing) -->
+                <div id="updateEmailSection"
+                    style="display: none; margin-top: 1rem; padding: 1rem; background: var(--color-bg-secondary); border-radius: var(--radius-md); border-left: 3px solid var(--color-warning);">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">📧 Update-Email versenden</h3>
+                    <div class="checkbox-item" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="sendUpdateEmail" />
+                        <label for="sendUpdateEmail" style="cursor: pointer; margin: 0;">Bandmitglieder
+                            über Änderungen informieren</label>
+                    </div>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="button" class="btn btn-danger" id="deleteRehearsalBtn"
@@ -1835,7 +1808,8 @@
 
                 <div class="section">
                     <h3>Bandmitglieder benachrichtigen</h3>
-                    <p class="help-text">Wähle aus, welche Bandmitglieder eine Bestätigungs-E-Mail erhalten
+                    <p class="help-text">Wähle aus, welche Bandmitglieder eine Bestätigungs-E-Mail
+                        erhalten
                         sollen:
                     </p>
                     <div id="confirmMembersList" class="confirm-members-list"></div>
@@ -1843,7 +1817,8 @@
 
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="button" id="sendConfirmationBtn" class="btn btn-primary">✅ Probe bestätigen &
+                    <button type="button" id="sendConfirmationBtn" class="btn btn-primary">✅ Probe
+                        bestätigen &
                         E-Mail
                         senden</button>
                 </div>
@@ -1940,7 +1915,8 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Kalender erstellen & verknüpfen</button>
+                    <button type="submit" class="btn btn-primary">Kalender erstellen &
+                        verknüpfen</button>
                 </div>
             </form>
         </div>
@@ -1986,7 +1962,8 @@
                         <input type="checkbox" id="eventShowExtras">
                         <span class="toggle-slider"></span>
                     </label>
-                    <label for="eventShowExtras" class="toggle-label">Weitere Infos (Soundcheck, Technik,
+                    <label for="eventShowExtras" class="toggle-label">Weitere Infos (Soundcheck,
+                        Technik,
                         Event-Infos)</label>
                 </div>
 
@@ -2025,8 +2002,10 @@
                 </div>
 
                 <div id="eventGuestsField" class="form-optional-section" style="display:none;">
-                    <label for="eventGuests">🎭 Gästeliste</label>
-                    <textarea id="eventGuests" rows="2" placeholder="Name (Instrument/Rolle)"></textarea>
+                    <div class="form-group">
+                        <label for="eventGuests">🎭 Gästeliste</label>
+                        <textarea id="eventGuests" rows="3" placeholder="Name (Instrument/Rolle)"></textarea>
+                    </div>
                 </div>
 
                 <div class="form-section-divider"></div>
@@ -2049,7 +2028,8 @@
 
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt speichern</button>
+                    <button type="submit" id="saveEventBtn" class="btn btn-primary">Auftritt
+                        speichern</button>
                 </div>
             </form>
         </div>
@@ -2357,6 +2337,17 @@
                 </div>
             </div>
 
+            <!-- Update Email Section (only for confirmed rehearsals) -->
+            <div id="updateEmailSection"
+                style="display: none; margin-top: 1rem; padding: 1rem; background: var(--color-bg-secondary); border-radius: var(--radius-md); border-left: 3px solid var(--color-warning);">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">📧 Update-Email versenden</h3>
+                <div class="checkbox-item" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="sendUpdateEmail" />
+                    <label for="sendUpdateEmail" style="cursor: pointer; margin: 0;">Bandmitglieder über
+                        Änderungen informieren</label>
+                </div>
+            </div>
+
             <div class="modal-actions news-modal-actions">
                 <button type="button" class="btn btn-secondary cancel">Schließen</button>
             </div>
@@ -2372,7 +2363,8 @@
             </div>
             <div class="modal-body">
                 <p id="confirmDeleteMessage" style="margin: 0; color: var(--color-text-secondary);">
-                    Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht
+                    Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig
+                    gemacht
                     werden.
                 </p>
             </div>
@@ -2503,23 +2495,6 @@
     </div> <!-- End of mainApp -->
 
     <!-- Scripts -->
-    <!-- iCal.js library for parsing calendar data -->
-    <!-- Tutorial Overlay (Moved to end of body) -->
-    <div id="tutorialOverlay" class="tour-overlay" style="display:none;">
-        <div id="tourHighlight" class="tour-highlight" aria-hidden="true"></div>
-        <div id="tourTooltip" class="tour-tooltip" role="dialog" aria-modal="true">
-            <div id="tourTooltipContent">
-                <h3 id="tourTitle">Tutorial</h3>
-                <p id="tourBody">Schritt</p>
-                <div class="tour-controls"
-                    style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem;">
-                    <button id="tourPrevBtn" class="btn">Zurück</button>
-                    <button id="tourNextBtn" class="btn btn-primary">Weiter</button>
-                    <button id="tourEndBtn" class="btn">Beenden</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
@@ -2529,17 +2504,17 @@
     <script src="js/email-service.js?v=1.0.1"></script>
     <script src="js/bands.js?v=1.0.1"></script>
     <script src="js/pdf-generator.js"></script>
-    <script src="js/events.js?v=1.0.1"></script>
-    <script src="js/rehearsals.js?v=1.0.1"></script>
-    <script src="js/statistics.js?v=1.0.1"></script>
+    <script src="js/events.js?v=1.0.3"></script>
+    <script src="js/rehearsals.js?v=1.0.2"></script>
+    <script src="js/statistics.js?v=1.0.4"></script>
     <script src="js/calendar.js?v=1.0.3"></script>
     <script src="js/personal-calendar.js?v=1.0.2"></script>
     <script src="js/churchtools-api.js?v=1.0.1"></script>
     <script src="js/musikpool.js?v=1.0.1"></script>
     <script src="js/ui.js?v=1.0.1"></script>
-    <script src="js/logger.js?v=1.0.1"></script>
+    <script src="js/logger.js?v=1.0.3"></script>
     <script src="js/feedback-service.js?v=1.0.1"></script>
-    <script src="js/app.js?v=1.0.20"></script>
+    <script src="js/app.js?v=1.0.23"></script>
 
 
     <!-- Service Worker Registration -->

@@ -301,7 +301,7 @@ const Rehearsals = {
                             ${canManage && rehearsal.status === 'pending' ? `
                                 <button class="btn btn-primary open-rehearsal-btn" 
                                         data-rehearsal-id="${rehearsal.id}">
-                                    Öffnen & Bestätigen
+                                    Termin bestätigen
                                 </button>
                             ` : ''}
                             ${canManage ? `
@@ -460,17 +460,17 @@ const Rehearsals = {
     attachVoteHandlers(context = document) {
         // Accordion toggle handlers
         context.querySelectorAll('.accordion-header').forEach(header => {
-            // Remove existing listeners to prevent duplicates
-            const newHeader = header.cloneNode(true);
-            header.parentNode.replaceChild(newHeader, header);
+            // Use flag to prevent duplicate listeners
+            if (header._hasAccordionListener) return;
+            header._hasAccordionListener = true;
 
-            newHeader.addEventListener('click', (e) => {
+            header.addEventListener('click', (e) => {
                 // Don't toggle if clicking on action buttons or vote buttons
                 if (e.target.closest('button') && !e.target.closest('.accordion-toggle')) {
                     return;
                 }
 
-                const card = newHeader.closest('.rehearsal-card');
+                const card = header.closest('.rehearsal-card');
                 this.toggleAccordion(card);
             });
         });
@@ -599,6 +599,7 @@ const Rehearsals = {
                 const rehearsalId = btn.dataset.rehearsalId;
                 const dateIndex = parseInt(btn.dataset.dateIndex);
                 const availability = btn.dataset.availability;
+                Logger.userAction('Button', 'vote-btn', 'Click', { rehearsalId, dateIndex, availability, action: 'Vote on Rehearsal Date' });
                 await this.vote(rehearsalId, dateIndex, availability);
             });
         });
@@ -607,6 +608,7 @@ const Rehearsals = {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
+                Logger.userAction('Button', 'open-rehearsal-btn', 'Click', { rehearsalId, action: 'Open Rehearsal for Confirmation' });
                 await this.openRehearsalDetails(rehearsalId);
             });
         });
@@ -615,6 +617,7 @@ const Rehearsals = {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
+                Logger.userAction('Button', 'edit-rehearsal', 'Click', { rehearsalId, action: 'Edit Rehearsal' });
                 this.editRehearsal(rehearsalId);
             });
         });
@@ -623,6 +626,7 @@ const Rehearsals = {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const rehearsalId = btn.dataset.rehearsalId;
+                Logger.userAction('Button', 'delete-rehearsal', 'Click', { rehearsalId, action: 'Delete Rehearsal' });
                 await this.deleteRehearsal(rehearsalId);
             });
         });
@@ -1054,6 +1058,9 @@ const Rehearsals = {
         const checkboxes = document.querySelectorAll('#confirmMembersList input[type="checkbox"]:checked');
         const selectedMemberIds = Array.from(checkboxes).map(cb => cb.value);
 
+        console.log('[Email Debug] Selected IDs:', selectedMemberIds);
+        console.log('[Email Debug] Total checkboxes:', document.querySelectorAll('#confirmMembersList input[type="checkbox"]').length);
+
         // Update rehearsal with confirmed date and edited details
         await Storage.updateRehearsal(rehearsalId, {
             status: 'confirmed',
@@ -1063,16 +1070,20 @@ const Rehearsals = {
             confirmedDate: selectedDate,
             endTime: selectedEndTime
         });
-
         // Only send emails if members are selected
         if (selectedMemberIds.length > 0) {
             const members = await Storage.getBandMembers(rehearsal.bandId);
             const selectedMembers = members.filter(m => selectedMemberIds.includes(m.userId));
 
+            console.log('[Email Debug] Band members:', members);
+            console.log('[Email Debug] Selected members for email:', selectedMembers);
+
             UI.showToast('Termin bestätigt. Sende E-Mails...', 'info');
 
             // Send emails
             const result = await EmailService.sendRehearsalConfirmation(rehearsal, selectedDate, selectedMembers);
+
+            console.log('[Email Debug] EmailService result:', result);
 
             if (result.success) {
                 UI.showToast(result.message, 'success');
@@ -1311,6 +1322,26 @@ const Rehearsals = {
             deleteBtn.style.display = 'block';
         }
 
+        // Show update email section only for confirmed rehearsals
+        const updateEmailSection = document.getElementById('updateEmailSection');
+        const sendUpdateCheckbox = document.getElementById('sendUpdateEmail');
+        if (rehearsal.status === 'confirmed' && updateEmailSection) {
+            updateEmailSection.style.display = 'block';
+            if (sendUpdateCheckbox) sendUpdateCheckbox.checked = false; // Reset checkbox
+
+            // Store original rehearsal data for change detection
+            this.originalRehearsal = {
+                title: rehearsal.title,
+                description: rehearsal.description,
+                confirmedDate: rehearsal.confirmedDate,
+                locationId: rehearsal.locationId,
+                bandId: rehearsal.bandId
+            };
+        } else {
+            if (updateEmailSection) updateEmailSection.style.display = 'none';
+            this.originalRehearsal = null;
+        }
+
         // Populate band and location selects
         await Bands.populateBandSelects();
         if (typeof App !== 'undefined' && App.populateLocationSelect) {
@@ -1406,8 +1437,11 @@ const Rehearsals = {
     },
 
     // Update rehearsal
-    updateRehearsal(rehearsalId, bandId, title, description, dates, locationId, eventId, notifyMembers = false) {
-        const updatedRehearsal = Storage.updateRehearsal(rehearsalId, {
+    async updateRehearsal(rehearsalId, bandId, title, description, dates, locationId, eventId, notifyMembers = false) {
+        // Get old rehearsal data before updating
+        const oldRehearsal = await Storage.getRehearsal(rehearsalId);
+
+        const updatedRehearsal = await Storage.updateRehearsal(rehearsalId, {
             bandId,
             title,
             description,
@@ -1416,27 +1450,49 @@ const Rehearsals = {
             proposedDates: dates
         });
 
-        if (notifyMembers) {
-            EmailService.sendRehearsalUpdate(updatedRehearsal).then(result => {
-                if (result.success) {
-                    UI.showToast('Update-E-Mails wurden versendet', 'success');
-                } else {
-                    UI.showToast('Fehler beim Senden der E-Mails', 'error');
-                }
-            });
+        // Send update email if requested and rehearsal was confirmed
+        if (notifyMembers && oldRehearsal && oldRehearsal.status === 'confirmed' && updatedRehearsal) {
+            const members = await Storage.getBandMembers(bandId);
+
+            UI.showToast('Änderungen werden gespeichert und E-Mails versendet...', 'info');
+
+            const result = await EmailService.sendRehearsalUpdate(oldRehearsal, updatedRehearsal, members);
+
+            if (result.success) {
+                UI.showToast(result.message, 'success');
+            } else {
+                UI.showToast(result.message || 'Fehler beim Senden der E-Mails', 'warning');
+            }
+        } else {
+            UI.showToast('Probetermin aktualisiert', 'success');
         }
 
-        UI.showToast('Probetermin aktualisiert', 'success');
         UI.closeModal('createRehearsalModal');
-        this.renderRehearsals(this.currentFilter);
+        await this.renderRehearsals(this.currentFilter);
     },
 
-    // Delete rehearsal
     async deleteRehearsal(rehearsalId) {
         const confirmed = await UI.confirmDelete('Möchtest du diesen Probentermin wirklich löschen?');
         if (confirmed) {
+            // Sofort aus dem DOM entfernen für bessere UX
+            const card = document.querySelector(`.rehearsal-card[data-rehearsal-id="${rehearsalId}"]`);
+            if (card) {
+                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => card.remove(), 300);
+            }
+
+            // Aus dem lokalen Cache entfernen
+            if (this.rehearsals && Array.isArray(this.rehearsals)) {
+                this.rehearsals = this.rehearsals.filter(r => r.id !== rehearsalId);
+            }
+
+            // Aus der Datenbank löschen
             await Storage.deleteRehearsal(rehearsalId);
             UI.showToast('Probentermin gelöscht', 'success');
+
+            // Liste aktualisieren (lädt aus dem aktualisierten Cache)
             await this.renderRehearsals(this.currentFilter);
         }
     },

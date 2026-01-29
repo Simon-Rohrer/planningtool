@@ -26,6 +26,25 @@ const Logger = {
     },
 
     /**
+     * Log user interactions with UI elements (buttons, forms, etc.)
+     * @param {string} elementType - Type of element (e.g., 'Button', 'Form', 'Link')
+     * @param {string} elementId - ID or identifier of the element
+     * @param {string} actionType - Type of action (e.g., 'Click', 'Submit', 'Change')
+     * @param {any} [data] - Optional additional data
+     */
+    userAction: function (elementType, elementId, actionType, data = null) {
+        if (!this.debugMode) return;
+        const style = 'color: #ec4899; font-weight: bold; background: #fce7f3; padding: 2px 6px; border-radius: 3px;'; // Pink
+        const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+        const msg = `%c[USER] ${timestamp} | ${actionType} ${elementType}: ${elementId}`;
+        if (data) {
+            console.log(msg, style, data);
+        } else {
+            console.log(msg, style);
+        }
+    },
+
+    /**
      * Start a performance timer.
      * @param {string} label - Unique label for the timer
      */

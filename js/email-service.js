@@ -130,14 +130,14 @@ const EmailService = {
             if (typeof emailjs === 'undefined') await this.loadEmailJS();
             emailjs.init(this.config.publicKey);
 
-            const band = Storage.getBand(rehearsal.bandId);
+            const band = await Storage.getBand(rehearsal.bandId);
             const dateFormatted = UI.formatDate(selectedDate);
 
             // Get Location Name
             let locationName = 'Kein Ort angegeben';
             let locationAddress = '';
             if (rehearsal.locationId) {
-                const location = Storage.getLocation(rehearsal.locationId);
+                const location = await Storage.getLocation(rehearsal.locationId);
                 if (location) {
                     locationName = location.name;
                     locationAddress = location.address ? `\nAdresse: ${location.address}` : '';
@@ -145,11 +145,11 @@ const EmailService = {
             }
 
             const promises = selectedMembers.map(async (member) => {
-                const user = Storage.getById('users', member.userId);
+                const user = await Storage.getById('users', member.userId);
                 if (!user || !user.email) return null;
 
                 // Create beautiful plain-text content
-                const message = `Hallo ${user.name || user.username},
+                const message = `Hallo ${user.first_name || user.name || user.username},
 
 Deine Probe wurde bestätigt! 🎸
 
@@ -158,8 +158,7 @@ Hier sind die Details:
 Titel: ${rehearsal.title}
 Band: ${band.name}
 Datum: ${dateFormatted}
-Ort: ${locationName}${locationAddress}
-${rehearsal.description ? `\nInfo: ${rehearsal.description}` : ''}
+Ort: ${locationName}${locationAddress}${rehearsal.description ? `\n\nBeschreibung:\n${rehearsal.description}` : ''}
 
 Bitte sei pünktlich. Wir freuen uns auf dich!
 
@@ -186,6 +185,110 @@ Dein Band Planning Tool`;
             return {
                 success: successCount > 0,
                 message: `${successCount} E-Mails versendet`,
+                results
+            };
+
+        } catch (error) {
+            console.error('EmailJS error:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    async sendRehearsalUpdate(oldRehearsal, newRehearsal, selectedMembers) {
+        if (!this.isConfigured()) return { success: false, message: 'EmailJS nicht konfiguriert' };
+
+        try {
+            if (typeof emailjs === 'undefined') await this.loadEmailJS();
+            emailjs.init(this.config.publicKey);
+
+            const band = await Storage.getBand(newRehearsal.bandId);
+
+            // Get old and new location names
+            let oldLocationName = 'Kein Ort';
+            let newLocationName = 'Kein Ort';
+
+            if (oldRehearsal.locationId) {
+                const oldLoc = await Storage.getLocation(oldRehearsal.locationId);
+                if (oldLoc) oldLocationName = oldLoc.name;
+            }
+
+            if (newRehearsal.locationId) {
+                const newLoc = await Storage.getLocation(newRehearsal.locationId);
+                if (newLoc) newLocationName = newLoc.name;
+            }
+
+            // Detect changes
+            const changes = [];
+
+            if (oldRehearsal.title !== newRehearsal.title) {
+                changes.push(`Titel: "${oldRehearsal.title}" → "${newRehearsal.title}"`);
+            }
+
+            if (oldRehearsal.confirmedDate !== newRehearsal.confirmedDate) {
+                const oldDate = UI.formatDate(oldRehearsal.confirmedDate);
+                const newDate = UI.formatDate(newRehearsal.confirmedDate);
+                changes.push(`Datum: ${oldDate} → ${newDate}`);
+            }
+
+            if (oldRehearsal.locationId !== newRehearsal.locationId) {
+                changes.push(`Ort: "${oldLocationName}" → "${newLocationName}"`);
+            }
+
+            if ((oldRehearsal.description || '') !== (newRehearsal.description || '')) {
+                const oldDesc = oldRehearsal.description || '(keine)';
+                const newDesc = newRehearsal.description || '(keine)';
+                changes.push(`Beschreibung: "${oldDesc}" → "${newDesc}"`);
+            }
+
+            if (changes.length === 0) {
+                return { success: false, message: 'Keine Änderungen erkannt' };
+            }
+
+            const promises = selectedMembers.map(async (member) => {
+                const user = await Storage.getById('users', member.userId);
+                if (!user || !user.email) return null;
+
+                const changesText = changes.map(c => `• ${c}`).join('\n');
+                const dateFormatted = UI.formatDate(newRehearsal.confirmedDate);
+
+                const message = `Hallo ${user.first_name || user.name || user.username},
+
+die Probe wurde aktualisiert! ⚠️
+
+ÄNDERUNGEN:
+${changesText}
+
+AKTUELLE DETAILS:
+Titel: ${newRehearsal.title}
+Band: ${band.name}
+Datum: ${dateFormatted}
+Ort: ${newLocationName}${newRehearsal.description ? `\n\nBeschreibung:\n${newRehearsal.description}` : ''}
+
+Bitte beachte die Änderungen!
+
+Dein Band Planning Tool`;
+
+                const result = await this.sendEmail(
+                    user.email,
+                    user.name,
+                    `Probe aktualisiert: ${newRehearsal.title}`,
+                    message
+                );
+
+                return {
+                    success: result.success,
+                    email: user.email,
+                    response: result.response,
+                    error: result.success ? null : result.message
+                };
+            });
+
+            const results = await Promise.all(promises);
+            const successCount = results.filter(r => r && r.success).length;
+
+            return {
+                success: successCount > 0,
+                message: `${successCount} Update-E-Mails versendet`,
                 results
             };
 

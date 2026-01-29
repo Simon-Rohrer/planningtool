@@ -4255,29 +4255,48 @@ input:checked+.slider:before {
 /* ===== Toast ===== */
 .toast {
     position: fixed;
-    bottom: var(--spacing-xl);
-    right: var(--spacing-xl);
-    background: var(--color-text);
-    color: white;
-    padding: var(--spacing-lg) var(--spacing-xl);
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-surface);
+    color: var(--color-text);
+    padding: 1rem 2rem;
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    transform: translateY(200%);
-    transition: transform var(--transition-slow);
-    z-index: 2000;
-    max-width: 400px;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    z-index: 10000;
+    font-weight: 500;
+    border: 1px solid var(--color-border);
+}
+
+/* Dark mode specific styling for better visibility */
+:root.theme-dark .toast {
+    background: rgba(30, 35, 45, 0.95);
+    color: #ffffff;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .toast.show {
-    transform: translateY(0);
+    opacity: 1;
 }
 
 .toast.success {
     background: var(--color-success);
+    color: white;
+    border-color: var(--color-success);
 }
 
 .toast.error {
     background: var(--color-danger);
+    color: white;
+    border-color: var(--color-danger);
+}
+
+.toast.warning {
+    background: var(--color-warning);
+    color: white;
+    border-color: var(--color-warning);
 }
 
 /*Buttons Simon*/
@@ -6066,62 +6085,6 @@ s .time-suggestions-compact {
     display: inline-block !important;
 }
 
-/* Tutorial / Tour overlay styles */
-.tour-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 99999;
-    pointer-events: none;
-}
-
-.tour-overlay.active {
-    pointer-events: auto;
-}
-
-.tour-highlight {
-    position: absolute;
-    border: 3px solid rgba(99, 102, 241, 0.95);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
-    transition: all 0.18s ease;
-    pointer-events: none;
-}
-
-.tour-tooltip {
-    position: absolute;
-    max-width: 340px;
-    background: var(--color-surface, #fff);
-    color: var(--color-text, #111827);
-    border-radius: 8px;
-    padding: 0.75rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-    border: 1px solid var(--color-border, #e5e7eb);
-    pointer-events: auto;
-}
-
-.tour-tooltip h3 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1rem;
-}
-
-.tour-tooltip p {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--color-text-secondary);
-}
-
-.tour-tooltip .btn {
-    font-size: 0.9rem;
-}
-
-/* Small responsive adjustments */
-@media (max-width: 768px) {
-    .tour-tooltip {
-        max-width: 90%;
-        font-size: 0.95rem;
-    }
-}
 
 /* Apply mobile calendar/button rules between 390px and 580px
     so the arrows and buttons remain side-by-side in this range */

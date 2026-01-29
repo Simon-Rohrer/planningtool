@@ -308,6 +308,7 @@ const Events = {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const eventId = btn.dataset.eventId;
+                Logger.userAction('Button', 'edit-event', 'Click', { eventId, action: 'Edit Event' });
                 await this.editEvent(eventId);
             });
         });
@@ -316,6 +317,7 @@ const Events = {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const eventId = btn.dataset.eventId;
+                Logger.userAction('Button', 'delete-event', 'Click', { eventId, action: 'Delete Event' });
                 await this.deleteEvent(eventId);
             });
         });
@@ -554,6 +556,16 @@ const Events = {
         }
         document.getElementById('eventGuests').value = (event.guests || []).join('\n');
 
+        // Checkboxen für Extras/Gäste korrekt setzen
+        const showExtras = (event.soundcheckLocation && event.soundcheckLocation.trim() !== '') || (event.info && event.info.trim() !== '') || (event.techInfo && event.techInfo.trim() !== '');
+        document.getElementById('eventShowExtras').checked = !!showExtras;
+        // Zeige/Verstecke die Felder entsprechend
+        document.getElementById('eventExtrasFields').style.display = showExtras ? '' : 'none';
+
+        const showGuests = Array.isArray(event.guests) && event.guests.length > 0;
+        document.getElementById('eventShowGuests').checked = !!showGuests;
+        document.getElementById('eventGuestsField').style.display = showGuests ? '' : 'none';
+
         // Open modal first so the container exists
         UI.openModal('createEventModal');
 
@@ -605,9 +617,21 @@ const Events = {
     async deleteEvent(eventId) {
         const confirmed = await UI.confirmDelete('Möchtest du diesen Auftritt wirklich löschen?');
         if (confirmed) {
+            // Sofort aus dem DOM entfernen für bessere UX
+            const card = document.querySelector(`.event-card[data-event-id="${eventId}"]`);
+            if (card) {
+                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => card.remove(), 300);
+            }
+
+            // Aus der Datenbank löschen
             Storage.deleteEvent(eventId);
             UI.showToast('Auftritt gelöscht', 'success');
-            this.renderEvents(this.currentFilter);
+
+            // Liste neu laden
+            setTimeout(() => this.renderEvents(this.currentFilter), 350);
         }
     },
 
@@ -655,15 +679,6 @@ const Events = {
                     <label for="member_${user.id}">${Bands.escapeHtml(this._getUserName(user))}${absenceHtml}</label>
                 </div>
             `;
-            // Checkboxen für Extras/Gäste korrekt setzen
-            const showExtras = (event.soundcheckLocation && event.soundcheckLocation.trim() !== '') || (event.info && event.info.trim() !== '') || (event.techInfo && event.techInfo.trim() !== '');
-            document.getElementById('eventShowExtras').checked = !!showExtras;
-            // Zeige/Verstecke die Felder entsprechend
-            document.getElementById('eventExtrasFields').style.display = showExtras ? '' : 'none';
-
-            const showGuests = Array.isArray(event.guests) && event.guests.length > 0;
-            document.getElementById('eventShowGuests').checked = !!showGuests;
-            document.getElementById('eventGuestsField').style.display = showGuests ? '' : 'none';
         })).then(items => items.join(''));
         // Add event listener for date change to update absences live
         const eventDateInput = document.getElementById('eventDate');

@@ -405,256 +405,7 @@ const App = {
         }
     },
 
-    /* ===== Tutorial / Guided Tour ===== */
-    showTutorialSuggestBanner() {
-        try {
-            const banner = document.getElementById('tutorialSlideBanner');
-            const startBtn = document.getElementById('tutorialStartSlideBtn');
-            const dismissBtn = document.getElementById('tutorialDismissSlideBtn');
-            if (!banner) return;
 
-            // If dismissed before, don't show
-            if (localStorage.getItem('tutorialBannerDismissed') === '1') return;
-
-            banner.style.display = 'flex';
-            if (startBtn) startBtn.onclick = (e) => {
-                e.preventDefault();
-                this.startTutorial();
-                banner.style.display = 'none';
-                // Implicitly dismiss on start so it doesn't annoy again
-                localStorage.setItem('tutorialBannerDismissed', '1');
-            };
-            if (dismissBtn) dismissBtn.onclick = (e) => {
-                e.preventDefault();
-                banner.style.display = 'none';
-                localStorage.setItem('tutorialBannerDismissed', '1');
-            };
-        } catch (err) {
-            console.error('Error showing tutorial banner:', err);
-        }
-    },
-
-    async startTutorial(steps) {
-        // Updated Modern Tour Steps
-        this.tour = this.tour || {};
-        this.tour.steps = steps || [
-            {
-                navigate: 'dashboard',
-                sel: '#headerProfileImage', // Center welcome if possible, but header is safe
-                title: 'Willkommen! 👋',
-                body: 'Schön, dass du da bist! Lass uns einen kurzen Rundgang machen, damit du sofort loslegen kannst. Wir starten im Dashboard.',
-                center: true // Custom flag to center tooltip
-            },
-            {
-                navigate: 'dashboard',
-                sel: '.dashboard-grid',
-                title: 'Dein Dashboard',
-                body: 'Hier siehst du auf einen Blick, was ansteht. Diese Karten sind INTERAKTIV! Klicke z.B. auf "Nächste Auftritte", um direkt zu deinen Auftritten zu springen.'
-            },
-            {
-                navigate: 'dashboard',
-                sel: '#nextEventHero',
-                title: 'Nächster Termin',
-                body: 'Dein absolut nächster Termin wird hier prominent angezeigt. Ein Klick auf die Karte bringt dich direkt zu den Details.'
-            },
-            {
-                title: 'Navigation',
-                navigate: 'dashboard',
-                sel: '.app-sidebar', // Desktop
-                mobileSel: '#mobileMenuBtn', // Mobile fallback
-                body: 'Über die Seitenleiste (oder das Menü oben links auf dem Handy) erreichst du alle Bereiche: Bands, Planung, Auftritte und mehr.'
-            },
-            {
-                navigate: 'events',
-                sel: '.nav-item[data-view="events"]',
-                title: 'Auftritte / Gigs',
-                body: 'Hier planst du deine Shows. Erstelle Setlists, verwalte Details und teile Infos mit deiner Band. Jetzt neu: Mit CCLI-Spalte!'
-            },
-            {
-                navigate: 'rehearsals',
-                sel: '.nav-item[data-view="rehearsals"]',
-                title: 'Probetermine',
-                body: 'Finde gemeinsame Termine. Du kannst Umfragen erstellen und sehen, wer wann kann.'
-            },
-            {
-                navigate: 'settings',
-                sel: '#openSettingsBtnSidebar', // Desktop
-                mobileSel: '#headerProfileImage', // Mobile
-                title: 'Dein Profil',
-                body: 'Hier kannst du dein Instrument, Passwort und Benachrichtigungen einstellen.'
-            }
-        ];
-        this.tour.index = 0;
-        this.tourOverlay = document.getElementById('tutorialOverlay');
-        this.tourHighlight = document.getElementById('tourHighlight');
-        this.tourTooltip = document.getElementById('tourTooltip');
-
-        if (!this.tourOverlay || !this.tourHighlight || !this.tourTooltip) {
-            console.error('Tutorial elements missing');
-            return;
-        }
-
-        this.tourOverlay.style.display = 'block';
-        // Force reflow
-        void this.tourOverlay.offsetWidth;
-        this.tourOverlay.classList.add('active');
-        document.body.classList.add('no-scroll'); // Disable scrolling
-
-        // Wire up controls
-        const nextBtn = document.getElementById('tourNextBtn');
-        const prevBtn = document.getElementById('tourPrevBtn');
-        const endBtn = document.getElementById('tourEndBtn');
-
-        if (nextBtn) nextBtn.onclick = () => this.nextTutorialStep();
-        if (prevBtn) prevBtn.onclick = () => this.prevTutorialStep();
-        if (endBtn) endBtn.onclick = () => this.endTutorial();
-
-        // Initialize calendar module if needed
-        if (typeof Calendar !== 'undefined' && Calendar.initCalendars) {
-            await Calendar.initCalendars();
-        }
-
-        // Keyboard navigation
-        this._tourKeyHandler = (e) => {
-            if (e.key === 'Escape') this.endTutorial();
-            if (e.key === 'ArrowRight') this.nextTutorialStep();
-            if (e.key === 'ArrowLeft') this.prevTutorialStep();
-        };
-        document.addEventListener('keydown', this._tourKeyHandler);
-
-        await this.renderTutorialStep(this.tour.index);
-    },
-
-    async renderTutorialStep(idx) {
-        if (!this.tour || !Array.isArray(this.tour.steps)) return;
-        if (idx < 0 || idx >= this.tour.steps.length) {
-            this.endTutorial();
-            return;
-        }
-        this.tour.index = idx;
-        const step = this.tour.steps[idx];
-
-        // 1. Navigate if needed
-        try {
-            if (step.navigate) {
-                // Determine if we need to switch view
-                const currentView = document.querySelector('.view.active')?.id.replace('View', '');
-                if (currentView !== step.navigate) {
-                    await this.navigateTo(step.navigate, 'tutorial-step');
-                    await new Promise(r => setTimeout(r, 300)); // Wait for render
-                }
-            }
-        } catch (navErr) {
-            console.warn('Tour navigation error:', navErr);
-        }
-
-        // 2. Select Element (Desktop vs Mobile handling)
-        const isMobile = window.innerWidth <= 768;
-        let selector = isMobile && step.mobileSel ? step.mobileSel : step.sel;
-
-        let el = null;
-        if (selector) {
-            el = document.querySelector(selector);
-        }
-
-        // Handle "centered" steps (no specific target, e.g. Intro)
-        if (step.center || !el) {
-            // Position highlight off-screen or hide it
-            this.tourHighlight.style.width = '0px';
-            this.tourHighlight.style.height = '0px';
-            this.tourHighlight.style.top = '50%';
-            this.tourHighlight.style.left = '50%';
-            this.tourHighlight.style.boxShadow = '0 0 0 9999px rgba(0,0,0,0.7)'; // Maintain dimming
-
-            // Center tooltip
-            this.tourTooltip.style.display = 'block';
-            this.tourTooltip.style.top = '50%';
-            this.tourTooltip.style.left = '50%';
-            this.tourTooltip.style.transform = 'translate(-50%, -50%)';
-        } else {
-            // Target found
-            el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-
-            // Wait a bit for scroll
-            await new Promise(r => setTimeout(r, 100));
-            const rect = el.getBoundingClientRect();
-
-            // Update Highlight
-            const pad = 8;
-            // Overlay is fixed, so we use viewport coordinates directly (no scrollY/scrollX addition)
-            this.tourHighlight.style.top = (rect.top - pad) + 'px';
-            this.tourHighlight.style.left = (rect.left - pad) + 'px';
-            this.tourHighlight.style.width = (rect.width + pad * 2) + 'px';
-            this.tourHighlight.style.height = (rect.height + pad * 2) + 'px';
-            this.tourHighlight.style.boxShadow = '0 0 0 9999px rgba(0,0,0,0.7)';
-            this.tourHighlight.style.display = 'block';
-
-            // Position Tooltip Smartly
-            this.tourTooltip.style.display = 'block';
-            this.tourTooltip.style.transform = 'none'; // Reset center transform
-
-            const ttRect = this.tourTooltip.getBoundingClientRect();
-            // Use viewport coordinates
-            let ttTop = rect.bottom + 20;
-            let ttLeft = rect.left + (rect.width / 2) - (ttRect.width / 2);
-
-            // Check bounds
-            if (ttLeft < 10) ttLeft = 10;
-            if (ttLeft + ttRect.width > window.innerWidth - 10) ttLeft = window.innerWidth - ttRect.width - 10;
-
-            if (ttTop + ttRect.height > window.innerHeight) {
-                // Flip to top if no space below
-                ttTop = rect.top - ttRect.height - 20;
-            }
-
-            this.tourTooltip.style.top = ttTop + 'px';
-            this.tourTooltip.style.left = ttLeft + 'px';
-        }
-
-        // Update Content
-        document.getElementById('tourTitle').textContent = step.title;
-        document.getElementById('tourBody').textContent = step.body;
-
-        // Update Buttons
-        const nextBtn = document.getElementById('tourNextBtn');
-        const prevBtn = document.getElementById('tourPrevBtn');
-
-        if (prevBtn) prevBtn.style.display = idx === 0 ? 'none' : 'inline-block';
-        if (nextBtn) nextBtn.textContent = idx === this.tour.steps.length - 1 ? 'Fertig' : 'Weiter';
-    },
-
-    async nextTutorialStep() {
-        if (!this.tour) return;
-        if (this.tour.index >= this.tour.steps.length - 1) {
-            this.endTutorial();
-        } else {
-            await this.renderTutorialStep(this.tour.index + 1);
-        }
-    },
-
-    async prevTutorialStep() {
-        if (!this.tour) return;
-        await this.renderTutorialStep(Math.max(0, this.tour.index - 1));
-    },
-
-    endTutorial() {
-        try {
-            if (this.tourOverlay) {
-                this.tourOverlay.style.display = 'none';
-                this.tourOverlay.classList.remove('active');
-            }
-            document.body.classList.remove('no-scroll'); // Re-enable scrolling
-            if (this.tourHighlight) {
-                this.tourHighlight.style.width = '0px';
-            }
-            document.removeEventListener('keydown', this._tourKeyHandler);
-            this.tour = null;
-            this._tourKeyHandler = null;
-            UI.showToast('Tutorial beendet', 'success');
-        } catch (err) {
-            console.error('Error ending tutorial:', err);
-        }
-    },
 
     // Measure header submenu button label widths and store in CSS variable
     updateHeaderUnderlineWidths() {
@@ -839,6 +590,7 @@ const App = {
         if (openSettingsBtn && !openSettingsBtn._clickHandlerAttached) {
             openSettingsBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                Logger.userAction('Button', 'openSettingsBtnSidebar', 'Click', { action: 'Open Settings' });
                 // Close any open submenus
                 document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
                     group.classList.remove('expanded');
@@ -853,6 +605,7 @@ const App = {
         if (feedbackBtn && !feedbackBtn._clickHandlerAttached) {
             feedbackBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                Logger.userAction('Button', 'feedbackBtnSidebar', 'Click', { action: 'Open Feedback Modal' });
                 // Close any open submenus
                 document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
                     group.classList.remove('expanded');
@@ -867,6 +620,7 @@ const App = {
         if (sidebarLogoutBtn && !sidebarLogoutBtn._clickHandlerAttached) {
             sidebarLogoutBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                Logger.userAction('Button', 'sidebarLogoutBtn', 'Click', { action: 'Logout from Sidebar' });
                 // Close any open submenus
                 document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
                     group.classList.remove('expanded');
@@ -1071,7 +825,7 @@ const App = {
         this.setupFeedbackModal();
         this.setupPDFPreviewModal();
 
-        // NOTE: tutorial banner will be shown after auth initialization below
+
 
         // Start Auth initialization in background (non-blocking)
 
@@ -1105,12 +859,6 @@ const App = {
                     // Clean up past events and rehearsals (Run in background)
                     Storage.cleanupPastItems();
 
-                    // Show tutorial suggest banner for admins (if not dismissed)
-                    try {
-                        if (Auth.isAdmin && Auth.isAdmin()) {
-                            setTimeout(() => this.showTutorialSuggestBanner(), 350);
-                        }
-                    } catch (err) { /* ignore */ }
                 });
             } else {
                 this.showAuth();
@@ -1617,6 +1365,7 @@ const App = {
 
         // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
+            Logger.userAction('Button', 'logoutBtn', 'Click', { action: 'Logout from Header' });
             this.handleLogout();
         });
 
@@ -1662,6 +1411,7 @@ const App = {
 
         // Add member button
         document.getElementById('addMemberBtn').addEventListener('click', () => {
+            Logger.userAction('Button', 'addMemberBtn', 'Click', { action: 'Open Add Member Modal' });
             UI.openModal('addMemberModal');
         });
 
@@ -1673,6 +1423,7 @@ const App = {
 
         // Delete band button
         document.getElementById('deleteBandBtn').addEventListener('click', async () => {
+            Logger.userAction('Button', 'deleteBandBtn', 'Click', { bandId: Bands.currentBandId });
             if (Bands.currentBandId) {
                 await Bands.deleteBand(Bands.currentBandId);
             }
@@ -1689,6 +1440,7 @@ const App = {
                 });
             }
             createRehearsalBtn.addEventListener('click', async () => {
+                Logger.userAction('Button', 'createRehearsalBtn', 'Click', { action: 'Open New Rehearsal Modal' });
                 // Reset form for new rehearsal
                 document.getElementById('rehearsalModalTitle').textContent = 'Neuen Probetermin vorschlagen';
                 document.getElementById('saveRehearsalBtn').textContent = 'Vorschlag erstellen';
@@ -1794,6 +1546,7 @@ const App = {
         // Delete rehearsal button
         document.getElementById('deleteRehearsalBtn').addEventListener('click', async () => {
             const rehearsalId = document.getElementById('editRehearsalId').value;
+            Logger.userAction('Button', 'deleteRehearsalBtn', 'Click', { rehearsalId });
             if (rehearsalId) {
                 await Rehearsals.deleteRehearsal(rehearsalId);
                 UI.closeModal('createRehearsalModal');
@@ -1810,6 +1563,7 @@ const App = {
 
         // Create event button
         document.getElementById('createEventBtn').addEventListener('click', () => {
+            Logger.userAction('Button', 'createEventBtn', 'Click', { action: 'Open New Event Modal' });
             // Reset form for new event
             document.getElementById('eventModalTitle').textContent = 'Neuen Auftritt erstellen';
             document.getElementById('saveEventBtn').textContent = 'Auftritt erstellen';
@@ -2343,7 +2097,7 @@ const App = {
         if (joinBandForm) {
             joinBandForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const code = document.getElementById('joinBandCode').value;
+                const code = document.getElementById('joinBandCode').value; Logger.userAction('Submit', 'joinBandForm', 'Join Band', { code });
                 Bands.joinBand(code);
             });
         }
@@ -2496,6 +2250,7 @@ const App = {
                     await Bands.populateBandSelects();
                     await Rehearsals.renderRehearsals();
                 } else if (view === 'statistics') {
+                    await Statistics.initStatisticsFilters();
                     await Statistics.renderGeneralStatistics();
                 } else if (view === 'news') {
                     await this.renderNewsView();
@@ -4855,32 +4610,6 @@ const App = {
         // Default to profile tab
         this.switchSettingsTab('profile');
 
-        // Admin-only: show tutorial/test button in profile settings (scoped)
-        // Universal: show tutorial/test button in profile settings
-        try {
-            const adminTutorialSection = root.querySelector('#adminTutorialSection');
-            const adminTutorialBtn = root.querySelector('#adminShowTutorialBtn');
-            // Show for everyone now
-            if (adminTutorialSection) adminTutorialSection.style.display = 'block';
-            if (adminTutorialBtn) {
-                adminTutorialBtn.style.display = 'inline-block';
-                adminTutorialBtn.textContent = 'Tour starten'; // Update text to match user request
-                adminTutorialBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Start the interactive tutorial/tour
-                    try {
-                        UI.closeModal('settingsModal'); // Close settings first
-                        this.startTutorial();
-                        UI.showToast('Tutorial wird gestartet', 'info');
-                    } catch (err) {
-                        console.error('Fehler beim Starten des Tutorials:', err);
-                        UI.showToast('Fehler beim Starten des Tutorials', 'error');
-                    }
-                });
-            }
-        } catch (err) {
-            console.error('Error initializing admin tutorial button:', err);
-        }
 
         // Account delete button (scoped to settings view)
         const deleteAccountBtn = root.querySelector('#deleteAccountBtn');
@@ -7391,7 +7120,7 @@ const App = {
     // Handle create band
     handleCreateBand() {
         const name = document.getElementById('bandName').value;
-        const description = document.getElementById('bandDescription').value;
+        const description = document.getElementById('bandDescription').value; Logger.userAction('Submit', 'createBandForm', 'Create Band', { name, description });
 
         Bands.createBand(name, description).then(async () => {
             UI.clearForm('createBandForm');
@@ -7658,13 +7387,15 @@ const App = {
             return;
         }
 
-        const proceed = () => {
+        const proceed = async () => {
             if (editId) {
                 // Update existing
-                const notifyMembers = document.getElementById('notifyMembersOnUpdate').checked;
-                Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId, notifyMembers);
+                Logger.userAction('Form', 'rehearsalForm', 'Submit', { action: 'Update Rehearsal', rehearsalId: editId, title, bandId });
+                const notifyMembers = document.getElementById('sendUpdateEmail')?.checked || false;
+                await Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId, notifyMembers);
             } else {
                 // Create new
+                Logger.userAction('Form', 'rehearsalForm', 'Submit', { action: 'Create Rehearsal', title, bandId });
                 Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);
             }
         };
@@ -7782,6 +7513,7 @@ const App = {
 
             if (editId) {
                 // Update existing
+                Logger.userAction('Form', 'eventForm', 'Submit', { action: 'Update Event', eventId: editId, title, bandId });
                 Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
                 // If there are draft songs, copy them to the existing event
                 if (this.draftEventSongIds && this.draftEventSongIds.length > 0) {
@@ -7790,6 +7522,7 @@ const App = {
                 }
             } else {
                 // Create new
+                Logger.userAction('Form', 'eventForm', 'Submit', { action: 'Create Event', title, bandId });
                 const saved = Events.createEvent(bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
                 if (saved && saved.id && this.draftEventSongIds && this.draftEventSongIds.length > 0) {
                     this.copyBandSongsToEvent(saved.id, this.draftEventSongIds);
