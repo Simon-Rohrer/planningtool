@@ -1014,7 +1014,7 @@ const App = {
             });
         }
 
-        const soundCheckBtn = document.getElementById('soundCheckBtn');
+        const soundCheckBtn = document.getElementById('soundCheckHeroBtn');
         if (soundCheckBtn) {
             soundCheckBtn.addEventListener('click', () => {
                 const body = document.body;
@@ -1133,7 +1133,7 @@ const App = {
         document.querySelectorAll('.auth-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 const tabName = tab.dataset.tab;
-                this.switchAuthTab(tabName);
+                UI.switchAuthTab(tabName);
             });
         });
 
@@ -1143,6 +1143,90 @@ const App = {
             const rememberMe = document.getElementById('loginRememberMe')?.checked;
             await this.handleLogin(undefined, undefined, rememberMe);
         });
+
+        // Live Username Check
+        const regUserInput = document.getElementById('registerUsername');
+        if (regUserInput) {
+            let timeout;
+            regUserInput.addEventListener('input', (e) => {
+                clearTimeout(timeout);
+                const username = e.target.value.trim();
+                let feedback = document.getElementById('usernameFeedback');
+                if (!feedback) {
+                    feedback = document.createElement('div');
+                    feedback.id = 'usernameFeedback';
+                    feedback.style.fontSize = '0.85rem';
+                    feedback.style.marginTop = '0.25rem';
+                    regUserInput.parentNode.appendChild(feedback);
+                }
+
+                if (username.length < 5) {
+                    feedback.textContent = '⚠️ Benutzername muss mindestens 5 Zeichen lang sein';
+                    feedback.style.color = '#fbbf24'; // amber-400
+                    regUserInput.style.borderColor = '#fbbf24';
+                    return;
+                }
+
+                // Immediate feedback while typing
+                feedback.textContent = '⏳ Verfügbarkeit wird geprüft...';
+                feedback.style.color = '#fbbf24'; // amber-400 for loading
+                regUserInput.style.borderColor = '#fbbf24';
+
+                timeout = setTimeout(async () => {
+                    const sb = SupabaseClient.getClient();
+                    if (!sb) return;
+
+                    const { data, error } = await sb
+                        .from('users')
+                        .select('username')
+                        .ilike('username', username)
+                        .maybeSingle();
+
+                    const submitBtn = document.querySelector('#registerForm button[type="submit"]');
+
+                    if (data) {
+                        feedback.textContent = '❌ Dieser Benutzername ist bereits vergeben.';
+                        feedback.style.color = '#ef4444'; // red-500
+                        regUserInput.style.borderColor = '#ef4444';
+                        if (submitBtn) submitBtn.disabled = true;
+                    } else {
+                        feedback.textContent = '✅ Benutzername verfügbar';
+                        feedback.style.color = '#4ade80'; // green-400
+                        regUserInput.style.borderColor = '#4ade80';
+                        if (submitBtn) submitBtn.disabled = false;
+                    }
+                }, 500);
+            });
+        }
+
+        // Live Password Check
+        const regPasswordInput = document.getElementById('registerPassword');
+        if (regPasswordInput) {
+            regPasswordInput.addEventListener('input', (e) => {
+                const password = e.target.value;
+                let feedback = document.getElementById('passwordFeedback');
+                if (!feedback) {
+                    feedback = document.createElement('div');
+                    feedback.id = 'passwordFeedback';
+                    feedback.style.fontSize = '0.85rem';
+                    feedback.style.marginTop = '0.25rem';
+                    regPasswordInput.parentNode.appendChild(feedback);
+                }
+
+                if (password.length > 0 && password.length < 6) {
+                    feedback.textContent = '⚠️ Passwort muss mindestens 6 Zeichen haben';
+                    feedback.style.color = '#fbbf24'; // amber-400
+                    regPasswordInput.style.borderColor = '#fbbf24';
+                } else if (password.length >= 6) {
+                    feedback.textContent = '✅ Passwort-Länge ok';
+                    feedback.style.color = '#4ade80'; // green-400
+                    regPasswordInput.style.borderColor = '#4ade80';
+                } else {
+                    feedback.textContent = '';
+                    regPasswordInput.style.borderColor = '';
+                }
+            });
+        }
 
         // Listen for password recovery event
         window.addEventListener('auth:password_recovery', () => {
@@ -2345,24 +2429,6 @@ const App = {
     },
 
     // Auth tab switching
-    switchAuthTab(tabName) {
-        document.querySelectorAll('.auth-tab').forEach(tab => {
-            if (tab.dataset.tab === tabName) {
-                tab.classList.add('active');
-            } else {
-                tab.classList.remove('active');
-            }
-        });
-
-        document.querySelectorAll('.auth-form').forEach(form => {
-            if (form.id === `${tabName}Form`) {
-                form.classList.add('active');
-            } else {
-                form.classList.remove('active');
-            }
-        });
-    },
-
     // Tab switching in modals
     switchTab(tabName) {
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -3817,7 +3883,7 @@ const App = {
     showBandSongSelector(eventId, bandSongs) {
         // Create a simple selection UI
         const songList = bandSongs.map(song => `
-            <label style="display: block; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border);">
+            <label class="song-selection-label" style="display: block; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border); cursor: pointer;">
                 <input type="checkbox" value="${song.id}" class="band-song-checkbox">
                 <strong>${this.escapeHtml(song.title)}</strong> - ${this.escapeHtml(song.artist)}
                 ${song.bpm ? `| ${song.bpm} BPM` : ''}
@@ -3826,7 +3892,11 @@ const App = {
         `).join('');
 
         const modalContent = `
-            <div style="max-height: 400px; overflow-y: auto;">
+            <div class="search-wrapper" style="margin-bottom: 1rem;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="modalSongSearch" placeholder="Songs durchsuchen..." class="modern-search-input" style="width: 100%;">
+            </div>
+            <div class="modal-song-list-container" style="max-height: 400px; overflow-y: auto;">
                 ${songList}
             </div>
             <div style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
@@ -3850,6 +3920,17 @@ const App = {
         `;
         document.body.appendChild(tempModal);
 
+        // Add search functionality
+        const searchInput = tempModal.querySelector('#modalSongSearch');
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const labels = tempModal.querySelectorAll('.song-selection-label');
+            labels.forEach(label => {
+                const text = label.textContent.toLowerCase();
+                label.style.display = text.includes(term) ? 'block' : 'none';
+            });
+        });
+
         // Add handlers
         tempModal.querySelector('#cancelCopySongs').addEventListener('click', () => {
             tempModal.remove();
@@ -3864,12 +3945,6 @@ const App = {
         // Close on overlay click
         tempModal.addEventListener('click', (e) => {
             if (e.target === tempModal) {
-
-                // Hide loading overlay after all data/UI is ready
-                if (overlay) {
-                    overlay.style.opacity = '0';
-                    setTimeout(() => overlay.style.display = 'none', 400);
-                }
                 tempModal.remove();
             }
         });
@@ -3878,7 +3953,7 @@ const App = {
     // Similar to showBandSongSelector but adds selected songs to the draft for a new event
     showBandSongSelectorForDraft(bandSongs) {
         const songList = bandSongs.map(song => `
-            <label style="display: block; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border);">
+            <label class="song-selection-label" style="display: block; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border); cursor: pointer;">
                 <input type="checkbox" value="${song.id}" class="band-song-checkbox-draft">
                 <strong>${this.escapeHtml(song.title)}</strong> - ${this.escapeHtml(song.artist)}
                 ${song.bpm ? `| ${song.bpm} BPM` : ''}
@@ -3887,7 +3962,11 @@ const App = {
         `).join('');
 
         const modalContent = `
-            <div style="max-height: 400px; overflow-y: auto;">
+            <div class="search-wrapper" style="margin-bottom: 1rem;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="modalSongSearchDraft" placeholder="Songs durchsuchen..." class="modern-search-input" style="width: 100%;">
+            </div>
+            <div class="modal-song-list-container" style="max-height: 400px; overflow-y: auto;">
                 ${songList}
             </div>
             <div style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
@@ -3909,6 +3988,17 @@ const App = {
             </div>
         `;
         document.body.appendChild(tempModal);
+
+        // Add search functionality
+        const searchInput = tempModal.querySelector('#modalSongSearchDraft');
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const labels = tempModal.querySelectorAll('.song-selection-label');
+            labels.forEach(label => {
+                const text = label.textContent.toLowerCase();
+                label.style.display = text.includes(term) ? 'block' : 'none';
+            });
+        });
 
         tempModal.querySelector('#cancelDraftSongs').addEventListener('click', () => {
             tempModal.remove();
@@ -4354,6 +4444,11 @@ const App = {
         if (mainApp) mainApp.style.display = 'none';
 
         document.getElementById('app').style.display = 'none';
+
+        // Safety: Ensure auth overlay is closed by default
+        if (typeof UI !== 'undefined' && UI.toggleAuthOverlay) {
+            UI.toggleAuthOverlay(false);
+        }
     },
 
     // Show main application

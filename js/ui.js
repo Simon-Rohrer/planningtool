@@ -33,6 +33,57 @@ const UI = {
         }
     },
 
+    // Toggle central auth overlay for landing page
+    toggleAuthOverlay(show = true, tabName = 'login') {
+        const overlay = document.getElementById('authOverlay');
+        if (overlay) {
+            if (show) {
+                overlay.classList.add('active');
+                document.body.classList.add('modal-open');
+                // Auto-switch to requested tab
+                this.switchAuthTab(tabName);
+
+                // Add One-Time Click Listener for outside click
+                const clickHandler = (e) => {
+                    if (e.target === overlay) {
+                        this.toggleAuthOverlay(false);
+                        overlay.removeEventListener('click', clickHandler);
+                    }
+                };
+                overlay.addEventListener('click', clickHandler);
+                // Store reference to remove it if closed via button
+                overlay._clickHandler = clickHandler;
+            } else {
+
+                overlay.classList.remove('active');
+                document.body.classList.remove('modal-open');
+                if (overlay._clickHandler) {
+                    overlay.removeEventListener('click', overlay._clickHandler);
+                    delete overlay._clickHandler;
+                }
+            }
+        }
+    },
+
+    // Switch between Login and Register tabs
+    switchAuthTab(tabName) {
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            if (tab.dataset.tab === tabName) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+
+        document.querySelectorAll('.auth-form').forEach(form => {
+            if (form.id === `${tabName}Form`) {
+                form.classList.add('active');
+            } else {
+                form.classList.remove('active');
+            }
+        });
+    },
+
     closeModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {

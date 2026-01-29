@@ -22,10 +22,10 @@
     <!-- <link rel="apple-touch-icon" href="/images/icon-192.png"> -->
 
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="css/style.css?v=2.1">
+    <link rel="stylesheet" href="css/style.css?v=1769686133">
     <link rel="stylesheet" href="css/sidebar.css">
     <link rel="stylesheet" href="css/calendar.css">
-    <link rel="stylesheet" href="css/loader.css">
+    <!-- <link rel="stylesheet" href="css/loader.css"> Removed: Consolidated into style.css -->
     <link rel="stylesheet" href="css/settings_modal.css">
     <link rel="stylesheet" href="css/statistics.css">
 
@@ -108,209 +108,207 @@
             };
         })();
     </script>
-    <!-- Landing Page with Split Layout -->
+    <!-- EXACT REFERENCE DESIGN -->
     <div id="landingPage" class="landing-page active">
-        <div class="landing-container">
-            <!-- Left Side: Welcome Text -->
-            <div class="landing-left" id="heroArea">
-                <div class="welcome-content">
-                    <div class="welcome-logo">🎸</div>
-                    <h1>Fokus auf die Musik, wir regeln den Rest</h1>
-                    <p class="hero-subtitle">Plane Proben, verwalte Auftritte und bleib mit deinem Team in Verbindung –
-                        alles
-                        an einem Ort.</p>
-
-                    <div class="feature-grid">
-                        <div class="feature-item">
-                            <span class="feature-icon">📅</span>
-                            <div class="feature-text">
-                                <strong>Smart Planning</strong>
-                                <p>Termine finden, die für alle passen.</p>
-                            </div>
-                        </div>
-                        <div class="feature-item">
-                            <span class="feature-icon">🎤</span>
-                            <div class="feature-text">
-                                <strong>Gig Management</strong>
-                                <p>Alle Details zu deinen Auftritten im Blick.</p>
-                            </div>
-                        </div>
-                        <div class="feature-item">
-                            <span class="feature-icon">📊</span>
-                            <div class="feature-text">
-                                <strong>Insights</strong>
-                                <p>Statistiken zu deiner Band-Aktivität.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="hero-actions" style="margin-top: var(--spacing-xl);">
-                        <button id="soundCheckBtn" class="btn btn-secondary stage-btn">
-                            ⚡ Virtueller Soundcheck
-                        </button>
-                    </div>
-                </div>
+        <header class="landing-header">
+            <div class="landing-logo">
+                <img src="images/logo-planning.png" alt="Band Planning" style="height: 50px; width: auto;">
+                <span>BAND PLANNING</span>
             </div>
+            <nav class="landing-nav">
+                <!-- Buttons removed per user request -->
+            </nav>
+        </header>
 
-            <!-- Right Side: Login/Register Forms -->
-            <div class="landing-right">
-                <div class="auth-container">
-                    <div class="auth-tabs">
-                        <button class="auth-tab active" data-tab="login">Anmelden</button>
-                        <button class="auth-tab" data-tab="register">Registrieren</button>
-                    </div>
+        <main class="landing-main">
+            <h1 class="hero-welcome">Welcome</h1>
+            <p class="hero-sub">
+                Organisiere deine Proben, verwalte Auftritte und bleib mit deinem Team in Verbindung.
+                Alles an einem Ort.
+            </p>
+            <div class="landing-buttons"
+                style="margin-top: 2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                <button class="btn-ref-learn" onclick="UI.toggleAuthOverlay(true, 'login')">Login</button>
+                <button class="btn-ref-outline" onclick="UI.toggleAuthOverlay(true, 'register')">Registrieren</button>
+            </div>
+        </main>
 
-                    <!-- Login Form -->
-                    <form id="loginForm" class="auth-form active">
-                        <div class="form-group">
-                            <label for="loginUsername">Benutzername oder E-Mail</label>
-                            <input type="text" id="loginUsername" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="loginPassword">Passwort</label>
-                            <input type="password" id="loginPassword" required>
-                        </div>
-                        <div class="form-actions-row">
-                            <div class="form-check">
-                                <input type="checkbox" id="loginRememberMe">
-                                <label for="loginRememberMe">Angemeldet bleiben</label>
-                            </div>
-                            <button type="button" class="btn-link forgot-password">Passwort vergessen?</button>
-                        </div>
-                        <button type="submit" class="btn btn-primary"
-                            style="width: 100%; margin-top: 1rem;">Anmelden</button>
-                    </form>
-
-                    <!-- Register Form -->
-                    <form id="registerForm" class="auth-form">
-                        <div class="form-group">
-                            <label for="registerCode">Registrierungscode <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="text" id="registerCode" placeholder="Code eingeben" required>
-                            <small style="color: var(--color-text-secondary); font-size: 0.875rem;">Bitte gib den
-                                gültigen
-                                Registrierungscode ein</small>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="registerFirstName">Vorname <span style="color:red;"
-                                        title="Pflichtfeld">*</span></label>
-                                <input type="text" id="registerFirstName" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="registerLastName">Nachname <span style="color:red;"
-                                        title="Pflichtfeld">*</span></label>
-                                <input type="text" id="registerLastName" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="registerEmail">E-Mail <span style="color:red;"
-                                        title="Pflichtfeld">*</span></label>
-                                <input type="email" id="registerEmail" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="registerUsername">Benutzername <span style="color:red;"
-                                        title="Pflichtfeld">*</span></label>
-                                <input type="text" id="registerUsername" required>
-                                <small id="usernameHint"
-                                    style="display:block; margin-top:4px; font-size:0.875rem; color:#888;"></small>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="registerInstrument">Instrument (optional)</label>
-                            <select id="registerInstrument" class="form-select">
-                                <option value="">Kein Instrument</option>
-                                <option value="drums">Schlagzeug (🥁)</option>
-                                <option value="bass">Bass (🎸)</option>
-                                <option value="acoustic_guitar">Akustische Gitarre (🎸)</option>
-                                <option value="electric_guitar">Elektrische Gitarre (🎸)</option>
-                                <option value="keyboard">Keyboard (🎹)</option>
-                                <option value="synth">Synth (🎹)</option>
-                                <option value="violin">Geige (🎻)</option>
-                                <option value="vocals">Gesang (🎤)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="registerPassword">Passwort <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="password" id="registerPassword" required>
-                            <small id="registerPasswordHint"
-                                style="color: var(--color-text-secondary); font-size: 0.875rem; display: block; margin-top: 0.25rem;">Mindestens
-                                6 Zeichen erforderlich</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="registerPasswordConfirm">Passwort bestätigen <span style="color:red;"
-                                    title="Pflichtfeld">*</span></label>
-                            <input type="password" id="registerPasswordConfirm" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="registerProfileImage">Profilbild (optional, max. 100kb)</label>
-                            <input type="file" id="registerProfileImage" accept="image/*">
-                            <small style="color: var(--color-text-secondary);">Falls das Bild größer als 100kb ist, wird
-                                es automatisch komprimiert.</small>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Registrieren</button>
-                    </form>
-
-                    <!-- Forgot Password Modal (Inline style hidden) -->
-                    <div id="forgotPasswordModal" class="modal">
-                        <div class="modal-content" style="max-width: 400px;">
-                            <div class="modal-header">
-                                <h2>Passwort vergessen</h2>
-                                <button class="modal-close" onclick="UI.closeModal('forgotPasswordModal')">×</button>
-                            </div>
-                            <div class="modal-body">
-                                <p style="margin-bottom: 1rem; color: var(--color-text-secondary);">
-                                    Gib deinen Benutzernamen oder deine E-Mail-Adresse ein. Wir senden dir einen Link
-                                    zum Zurücksetzen deines Passworts.
-                                </p>
-                                <form id="forgotPasswordForm">
-                                    <div class="form-group">
-                                        <label for="forgotIdentifier">Benutzername oder E-Mail</label>
-                                        <input type="text" id="forgotIdentifier" required
-                                            placeholder="z.B. max.mustermann">
-                                    </div>
-                                    <button type="submit" class="btn btn-primary" style="width: 100%;">Link
-                                        anfordern</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Reset Password Modal -->
-                    <div id="resetPasswordModal" class="modal">
-                        <div class="modal-content" style="max-width: 400px;">
-                            <div class="modal-header">
-                                <h2>Neues Passwort setzen</h2>
-                            </div>
-                            <div class="modal-body">
-                                <p style="margin-bottom: 1rem; color: var(--color-text-secondary);">
-                                    Bitte gib dein neues Passwort ein.
-                                </p>
-                                <form id="resetPasswordForm">
-                                    <div class="form-group">
-                                        <label for="newPassword">Neues Passwort</label>
-                                        <input type="password" id="newPassword" required minlength="6">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="newPasswordConfirm">Passwort bestätigen</label>
-                                        <input type="password" id="newPasswordConfirm" required minlength="6">
-                                    </div>
-                                    <button type="submit" class="btn btn-primary" style="width: 100%;">Passwort
-                                        speichern</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="text-align: center; margin-top: 1rem;">
-                        <a href="privacy.html" class="privacy-link"
-                            style="color: var(--color-text-secondary); font-size: 0.8rem; text-decoration: none;">Datenschutzerklärung</a>
-                    </div>
+        <!-- Auth Overlay (White Card Reference) -->
+        <div id="authOverlay" class="landing-auth-overlay">
+            <div class="auth-white-card">
+                <div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 10;">
+                    <button onclick="UI.toggleAuthOverlay(false)"
+                        style="background:none; border:none; color:#999; cursor:pointer; font-size: 1.5rem;">&times;</button>
                 </div>
+
+                <!-- No Tabs anymore -->
+
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form active">
+                    <h2 style="margin-bottom: 2rem; color: #333; font-size: 1.8rem; font-weight: 800;">Willkommen zurück
+                    </h2>
+                    <div class="form-group">
+                        <label for="loginUsername">Benutzername oder E-Mail</label>
+                        <input type="text" id="loginUsername" placeholder="dein@name.de" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Passwort</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••" required>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; font-size: 0.85rem;">
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #666; font-weight: 400;">
+                            <input type="checkbox" id="loginRememberMe" style="width: auto; margin: 0;"> Angemeldet
+                            bleiben
+                        </label>
+                        <button type="button" class="btn-link"
+                            style="color: #8b5cf6; text-decoration: none; font-weight: 500; background: none; border: none; padding: 0; cursor: pointer;"
+                            onclick="UI.openModal('forgotPasswordModal')">Passwort vergessen?</button>
+                    </div>
+                    <button type="submit" class="btn-submit">Anmelden</button>
+                    <div style="text-align: center; margin-top: 1.5rem;">
+                        <a href="privacy.html" target="_blank"
+                            style="color: #999; font-size: 0.8rem; text-decoration: none;">Datenschutzerklärung</a>
+                    </div>
+                    <div
+                        style="text-align: center; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                        <span style="color: #666; font-size: 0.9rem;">Noch keinen Account? </span>
+                        <a href="#" onclick="UI.switchAuthTab('register'); return false;"
+                            style="color: #8b5cf6; font-weight: 600; text-decoration: none;">Jetzt registrieren</a>
+                    </div>
+                </form>
+
+                <!-- Register Form -->
+                <form id="registerForm" class="auth-form"
+                    style="max-height: 60vh; overflow-y: auto; padding-right: 5px;">
+                    <h2 style="margin-bottom: 2rem; color: #333; font-size: 1.8rem; font-weight: 800;">Account erstellen
+                    </h2>
+                    <!-- Code First (as requested) -->
+                    <div class="form-group">
+                        <label for="registerCode">Registrierungscode</label>
+                        <input type="text" id="registerCode" placeholder="Code eingeben" required>
+                    </div>
+
+                    <!-- Row 1: Names -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="registerFirstName">Vorname</label>
+                            <input type="text" id="registerFirstName" placeholder="Max" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerLastName">Nachname</label>
+                            <input type="text" id="registerLastName" placeholder="Mustermann" required>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: User Details -->
+                    <div class="form-group">
+                        <label for="registerUsername">Benutzername</label>
+                        <input type="text" id="registerUsername" placeholder="max.music" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="registerInstrument">Haupt-Instrument</label>
+                        <select id="registerInstrument"
+                            style="width: 100%; padding: 0.8rem; background: rgba(0,0,0,0.03); border: 1px solid #ddd; border-radius: 6px;">
+                            <option value="">Kein Instrument</option>
+                            <option value="Vocals">🎤 Gesang</option>
+                            <option value="Guitar">🎸 Gitarre</option>
+                            <option value="Bass">🎸 Bass</option>
+                            <option value="Drums">🥁 Drums</option>
+                            <option value="Keys">🎹 Keys / Piano</option>
+                            <option value="Brass">🎷 Bläser</option>
+                            <option value="Strings">🎻 Streicher</option>
+                        </select>
+                    </div>
+
+
+                    <div class="form-group">
+                        <label for="registerEmail">E-Mail</label>
+                        <input type="email" id="registerEmail" placeholder="max@mustermann.de" required>
+                    </div>
+
+                    <!-- Row 3: Passwords -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="registerPassword">Passwort</label>
+                            <input type="password" id="registerPassword" placeholder="••••••••" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPasswordConfirm">Bestätigen</label>
+                            <input type="password" id="registerPasswordConfirm" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="registerProfileImage" style="cursor: pointer;">Profilbild (Optional)</label>
+                        <input type="file" id="registerProfileImage" accept="image/*" style="font-size: 0.8rem;">
+                    </div>
+
+                    <button type="submit" class="btn-submit">Kostenlos Registrieren</button>
+
+                    <div
+                        style="text-align: center; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                        <span style="color: #666; font-size: 0.9rem;">Bereits registriert? </span>
+                        <a href="#" onclick="UI.switchAuthTab('login'); return false;"
+                            style="color: #8b5cf6; font-weight: 600; text-decoration: none;">Zum Login</a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
+
+    <!-- Forgot Password Modal (Inline style hidden) -->
+    <div id="forgotPasswordModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Passwort vergessen</h2>
+                <button class="modal-close" onclick="UI.closeModal('forgotPasswordModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--color-text-secondary);">
+                    Gib deinen Benutzernamen oder deine E-Mail-Adresse ein. Wir senden dir einen Link
+                    zum Zurücksetzen deines Passworts.
+                </p>
+                <form id="forgotPasswordForm">
+                    <div class="form-group">
+                        <label for="forgotIdentifier">Benutzername oder E-Mail</label>
+                        <input type="text" id="forgotIdentifier" required placeholder="z.B. max.mustermann">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Link
+                        anfordern</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Neues Passwort setzen</h2>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--color-text-secondary);">
+                    Bitte gib dein neues Passwort ein.
+                </p>
+                <form id="resetPasswordForm">
+                    <div class="form-group">
+                        <label for="newPassword">Neues Passwort</label>
+                        <input type="password" id="newPassword" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPasswordConfirm">Passwort bestätigen</label>
+                        <input type="password" id="newPasswordConfirm" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Passwort
+                        speichern</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Privacy link removed from here to separate footer or specific modal location -->
 
     <!-- Main Dashboard (hidden initially) -->
     <div id="mainApp" class="main-app" style="display: none;">
@@ -1834,10 +1832,6 @@
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="margin-bottom: 1rem;">
-                    <strong>Der gewählte Probeort ist zu dieser Zeit bereits belegt!</strong>
-                </p>
-
                 <div id="conflictDetails" class="conflict-details"></div>
 
                 <p style="margin-top: 1rem; color: var(--color-text-secondary);">
@@ -2521,7 +2515,7 @@
 
     <script src="js/supabase.js?v=1.0.1"></script>
     <script src="js/storage.js?v=1.0.3"></script>
-    <script src="js/auth.js?v=1.0.1"></script>
+    <script src="js/auth.js?v=1769690040"></script>
     <script src="js/email-service.js?v=1.0.1"></script>
     <script src="js/bands.js?v=1.0.1"></script>
     <script src="js/pdf-generator.js"></script>
@@ -2532,10 +2526,10 @@
     <script src="js/personal-calendar.js?v=1.0.2"></script>
     <script src="js/churchtools-api.js?v=1.0.1"></script>
     <script src="js/musikpool.js?v=1.0.1"></script>
-    <script src="js/ui.js?v=1.0.1"></script>
+    <script src="js/ui.js?v=1769690040"></script>
     <script src="js/logger.js?v=1.0.3"></script>
     <script src="js/feedback-service.js?v=1.0.1"></script>
-    <script src="js/app.js?v=1.0.23"></script>
+    <script src="js/app.js?v=1769690040"></script>
 
 
     <!-- Service Worker Registration -->

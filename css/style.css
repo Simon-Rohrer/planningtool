@@ -409,44 +409,364 @@ html {
     overscroll-behavior-y: none;
 }
 
-/* ===== Landing Page Styles ===== */
+/* ===== EXACT REFERENCE DESIGN ===== */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap');
+
 .landing-page {
     display: none;
-    height: 100%;
-    /* Fill viewport locked body */
-    overflow-y: auto;
-    /* Internal scroll */
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-    /* Bounce here is ok */
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-color: #0b0e1a;
+    background-image:
+        radial-gradient(circle at 15% 15%, #1c2645 0%, transparent 40%),
+        radial-gradient(circle at 85% 30%, #2a4175 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, #0b0e1a 0%, transparent 100%),
+        radial-gradient(circle at 20% 80%, #3a225c 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, #1e4d6e 0%, transparent 40%);
+    color: white;
+    font-family: 'Montserrat', sans-serif;
+    position: relative;
+    /* Full height fix for mobile browsers */
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 .landing-page.active {
-    display: block;
-}
-
-.landing-container {
     display: flex;
-    min-height: 100vh;
+    flex-direction: column;
 }
 
-.landing-left,
-.landing-right {
-    flex: 1;
+/* Header - Exact Match */
+.landing-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 10%;
+    width: 100%;
+    z-index: 100;
+}
+
+.landing-logo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+}
+
+.landing-logo img {
+    height: 50px !important;
+    /* Force larger size */
+    width: auto;
+    border-radius: 4px;
+    mix-blend-mode: screen;
+    /* Hides black background */
+    filter: brightness(1.2) contrast(1.1);
+    /* Slight pop */
+}
+
+.landing-logo-icon {
+    width: 28px;
+    height: 28px;
+    background: white;
+    border-radius: 4px;
+    position: relative;
+}
+
+.landing-logo-icon::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    background: #0b0e1a;
+    border-radius: 50%;
+}
+
+.landing-nav {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+}
+
+.landing-search-ref {
+    display: flex;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-right: 1rem;
+}
+
+.landing-search-ref input {
+    background: transparent;
+    border: none;
+    padding: 0.5rem 1rem;
+    color: white;
+    font-size: 0.8rem;
+    width: 220px;
+}
+
+.landing-search-ref input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.landing-search-ref .search-btn {
+    background: white;
+    border: none;
+    width: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    cursor: pointer;
+    color: #333;
 }
 
-.landing-left {
-    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--color-primary) 0%, var(--color-bg-dark) 100%);
-    color: white;
-    position: relative;
-    overflow: hidden;
-    transition: background 0.5s ease;
+.landing-nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
+
+.btn-nav-join {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    padding: 0.5rem 1.4rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+/* Center Text - Exact Match */
+.landing-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding-bottom: 5vh;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+}
+
+.landing-main .hero-welcome {
+    font-size: 6.5rem;
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.hero-sub {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 550px;
+    line-height: 1.6;
+    margin: 2rem 0 3rem;
+}
+
+.btn-ref-learn {
+    background: white;
+    color: #333;
+    padding: 0.8rem 2rem;
+    border-radius: 99px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: none;
+    cursor: pointer;
+}
+
+/* Auth Modal - As per white card screenshot */
+.landing-auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.landing-auth-overlay.active {
+    display: flex;
+}
+
+.auth-white-card {
+    background: white;
+    width: 100%;
+    max-width: 440px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 50px 100px rgba(0, 0, 0, 0.3);
+    position: relative;
+    color: #333;
+}
+
+.auth-white-card .auth-tabs {
+    display: flex;
+    padding: 2rem 2rem 1rem;
+    gap: 2rem;
+}
+
+.auth-white-card .auth-tab {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    position: relative;
+}
+
+.auth-white-card .auth-tab.active {
+    color: #8b5cf6;
+}
+
+.auth-white-card .auth-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #8b5cf6;
+    border-radius: 2px;
+}
+
+.auth-white-card .auth-form {
+    padding: 1rem 3rem 3rem;
+    display: none;
+}
+
+.auth-white-card .auth-form.active {
+    display: block;
+}
+
+.auth-white-card .form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 0.8rem;
+}
+
+.auth-white-card input {
+    width: 100%;
+    padding: 0.9rem 1.2rem;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #333;
+    background: #fff;
+    margin-bottom: 1.5rem;
+}
+
+.auth-white-card input:focus {
+    border-color: #8b5cf6;
+    outline: none;
+}
+
+.auth-white-card .btn-submit {
+    background: #8b5cf6;
+    color: white;
+    width: 100%;
+    border: none;
+    padding: 1.1rem;
+    border-radius: 99px;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-top: 1rem;
+    cursor: pointer;
+}
+
+
+
+.auth-tabs {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 1rem;
+}
+
+.auth-tab {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.auth-tab.active {
+    color: white;
+}
+
+.auth-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1.1rem;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: white;
+}
+
+.auth-form label {
+    display: block;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+}
+
+.auth-form input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    color: white;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s;
+}
+
+.auth-form input:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    outline: none;
+}
+
+.form-actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.admin-badge {
+    color: #6366f1;
+    font-weight: 700;
+}
+
 
 /* Full-Screen Stage Mode Refined */
 body {
@@ -574,6 +894,54 @@ body.global-stage-mode .stage-lights-overlay {
 
     100% {
         transform: rotate(-40deg) scaleX(0.8);
+    }
+}
+
+
+/* Responsive Landing Page */
+@media (max-width: 1024px) {
+    .landing-header {
+        padding: 1rem 2rem;
+    }
+
+    .landing-container {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+        text-align: center;
+    }
+
+    .hero-section {
+        margin: 0 auto;
+    }
+
+    .hero-title {
+        font-size: 4rem;
+    }
+
+    .landing-nav-link:not(:first-child),
+    .landing-search {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .hero-title {
+        font-size: 3rem;
+        letter-spacing: 0.05em;
+    }
+
+    .auth-glass-card {
+        padding: 1.5rem;
+        border-radius: 1.5rem;
+    }
+
+    .auth-tabs {
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .landing-header {
+        padding: 1rem;
     }
 }
 
@@ -8501,4 +8869,434 @@ tr.drag-over {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+/* Global Loader (moved from loader.css) */
+.loader-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--color-bg-primary, #0f172a);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.4s ease-out;
+}
+
+.guitar-spinner {
+    font-size: 4rem;
+    display: inline-block;
+    animation: guitarSpin 2s infinite linear;
+}
+
+@keyframes guitarSpin {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+
+    50% {
+        transform: rotate(180deg) scale(1.2);
+    }
+
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
+}
+
+/* Landing Footer - Stats Bar */
+.landing-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    /* padding: 1.5rem 0; Removed padding to allow content to define height better or keep it slim */
+    padding: 2rem 5%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(to top, rgba(11, 14, 26, 0.9) 0%, transparent 100%);
+    z-index: 50;
+    pointer-events: none;
+    /* Let clicks pass through if needed, but text selectable? No, let's keep it interactive if we add links */
+    pointer-events: auto;
+}
+
+.landing-stats-container {
+    display: flex;
+    gap: 4rem;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.landing-stats-container:hover {
+    opacity: 1;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.stat-item-icon {
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    .landing-stats-container {
+        gap: 1.5rem;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .stat-item {
+        font-size: 0.75rem;
+    }
+}
+
+100% {
+    transform: rotate(360deg) scale(1);
+}
+}
+
+/* Mobile Optimization for Landing Page */
+@media (max-width: 768px) {
+    .landing-header {
+        /* Fix for Dynamic Island / Safe Area */
+        padding-top: max(1.5rem, env(safe-area-inset-top));
+        padding-left: 5%;
+        padding-right: 5%;
+    }
+
+    .landing-logo {
+        font-size: 1rem;
+        gap: 0.5rem;
+    }
+
+    .landing-logo img {
+        height: 35px !important;
+    }
+
+    .landing-main .hero-welcome {
+        font-size: 3.5rem;
+        /* Significant reduction from 6.5rem */
+        letter-spacing: 0.1em;
+        line-height: 1.2;
+        padding: 0 1rem;
+    }
+
+    .hero-sub {
+        font-size: 0.9rem;
+        padding: 0 1.5rem;
+        margin: 1.5rem 0 2.5rem;
+    }
+
+    .landing-footer {
+        padding: 1.5rem 1rem;
+    }
+
+    .landing-stats-container {
+        gap: 1.5rem;
+        flex-direction: column;
+        /* Stack stats on mobile */
+        align-items: center;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .landing-main .hero-welcome {
+        font-size: 2.8rem;
+        /* Even smaller for very small screens */
+    }
+}
+
+/* Modern Registration Form Styling */
+.auth-white-card .form-group {
+    margin-bottom: 1.2rem;
+}
+
+.auth-white-card label {
+    display: block;
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+}
+
+.auth-white-card input[type="text"],
+.auth-white-card input[type="email"],
+.auth-white-card input[type="password"],
+.auth-white-card select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: #f3f4f6;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #333;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.auth-white-card input:focus,
+.auth-white-card select:focus {
+    background: white;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.auth-white-card .btn-submit {
+    width: 100%;
+    margin-top: 1rem;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    color: white;
+    font-weight: 700;
+    padding: 0.9rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    transition: transform 0.1s;
+}
+
+.auth-white-card .btn-submit:active {
+    transform: scale(0.98);
+}
+
+/* Outline Button for Registration */
+.btn-ref-outline {
+    background: transparent;
+    color: white;
+    padding: 0.8rem 2rem;
+    border-radius: 99px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 2px solid white;
+    cursor: pointer;
+    margin-left: 1rem;
+    transition: all 0.2s ease;
+}
+
+.btn-ref-outline:hover {
+    background: white;
+    color: #333;
+}
+
+@media (max-width: 480px) {
+    .btn-ref-outline {
+        margin-left: 0;
+    }
+}
+
+/* Refined Registration Form Styling */
+.auth-white-card input[type="text"],
+.auth-white-card input[type="email"],
+.auth-white-card input[type="password"],
+.auth-white-card select {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.auth-white-card input:focus,
+.auth-white-card select:focus {
+    border-color: #8b5cf6;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+}
+
+.auth-white-card .form-group {
+    margin-bottom: 1rem;
+}
+
+.auth-white-card h2 {
+    font-size: 1.5rem !important;
+    /* Slightly smaller header */
+    text-align: center;
+    margin-bottom: 1.5rem !important;
+}
+
+/* Better grid for two-column inputs */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Ensure consistent height for inputs */
+.auth-white-card input,
+.auth-white-card select {
+    height: 48px;
+}
+
+
+
+/* Restoration of Mobile Padding for White Mode */
+@media (max-width: 480px) {
+    .auth-white-card .auth-form {
+        padding: 1rem 1.5rem 2rem !important;
+    }
+
+    .landing-auth-overlay {
+        padding: 1rem;
+    }
+
+    .auth-white-card {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+/* --- Improved Dark Mode Auth Modal (Restored & Enhanced) --- */
+.auth-white-card {
+    background: linear-gradient(135deg, #1a1b26 0%, #13141f 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 50px 100px rgba(0, 0, 0, 0.6);
+    color: white;
+    /* Improved Dimensions */
+    max-width: 600px !important;
+    /* Wider */
+    min-height: 550px;
+    /* Taller */
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-white-card .auth-form {
+    padding: 3rem !important;
+    /* Spacious, symmetric padding */
+    flex: 1;
+    flex-direction: column;
+    /* Prepare for flex, but don't force display yet */
+    justify-content: center;
+    /* Vertically center content */
+}
+
+/* Only apply display:flex when the form is active */
+.auth-white-card .auth-form.active {
+    display: flex !important;
+}
+
+/* Ensure inactive forms remain hidden regardless of specificity */
+.auth-white-card .auth-form:not(.active) {
+    display: none !important;
+}
+
+.auth-white-card h2 {
+    color: white !important;
+    font-size: 2rem !important;
+    margin-bottom: 2.5rem !important;
+}
+
+.auth-white-card label {
+    color: #e2e8f0 !important;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.auth-white-card input[type="text"],
+.auth-white-card input[type="email"],
+.auth-white-card input[type="password"],
+.auth-white-card select {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    height: 52px;
+    /* Slightly taller inputs */
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.auth-white-card input:focus,
+.auth-white-card select:focus {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.5);
+    outline: none;
+}
+
+.auth-white-card input::placeholder {
+    color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.auth-white-card .btn-submit {
+    margin-top: 2rem;
+    padding: 1rem;
+    font-size: 1rem;
+}
+
+.auth-white-card .form-group span,
+.auth-white-card div span {
+    color: #aaa !important;
+}
+
+/* Close button - make it visible & larger */
+.auth-white-card button[onclick*="toggleAuthOverlay(false)"] {
+    color: rgba(255, 255, 255, 0.6) !important;
+    top: 2rem !important;
+    right: 2rem !important;
+    font-size: 2rem !important;
+    transition: color 0.2s;
+}
+
+.auth-white-card button[onclick*="toggleAuthOverlay(false)"]:hover {
+    color: white !important;
+}
+
+.auth-white-card div[style*="border-top"] {
+    border-top-color: rgba(255, 255, 255, 0.1) !important;
+    margin-top: 2rem !important;
+    padding-top: 1.5rem !important;
+}
+
+/* Mobile Responsiveness for the larger card */
+@media (max-width: 640px) {
+    .auth-white-card {
+        max-width: 95% !important;
+        min-height: auto;
+        margin: 1rem;
+    }
+
+    .auth-white-card .auth-form {
+        padding: 2rem 1.5rem !important;
+    }
+
+    .auth-white-card h2 {
+        font-size: 1.75rem !important;
+        margin-bottom: 2rem !important;
+    }
+}
+/* Refined Dark Mode Dimensions (Smaller/More Compact) */
+.auth-white-card {
+    max-width: 480px !important; /* Reduced from 600px */
+    min-height: auto !important; /* Check content size, remove forced height */
+}
+
+.auth-white-card .auth-form {
+    padding: 2rem !important; /* Reduced from 3rem */
+}
+
+.auth-white-card h2 {
+    font-size: 1.75rem !important; /* Slightly smaller header */
+    margin-bottom: 1.5rem !important;
+}
+
+/* Increase vertical padding for more height (top/bottom) */
+.auth-white-card .auth-form {
+    padding: 3.5rem 2.5rem !important; /* More vertical breathing room */
 }
