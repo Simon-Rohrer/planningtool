@@ -28,7 +28,7 @@ const Rehearsals = {
     },
 
     // Render all rehearsals
-    async renderRehearsals(filterBandId = '') {
+    async renderRehearsals(filterBandId = '', forceRefresh = false) {
         if (this.isLoading) {
             Logger.warn('[Rehearsals] Already loading, skipping.');
             return;
@@ -37,12 +37,6 @@ const Rehearsals = {
         Logger.time('Load Rehearsals');
 
         try {
-            // Nur laden, wenn noch keine Rehearsals im Speicher
-            if (this.rehearsals && Array.isArray(this.rehearsals) && this.rehearsals.length > 0 && !filterBandId) {
-                this.renderRehearsalsList(this.rehearsals);
-                Logger.timeEnd('Load Rehearsals');
-                return;
-            }
             const user = Auth.getCurrentUser();
             if (!user) {
                 Logger.timeEnd('Load Rehearsals');
@@ -234,20 +228,7 @@ const Rehearsals = {
             </div>
         ` : '';
 
-        let dateOptionsHtml = '';
-        if (rehearsal.status === 'pending') {
-            if (rehearsal.proposedDates && rehearsal.proposedDates.length > 0) {
-                dateOptionsHtml = `<div class="date-options">
-                    ${(await Promise.all(rehearsal.proposedDates.map((date, index) =>
-                    this.renderDateOption(rehearsal.id, date, index, user.id, showVoteDetails, canManage)
-                ))).join('')}
-                </div>`;
-            } else {
-                dateOptionsHtml = `<div class="date-options empty">
-                    <em>Keine Terminvorschläge vorhanden.</em>
-                </div>`;
-            }
-        }
+
 
         return `
             <div class="rehearsal-card accordion-card ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}" style="border-left: 4px solid ${bandColor}">
@@ -295,9 +276,15 @@ const Rehearsals = {
 
                         </div>
 
-                        ${dateOptionsHtml}
 
                         <div class="rehearsal-action-buttons">
+                            ${rehearsal.status === 'pending' ? `
+                                <button class="btn btn-vote-now" 
+                                        data-rehearsal-id="${rehearsal.id}"
+                                        onclick="Rehearsals.openVotingModal('${rehearsal.id}')">
+                                    🗳️ Jetzt abstimmen
+                                </button>
+                            ` : ''}
                             ${canManage && rehearsal.status === 'pending' ? `
                                 <button class="btn btn-primary open-rehearsal-btn" 
                                         data-rehearsal-id="${rehearsal.id}">
@@ -313,147 +300,245 @@ const Rehearsals = {
                                 </button>
                             ` : ''}
                         </div>
+
+                        ${rehearsal.status === 'pending' ? `
+                            <div class="rehearsal-overview-container">
+                                ${await this.renderRehearsalOverviewTable(rehearsal, await Storage.getBandMembers(rehearsal.bandId))}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
         `;
     },
 
-    // Render single date option with voting
-    async renderDateOption(rehearsalId, date, dateIndex, userId, showVoteDetails = false, canManage = false) {
-        const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
-        const dateVotes = votes.filter(v => v.dateIndex === dateIndex);
+    // NEW: Render professional overview table for rehearsal votes
+    async renderRehearsalOverviewTable(rehearsal, members) {
+        const votes = (await Storage.getRehearsalVotes(rehearsal.id)) || [];
 
-        const yesVotes = dateVotes.filter(v => v.availability === 'yes');
-        const noVotes = dateVotes.filter(v => v.availability === 'no');
+        // Header with member avatars
+        const headerHtml = `
+            <thead>
+                <tr>
+                    <th class="date-col">Termin</th>
+                    ${(await Promise.all(members.map(async m => {
+            const user = await Storage.getById('users', m.userId);
+            const name = UI.getUserDisplayName(user);
+            return `
+                            <th class="member-avatar-cell" title="${Bands.escapeHtml(name)}">
+                                <div class="member-avatar-mini" style="background: ${UI.getAvatarColor(name)}; width: 32px; height: 32px; font-size: 0.75rem; margin: 0 auto; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; overflow: hidden; border: 2px solid var(--color-surface);">
+                                    ${user && user.profile_image_url ?
+                    `<img src="${user.profile_image_url}" style="width:100%; height:100%; object-fit:cover;">` :
+                    UI.getUserInitials(name)}
+                                </div>
+                                <div style="font-size: 0.65rem; margin-top: 4px; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Bands.escapeHtml(name.split(' ')[0])}</div>
+                            </th>
+                        `;
+        }))).join('')}
+                    <th class="zusage-col">Zusagen</th>
+                </tr>
+            </thead>
+        `;
 
-        const yesCount = yesVotes.length;
-        const noCount = noVotes.length;
+        // Rows for each proposed date
+        const rowsHtml = await Promise.all(rehearsal.proposedDates.map(async (date, index) => {
+            const dateString = typeof date === 'string' ? date : date.startTime;
+            const formattedDate = UI.formatDateShort(dateString);
 
-        const userVote = await Storage.getUserVoteForDate(userId, rehearsalId, dateIndex);
-        const userAvailability = userVote ? userVote.availability : null;
+            const dateVotes = votes.filter(v => v.dateIndex === index);
+            const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
 
-        // Get time suggestions for this date
-        const timeSuggestions = (await Storage.getTimeSuggestionsForDate(rehearsalId, dateIndex)) || [];
-        const userTimeSuggestion = await Storage.getUserTimeSuggestionForDate(userId, rehearsalId, dateIndex);
+            const voteCells = members.map(m => {
+                const vote = votes.find(v => v.userId === m.userId && v.dateIndex === index);
+                let icon = '➖';
+                let className = 'vote-pending';
 
-        // Group suggestions by time (and filter by visibility)
-        const suggestionsByTime = {};
-        for (const suggestion of timeSuggestions) {
-            // Visibility Rule: Only Proposer, Leader, Co-Leader, or Admin see it
-            const isProposer = suggestion.userId === userId;
-            if (!isProposer && !canManage) {
-                continue;
-            }
-
-            const time = suggestion.suggestedTime;
-            if (!suggestionsByTime[time]) {
-                suggestionsByTime[time] = [];
-            }
-            if (suggestion.userId) {
-                const suggester = await Storage.getById('users', suggestion.userId);
-                if (suggester) {
-                    const name = this._getUserName(suggester).trim();
-                    if (!suggestionsByTime[time].includes(name)) {
-                        suggestionsByTime[time].push(name);
-                    }
+                if (vote) {
+                    if (vote.availability === 'yes') { icon = '✅'; className = 'vote-yes'; }
+                    else if (vote.availability === 'no') { icon = '❌'; className = 'vote-no'; }
                 }
-            }
-        }
 
-        // Handle both old format (string) and new format (object with startTime/endTime)
-        const dateString = typeof date === 'string' ? date : date.startTime;
-        const endTimeString = typeof date === 'object' && date.endTime ? date.endTime : null;
+                return `<td class="vote-icon ${className}">${icon}</td>`;
+            }).join('');
 
-        // Format date display
-        let dateDisplay;
-        const suggestionEntries = Object.entries(suggestionsByTime);
-        const hasVisibleProposals = suggestionEntries.length > 0;
+            const timeSuggestions = (await Storage.getTimeSuggestionsForDate(rehearsal.id, index)) || [];
+            const suggestionHtml = (await Promise.all(timeSuggestions.map(async s => {
+                const suggUser = await Storage.getById('users', s.userId);
+                const suggName = UI.getUserDisplayName(suggUser);
+                return `
+                    <div class="time-suggestion-pill" title="Vorschlag von ${Bands.escapeHtml(suggName)}">
+                        <span class="icon">🕐</span> ${Bands.escapeHtml(s.suggestedTime)} (${Bands.escapeHtml(suggName.split(' ')[0])})
+                    </div>
+                `;
+            }))).join('');
 
-        let proposalsHtml = '';
-        if (hasVisibleProposals) {
-            proposalsHtml = `
-                <span class="integrated-time-proposals">
-                    <span class="proposal-icon">🕐</span> 
-                    ${suggestionEntries.map(([time, users]) => `
-                        <span class="proposal-pill" title="Vorgeschlagen von: ${users.join(', ')}">
-                            ${time} <small class="proposal-users">(${users.join(', ')})</small>
-                        </span>
-                    `).join('')}
-                </span>
+            return `
+                <tr>
+                    <td class="date-col">
+                        ${formattedDate}
+                        <div class="time-suggestions">
+                            ${suggestionHtml}
+                        </div>
+                    </td>
+                    ${voteCells}
+                    <td class="zusage-col">${yesCount}/${members.length}</td>
+                </tr>
             `;
-        }
-
-        if (endTimeString) {
-            const datePart = UI.formatDate(dateString).replace(/ um .*/, '');
-            const startTime = new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-            const endTime = new Date(endTimeString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-            dateDisplay = `📅 ${datePart} von ${startTime} bis ${endTime} Uhr ${proposalsHtml}`;
-        } else {
-            dateDisplay = `📅 ${UI.formatDate(dateString)} ${proposalsHtml}`;
-        }
-
-        // Prepare vote details HTML if permitted
-        let voteDetailsHtml = '';
-        if (showVoteDetails) {
-            // Helper to get names asynchronously
-            const getNames = async (voteList) => {
-                const names = await Promise.all(voteList.map(async v => {
-                    if (!v.userId) return 'Unbekannt';
-                    const u = await Storage.getById('users', v.userId);
-                    return this._getUserName(u);
-                }));
-                return names.join(', ');
-            };
-
-            const yesNames = yesCount > 0 ? await getNames(yesVotes) : '-';
-            const noNames = noCount > 0 ? await getNames(noVotes) : '-';
-
-            voteDetailsHtml = `
-                <div class="vote-details-box" style="margin-top:0.5rem; font-size:0.85rem; color:var(--color-text-secondary); background:rgba(0,0,0,0.05); padding:0.5rem; border-radius:4px;">
-                    <div style="margin-bottom:2px;"><span style="color:#22c55e">✅ (${yesCount}):</span> ${yesNames}</div>
-                    <div><span style="color:#ef4444">❌ (${noCount}):</span> ${noNames}</div>
-                </div>
-            `;
-        }
+        }));
 
         return `
-            <div class="date-option">
-                <div class="date-info">
-                    <div class="date-time">${dateDisplay}</div>
-                    ${voteDetailsHtml}
-                </div>
-                <div class="vote-actions">
-                    <button class="vote-btn vote-none ${!userAvailability ? 'active' : ''}" 
-                            data-rehearsal-id="${rehearsalId}" 
-                            data-date-index="${dateIndex}" 
-                            data-availability="none"
-                            title="Noch nicht abgestimmt / Abstimmung zurückziehen">
-                        ➖
-                    </button>
-                    <button class="vote-btn vote-yes ${userAvailability === 'yes' ? 'active' : ''}" 
-                            data-rehearsal-id="${rehearsalId}" 
-                            data-date-index="${dateIndex}" 
-                            data-availability="yes"
-                            title="Ich kann">
-                        ✅
-                    </button>
-                    <button class="vote-btn vote-no ${userAvailability === 'no' ? 'active' : ''}" 
-                            data-rehearsal-id="${rehearsalId}" 
-                            data-date-index="${dateIndex}" 
-                            data-availability="no"
-                            title="Ich kann nicht">
-                        ❌
-                    </button>
-                    <button class="suggest-time-btn ${userTimeSuggestion ? 'has-suggestion' : ''}" 
-                            data-rehearsal-id="${rehearsalId}" 
-                            data-date-index="${dateIndex}"
-                            title="${userTimeSuggestion ? 'Zeitvorschlag bearbeiten' : 'Alternative Zeit vorschlagen'}">
-                        🕐
-                    </button>
-                </div>
-            </div>
+            <table class="rehearsal-overview-table">
+                ${headerHtml}
+                <tbody>
+                    ${rowsHtml.join('')}
+                </tbody>
+            </table>
         `;
+    },
+
+    // Open the bulk voting modal
+    async openVotingModal(rehearsalId) {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        const rehearsal = await Storage.getRehearsal(rehearsalId);
+        if (!rehearsal) return;
+
+        const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
+        const userVotes = votes.filter(v => v.userId === user.id);
+
+        const content = document.getElementById('rehearsalVotingContent');
+        const rows = await Promise.all(rehearsal.proposedDates.map(async (date, index) => {
+            const dateString = typeof date === 'string' ? date : date.startTime;
+            const currentVote = userVotes.find(v => v.dateIndex === index);
+            const availability = currentVote ? currentVote.availability : 'none';
+            const userSuggestion = (await Storage.getUserTimeSuggestionForDate(user.id, rehearsalId, index));
+            const allSuggestions = (await Storage.getTimeSuggestionsForDate(rehearsalId, index)) || [];
+
+            const otherSuggestionsHtml = allSuggestions.length > 0 ? `
+                <div class="modal-time-suggestions" style="margin-top: 4px;">
+                    ${(await Promise.all(allSuggestions.map(async s => {
+                const suggUser = await Storage.getById('users', s.userId);
+                const suggName = UI.getUserDisplayName(suggUser);
+                return `<span class="time-suggestion-pill" style="font-size: 0.7rem;">🕐 ${Bands.escapeHtml(s.suggestedTime)} (${Bands.escapeHtml(suggName.split(' ')[0])})</span>`;
+            }))).join('')}
+                </div>
+            ` : '';
+
+            return `
+                <div class="voting-row" data-date-index="${index}">
+                    <div class="voting-date-info">
+                        <span class="date">${UI.formatDateOnly(dateString)}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="time">${new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</span>
+                            <button type="button" class="btn-suggest-time-modal ${userSuggestion ? 'has-suggestion' : ''}" 
+                                    title="${userSuggestion ? 'Zeitvorschlag bearbeiten: ' + userSuggestion.suggestedTime : 'Andere Zeit vorschlagen'}" 
+                                    data-rehearsal-id="${rehearsalId}" 
+                                    data-date-index="${index}">🕐</button>
+                        </div>
+                        ${otherSuggestionsHtml}
+                    </div>
+                    <div class="voting-options">
+                        <button type="button" class="voting-option-btn yes ${availability === 'yes' ? 'active' : ''}" data-value="yes" title="Ich kann">✅</button>
+                        <button type="button" class="voting-option-btn no ${availability === 'no' ? 'active' : ''}" data-value="no" title="Ich kann nicht">❌</button>
+                        <button type="button" class="voting-option-btn none ${availability === 'none' ? 'active' : ''}" data-value="none" title="Keine Angabe">➖</button>
+                    </div>
+                </div>
+            `;
+        }));
+        content.innerHTML = rows.join('');
+
+        // Attach listeners to voting buttons in modal
+        const buttons = content.querySelectorAll('.voting-option-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const row = btn.closest('.voting-row');
+                row.querySelectorAll('.voting-option-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Attach listeners to time suggest buttons in modal
+        const suggestButtons = content.querySelectorAll('.btn-suggest-time-modal');
+        suggestButtons.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const rehearsalId = btn.dataset.rehearsalId;
+                const dateIndex = parseInt(btn.dataset.dateIndex);
+                await this.suggestTime(rehearsalId, dateIndex);
+            });
+        });
+
+        // Set up save button
+        const saveForm = document.getElementById('rehearsalVotingForm');
+        saveForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const newVotes = [];
+            content.querySelectorAll('.voting-row').forEach(row => {
+                const index = parseInt(row.dataset.dateIndex);
+                const activeBtn = row.querySelector('.voting-option-btn.active');
+                if (activeBtn) {
+                    newVotes.push({
+                        dateIndex: index,
+                        availability: activeBtn.dataset.value
+                    });
+                }
+            });
+
+            UI.showLoading('Speichere Abstimmungen...');
+            try {
+                await this.handleSaveVotes(rehearsalId, newVotes);
+                UI.closeModal('rehearsalVotingModal');
+                UI.showToast('Abstimmungen gespeichert', 'success');
+                // Force a true refresh from DB
+                await this.renderRehearsals(this.currentFilter, true);
+            } catch (error) {
+                console.error('Error saving votes:', error);
+                UI.showToast('Fehler beim Speichern der Abstimmungen', 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        };
+
+        UI.openModal('rehearsalVotingModal');
+
+        // Wire Up Modal Cancel Button
+        const cancelBtn = document.querySelector('#rehearsalVotingModal .cancel');
+        if (cancelBtn) {
+            cancelBtn.onclick = () => UI.closeModal('rehearsalVotingModal');
+        }
+    },
+
+    // Save multiple votes at once
+    async handleSaveVotes(rehearsalId, votes) {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        Logger.userAction('Submit', 'rehearsalVotingForm', 'Bulk Vote', { rehearsalId, votes });
+
+        for (const vote of votes) {
+            // Check if vote already exists for this user/rehearsal/date
+            const existing = await Storage.getUserVoteForDate(user.id, rehearsalId, vote.dateIndex);
+
+            if (existing) {
+                // Update existing vote
+                await Storage.update('votes', existing.id, {
+                    availability: vote.availability
+                });
+            } else {
+                // Create new vote
+                await Storage.createVote({
+                    userId: user.id,
+                    rehearsalId: rehearsalId,
+                    dateIndex: vote.dateIndex,
+                    availability: vote.availability
+                });
+            }
+        }
+    },
+
+    // Legacy renderDateOption (reduced scope or removed if fully replaced)
+    async renderDateOption(rehearsalId, date, dateIndex, userId, showVoteDetails = false, canManage = false) {
+        return ''; // Replaced by table
     },
 
     // Attach vote and open handlers
@@ -712,10 +797,9 @@ const Rehearsals = {
         const dateStats = await Promise.all(proposedDates.map(async (date, index) => {
             const dateVotes = votes.filter(v => v.dateIndex === index);
             const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
-            const maybeCount = dateVotes.filter(v => v.availability === 'maybe').length;
             const noCount = dateVotes.filter(v => v.availability === 'no').length;
             const totalVotes = dateVotes.length;
-            const score = yesCount + (maybeCount * 0.5);
+            const score = yesCount;
 
             // Get time suggestions for this date
             const timeSuggestions = await Storage.getTimeSuggestionsForDate(rehearsalId, index);
@@ -736,7 +820,7 @@ const Rehearsals = {
                 }
             }
 
-            return { date, index, yesCount, maybeCount, noCount, totalVotes, score, timeSuggestions: suggestionsByTime };
+            return { date, index, yesCount, noCount, totalVotes, score, timeSuggestions: suggestionsByTime };
             const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
             proposedDates.forEach(date => {
                 let start = '';
@@ -808,7 +892,6 @@ const Rehearsals = {
                             </div>
                             <div class="vote-breakdown">
                                 ✅ ${stat.yesCount} können • 
-                                ❓ ${stat.maybeCount} vielleicht • 
                                 ❌ ${stat.noCount} können nicht
                             </div>
                             ${Object.keys(stat.timeSuggestions).length > 0 ? `
@@ -1145,7 +1228,7 @@ const Rehearsals = {
         // Save scroll position
         const scrollPos = window.scrollY;
 
-        await this.renderRehearsals(this.currentFilter);
+        await this.renderRehearsals(this.currentFilter, true);
 
         // Restore scroll position
         window.scrollTo(0, scrollPos);
@@ -1213,6 +1296,12 @@ const Rehearsals = {
 
         // Update the rehearsal card
         await this.refreshRehearsalCard(rehearsalId);
+
+        // If voting modal is open, refresh it too
+        const votingModal = document.getElementById('rehearsalVotingModal');
+        if (votingModal && votingModal.classList.contains('active')) {
+            await this.openVotingModal(rehearsalId);
+        }
     },
 
     async refreshRehearsalCard(rehearsalId) {
@@ -1751,27 +1840,28 @@ const Rehearsals = {
 
     // Get dates from form
     getDatesFromForm() {
-        // Sammle alle Kärtchen und offenen Inputs
         const items = document.querySelectorAll('#dateProposals .date-proposal-item');
         const dates = [];
         items.forEach(item => {
-            if (item.dataset.confirmed === 'true') {
-                // Kärtchen: confirmed
-                const start = item.dataset.startTime;
-                const end = item.dataset.endTime;
-                if (start && end) {
-                    dates.push({ startTime: start, endTime: end, confirmed: true });
-                }
-            } else {
-                // Offene Inputs
-                const dateInput = item.querySelector('.date-input-date');
-                const startInput = item.querySelector('.date-input-start');
-                const endInput = item.querySelector('.date-input-end');
-                if (dateInput && startInput && endInput && dateInput.value && startInput.value && endInput.value) {
-                    const startTime = `${dateInput.value}T${startInput.value}`;
-                    const endTime = `${dateInput.value}T${endInput.value}`;
-                    dates.push({ startTime, endTime, confirmed: false });
-                }
+            const isConfirmed = item.dataset.confirmed === 'true';
+
+            // Try to get from inputs first (new proposals)
+            const dateInput = item.querySelector('.date-input-date');
+            const startInput = item.querySelector('.date-input-start');
+            const endInput = item.querySelector('.date-input-end');
+
+            if (dateInput && startInput && endInput && dateInput.value && startInput.value && endInput.value) {
+                const startTime = `${dateInput.value}T${startInput.value}`;
+                const endTime = `${dateInput.value}T${endInput.value}`;
+                dates.push({ startTime, endTime, confirmed: isConfirmed });
+            }
+            // Fallback to dataset (existing confirmed cards)
+            else if (item.dataset.startTime && item.dataset.endTime) {
+                dates.push({
+                    startTime: item.dataset.startTime,
+                    endTime: item.dataset.endTime,
+                    confirmed: isConfirmed
+                });
             }
         });
         return dates;

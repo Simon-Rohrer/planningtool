@@ -937,6 +937,13 @@ input:checked+.slider:before {
     animation: fadeIn var(--transition-base);
 }
 
+/* Modals that can open on top of others */
+#timeSuggestionModal,
+#locationConflictModal,
+#confirmDeleteModal {
+    z-index: 2000;
+}
+
 .modal.active {
     display: flex;
 }
@@ -8179,4 +8186,319 @@ tr.drag-over {
     .section-header.section-header-mobile-adjust .mobile-hidden-text {
         display: none;
     }
+}
+
+/* Rehearsal Overview Table */
+.rehearsal-overview-container {
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    background: var(--color-surface);
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+}
+
+.rehearsal-overview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    color: var(--color-text);
+}
+
+.rehearsal-overview-table th,
+.rehearsal-overview-table td {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.rehearsal-overview-table th {
+    background: rgba(255, 255, 255, 0.03);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.rehearsal-overview-table .date-col {
+    text-align: left;
+    min-width: 160px;
+    font-weight: 500;
+}
+
+.rehearsal-overview-table .member-avatar-cell {
+    width: 60px;
+}
+
+.rehearsal-overview-table .zusage-col {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.rehearsal-overview-table .vote-icon {
+    font-size: 1.2rem;
+}
+
+.rehearsal-overview-table .vote-yes {
+    color: #22c55e;
+}
+
+.rehearsal-overview-table .vote-no {
+    color: #ef4444;
+}
+
+.rehearsal-overview-table .vote-maybe {
+    color: #eab308;
+}
+
+.rehearsal-overview-table .vote-pending {
+    color: var(--color-text-secondary);
+    opacity: 0.3;
+}
+
+/* Voting Modal Styles */
+.voting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border);
+    gap: 1rem;
+}
+
+.voting-row:last-child {
+    border-bottom: none;
+}
+
+.voting-date-info {
+    flex: 1;
+}
+
+.voting-date-info .date {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.voting-date-info .time {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.voting-options {
+    display: flex;
+    gap: 8px;
+}
+
+.voting-option-btn {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.1rem;
+}
+
+.voting-option-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-suggest-time-modal {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    opacity: 0.6;
+}
+
+.btn-suggest-time-modal:hover {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.btn-suggest-time-modal.has-suggestion {
+    opacity: 1;
+    color: var(--color-primary);
+}
+
+.voting-option-btn.active.yes {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: #22c55e;
+}
+
+.voting-option-btn.active.no {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+}
+
+.voting-option-btn.active.maybe {
+    background: rgba(234, 179, 8, 0.15);
+    border-color: #eab308;
+}
+
+.rehearsal-action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-vote-now {
+    background: linear-gradient(135deg, var(--color-primary), #4f46e5);
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-vote-now:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(99, 102, 241, 0.4);
+    filter: brightness(1.1);
+}
+
+.time-suggestion-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--color-primary);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-top: 4px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.time-suggestion-pill .icon {
+    font-size: 0.8rem;
+}
+
+.time-suggestions,
+.modal-time-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+/* Location Conflict Modal Refinement */
+.conflict-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.conflict-header {
+    background: rgba(239, 68, 68, 0.08);
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    border-left: 4px solid #ef4444;
+}
+
+.conflict-header-title {
+    margin: 0 0 0.5rem 0;
+    color: #ef4444;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.conflict-header-info {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.conflict-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.conflict-card-header {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    font-weight: 600;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.95rem;
+}
+
+.conflict-card-header .date-badge {
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    line-height: 1.4;
+}
+
+.conflict-card-header .conflict-count {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.conflict-card-body {
+    padding: 1rem;
+}
+
+.conflict-event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.conflict-event-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.conflict-event-bullet {
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.conflict-event-info {
+    flex: 1;
+}
+
+.conflict-event-title {
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 2px;
+    font-size: 0.9rem;
+}
+
+.conflict-event-time {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }

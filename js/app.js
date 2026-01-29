@@ -7431,9 +7431,14 @@ const App = {
             if (allConflicts.length > 0) {
                 const location = await Storage.getLocation(locationId);
                 const conflictDetailsHtml = `
-                    <div style="background: var(--color-bg); padding: 1rem; border-radius: var(--radius-md); border-left: 3px solid var(--color-danger);">
-                        <p><strong>Ort:</strong> ${Bands.escapeHtml(location?.name || 'Unbekannt')}</p>
-                        <p style="margin-top: 0.5rem;"><strong>${allConflicts.length} von ${dates.length} Terminen haben Konflikte:</strong></p>
+                    <div class="conflict-container">
+                        <div class="conflict-header">
+                            <h4 class="conflict-header-title">📍 Ort: ${Bands.escapeHtml(location?.name || 'Unbekannt')}</h4>
+                            <div class="conflict-header-info">
+                                <strong>${allConflicts.length} von ${dates.length} Terminen</strong> überschneiden sich mit anderen Buchungen.
+                            </div>
+                        </div>
+
                         ${allConflicts.map(dateConflict => {
                     let dateLabel = '';
                     if (dateConflict.date && typeof dateConflict.date === 'object' && dateConflict.date.startTime) {
@@ -7446,16 +7451,30 @@ const App = {
                     } else {
                         dateLabel = UI.formatDate(dateConflict.date);
                     }
+
                     return `
-                                <div style="margin-top: 1rem; padding: 0.75rem; background: var(--color-surface); border-radius: var(--radius-sm);">
-                                    <p><strong>📅 ${dateLabel}</strong></p>
-                                    <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
-                                        ${dateConflict.conflicts.map(conflict => {
+                                <div class="conflict-card">
+                                    <div class="conflict-card-header">
+                                        <div class="date-badge">📅 ${dateLabel}</div>
+                                        <div class="conflict-count">${dateConflict.conflicts.length} ${dateConflict.conflicts.length === 1 ? 'Konflikt' : 'Konflikte'}</div>
+                                    </div>
+                                    <div class="conflict-card-body">
+                                        <div class="conflict-event-list">
+                                            ${dateConflict.conflicts.map(conflict => {
                         const start = new Date(conflict.startDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
                         const end = new Date(conflict.endDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                        return `<li><strong>${Bands.escapeHtml(conflict.summary)}</strong><br><small>${start} - ${end}</small></li>`;
+                        return `
+                                                    <div class="conflict-event-item">
+                                                        <div class="conflict-event-bullet"></div>
+                                                        <div class="conflict-event-info">
+                                                            <div class="conflict-event-title">${Bands.escapeHtml(conflict.summary)}</div>
+                                                            <div class="conflict-event-time">🕐 ${start} - ${end}</div>
+                                                        </div>
+                                                    </div>
+                                                `;
                     }).join('')}
-                                    </ul>
+                                        </div>
+                                    </div>
                                 </div>
                             `;
                 }).join('')}
