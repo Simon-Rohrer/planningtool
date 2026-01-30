@@ -264,6 +264,12 @@ const RichTextEditor = {
 
 const App = {
 
+    // Sorting state for band songs
+    bandSongSort: {
+        field: 'title',
+        direction: 'asc' // asc, desc, none
+    },
+
     // Track deleted songs for potential rollback
     deletedEventSongs: [],
 
@@ -3892,26 +3898,32 @@ const App = {
     },
 
     showBandSongSelector(eventId, bandSongs) {
-        // Create a simple selection UI
+        // Create a modern card-based selection UI
         const songList = bandSongs.map(song => `
-            <label class="song-selection-label" style="display: block; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border); cursor: pointer;">
-                <input type="checkbox" value="${song.id}" class="band-song-checkbox">
-                <strong>${this.escapeHtml(song.title)}</strong> - ${this.escapeHtml(song.artist)}
-                ${song.bpm ? `| ${song.bpm} BPM` : ''}
-                ${song.key ? `| ${song.key}` : ''}
-            </label>
+            <div class="song-selection-card" onclick="const cb = this.querySelector('input'); cb.checked = !cb.checked;">
+                <input type="checkbox" value="${song.id}" class="band-song-checkbox" onclick="event.stopPropagation()">
+                <div class="song-card-content">
+                    <div class="song-card-title">${this.escapeHtml(song.title)}</div>
+                    <div class="song-card-artist">${this.escapeHtml(song.artist || 'Unbekannter Interpret')}</div>
+                    <div class="song-card-badges">
+                        ${song.bpm ? `<span class="song-badge bpm">${song.bpm} BPM</span>` : ''}
+                        ${song.key ? `<span class="song-badge key">${song.key}</span>` : ''}
+                        ${song.timeSignature ? `<span class="song-badge">${song.timeSignature}</span>` : ''}
+                    </div>
+                </div>
+            </div>
         `).join('');
 
         const modalContent = `
-            <div class="search-wrapper" style="margin-bottom: 1rem;">
+            <div class="search-wrapper" style="margin-bottom: 1.5rem;">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="modalSongSearch" placeholder="Songs durchsuchen..." class="modern-search-input" style="width: 100%;">
             </div>
-            <div class="modal-song-list-container" style="max-height: 400px; overflow-y: auto;">
+            <div class="modal-song-list-container" style="max-height: 50vh; overflow-y: auto;">
                 ${songList}
             </div>
-            <div style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
-                <button type="button" id="cancelCopySongs" class="btn">Abbrechen</button>
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" id="cancelCopySongs" class="btn btn-secondary">Abbrechen</button>
                 <button type="button" id="confirmCopySongs" class="btn btn-primary">Ausgewählte kopieren</button>
             </div>
         `;
@@ -3920,7 +3932,7 @@ const App = {
         const tempModal = document.createElement('div');
         tempModal.className = 'modal active';
         tempModal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 600px;">
                 <div class="modal-header">
                     <h2>Songs aus Band-Pool wählen</h2>
                 </div>
@@ -3935,10 +3947,10 @@ const App = {
         const searchInput = tempModal.querySelector('#modalSongSearch');
         searchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
-            const labels = tempModal.querySelectorAll('.song-selection-label');
-            labels.forEach(label => {
-                const text = label.textContent.toLowerCase();
-                label.style.display = text.includes(term) ? 'block' : 'none';
+            const cards = tempModal.querySelectorAll('.song-selection-card');
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(term) ? 'flex' : 'none';
             });
         });
 
@@ -3964,24 +3976,30 @@ const App = {
     // Similar to showBandSongSelector but adds selected songs to the draft for a new event
     showBandSongSelectorForDraft(bandSongs) {
         const songList = bandSongs.map(song => `
-            <label class="song-selection-label" style="display: block; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border); cursor: pointer;">
-                <input type="checkbox" value="${song.id}" class="band-song-checkbox-draft">
-                <strong>${this.escapeHtml(song.title)}</strong> - ${this.escapeHtml(song.artist)}
-                ${song.bpm ? `| ${song.bpm} BPM` : ''}
-                ${song.key ? `| ${song.key}` : ''}
-            </label>
+            <div class="song-selection-card" onclick="const cb = this.querySelector('input'); cb.checked = !cb.checked;">
+                <input type="checkbox" value="${song.id}" class="band-song-checkbox-draft" onclick="event.stopPropagation()">
+                <div class="song-card-content">
+                    <div class="song-card-title">${this.escapeHtml(song.title)}</div>
+                    <div class="song-card-artist">${this.escapeHtml(song.artist || 'Unbekannter Interpret')}</div>
+                    <div class="song-card-badges">
+                        ${song.bpm ? `<span class="song-badge bpm">${song.bpm} BPM</span>` : ''}
+                        ${song.key ? `<span class="song-badge key">${song.key}</span>` : ''}
+                        ${song.timeSignature ? `<span class="song-badge">${song.timeSignature}</span>` : ''}
+                    </div>
+                </div>
+            </div>
         `).join('');
 
         const modalContent = `
-            <div class="search-wrapper" style="margin-bottom: 1rem;">
+            <div class="search-wrapper" style="margin-bottom: 1.5rem;">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="modalSongSearchDraft" placeholder="Songs durchsuchen..." class="modern-search-input" style="width: 100%;">
             </div>
-            <div class="modal-song-list-container" style="max-height: 400px; overflow-y: auto;">
+            <div class="modal-song-list-container" style="max-height: 50vh; overflow-y: auto;">
                 ${songList}
             </div>
-            <div style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
-                <button type="button" id="cancelDraftSongs" class="btn">Abbrechen</button>
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" id="cancelDraftSongs" class="btn btn-secondary">Abbrechen</button>
                 <button type="button" id="confirmDraftSongs" class="btn btn-primary">Ausgewählte hinzufügen</button>
             </div>
         `;
@@ -3989,7 +4007,7 @@ const App = {
         const tempModal = document.createElement('div');
         tempModal.className = 'modal active';
         tempModal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 600px;">
                 <div class="modal-header">
                     <h2>Songs aus Band-Pool wählen</h2>
                 </div>
@@ -4004,10 +4022,10 @@ const App = {
         const searchInput = tempModal.querySelector('#modalSongSearchDraft');
         searchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
-            const labels = tempModal.querySelectorAll('.song-selection-label');
-            labels.forEach(label => {
-                const text = label.textContent.toLowerCase();
-                label.style.display = text.includes(term) ? 'block' : 'none';
+            const cards = tempModal.querySelectorAll('.song-selection-card');
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(term) ? 'flex' : 'none';
             });
         });
 
@@ -4066,14 +4084,51 @@ const App = {
         const container = document.getElementById('bandSongsList');
         if (!container) return;
 
-        const songs = await Storage.getBandSongs(bandId);
-        if (Array.isArray(songs)) {
-            songs.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        let songs = await Storage.getBandSongs(bandId);
+        if (!Array.isArray(songs)) songs = [];
+
+        // Apply Search Filter locally for responsiveness
+        const searchTerm = (document.getElementById('bandSongSearch')?.value || '').toLowerCase();
+        if (searchTerm) {
+            songs = songs.filter(s =>
+                (s.title || '').toLowerCase().includes(searchTerm) ||
+                (s.artist || '').toLowerCase().includes(searchTerm) ||
+                (s.info || '').toLowerCase().includes(searchTerm) ||
+                (s.ccli || '').toLowerCase().includes(searchTerm)
+            );
         }
+
+        // Apply Sorting
+        if (this.bandSongSort.direction !== 'none') {
+            const field = this.bandSongSort.field;
+            const dir = this.bandSongSort.direction === 'asc' ? 1 : -1;
+
+            songs.sort((a, b) => {
+                let valA = a[field] || '';
+                let valB = b[field] || '';
+
+                // Special handling for artist mapping
+                if (field === 'artist' && !a.artist) valA = a.artist || '';
+
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                // Numeric sorting for BPM
+                if (field === 'bpm') {
+                    valA = parseInt(valA) || 0;
+                    valB = parseInt(valB) || 0;
+                }
+
+                if (valA < valB) return -1 * dir;
+                if (valA > valB) return 1 * dir;
+                return 0;
+            });
+        }
+
         const band = await Storage.getBand(bandId);
         const bandName = band ? band.name : 'Unbekannte Band';
 
-        const tableRows = (Array.isArray(songs) && songs.length > 0) ?
+        const tableRows = songs.length > 0 ?
             songs.map(song => `
                 <tr style="border-bottom: 1px solid var(--color-border);">
                     <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
@@ -4098,10 +4153,15 @@ const App = {
                     </td>
                 </tr>
             `).join('') :
-            '<tr><td colspan="13" style="padding: var(--spacing-xl); text-align: center; color: var(--color-text-light);">Noch keine Songs hinzugefügt. Nutze den Import oder füge manuell einen Song hinzu.</td></tr>';
+            `<tr><td colspan="13" style="padding: var(--spacing-xl); text-align: center; color: var(--color-text-light);">${searchTerm ? 'Keine Songs gefunden.' : 'Noch keine Songs hinzugefügt.'}</td></tr>`;
 
         // Store songs for PDF export
-        this.currentBandSongs = Array.isArray(songs) ? songs : [];
+        this.currentBandSongs = songs;
+
+        const getSortClass = (field) => {
+            if (this.bandSongSort.field !== field) return '';
+            return this.bandSongSort.direction === 'asc' ? 'sort-asc' : (this.bandSongSort.direction === 'desc' ? 'sort-desc' : '');
+        };
 
         container.innerHTML = `
         <div class="song-search-container" style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
@@ -4109,7 +4169,7 @@ const App = {
                 <h3 class="btn-text-mobile-hide" style="margin: 0; white-space: nowrap; font-size: 1.25rem;">Songs (${this.currentBandSongs.length})</h3>
                 <div class="search-wrapper" style="flex: 1; min-width: 150px; max-width: 600px;">
                     <span class="search-icon">🔍</span>
-                    <input type="text" id="bandSongSearch" placeholder="Setliste durchsuchen..." class="modern-search-input" style="width: 100%;">
+                    <input type="text" id="bandSongSearch" placeholder="Setliste durchsuchen..." class="modern-search-input" style="width: 100%;" value="${searchTerm}">
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
@@ -4131,7 +4191,7 @@ const App = {
             </div>
             <div style="display: flex; gap: 0.5rem;">
                 <button id="bandSongsBulkDelete" class="btn btn-danger btn-sm">🗑️ Auswahl löschen</button>
-                <button id="bandSongsBulkPDF" class="btn btn-primary btn-sm">📄 Auswahl als exportieren</button>
+                <button id="bandSongsBulkPDF" class="btn btn-primary btn-sm">📄 Auswahl als PDF exportieren</button>
             </div>
         </div>
 
@@ -4142,17 +4202,17 @@ const App = {
                     <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">
                         <input type="checkbox" id="selectAllBandSongs">
                     </th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Time</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Orig.</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
+                    <th class="sortable-header ${getSortClass('title')}" data-field="title" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Titel</th>
+                    <th class="sortable-header ${getSortClass('artist')}" data-field="artist" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Interpret</th>
+                    <th class="sortable-header ${getSortClass('bpm')}" data-field="bpm" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">BPM</th>
+                    <th class="sortable-header ${getSortClass('timeSignature')}" data-field="timeSignature" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Time</th>
+                    <th class="sortable-header ${getSortClass('key')}" data-field="key" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Tonart</th>
+                    <th class="sortable-header ${getSortClass('originalKey')}" data-field="originalKey" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Orig.</th>
+                    <th class="sortable-header ${getSortClass('leadVocal')}" data-field="leadVocal" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Lead</th>
+                    <th class="sortable-header ${getSortClass('language')}" data-field="language" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Sprache</th>
+                    <th class="sortable-header ${getSortClass('tracks')}" data-field="tracks" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Tracks</th>
                     <th style="padding: var(--spacing-sm); text-align: left; min-width: 250px;">Infos</th>
-                    <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
+                    <th class="sortable-header ${getSortClass('ccli')}" data-field="ccli" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">CCLI</th>
                     <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
                 </tr>
             </thead>
@@ -4162,6 +4222,38 @@ const App = {
         </table>
         </div>
 `;
+
+        // Wire up Sort Headers
+        container.querySelectorAll('.sortable-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const field = header.dataset.field;
+                if (this.bandSongSort.field === field) {
+                    // Toggle: asc -> desc -> none -> asc
+                    if (this.bandSongSort.direction === 'asc') this.bandSongSort.direction = 'desc';
+                    else if (this.bandSongSort.direction === 'desc') this.bandSongSort.direction = 'none';
+                    else this.bandSongSort.direction = 'asc';
+                } else {
+                    this.bandSongSort.field = field;
+                    this.bandSongSort.direction = 'asc';
+                }
+                this.renderBandSongs(bandId);
+            });
+        });
+
+        // Wire up search
+        const searchInput = document.getElementById('bandSongSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                // We use a small timeout to avoid double-renders but keep it snappy
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => this.renderBandSongs(bandId), 300);
+            });
+            searchInput.focus(); // Keep focus when typing
+            // Set cursor to end
+            const val = searchInput.value;
+            searchInput.value = '';
+            searchInput.value = val;
+        }
 
         // Wire up add button
         const addBtn = document.getElementById('addBandSongBtn');
@@ -4248,29 +4340,6 @@ const App = {
                 const selectedIds = Array.from(container.querySelectorAll('.band-song-checkbox-row:checked')).map(cb => cb.value);
                 const selectedSongs = this.currentBandSongs.filter(s => selectedIds.includes(s.id));
                 this.downloadSongListPDF(selectedSongs, `Ausgewählte Songs der Band ${bandName}`, 'Teil-Repertoire Export', true);
-            });
-        }
-
-        // Search functionality
-        const searchInput = document.getElementById('bandSongSearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                const term = e.target.value.toLowerCase();
-                const tableBody = document.getElementById('bandSongsTableBody');
-                if (!tableBody) return;
-                const rows = tableBody.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const titleEl = row.querySelector('[data-label="Titel"]');
-                    const artistEl = row.querySelector('[data-label="Interpret"]');
-                    const title = (titleEl ? titleEl.textContent : (row.cells[1] ? row.cells[1].textContent : '')).toLowerCase();
-                    const artist = (artistEl ? artistEl.textContent : (row.cells[2] ? row.cells[2].textContent : '')).toLowerCase();
-
-                    if (title.includes(term) || artist.includes(term)) {
-                        row.style.setProperty('display', '', 'important');
-                    } else {
-                        row.style.setProperty('display', 'none', 'important');
-                    }
-                });
             });
         }
 

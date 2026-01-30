@@ -190,16 +190,17 @@ const PDFGenerator = {
             const imgData = canvas.toDataURL('image/png');
             const imgWidth = 297; // A4 width in mm (landscape)
             const pageHeight = 210; // A4 height in mm (landscape)
-            let heightLeft = canvas.height * imgWidth / canvas.width;
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            let heightLeft = imgHeight;
             let position = 0;
 
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
             heightLeft -= pageHeight;
 
-            while (heightLeft >= 0) {
-                position = heightLeft - canvas.height * imgWidth / canvas.width;
+            while (heightLeft > 0) {
+                position = heightLeft - imgHeight;
                 pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, heightLeft);
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
                 heightLeft -= pageHeight;
             }
 

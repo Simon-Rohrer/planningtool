@@ -8384,6 +8384,114 @@ body.no-scroll {
     border-right: none;
 }
 
+/* Sortable Header Styles */
+.sortable-header {
+    user-select: none;
+    transition: background-color 0.2s;
+    position: relative;
+    padding-right: 1.5rem !important;
+    /* Make room for arrow */
+}
+
+.sortable-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.sortable-header::after {
+    content: '↕';
+    position: absolute;
+    right: 0.5rem;
+    opacity: 0.3;
+    font-size: 1.1em;
+    transition: all 0.2s;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.sortable-header.sort-asc::after {
+    content: '▲';
+    opacity: 1;
+    color: var(--color-accent);
+}
+
+.sortable-header.sort-desc::after {
+    color: var(--color-accent);
+}
+
+/* ===== Song Selection Modal Styles ===== */
+.modal-song-list-container {
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.song-selection-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.song-selection-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--color-accent);
+    transform: translateX(4px);
+}
+
+.song-selection-card input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.song-card-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.song-card-title {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--color-text);
+}
+
+.song-card-artist {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.song-card-badges {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.song-badge {
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: var(--color-text-light);
+}
+
+.song-badge.bpm {
+    color: var(--color-accent);
+}
+
+.song-badge.key {
+    background: rgba(99, 102, 241, 0.1);
+    color: #818cf8;
+}
+
 /* ===== Drag and Drop Setlist Styles ===== */
 tr[draggable="true"] {
     cursor: grab;
