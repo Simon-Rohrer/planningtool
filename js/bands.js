@@ -390,84 +390,33 @@ const Bands = {
         // Render band songs
         App.renderBandSongs(bandId);
 
-        // Add 'Abwesenheiten' tab for leaders and co-leaders
-        const roleOfUser = Storage.getUserRoleInBand(user.id, bandId);
-        const tabButtons = document.querySelector('.tab-buttons');
-        const existingAbsencesTabBtn = tabButtons ? tabButtons.querySelector('[data-tab="absences"]') : null;
-        if ((roleOfUser === 'leader' || roleOfUser === 'co-leader') && tabButtons) {
-            // If a static tab button exists (from HTML), unhide and bind it; otherwise create one
-            if (!existingAbsencesTabBtn) {
-                const absBtn = document.createElement('button');
-                absBtn.className = 'tab-btn';
-                absBtn.dataset.tab = 'absences';
-                absBtn.textContent = 'Abwesenheiten';
-                tabButtons.appendChild(absBtn);
+        // Abwesenheiten Tab available for ALL members
+        const absenceTabBtn = document.getElementById('bandAbsencesTabBtn');
+        if (absenceTabBtn) {
+            absenceTabBtn.style.display = ''; // Show for everyone
 
-                absBtn.addEventListener('click', () => {
+            // Ensure click handler is bound
+            if (!absenceTabBtn._bound) {
+                absenceTabBtn.addEventListener('click', () => {
                     if (window.App && typeof window.App.switchTab === 'function') {
                         window.App.switchTab('absences');
                     }
                 });
-            } else {
-                // unhide existing button and ensure it has a click handler
-                existingAbsencesTabBtn.style.display = '';
-                // ensure event bound only once
-                if (!existingAbsencesTabBtn._bound) {
-                    existingAbsencesTabBtn.addEventListener('click', () => {
-                        if (window.App && typeof window.App.switchTab === 'function') {
-                            window.App.switchTab('absences');
-                        }
-                    });
-                    existingAbsencesTabBtn._bound = true;
-                }
+                absenceTabBtn._bound = true;
             }
 
-            // Use existing absences tab content if present (from HTML), otherwise create it
+            // Ensure tab content exists
             let absencesTab = document.getElementById('absencesTab');
             if (!absencesTab) {
                 absencesTab = document.createElement('div');
                 absencesTab.id = 'absencesTab';
                 absencesTab.className = 'tab-content';
-                const section = document.createElement('div');
-                section.className = 'section';
-                section.innerHTML = `<h3>Abwesenheiten der Mitglieder</h3><div id="bandAbsencesList"></div>`;
-                absencesTab.appendChild(section);
-                const settingsPanel = document.getElementById('bandDetailsModal').querySelector('.modal-body');
-                if (settingsPanel) settingsPanel.appendChild(absencesTab);
+                const modalBody = document.getElementById('bandDetailsModal').querySelector('.modal-body');
+                if (modalBody) modalBody.appendChild(absencesTab);
             }
 
-            // Populate absences list (use date-only formatting)
-            const absList = document.getElementById('bandAbsencesList');
-            if (absList) {
-                const members = Storage.getBandMembers(bandId);
-                const rows = members.map(m => {
-                    const u = Storage.getById('users', m.userId);
-                    if (!u) return '';
-                    const abs = Storage.getUserAbsences(u.id) || [];
-                    if (abs.length === 0) return `
-                        <div class="absence-member">
-                            <strong>${this.escapeHtml(u.name)}</strong>
-                            <div class="help-text">Keine Abwesenheiten</div>
-                        </div>
-                    `;
-
-                    return `
-                        <div class="absence-member">
-                            <strong>${this.escapeHtml(u.name)}</strong>
-                            <ul>
-                                ${abs.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)).map(a => `<li>${UI.formatDateOnly(a.startDate)} — ${UI.formatDateOnly(a.endDate)}${a.reason ? ' — ' + this.escapeHtml(a.reason) : ''}</li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }).join('');
-
-                absList.innerHTML = rows && rows.trim().length > 0 ? rows : '<p class="text-muted">Keine Abwesenheiten vorhanden.</p>';
-            }
-        } else {
-            // Hide absences tab button if present and user not leader/co-leader
-            if (existingAbsencesTabBtn) existingAbsencesTabBtn.style.display = 'none';
-            const absencesTabEl = document.getElementById('absencesTab');
-            if (absencesTabEl) absencesTabEl.remove();
+            // Initial render of the absence calendar
+            this.renderBandAbsences(bandId);
         }
     },
 
@@ -646,49 +595,251 @@ const Bands = {
         });
     },
 
-    // Render absences for all members of a band (helper, can be called from App)
-    renderBandAbsences(bandId) {
-        const container = document.getElementById('bandAbsencesList');
+    // Render Absences Calendar
+    async renderBandAbsences(bandId) {
+        const container = document.getElementById('absencesTab');
         if (!container) return;
 
-        const members = Storage.getBandMembers(bandId);
-        if (!members || members.length === 0) {
-            container.innerHTML = '<p class="text-muted">Keine Mitglieder</p>';
-            return;
-        }
-        // Determine if any member has absences
-        const membersWithAbs = members.map(m => {
-            const u = Storage.getById('users', m.userId);
-            if (!u) return null;
-            const abs = Storage.getUserAbsences(u.id) || [];
-            return { user: u, absences: abs };
-        }).filter(x => x !== null);
+        // Color palette for members
+        this.memberColors = [
+            '#10b981', // Emerald
+            '#f59e0b', // Amber
+            '#ef4444', // Rose
+            '#6366f1', // Indigo
+            '#0ea5e9', // Sky
+            '#8b5cf6', // Violet
+            '#f43f5e', // Pink
+            '#14b8a6'  // Teal
+        ];
 
-        const anyAbsences = membersWithAbs.some(m => m.absences && m.absences.length > 0);
+        // Reset content with structure
+        container.innerHTML = `
+            <div class="absence-view-header">
+                <!-- Header removed as requested to save space -->
+            </div>
 
-        if (!anyAbsences) {
-            container.innerHTML = '<p class="text-muted">Kein Mitglied hat eine Abwesenheit eingetragen.</p>';
-            return;
-        }
-
-        // Render only members who have absences
-        const rows = membersWithAbs.filter(m => m.absences && m.absences.length > 0).map(m => {
-            const list = m.absences.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)).map(a => `
-                <div style="padding:6px 0;">
-                    <div><strong>${UI.formatDateOnly(a.startDate)} — ${UI.formatDateOnly(a.endDate)}</strong></div>
-                    ${a.reason ? `<div class="help-text">${this.escapeHtml(a.reason)}</div>` : ''}
+            <div class="absence-view-controls">
+                <div class="filter-group">
+                    <span class="filter-label">Welche Abwesenheiten?</span>
+                    <div class="absence-filters">
+                        <button class="absence-filter-btn active" data-filter="all">Alle</button>
+                        <button class="absence-filter-btn" data-filter="own">Deine eigenen</button>
+                    </div>
                 </div>
-            `).join('');
+                
+                <div class="absence-info-badge">
+                    <div class="info-icon">i</div>
+                    <div class="info-text">
+                        Die Abwesenheiten erscheinen auch in der Verfügbarkeitsübersicht und der Datumsauswahl für neue Termine.
+                    </div>
+                </div>
+            </div>
+
+            <div id="absenceLegend" class="absence-legend">
+                <!-- Legend removed as per new design with individual colors in sidebar -->
+            </div>
+
+            <div class="absence-main-layout">
+                <div id="absenceMembersSidebar" class="absence-members-sidebar">
+                    <!-- Members Sidebar injected here -->
+                </div>
+                
+                <div class="absence-calendar-content" style="flex: 1;">
+                    <div id="absenceCalendarContainer" class="absence-calendar-grid">
+                        <!-- Calendar Grid injected here -->
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Wire up filters
+        const btns = container.querySelectorAll('.absence-filter-btn');
+        btns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                btns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.renderAbsenceCalendarGrid(bandId, btn.dataset.filter);
+            });
+        });
+
+        // Initial render grid
+        await this.renderAbsenceCalendarGrid(bandId, 'all');
+    },
+
+    // New: Render Sidebar with members and colors
+    async renderAbsenceSidebar(members, memberColorMap, filterType) {
+        const sidebar = document.getElementById('absenceMembersSidebar');
+        if (!sidebar) return;
+
+        const currentUser = Auth.getCurrentUser();
+        sidebar.style.display = 'flex';
+
+        const filteredMembers = filterType === 'own'
+            ? members.filter(m => String(m.userId) === String(currentUser?.id))
+            : members;
+
+        // Update title based on filter
+        const titleEl = document.querySelector('.grid-section-title');
+        if (titleEl) {
+            titleEl.textContent = filterType === 'own' ? 'Deine Abwesenheiten' : 'Alle Abwesenheiten';
+        }
+
+        const membersHtml = await Promise.all(filteredMembers.map(async (member) => {
+            const user = await Storage.getById('users', member.userId);
+            if (!user) return '';
+
+            const color = memberColorMap[member.userId];
+            const displayName = UI.getUserDisplayName(user);
+            const initials = UI.getUserInitials(displayName);
+
+            const avatarHtml = user.profile_image_url
+                ? `<img src="${user.profile_image_url}" alt="${displayName}" class="member-avatar-img" style="border-color: ${color}">`
+                : `<div class="member-avatar-placeholder" style="background: ${UI.getAvatarColor(displayName)}; border-color: ${color}">${initials}</div>`;
 
             return `
-                <div class="absence-member" style="padding:8px; border-bottom:1px solid var(--color-border);">
-                    <strong>${this.escapeHtml(m.user.name)}</strong>
-                    <div class="absence-list">${list}</div>
+                <div class="absence-member-card">
+                    <div class="member-avatar-wrapper">
+                        ${avatarHtml}
+                    </div>
+                    <div class="member-info-name">${displayName}</div>
                 </div>
             `;
-        }).join('');
+        }));
 
-        container.innerHTML = rows;
+        sidebar.innerHTML = membersHtml.join('');
+    },
+
+    async renderAbsenceCalendarGrid(bandId, filterType) {
+        const gridContainer = document.getElementById('absenceCalendarContainer');
+        if (!gridContainer) return;
+
+        gridContainer.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem;">Lade Kalender...</div>';
+
+        const members = await Storage.getBandMembers(bandId);
+        const currentUser = Auth.getCurrentUser();
+
+        // Assign colors to members for this view
+        const memberColorMap = {};
+        members.forEach((member, index) => {
+            const color = this.memberColors[index % this.memberColors.length];
+            memberColorMap[member.userId] = color;
+        });
+
+        // Render Sidebar
+        await this.renderAbsenceSidebar(members, memberColorMap, filterType);
+
+        // Collect all absences
+        let allAbsences = [];
+
+        for (const member of members) {
+            // If filter is 'own', skip other members
+            if (filterType === 'own' && member.userId !== currentUser.id) continue;
+
+            const user = await Storage.getById('users', member.userId);
+            if (!user) continue;
+
+            const userAbsences = await Storage.getUserAbsences(user.id) || [];
+            // enriching absence with user name and color
+            userAbsences.forEach(abs => {
+                allAbsences.push({
+                    ...abs,
+                    userName: user.name || 'Unbekannt',
+                    userId: user.id,
+                    color: memberColorMap[user.id]
+                });
+            });
+        }
+
+        // Clean grid
+        gridContainer.innerHTML = '';
+
+        // Generate next 6 months
+        const today = new Date();
+        // Start from current month
+        let currentIterDate = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        for (let i = 0; i < 6; i++) {
+            const year = currentIterDate.getFullYear();
+            const month = currentIterDate.getMonth(); // 0-based
+
+            const monthBlock = document.createElement('div');
+            monthBlock.className = 'month-block';
+
+            const monthName = currentIterDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+
+            let daysHtml = '';
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            // Get weekday of 1st (0=Sun, 1=Mon, ..., 6=Sat)
+            // Adjust to Monday start (Mon=0, ..., Sun=6)
+            let startDay = new Date(year, month, 1).getDay();
+            startDay = startDay === 0 ? 6 : startDay - 1; // 0=Mon, 6=Sun
+
+            // Empty slots for previous month days
+            for (let j = 0; j < startDay; j++) {
+                daysHtml += `<div class="calendar-day other-month"></div>`;
+            }
+
+            // Days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(year, month, d);
+                const strDate = dateObj.toISOString().split('T')[0];
+                const isToday = (today.getDate() === d && today.getMonth() === month && today.getFullYear() === year);
+
+                // Find absences for this day
+                const daysAbsences = allAbsences.filter(abs => {
+                    const start = abs.startDate.split('T')[0];
+                    const end = abs.endDate.split('T')[0];
+                    return strDate >= start && strDate <= end;
+                });
+
+                let classes = 'calendar-day';
+                if (isToday) classes += ' today';
+
+                let style = '';
+                let tooltip = '';
+
+                if (daysAbsences.length > 0) {
+                    classes += ' has-absence';
+                    const names = [...new Set(daysAbsences.map(a => a.userName))].join(', ');
+                    tooltip = `title="Abwesend: ${names}"`;
+
+                    if (daysAbsences.length === 1) {
+                        style = `--absence-bg: ${daysAbsences[0].color}`;
+                    } else {
+                        // Create gradient for multiple members
+                        const colors = daysAbsences.map(a => a.color);
+                        if (daysAbsences.length === 2) {
+                            style = `--absence-bg: linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)`;
+                        } else {
+                            // 3 or more (Split in 3)
+                            style = `--absence-bg: linear-gradient(135deg, ${colors[0]} 33%, ${colors[1]} 33% 66%, ${colors[2]} 66%)`;
+                        }
+                    }
+                }
+
+                daysHtml += `<div class="${classes}" ${tooltip} style="${style}">${d}</div>`;
+            }
+
+            monthBlock.innerHTML = `
+                <div class="month-title">${monthName}</div>
+                <div class="month-days-grid">
+                    <div class="weekday-header">Mo</div>
+                    <div class="weekday-header">Di</div>
+                    <div class="weekday-header">Mi</div>
+                    <div class="weekday-header">Do</div>
+                    <div class="weekday-header">Fr</div>
+                    <div class="weekday-header">Sa</div>
+                    <div class="weekday-header">So</div>
+                    ${daysHtml}
+                </div>
+            `;
+
+            gridContainer.appendChild(monthBlock);
+
+            // Move to next month
+            currentIterDate.setMonth(currentIterDate.getMonth() + 1);
+        }
     },
 
     // Update member role

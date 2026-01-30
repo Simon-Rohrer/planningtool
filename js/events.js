@@ -23,77 +23,134 @@ const Events = {
 
         if (!user) return;
 
-        let events = (await Storage.getUserEvents(user.id)) || [];
+        UI.showLoading('Auftritte werden geladen...');
+        Logger.time('Load Events');
 
-        // Apply filter
-        if (filterBandId) {
-            events = events.filter(e => e.bandId === filterBandId);
-        }
+        try {
+            let events = (await Storage.getUserEvents(user.id)) || [];
 
-        // Sort by date (Upcoming first, then past)
-        const now = new Date();
-        events.sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            const isPastA = dateA < now;
-            const isPastB = dateB < now;
+            // 1. Collect all IDs for batch fetching
+            const eventIds = events.map(e => e.id);
+            const bandIds = [...new Set(events.map(e => e.bandId))];
+            const memberIds = [...new Set(events.flatMap(e => e.members || []))];
 
-            if (isPastA && !isPastB) return 1; // Past at bottom
-            if (!isPastA && isPastB) return -1; // Future at top
+            // 2. Batch Fetch everything in parallel
+            const [
+                songsBatch,
+                membersBatch,
+                absencesBatch,
+                userBandsBatch // For roles
+            ] = await Promise.all([
+                Storage.getEventSongsForMultipleEvents(eventIds),
+                Storage.getBatchByIds('users', memberIds),
+                Storage.getBatchByIds('absences', memberIds), // Fetching all absences for these users
+                Storage.getUserBands(user.id)
+            ]);
 
-            if (!isPastA && !isPastB) {
-                // Both future: Ascending (nearest first)
-                return dateA - dateB;
-            } else {
-                // Both past: Descending (most recent past first)
-                return dateB - dateA;
+            // 3. Create a data context
+            const dataContext = {
+                songs: songsBatch.reduce((acc, s) => {
+                    if (!acc[s.eventId]) acc[s.eventId] = [];
+                    acc[s.eventId].push(s);
+                    return acc;
+                }, {}),
+                members: membersBatch.reduce((acc, u) => ({ ...acc, [u.id]: u }), {}),
+                absences: absencesBatch.reduce((acc, a) => {
+                    if (!acc[a.userId]) acc[a.userId] = [];
+                    acc[a.userId].push(a);
+                    return acc;
+                }, {}),
+                userBands: userBandsBatch.reduce((acc, b) => ({ ...acc, [b.id]: b }), {})
+            };
+
+            // Apply filter
+            if (filterBandId) {
+                events = events.filter(e => e.bandId === filterBandId);
             }
-        });
 
-        if (events.length === 0) {
-            UI.showEmptyState(container, '🎤', 'Noch keine Auftritte vorhanden');
-            return;
+            // Sort by date (Upcoming first, then past)
+            const now = new Date();
+            events.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                const isPastA = dateA < now;
+                const isPastB = dateB < now;
+
+                if (isPastA && !isPastB) return 1; // Past at bottom
+                if (!isPastA && isPastB) return -1; // Future at top
+
+                if (!isPastA && !isPastB) {
+                    // Both future: Ascending (nearest first)
+                    return dateA - dateB;
+                } else {
+                    // Both past: Descending (most recent past first)
+                    return dateB - dateA;
+                }
+            });
+
+            if (events.length === 0) {
+                UI.showEmptyState(container, '🎤', 'Noch keine Auftritte vorhanden');
+                return;
+            }
+
+            container.innerHTML = (await Promise.all(events.map(event =>
+                this.renderEventCard(event, dataContext)
+            ))).join('');
+
+            // Add click handlers
+            this.attachEventHandlers();
+            Logger.timeEnd('Load Events');
+        } finally {
+            UI.hideLoading();
         }
-
-        container.innerHTML = await Promise.all(events.map(event =>
-            this.renderEventCard(event)
-        )).then(cards => cards.join(''));
-
-        // Add click handlers
-        this.attachEventHandlers();
     },
 
     // Render single event card
-    async renderEventCard(event) {
+    async renderEventCard(event, dataContext = {}) {
         // Use joined band data if available, otherwise fetch
         const band = event.band || await Storage.getBand(event.bandId);
 
         const isPast = new Date(event.date) < new Date();
         const isExpanded = this.expandedEventId === event.id;
-        const canManage = await Auth.canManageEvents(event.bandId);
+
+        // Use role from context if available, fallback to async check
+        let canManage = false;
+        if (dataContext.userBands) {
+            const userBand = dataContext.userBands[event.bandId];
+            const role = userBand ? userBand.role : null;
+            canManage = Auth.isAdmin() || role === 'leader' || role === 'co-leader';
+        } else {
+            canManage = await Auth.canManageEvents(event.bandId);
+        }
 
         // Get band color with fallback
-        const bandColor = band ? (band.color || '#e11d48') : '#e11d48'; // Default pink-ish for events if no band color
+        const bandColor = band ? (band.color || '#e11d48') : '#e11d48';
 
-        // Get member info and absences
-        const members = await Promise.all(event.members.map(async memberId => {
-            const member = await Storage.getById('users', memberId);
-            if (!member) return { name: 'Unbekannt', absence: null };
-            const absences = await Storage.getUserAbsences(memberId);
-            // Find absence covering event date
+        // Get member info and absences from context
+        const members = (event.members || []).map(memberId => {
+            const member = dataContext.members ? dataContext.members[memberId] : null;
+            if (!member && dataContext.members) return { name: 'Unbekannt', absence: null };
+
+            // If we don't have a context, we'd need to fetch (fallback)
+            // But we aim to always have it. For now, if no member in context, use placeholder.
+            const name = member ? this._getUserName(member) : 'Lädt...';
+
+            // Find absence covering event date from context
             const eventDate = new Date(event.date);
-            const absence = absences.find(a => {
+            const userAbsences = (dataContext.absences && dataContext.absences[memberId]) || [];
+            const absence = userAbsences.find(a => {
                 const start = new Date(a.startDate);
                 const end = new Date(a.endDate);
                 return eventDate >= start && eventDate <= end;
             });
-            return { name: this._getUserName(member), absence };
-        }));
+
+            return { name, absence };
+        });
 
         const guests = event.guests || [];
 
-        // get event songs to show inside expanded card
-        const eventSongs = await Storage.getEventSongs(event.id);
+        // Get event songs from context
+        const eventSongs = (dataContext.songs && dataContext.songs[event.id]) || [];
 
         // Dynamisch Felder nur anzeigen, wenn sie befüllt sind
         let detailsHtml = '';
@@ -167,6 +224,9 @@ const Events = {
         }
         // Setlist
         if (Array.isArray(eventSongs) && eventSongs.length > 0) {
+            // Sort songs by order if not already sorted
+            const sortedSongs = [...eventSongs].sort((a, b) => (a.order || 0) - (b.order || 0));
+
             detailsHtml += `
                 <div class="setlist-section">
                     <div class="setlist-header">
@@ -208,7 +268,7 @@ const Events = {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${eventSongs.map((s, idx) => `
+                                ${sortedSongs.map((s, idx) => `
                                     <tr style="border-bottom: 1px solid var(--color-border);">
                                         <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
                                             <input type="checkbox" class="event-song-checkbox" data-event-id="${event.id}" value="${s.id}">

@@ -1204,7 +1204,8 @@ body.global-stage-mode .stage-lights-overlay {
 /* Main App Container (hidden by default) */
 .main-app {
     display: none;
-    height: 100%;
+    height: 100dvh;
+    /* Modern mobile-first height */
     width: 100%;
     overflow: hidden;
     /* Container doesn't scroll, children do */
@@ -1324,6 +1325,8 @@ input:checked+.slider:before {
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Required for smooth iOS scrolling */
     animation: slideUp var(--transition-slow);
     padding: var(--spacing-xl);
     outline: 1px solid var(--color-border);
@@ -1645,7 +1648,7 @@ input:checked+.slider:before {
 
 /* ===== App Container ===== */
 .app-container {
-    height: 100%;
+    height: 100dvh;
     /* Fill main-app */
     display: flex;
     flex-direction: row;
@@ -4233,10 +4236,13 @@ input:checked+.slider:before {
     }
 
     .modal-content {
-        width: 96%;
-        max-width: 600px;
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
         padding: var(--spacing-md);
-        margin: 10px auto;
+        margin: 0;
+        /* Removed margin: 10px auto; to allow full height */
     }
 }
 
@@ -4299,16 +4305,16 @@ input:checked+.slider:before {
 
     .modal-content {
         width: 96%;
+        max-height: 92vh;
+        /* Slightly more space */
         padding: var(--spacing-md);
+        margin-bottom: env(safe-area-inset-bottom);
     }
 
-    .date-proposal-item {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .vote-summary {
-        gap: var(--spacing-sm);
+    .app-main {
+        padding: var(--spacing-md);
+        padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important;
+        /* Prevent cutoff by nav */
     }
 }
 
@@ -8964,11 +8970,6 @@ tr.drag-over {
     }
 }
 
-100% {
-    transform: rotate(360deg) scale(1);
-}
-}
-
 /* Mobile Optimization for Landing Page */
 @media (max-width: 768px) {
     .landing-header {
@@ -9281,22 +9282,608 @@ tr.drag-over {
         margin-bottom: 2rem !important;
     }
 }
+
 /* Refined Dark Mode Dimensions (Smaller/More Compact) */
 .auth-white-card {
-    max-width: 480px !important; /* Reduced from 600px */
-    min-height: auto !important; /* Check content size, remove forced height */
+    max-width: 480px !important;
+    /* Reduced from 600px */
+    min-height: auto !important;
+    /* Check content size, remove forced height */
 }
 
 .auth-white-card .auth-form {
-    padding: 2rem !important; /* Reduced from 3rem */
+    padding: 2rem !important;
+    /* Reduced from 3rem */
 }
 
 .auth-white-card h2 {
-    font-size: 1.75rem !important; /* Slightly smaller header */
+    font-size: 1.75rem !important;
+    /* Slightly smaller header */
     margin-bottom: 1.5rem !important;
 }
 
 /* Increase vertical padding for more height (top/bottom) */
 .auth-white-card .auth-form {
-    padding: 3.5rem 2.5rem !important; /* More vertical breathing room */
+    padding: 3.5rem 2.5rem !important;
+    /* More vertical breathing room */
+}
+
+/* --- Absence Calendar Redesign (Reference 2 - "Pro" Aesthetic) --- */
+
+.absence-view-header {
+    display: none;
+    /* Removed as requested */
+}
+
+.absence-view-header h3 {
+    font-size: 2.25rem;
+    /* Large as in screenshot 2 */
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    color: var(--color-text);
+    letter-spacing: -0.02em;
+}
+
+.absence-view-header p {
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    line-height: 1.5;
+    opacity: 0.8;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.absence-view-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    position: relative;
+    padding: 0;
+}
+
+/* Neu: Flex Container für Sidebar + Grid */
+.absence-main-layout {
+    display: flex;
+    gap: 3rem;
+    align-items: flex-start;
+}
+
+@media (max-width: 1024px) {
+    .absence-main-layout {
+        flex-direction: column;
+        gap: 2rem;
+    }
+}
+
+/* Neu: Mitglieder Sidebar Styles */
+.absence-members-sidebar {
+    flex: 0 0 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0.5rem;
+}
+
+.absence-member-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+    transition: transform 0.2s;
+}
+
+.absence-member-card:hover {
+    transform: translateX(5px);
+}
+
+.member-avatar-wrapper {
+    position: relative;
+    width: 48px;
+    height: 48px;
+}
+
+.member-avatar-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid transparent;
+    /* Farbring wird per Inline-Style gesetzt */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.member-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    border: 3px solid transparent;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.member-info-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.absence-filters {
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px;
+    border-radius: 99px;
+    gap: 2px;
+}
+
+.absence-filter-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--color-text-secondary);
+}
+
+.absence-filter-btn.active {
+    background: #3B82F6;
+    color: white;
+}
+
+.absence-info-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, rgba(88, 28, 135, 0.6) 0%, rgba(55, 48, 163, 0.6) 100%);
+    padding: 0.75rem 1.25rem;
+    border-radius: 1rem;
+    max-width: 320px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(8px);
+}
+
+.absence-info-badge .info-icon {
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.absence-info-badge .info-text {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.3;
+}
+
+.grid-section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0.5rem 0 1rem 0;
+    color: var(--color-text);
+}
+
+/* Absence Legend */
+.absence-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+.absence-calendar-grid {
+    flex: 1;
+    display: grid !important;
+    grid-template-columns: repeat(3, auto) !important;
+    gap: 1.5rem 1rem !important;
+    margin-top: 0;
+    padding-bottom: 2rem;
+    justify-content: center !important;
+    align-items: start !important;
+}
+
+@media (max-width: 768px) {
+    .absence-calendar-grid {
+        grid-template-columns: repeat(1, auto) !important;
+        gap: 1.5rem !important;
+    }
+
+    .absence-view-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .absence-info-badge {
+        max-width: 100%;
+    }
+
+    .month-block {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 auto !important;
+    }
+
+    .absence-calendar-grid {
+        padding-left: 0;
+        padding-right: 0;
+    }
+}
+
+.month-block {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    width: fit-content;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.month-block:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.month-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text);
+    text-align: center;
+    letter-spacing: 0.05rem;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+.month-days-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, 24px) !important;
+    grid-auto-rows: 24px !important;
+    gap: 2px !important;
+}
+
+/* Absence View Namespaced Rules to prevent global overrides */
+.month-days-grid .calendar-day {
+    width: 24px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    /* Force override of mobile 50px */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.75rem !important;
+    border-radius: 4px;
+    /* Slightly more rounded */
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--color-text-secondary);
+    transition: all 0.2s;
+    cursor: default;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    /* Subtle border */
+}
+
+.month-days-grid .calendar-day.other-month {
+    visibility: hidden;
+}
+
+.month-days-grid .calendar-day.today {
+    outline: 1.5px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    font-weight: 700;
+}
+
+.month-days-grid .calendar-day.has-absence {
+    background: var(--absence-bg, #b91c1c);
+    /* Use dynamic color or fallback */
+    color: white !important;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    border: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.month-days-grid .calendar-day.has-absence:hover {
+    transform: scale(1.1);
+    z-index: 2;
+}
+
+.month-days-grid .weekday-header {
+    width: 24px !important;
+    height: 20px !important;
+    min-height: 0 !important;
+    text-align: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-text-light);
+    opacity: 0.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== Calendar Detail Modal Modern Design ===== */
+.calendar-details-container {
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.calendar-detail-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    border-left: 5px solid var(--color-primary);
+    padding-left: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+}
+
+.calendar-detail-icon-large {
+    font-size: 2.5rem;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.calendar-detail-title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-detail-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.calendar-detail-subtitle {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.calendar-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    background: rgba(255, 255, 255, 0.03);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+}
+
+.calendar-info-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.calendar-info-item .info-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    background: var(--color-bg);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+}
+
+.calendar-info-item .info-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-info-item .info-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.calendar-info-item .info-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.calendar-info-item .info-help {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+}
+
+.calendar-detail-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.calendar-detail-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.calendar-detail-notes {
+    background: var(--color-bg);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--color-border);
+    font-style: italic;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+
+.calendar-members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.member-avatar-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--color-surface);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-border);
+    transition: transform 0.2s;
+}
+
+.member-avatar-item:hover {
+    transform: translateY(-2px);
+    background: var(--color-surface-hover);
+}
+
+.member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: white;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.member-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.member-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.calendar-attendance-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.attendance-stat {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-pill);
+    font-size: 0.9rem;
+    font-weight: 700;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.stat-accepted {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--color-success);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.stat-declined {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-danger);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.stat-maybe {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--color-warning);
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.calendar-setlist-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.calendar-song-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-bg);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    transition: margin-left 0.2s;
+}
+
+.calendar-song-item:hover {
+    margin-left: 5px;
+    background: var(--color-surface);
+}
+
+.song-index {
+    color: var(--color-text-secondary);
+    font-family: monospace;
+    font-weight: 700;
+}
+
+.song-title {
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.song-artist {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.song-key {
+    color: var(--color-primary);
+    font-weight: 700;
+    margin-left: auto;
+    font-family: monospace;
 }

@@ -1455,10 +1455,8 @@
             <div class="modal-body">
                 <div class="tab-buttons">
                     <button class="tab-btn active" data-tab="members">Mitglieder</button>
+                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn">Abwesenheiten</button>
                     <button class="tab-btn" data-tab="setlist">Setlist</button>
-                    <!-- Abwesenheiten-Tab (sichtbar für Leiter/Co-Leiter) -->
-                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn"
-                        style="display: none;">Abwesenheiten</button>
                     <button class="tab-btn" data-tab="settings">Settings</button>
                 </div>
 
@@ -1481,6 +1479,10 @@
                     </div>
                 </div>
 
+                <!-- Absences Tab -->
+                <div id="absencesTab" class="tab-content">
+                </div>
+
                 <!-- Settings Tab -->
                 <div id="settingsTab" class="tab-content">
                     <div class="section" id="bandSettingsSection">
@@ -1496,13 +1498,7 @@
                     </div>
                 </div>
 
-                <!-- Absences Tab (for leaders/co-leaders) -->
-                <div id="absencesTab" class="tab-content">
-                    <div class="section">
-                        <h3>Abwesenheiten der Mitglieder</h3>
-                        <div id="bandAbsencesList">Keine Abwesenheiten vorhanden.</div>
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>

@@ -34,16 +34,50 @@ const Rehearsals = {
             return;
         }
         this.isLoading = true;
+        UI.showLoading('Proben werden geladen...');
         Logger.time('Load Rehearsals');
 
         try {
             const user = Auth.getCurrentUser();
             if (!user) {
                 Logger.timeEnd('Load Rehearsals');
+                UI.hideLoading();
                 return;
             }
             let rehearsals = (await Storage.getUserRehearsals(user.id)) || [];
             this.rehearsals = rehearsals;
+
+            // 1. Collect all IDs for batch fetching
+            const rehearsalIds = rehearsals.map(r => r.id);
+            const creatorIds = rehearsals.map(r => r.createdBy || r.proposedBy).filter(id => id);
+            const locationIds = rehearsals.map(r => r.locationId).filter(id => id);
+            const eventIds = rehearsals.map(r => r.eventId).filter(id => id);
+            const bandIdsForRoles = [...new Set(rehearsals.map(r => r.bandId))];
+
+            // 2. Batch Fetch everything in parallel
+            const [
+                userVotesBatch,
+                creatorsBatch,
+                locationsBatch,
+                eventsBatch,
+                userBandsBatch // This gives us roles for all bands the user is in
+            ] = await Promise.all([
+                Storage.getUserVotesForMultipleRehearsals(user.id, rehearsalIds),
+                Storage.getBatchByIds('users', creatorIds),
+                Storage.getBatchByIds('locations', locationIds),
+                Storage.getBatchByIds('events', eventIds),
+                Storage.getUserBands(user.id)
+            ]);
+
+            // 3. Create a data context for faster access during rendering
+            const dataContext = {
+                userVotes: userVotesBatch,
+                creators: creatorsBatch.reduce((acc, u) => ({ ...acc, [u.id]: u }), {}),
+                locations: locationsBatch.reduce((acc, l) => ({ ...acc, [l.id]: l }), {}),
+                events: eventsBatch.reduce((acc, e) => ({ ...acc, [e.id]: e }), {}),
+                userBands: userBandsBatch.reduce((acc, b) => ({ ...acc, [b.id]: b }), {})
+            };
+
             // Apply filter
             if (filterBandId) {
                 rehearsals = rehearsals.filter(r => r.bandId === filterBandId);
@@ -81,15 +115,16 @@ const Rehearsals = {
                     return dateB - dateA;
                 }
             });
-            await this.renderRehearsalsList(rehearsals);
+            await this.renderRehearsalsList(rehearsals, dataContext);
             Logger.timeEnd('Load Rehearsals');
         } finally {
             this.isLoading = false;
+            UI.hideLoading();
         }
     },
 
     // Rendering der Proben-Liste (inkl. Overlay-Ausblendung und Event-Handler)
-    async renderRehearsalsList(rehearsals) {
+    async renderRehearsalsList(rehearsals, dataContext = {}) {
         const overlay = document.getElementById('globalLoadingOverlay');
         const containerPending = document.getElementById('rehearsalsListPending');
         const containerVoted = document.getElementById('rehearsalsListVoted');
@@ -108,9 +143,11 @@ const Rehearsals = {
         const votedRehearsals = [];
         const resolvedRehearsals = [];
 
+        const userVotesBatch = dataContext.userVotes || [];
+
         for (const rehearsal of rehearsals) {
-            // Check if user has voted on ANY date option for this rehearsal
-            const userVotes = await Storage.getUserVotesForRehearsal(user.id, rehearsal.id);
+            // Check if user has voted in the pre-loaded batch
+            const userVotes = userVotesBatch.filter(v => v.rehearsalId === rehearsal.id);
             const hasVoted = userVotes && userVotes.length > 0;
 
             const isDone = rehearsal.status === 'confirmed' || rehearsal.status === 'cancelled';
@@ -128,18 +165,18 @@ const Rehearsals = {
         if (pendingRehearsals.length === 0) {
             containerPending.innerHTML = '<div class="empty-section-message">Keine offenen Abstimmungen 🎉</div>';
         } else {
-            containerPending.innerHTML = await Promise.all(pendingRehearsals.map(rehearsal =>
-                this.renderRehearsalCard(rehearsal)
-            )).then(cards => cards.join(''));
+            containerPending.innerHTML = (await Promise.all(pendingRehearsals.map(rehearsal =>
+                this.renderRehearsalCard(rehearsal, dataContext)
+            ))).join('');
         }
 
         // Render Voted List
         if (votedRehearsals.length === 0) {
             containerVoted.innerHTML = '<div class="empty-section-message">Noch keine erledigten Abstimmungen</div>';
         } else {
-            containerVoted.innerHTML = await Promise.all(votedRehearsals.map(rehearsal =>
-                this.renderRehearsalCard(rehearsal)
-            )).then(cards => cards.join(''));
+            containerVoted.innerHTML = (await Promise.all(votedRehearsals.map(rehearsal =>
+                this.renderRehearsalCard(rehearsal, dataContext)
+            ))).join('');
         }
 
         // Render Resolved List (New)
@@ -148,23 +185,20 @@ const Rehearsals = {
             if (resolvedRehearsals.length === 0) {
                 containerResolved.innerHTML = '<div class="empty-section-message">Keine erledigten Proben</div>';
             } else {
-                containerResolved.innerHTML = await Promise.all(resolvedRehearsals.map(rehearsal =>
-                    this.renderRehearsalCard(rehearsal)
-                )).then(cards => cards.join(''));
+                containerResolved.innerHTML = (await Promise.all(resolvedRehearsals.map(rehearsal =>
+                    this.renderRehearsalCard(rehearsal, dataContext)
+                ))).join('');
             }
         }
 
-        // Add vote handlers to BOTH containers (or just document/parent since we use robust selection)
-        // Note: attachVoteHandlers selects elements from 'context'. We should pass a common parent or call twice.
-        // Actually, let's call it on the main wrapper or just call it twice. 
-        // Better: The 'rehearsalsView' contains both.
+        // Add vote handlers to BOTH containers
         const viewContainer = document.getElementById('rehearsalsView');
         this.attachVoteHandlers(viewContainer);
 
-        // Hide loading overlay after all data/UI is ready
+        // Hide loading overlay faster
         if (overlay) {
             overlay.style.opacity = '0';
-            setTimeout(() => overlay.style.display = 'none', 400);
+            setTimeout(() => overlay.style.display = 'none', 100);
         }
     },
 
@@ -174,43 +208,52 @@ const Rehearsals = {
     },
 
     // Render single rehearsal card
-    async renderRehearsalCard(rehearsal) {
+    async renderRehearsalCard(rehearsal, dataContext = {}) {
         // Use joined band data if available, otherwise fetch
         const band = rehearsal.band || await Storage.getBand(rehearsal.bandId);
-        // Use createdBy for "Erstellt von" as requested, fallback to proposedBy
+
+        // Use creator from context or fetch fallback
         const creatorId = rehearsal.createdBy || rehearsal.proposedBy;
-        const creator = creatorId ? await Storage.getById('users', creatorId) : null;
+        const creator = (dataContext.creators && dataContext.creators[creatorId]) ||
+            (creatorId ? await Storage.getById('users', creatorId) : null);
+
         const creatorName = this._getUserName(creator);
 
         const user = Auth.getCurrentUser();
         const isExpanded = this.expandedRehearsalId === rehearsal.id;
 
-        // Get location name if set
+        // Get location from context or fetch fallback
         const bandName = band ? band.name : 'Unbekannte Band';
         const bandColor = band ? (band.color || '#6366f1') : '#6366f1';
-        const location = rehearsal.locationId ? await Storage.getLocation(rehearsal.locationId) : null;
+
+        const location = (dataContext.locations && dataContext.locations[rehearsal.locationId]) ||
+            (rehearsal.locationId ? await Storage.getLocation(rehearsal.locationId) : null);
+
         const locationName = location ? location.name : (rehearsal.location || 'Kein Ort');
 
         const isAdmin = Auth.isAdmin();
         let isLeader = false;
         let isCoLeader = false;
         if (user && band) {
-            const role = await Storage.getUserRoleInBand(user.id, band.id);
+            // Get role from context or fetch fallback
+            const userBand = dataContext.userBands && dataContext.userBands[band.id];
+            const role = userBand ? userBand.role : await Storage.getUserRoleInBand(user.id, band.id);
+
             isLeader = role === 'leader';
             isCoLeader = role === 'co-leader';
         }
 
         // Strict permission check: Only Admin, Leader, Co-Leader can manage (confirm/edit/delete)
-        // Removed isCreator from this check based on user request ("Ein Mitglied darf keine Probe Bestätigen...")
         const canManage = isAdmin || isLeader || isCoLeader;
 
         // Leaders and Co-Leaders see detailed votes
         const showVoteDetails = isLeader || isCoLeader || isAdmin;
 
-        // Get linked event info if available
+        // Get linked event from context or fetch fallback
         let event = null;
         if (rehearsal.eventId) {
-            event = await Storage.getEvent(rehearsal.eventId);
+            event = (dataContext.events && dataContext.events[rehearsal.eventId]) ||
+                await Storage.getEvent(rehearsal.eventId);
         }
 
         // Prepare compact metadata items

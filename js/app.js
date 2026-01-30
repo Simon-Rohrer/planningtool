@@ -835,34 +835,30 @@ const App = {
             this.isPasswordRecoveryMode = true;
         }
 
-        Auth.init().then(() => {
-            // Check if we are in recovery mode (set by URL check above or Auth event)
+        Auth.init().then(async () => {
+            // Check if we are in recovery mode
             if (this.isPasswordRecoveryMode) {
                 console.log('In recovery mode - skipping app load and triggering UI');
-                // Ensure UI listener is triggered
                 window.dispatchEvent(new CustomEvent('auth:password_recovery'));
                 return;
             }
 
             // After auth is ready, check if authenticated and show appropriate view
             if (Auth.isAuthenticated()) {
-                this.showApp().then(() => {
-                    // Pre-load standard calendars after login (delayed to not block UI)
-                    setTimeout(async () => {
-                        await this.preloadStandardCalendars();
-                        // Log total app load time (after everything including calendars is ready)
-                        if (window.APP_START_TIME) {
-                            const loadTime = ((performance.now() - window.APP_START_TIME) / 1000).toFixed(3);
-                            Logger.info(`🚀 Application fully loaded in ${loadTime}s`);
-                        }
-                    }, 2000);
-                    // Clean up past events and rehearsals (Run in background)
-                    Storage.cleanupPastItems();
-
-                });
+                await this.showApp();
+                // Pre-load standard calendars after login (delayed to not block UI)
+                setTimeout(async () => {
+                    await this.preloadStandardCalendars();
+                    // Log total app load time
+                    if (window.APP_START_TIME) {
+                        const loadTime = ((performance.now() - window.APP_START_TIME) / 1000).toFixed(3);
+                        Logger.info(`🚀 Application fully loaded in ${loadTime}s`);
+                    }
+                }, 2000);
+                // Clean up past items
+                Storage.cleanupPastItems();
             } else {
                 this.showAuth();
-                // Log total app load time (Auth Screen ready)
                 if (window.APP_START_TIME) {
                     const loadTime = ((performance.now() - window.APP_START_TIME) / 1000).toFixed(3);
                     Logger.info(`🚀 Application fully loaded in ${loadTime}s`);
@@ -2494,6 +2490,7 @@ const App = {
                 overlay.style.opacity = '0';
                 setTimeout(() => overlay.style.display = 'none', 400);
             }
+            UI.toggleAuthOverlay(false); // Ensure modal-open is removed
             UI.showToast('Erfolgreich angemeldet!', 'success');
             await this.showApp();
         } catch (error) {
@@ -4467,7 +4464,8 @@ const App = {
         if (landingPage) landingPage.classList.remove('active');
         if (mainApp) mainApp.style.display = 'block';
 
-        // Stage Mode Cleanup
+        // CRITICAL: Ensure scrolling is enabled on the body (fixes manual login/auto-login lock)
+        document.body.classList.remove('modal-open');
         document.body.classList.remove('global-stage-mode');
         const soundCheckBtn = document.getElementById('soundCheckBtn');
         if (soundCheckBtn) {

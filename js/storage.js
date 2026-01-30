@@ -64,6 +64,18 @@ const Storage = {
         return Array.isArray(data) ? data[0] : (data || item);
     },
 
+    async getBatchByIds(key, ids) {
+        if (!ids || ids.length === 0) return [];
+        // Filter out duplicates and nulls
+        const uniqueIds = [...new Set(ids.filter(id => id))];
+        if (uniqueIds.length === 0) return [];
+
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from(key).select('*').in('id', uniqueIds);
+        if (error) { console.error(`Supabase getBatchByIds error (${key})`, error); return []; }
+        return data || [];
+    },
+
     async update(key, id, updatedItem) {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from(key).update(updatedItem).eq('id', id).select('*').maybeSingle();
@@ -409,6 +421,17 @@ const Storage = {
         return data || [];
     },
 
+    async getUserVotesForMultipleRehearsals(userId, rehearsalIds) {
+        if (!rehearsalIds || rehearsalIds.length === 0) return [];
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('votes')
+            .select('*')
+            .eq('userId', userId)
+            .in('rehearsalId', rehearsalIds);
+        if (error) { console.error('Supabase getUserVotesForMultipleRehearsals error', error); return []; }
+        return data || [];
+    },
+
     async deleteVote(voteId) {
         return await this.delete('votes', voteId);
     },
@@ -627,6 +650,18 @@ const Storage = {
 
         if (error) { console.error('Supabase getEventSongs error', error); return []; }
         return (data || []).sort((a, b) => a.order - b.order);
+    },
+
+    async getEventSongsForMultipleEvents(eventIds) {
+        if (!eventIds || eventIds.length === 0) return [];
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('songs')
+            .select('*')
+            .in('eventId', eventIds);
+
+        if (error) { console.error('Supabase getEventSongsForMultipleEvents error', error); return []; }
+        return data || [];
     },
 
     async getBandSongs(bandId) {

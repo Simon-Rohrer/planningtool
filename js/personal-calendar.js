@@ -400,7 +400,6 @@ const PersonalCalendar = {
     async showItemDetails(itemId, itemType) {
         let item;
 
-
         if (itemType === 'event') {
             item = this.events.find(e => e.id === itemId);
         } else {
@@ -414,6 +413,7 @@ const PersonalCalendar = {
 
         const band = this.userBands.find(b => b.id === item.bandId);
         const bandName = band ? band.name : 'Unbekannte Band';
+        const bandColor = band ? (band.color || '#e11d48') : '#e11d48';
 
         let detailsHTML = '';
 
@@ -428,31 +428,33 @@ const PersonalCalendar = {
 
             // Get band members for this event, fetch user names
             let membersHTML = '';
-            if (item.bandId) {
-                const members = await Storage.getBandMembers(item.bandId);
-                let memberUsers = [];
-                if (members && members.length > 0) {
-                    // Fetch all user objects in parallel
-                    memberUsers = await Promise.all(members.map(async m => {
-                        const user = await Storage.getById('users', m.userId);
-                        return {
-                            ...m,
-                            name: user ? (user.name || user.username || user.email || m.userId) : m.userId
-                        };
-                    }));
-                    membersHTML = `
-                        <div style="margin-top: 1rem;">
-                            <strong style="color: var(--color-text);">Band-Mitglieder:</strong>
-                            <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                                ${memberUsers.map(m => `
-                                    <span style="background: var(--color-bg); padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.875rem;">
-                                        ${this.escapeHtml(m.name)}
-                                    </span>
-                                `).join('')}
-                            </div>
+            const members = await Storage.getBandMembers(item.bandId);
+            if (members && members.length > 0) {
+                const memberUsers = await Promise.all(members.map(async m => {
+                    const user = await Storage.getById('users', m.userId);
+                    return user || { id: m.userId, name: 'Unbekannt' };
+                }));
+
+                membersHTML = `
+                    <div class="calendar-detail-section">
+                        <div class="calendar-detail-label">👥 Band-Mitglieder:</div>
+                        <div class="calendar-members-grid">
+                            ${memberUsers.map(user => {
+                    const displayName = UI.getUserDisplayName(user);
+                    const initials = UI.getUserInitials(displayName);
+                    const avatarColor = UI.getAvatarColor(displayName);
+                    return `
+                                    <div class="member-avatar-item">
+                                        <div class="member-avatar" style="background: ${avatarColor}">
+                                            ${user.profile_image_url ? `<img src="${user.profile_image_url}" alt="${displayName}" class="avatar-img">` : initials}
+                                        </div>
+                                        <span class="member-name">${this.escapeHtml(displayName)}</span>
+                                    </div>
+                                `;
+                }).join('')}
                         </div>
-                    `;
-                }
+                    </div>
+                `;
             }
 
             // Get setlist
@@ -460,14 +462,15 @@ const PersonalCalendar = {
             const songs = await Storage.getEventSongs(item.id);
             if (songs && songs.length > 0) {
                 setlistHTML = `
-                    <div style="margin-top: 1rem;">
-                        <strong style="color: var(--color-text);">Setlist:</strong>
-                        <div style="margin-top: 0.5rem;">
+                    <div class="calendar-detail-section">
+                        <div class="calendar-detail-label">🎵 Setlist:</div>
+                        <div class="calendar-setlist-list">
                             ${songs.map((song, idx) => `
-                                <div style="padding: 0.5rem; background: var(--color-bg); border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
-                                    <strong>${idx + 1}. ${this.escapeHtml(song.title)}</strong>
-                                    ${song.artist ? ` - ${this.escapeHtml(song.artist)}` : ''}
-                                    ${song.key ? ` <span style="color: var(--color-text-secondary);">(${this.escapeHtml(song.key)})</span>` : ''}
+                                <div class="calendar-song-item">
+                                    <span class="song-index">${idx + 1}.</span>
+                                    <span class="song-title">${this.escapeHtml(song.title)}</span>
+                                    ${song.artist ? `<span class="song-artist">- ${this.escapeHtml(song.artist)}</span>` : ''}
+                                    ${song.key ? `<span class="song-key">(${this.escapeHtml(song.key)})</span>` : ''}
                                 </div>
                             `).join('')}
                         </div>
@@ -476,24 +479,54 @@ const PersonalCalendar = {
             }
 
             detailsHTML = `
-                <div style="padding: 1rem;">
-                    <h2 style="color: var(--color-text); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 2rem;">🎤</span>
-                        ${this.escapeHtml(item.title || 'Auftritt')}
-                    </h2>
+                <div class="calendar-details-container">
+                    <div class="calendar-detail-header" style="border-left-color: ${bandColor}">
+                        <div class="calendar-detail-icon-large">🎤</div>
+                        <div class="calendar-detail-title-group">
+                            <h2 class="calendar-detail-title">${this.escapeHtml(item.title || 'Auftritt')}</h2>
+                            <div class="calendar-detail-subtitle" style="color: ${bandColor}">🎸 ${this.escapeHtml(bandName)}</div>
+                        </div>
+                    </div>
                     
-                    <div style="background: linear-gradient(135deg, var(--color-secondary), #db2777); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); display: inline-block; margin-bottom: 1rem;">
-                        <strong>Auftritt</strong>
+                    <div class="calendar-info-grid">
+                        <div class="calendar-info-item">
+                            <div class="info-icon">📅</div>
+                            <div class="info-content">
+                                <div class="info-label">Datum</div>
+                                <div class="info-value">${dateStr}</div>
+                            </div>
+                        </div>
+                        ${item.time ? `
+                        <div class="calendar-info-item">
+                            <div class="info-icon">🕐</div>
+                            <div class="info-content">
+                                <div class="info-label">Uhrzeit</div>
+                                <div class="info-value">${this.escapeHtml(item.time)}</div>
+                            </div>
+                        </div>` : ''}
+                        ${item.location ? `
+                        <div class="calendar-info-item">
+                            <div class="info-icon">📍</div>
+                            <div class="info-content">
+                                <div class="info-label">Ort</div>
+                                <div class="info-value">${this.escapeHtml(item.location)}</div>
+                            </div>
+                        </div>` : ''}
+                        ${item.soundcheck ? `
+                        <div class="calendar-info-item">
+                            <div class="info-icon">🎚️</div>
+                            <div class="info-content">
+                                <div class="info-label">Soundcheck</div>
+                                <div class="info-value">${this.escapeHtml(item.soundcheck)}</div>
+                            </div>
+                        </div>` : ''}
                     </div>
 
-                    <div style="color: var(--color-text-secondary); line-height: 1.8;">
-                        <p><strong>🎸 Band:</strong> ${this.escapeHtml(bandName)}</p>
-                        <p><strong>📅 Datum:</strong> ${dateStr}</p>
-                        ${item.time ? `<p><strong>🕐 Uhrzeit:</strong> ${this.escapeHtml(item.time)}</p>` : ''}
-                        ${item.location ? `<p><strong>📍 Ort:</strong> ${this.escapeHtml(item.location)}</p>` : ''}
-                        ${item.soundcheck ? `<p><strong>🎚️ Soundcheck:</strong> ${this.escapeHtml(item.soundcheck)}</p>` : ''}
-                        ${item.notes ? `<p><strong>📝 Notizen:</strong><br>${this.escapeHtml(item.notes)}</p>` : ''}
-                    </div>
+                    ${item.notes ? `
+                    <div class="calendar-detail-section">
+                        <div class="calendar-detail-label">📝 Notizen:</div>
+                        <div class="calendar-detail-notes">${this.escapeHtml(item.notes)}</div>
+                    </div>` : ''}
 
                     ${membersHTML}
                     ${setlistHTML}
@@ -508,78 +541,148 @@ const PersonalCalendar = {
                 year: 'numeric'
             });
 
-            // Get location details
-            let locationHTML = '';
-            if (item.confirmedLocation) {
-                const location = await Storage.getById('locations', item.confirmedLocation);
-                if (location) {
-                    locationHTML = `
-                        <p><strong>📍 Proberaum:</strong> ${this.escapeHtml(location.name)}</p>
-                        ${location.address ? `<p style="margin-left: 1.5rem; color: var(--color-text-secondary);">${this.escapeHtml(location.address)}</p>` : ''}
-                    `;
-                }
-            }
-
-            // Get band members for this rehearsal, fetch user names
+            // Get band members for this rehearsal
             let membersHTML = '';
-            if (item.bandId) {
-                const members = await Storage.getBandMembers(item.bandId);
-                let memberUsers = [];
-                if (members && members.length > 0) {
-                    memberUsers = await Promise.all(members.map(async m => {
-                        const user = await Storage.getById('users', m.userId);
-                        return {
-                            ...m,
-                            name: user ? (user.name || user.username || user.email || m.userId) : m.userId
-                        };
-                    }));
-                    membersHTML = `
-                        <div style="margin-top: 1rem;">
-                            <strong style="color: var(--color-text);">Band-Mitglieder:</strong>
-                            <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                                ${memberUsers.map(m => `
-                                    <span style="background: var(--color-bg); padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.875rem;">
-                                        ${this.escapeHtml(m.name)}
-                                    </span>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-            }
+            const members = await Storage.getBandMembers(item.bandId);
+            if (members && members.length > 0) {
+                const memberUsers = await Promise.all(members.map(async m => {
+                    const user = await Storage.getById('users', m.userId);
+                    return user || { id: m.userId, name: 'Unbekannt' };
+                }));
 
-            // Get attendance
-            let attendanceHTML = '';
-            if (item.responses && Object.keys(item.responses).length > 0) {
-                const accepted = Object.values(item.responses).filter(r => r === 'accepted').length;
-                const declined = Object.values(item.responses).filter(r => r === 'declined').length;
-                const maybe = Object.values(item.responses).filter(r => r === 'maybe').length;
-
-                attendanceHTML = `
-                    <div style="margin-top: 1rem;">
-                        <strong style="color: var(--color-text);">Zusagen:</strong>
-                        <div style="margin-top: 0.5rem; display: flex; gap: 1rem;">
-                            <span style="color: var(--color-success);">✓ ${accepted} Zugesagt</span>
-                            <span style="color: var(--color-danger);">✗ ${declined} Abgesagt</span>
-                            <span style="color: var(--color-warning);">? ${maybe} Vielleicht</span>
+                membersHTML = `
+                    <div class="calendar-detail-section">
+                        <div class="calendar-detail-label">👥 Band-Mitglieder:</div>
+                        <div class="calendar-members-grid">
+                            ${memberUsers.map(user => {
+                    const displayName = UI.getUserDisplayName(user);
+                    const initials = UI.getUserInitials(displayName);
+                    const avatarColor = UI.getAvatarColor(displayName);
+                    return `
+                                    <div class="member-avatar-item">
+                                        <div class="member-avatar" style="background: ${avatarColor}">
+                                            ${user.profile_image_url ? `<img src="${user.profile_image_url}" alt="${displayName}" class="avatar-img">` : initials}
+                                        </div>
+                                        <span class="member-name">${this.escapeHtml(displayName)}</span>
+                                    </div>
+                                `;
+                }).join('')}
                         </div>
                     </div>
                 `;
             }
 
-            detailsHTML = `
-                <div style="padding: 1rem;">
-                    <h2 style="color: var(--color-text); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 2rem;">📅</span>
-                        ${this.escapeHtml(item.title || 'Probe')}
-                    </h2>
-                    <div style="color: var(--color-text-secondary); line-height: 1.8;">
-                        <p><strong>🎸 Band:</strong> ${this.escapeHtml(bandName)}</p>
-                        <p><strong>📅 Datum:</strong> ${dateStr}</p>
-                        ${item.confirmedTime ? `<p><strong>🕐 Uhrzeit:</strong> ${this.escapeHtml(item.confirmedTime)}</p>` : ''}
-                        ${locationHTML}
-                        ${item.notes ? `<p><strong>📝 Notizen:</strong><br>${this.escapeHtml(item.notes)}</p>` : ''}
+            // Get attendance summary
+            let attendanceHTML = '';
+            if (item.responses && Object.keys(item.responses).length > 0) {
+                const responseEntries = Object.entries(item.responses);
+                const acceptedIds = responseEntries.filter(([id, r]) => r === 'accepted').map(([id, r]) => id);
+                const declinedIds = responseEntries.filter(([id, r]) => r === 'declined').map(([id, r]) => id);
+                const maybeIds = responseEntries.filter(([id, r]) => r === 'maybe').map(([id, r]) => id);
+
+                // Fetch names/avatars for responders
+                const responderIds = [...new Set([...acceptedIds, ...declinedIds, ...maybeIds])];
+                const responders = await Promise.all(responderIds.map(async id => {
+                    const user = await Storage.getById('users', id);
+                    return user || { id, name: 'Unbekannt' };
+                }));
+                const responderMap = {};
+                responders.forEach(r => responderMap[r.id] = r);
+
+                const renderResponderList = (ids, label, className) => {
+                    if (ids.length === 0) return '';
+                    return `
+                        <div class="attendance-group" style="margin-top: 0.5rem;">
+                            <div class="attendance-sublabel ${className}" style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.25rem;">${label} (${ids.length}):</div>
+                            <div class="calendar-members-grid">
+                                ${ids.map(id => {
+                        const user = responderMap[id];
+                        if (!user) return '';
+                        const displayName = UI.getUserDisplayName(user);
+                        const initials = UI.getUserInitials(displayName);
+                        const avatarColor = UI.getAvatarColor(displayName);
+                        return `
+                                        <div class="member-avatar-item">
+                                            <div class="member-avatar" style="background: ${avatarColor}">
+                                                ${user.profile_image_url ? `<img src="${user.profile_image_url}" alt="${displayName}" class="avatar-img">` : initials}
+                                            </div>
+                                            <span class="member-name">${this.escapeHtml(displayName)}</span>
+                                        </div>
+                                    `;
+                    }).join('')}
+                            </div>
+                        </div>
+                    `;
+                };
+
+                attendanceHTML = `
+                    <div class="calendar-detail-section">
+                        <div class="calendar-detail-label">✅ Teilnahmen:</div>
+                        <div class="calendar-attendance-details">
+                            ${renderResponderList(acceptedIds, 'Zugesagt', 'stat-accepted')}
+                            ${renderResponderList(declinedIds, 'Abgesagt', 'stat-declined')}
+                            ${renderResponderList(maybeIds, 'Vielleicht', 'stat-maybe')}
+                        </div>
                     </div>
+                `;
+            }
+
+            // Get location details
+            let locationValue = 'Nicht angegeben';
+            let locationDetails = '';
+            if (item.confirmedLocation) {
+                const location = await Storage.getById('locations', item.confirmedLocation);
+                if (location) {
+                    locationValue = this.escapeHtml(location.name);
+                    if (location.address) {
+                        locationDetails = `<div class="info-help">${this.escapeHtml(location.address)}</div>`;
+                    }
+                }
+            } else if (item.confirmed_location) {
+                locationValue = this.escapeHtml(item.confirmed_location);
+            }
+
+            detailsHTML = `
+                <div class="calendar-details-container">
+                    <div class="calendar-detail-header" style="border-left-color: ${bandColor}">
+                        <div class="calendar-detail-icon-large">📅</div>
+                        <div class="calendar-detail-title-group">
+                            <h2 class="calendar-detail-title">${this.escapeHtml(item.title || 'Probe')}</h2>
+                            <div class="calendar-detail-subtitle" style="color: ${bandColor}">🎸 ${this.escapeHtml(bandName)}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-info-grid">
+                        <div class="calendar-info-item">
+                            <div class="info-icon">📅</div>
+                            <div class="info-content">
+                                <div class="info-label">Datum</div>
+                                <div class="info-value">${dateStr}</div>
+                            </div>
+                        </div>
+                        ${item.confirmedTime ? `
+                        <div class="calendar-info-item">
+                            <div class="info-icon">🕐</div>
+                            <div class="info-content">
+                                <div class="info-label">Uhrzeit</div>
+                                <div class="info-value">${this.escapeHtml(item.confirmedTime)}</div>
+                            </div>
+                        </div>` : ''}
+                        <div class="calendar-info-item">
+                            <div class="info-icon">📍</div>
+                            <div class="info-content">
+                                <div class="info-label">Ort</div>
+                                <div class="info-value">${locationValue}</div>
+                                ${locationDetails}
+                            </div>
+                        </div>
+                    </div>
+
+                    ${item.notes ? `
+                    <div class="calendar-detail-section">
+                        <div class="calendar-detail-label">📝 Notizen:</div>
+                        <div class="calendar-detail-notes">${this.escapeHtml(item.notes)}</div>
+                    </div>` : ''}
 
                     ${membersHTML}
                     ${attendanceHTML}
