@@ -30,10 +30,6 @@ const EmailService = {
      * @param {string} subject - Email subject
      * @param {string} message - Main message text
      * @param {object} options - Optional parameters
-     *   @param {array} options.details - Array of {label, value} objects
-     *   @param {string} options.detailsTitle - Title for details section
-     *   @param {string} options.buttonText - Button text
-     *   @param {string} options.buttonLink - Button URL
      */
     async sendEmail(toEmail, toName, subject, message, options = {}) {
         if (!this.isConfigured()) {
@@ -50,44 +46,18 @@ const EmailService = {
             }
             emailjs.init(this.config.publicKey);
 
-            // Map to User's specific EmailJS template variables from screenshot
+            // Create HTML content
+            const htmlMessage = this._getHtmlTemplate(subject, message, options);
+
+            // Map to User's specific EmailJS template variables
             const templateParams = {
-                // {{user}} -> Recipient Email
                 user: toEmail,
-
-                // {{title}} -> Email Subject
                 title: subject,
-
-                // {{content}} -> Main message body
-                content: message,
-
-                // {{name}} -> Sender Name (Fixed as System Name)
+                content: htmlMessage, // Now sending HTML!
                 name: 'Band Planning Tool',
-
-                // {{email}} -> Reply-To / Sender Email (Fixed)
                 email: 'noreply@bandplanning.local',
-
-                // Keep original params just in case functionality changes
                 to_name: toName
             };
-
-            // Add optional details
-            if (options.details && options.details.length > 0) {
-                templateParams.has_details = true;
-                templateParams.details_title = options.detailsTitle || 'Details';
-                templateParams.details_count = options.details.length;
-
-                options.details.forEach((detail, index) => {
-                    templateParams[`detail_${index}_label`] = detail.label;
-                    templateParams[`detail_${index}_value`] = detail.value;
-                });
-            }
-
-            // Add optional button
-            if (options.buttonText && options.buttonLink) {
-                templateParams.button_text = options.buttonText;
-                templateParams.button_link = options.buttonLink;
-            }
 
             const response = await emailjs.send(
                 this.config.serviceId,
@@ -110,14 +80,99 @@ const EmailService = {
         }
     },
 
+    /**
+     * Generates a beautiful HTML template for emails
+     * Uses inline-styles for maximum email client compatibility
+     */
+    _getHtmlTemplate(title, message, options = {}) {
+        const primaryColor = '#6366f1';
+        const bgColor = '#f1f5f9';
+        const cardColor = '#ffffff';
+        const textColor = '#1e293b';
+        const secondaryTextColor = '#64748b';
+
+        let detailsHtml = '';
+        if (options.details && options.details.length > 0) {
+            detailsHtml = `
+                <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                    <h4 style="margin: 0 0 12px 0; color: ${textColor}; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Details</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        ${options.details.map(d => `
+                            <tr>
+                                <td style="padding: 8px 0; color: ${secondaryTextColor}; font-size: 14px; width: 35%; vertical-align: top;">${d.label}</td>
+                                <td style="padding: 8px 0 8px 12px; color: ${textColor}; font-size: 14px; font-weight: 600; vertical-align: top;">${d.value}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                </div>
+            `;
+        }
+
+        let buttonHtml = '';
+        if (options.buttonText && options.buttonLink) {
+            buttonHtml = `
+                <div style="margin-top: 32px; text-align: center;">
+                    <a href="${options.buttonLink}" style="display: inline-block; padding: 12px 28px; background-color: ${primaryColor}; color: #ffffff !important; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px;">
+                        ${options.buttonText}
+                    </a>
+                </div>
+            `;
+        }
+
+        return `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: ${bgColor}; padding: 40px 10px; color: ${textColor}; line-height: 1.6;">
+                <div style="max-width: 580px; margin: 0 auto; background-color: ${cardColor}; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
+                    <!-- Decorative Top Bar -->
+                    <div style="height: 6px; background-color: ${primaryColor};"></div>
+                    
+                    <!-- Header -->
+                    <div style="padding: 32px 32px 20px 32px; text-align: center;">
+                        <div style="background-color: ${primaryColor}; width: 64px; height: 64px; margin: 0 auto 16px auto; border-radius: 16px; display: table;">
+                            <span style="display: table-cell; vertical-align: middle; font-size: 32px;">🎸</span>
+                        </div>
+                        <h1 style="margin: 0; color: ${textColor}; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">Band Planning Tool</h1>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div style="padding: 0 32px 32px 32px;">
+                        <div style="background-color: #f8fafc; border-radius: 16px; padding: 24px; border: 1px solid #f1f5f9;">
+                            <h2 style="margin: 0 0 12px 0; color: ${primaryColor}; font-size: 18px; font-weight: 700;">${title}</h2>
+                            <div style="color: ${textColor}; font-size: 15px; white-space: pre-wrap; font-weight: 400;">${message}</div>
+                            
+                            ${detailsHtml}
+                            ${buttonHtml}
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="padding: 24px 32px; background-color: #f8fafc; text-align: center; border-top: 1px solid #f1f5f9;">
+                        <p style="margin: 0; color: ${secondaryTextColor}; font-size: 13px;">
+                            Dies ist eine automatische Benachrichtigung von deinem Proben-Planer.
+                        </p>
+                        <p style="margin: 8px 0 0 0; color: ${textColor}; font-size: 14px; font-weight: 600;">
+                            Rock on! 🤘
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Extra Footer -->
+                <div style="text-align: center; margin-top: 24px; padding-bottom: 20px;">
+                    <p style="margin: 0; color: ${secondaryTextColor}; font-size: 12px; letter-spacing: 0.02em;">
+                        &copy; ${new Date().getFullYear()} Band Planning Tool &bull; Organisiere deine Band wie ein Profi
+                    </p>
+                </div>
+            </div>
+        `;
+    },
+
     async sendPasswordReset(toEmail, toName, resetLink) {
         return await this.sendEmail(
             toEmail,
             toName,
             'Passwort zurücksetzen',
-            'Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.\n\nKlicke auf den Button unten, um ein neues Passwort festzulegen.\n\nWenn du diese Anfrage nicht gestellt hast, ignoriere diese E-Mail einfach.',
+            'Sicherheit geht vor! Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt. Klicke einfach auf den Button unten, um ein neues Passwort zu vergeben.',
             {
-                buttonText: 'Passwort zurücksetzen',
+                buttonText: 'Passwort neu festlegen',
                 buttonLink: resetLink
             }
         );
@@ -148,27 +203,24 @@ const EmailService = {
                 const user = await Storage.getById('users', member.userId);
                 if (!user || !user.email) return null;
 
-                // Create beautiful plain-text content
-                const message = `Hallo ${user.first_name || user.name || user.username},
-
-Deine Probe wurde bestätigt! 🎸
-
-Hier sind die Details:
-
-Titel: ${rehearsal.title}
-Band: ${band.name}
-Datum: ${dateFormatted}
-Ort: ${locationName}${locationAddress}${rehearsal.description ? `\n\nBeschreibung:\n${rehearsal.description}` : ''}
-
-Bitte sei pünktlich. Wir freuen uns auf dich!
-
-Dein Band Planning Tool`;
+                const message = `Hallo ${user.first_name || user.name || user.username},\n\ngute Neuigkeiten! Deine Probe wurde soeben bestätigt. Schnapp dir dein Instrument, wir sehen uns dort! 🎸`;
 
                 const result = await this.sendEmail(
                     user.email,
                     user.name,
                     `Probe bestätigt: ${rehearsal.title}`,
-                    message
+                    message,
+                    {
+                        detailsTitle: 'Termin-Details',
+                        details: [
+                            { label: 'Titel', value: rehearsal.title },
+                            { label: 'Band', value: band.name },
+                            { label: 'Datum', value: dateFormatted },
+                            { label: 'Ort', value: locationName }
+                        ].concat(rehearsal.description ? [{ label: 'Zusatzinfo', value: rehearsal.description }] : []),
+                        buttonText: 'In der App ansehen',
+                        buttonLink: window.location.origin
+                    }
                 );
 
                 return {
@@ -248,31 +300,26 @@ Dein Band Planning Tool`;
                 const user = await Storage.getById('users', member.userId);
                 if (!user || !user.email) return null;
 
-                const changesText = changes.map(c => `• ${c}`).join('\n');
                 const dateFormatted = UI.formatDate(newRehearsal.confirmedDate);
-
-                const message = `Hallo ${user.first_name || user.name || user.username},
-
-die Probe wurde aktualisiert! ⚠️
-
-ÄNDERUNGEN:
-${changesText}
-
-AKTUELLE DETAILS:
-Titel: ${newRehearsal.title}
-Band: ${band.name}
-Datum: ${dateFormatted}
-Ort: ${newLocationName}${newRehearsal.description ? `\n\nBeschreibung:\n${newRehearsal.description}` : ''}
-
-Bitte beachte die Änderungen!
-
-Dein Band Planning Tool`;
+                const message = `Hallo ${user.first_name || user.name || user.username},\n\nwichtige Info: An deiner geplanten Probe wurden Änderungen vorgenommen. Bitte schau dir die aktualisierten Details unten an. ⚠️`;
 
                 const result = await this.sendEmail(
                     user.email,
                     user.name,
                     `Probe aktualisiert: ${newRehearsal.title}`,
-                    message
+                    message,
+                    {
+                        detailsTitle: 'Aktualisierte Details',
+                        details: [
+                            { label: 'Titel', value: newRehearsal.title },
+                            { label: 'Band', value: band.name },
+                            { label: 'Datum', value: dateFormatted },
+                            { label: 'Ort', value: newLocationName },
+                            { label: 'Änderungen', value: changes.join('<br>') }
+                        ].concat(newRehearsal.description ? [{ label: 'Beschreibung', value: newRehearsal.description }] : []),
+                        buttonText: 'Änderungen bestätigen',
+                        buttonLink: window.location.origin
+                    }
                 );
 
                 return {
@@ -301,31 +348,26 @@ Dein Band Planning Tool`;
     async sendEventNotification(toEmail, toName, event, band) {
         const dateFormatted = UI.formatDate(event.date);
 
-        const message = `Hallo ${toName},
-
-Du wurdest zu einem neuen Auftritt eingeladen! 🎤
-
-Hier sind die Details:
-
-Titel: ${event.title}
-Band: ${band.name}
-Datum: ${dateFormatted}
-${event.time ? `Priorität/Zeit: ${event.time}` : ''}
-${event.location ? `Ort: ${event.location}` : ''}
-${event.soundcheck ? `Soundcheck: ${event.soundcheck}` : ''}
-
-${event.info ? `Infos:\n${event.info}` : ''}
-
-Bitte checke die App für weitere Details.
-
-Rock on! 🤘
-Dein Band Planning Tool`;
+        const message = `Hallo ${toName},\n\nmach dich bereit für die Bühne! Du wurdest soeben zu einem neuen Auftritt eingeladen. Hier sind die Eckdaten für deine Planung. 🎤`;
 
         return await this.sendEmail(
             toEmail,
             toName,
             `Neuer Auftritt: ${event.title}`,
-            message
+            message,
+            {
+                detailsTitle: 'Auftritts-Details',
+                details: [
+                    { label: 'Event', value: event.title },
+                    { label: 'Band', value: band.name },
+                    { label: 'Datum', value: dateFormatted },
+                    ...(event.location ? [{ label: 'Ort', value: event.location }] : []),
+                    ...(event.time ? [{ label: 'Zeit/Prio', value: event.time }] : []),
+                    ...(event.soundcheck ? [{ label: 'Soundcheck', value: event.soundcheck }] : [])
+                ].concat(event.info ? [{ label: 'Wichtige Infos', value: event.info }] : []),
+                buttonText: 'Zusagen & Details',
+                buttonLink: window.location.origin
+            }
         );
     },
 

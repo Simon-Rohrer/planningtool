@@ -31,7 +31,20 @@ const Storage = {
     async getAll(key) {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from(key).select('*');
-        if (error) { console.error('Supabase getAll error', key, error); return []; }
+        if (error) {
+            const isNetworkError = error.message && (
+                error.message.includes('FetchError') ||
+                error.message.includes('network') ||
+                error.message.includes('connection') ||
+                error.message.includes('Load failed')
+            );
+            if (isNetworkError) {
+                Logger.warn(`Verbindungsproblem beim Abrufen von ${key}`);
+                return [];
+            }
+            console.error('Supabase getAll error', key, error);
+            return [];
+        }
         return data || [];
     },
 
@@ -42,8 +55,15 @@ const Storage = {
 
         if (error) {
             // Check for network errors and warn instead of error
-            if (error.message && (error.message.includes('FetchError') || error.message.includes('network') || error.message.includes('connection'))) {
-                Logger.warn(`Network issue fetching ${key}: ${error.message}`);
+            const isNetworkError = error.message && (
+                error.message.includes('FetchError') ||
+                error.message.includes('network') ||
+                error.message.includes('connection') ||
+                error.message.includes('Load failed')
+            );
+
+            if (isNetworkError) {
+                Logger.warn(`Verbindungsproblem beim Abrufen von ${key}: ${error.message}. Bitte überprüfe deine Internetverbindung oder Supabase-URL.`);
                 return null;
             }
             console.error('Supabase getById error', key, { message: error.message, code: error.code, details: error.details, hint: error.hint } || error);
@@ -57,6 +77,15 @@ const Storage = {
         const { data, error } = await sb.from(key).insert(item).select('*');
 
         if (error) {
+            const isNetworkError = error.message && (
+                error.message.includes('FetchError') ||
+                error.message.includes('network') ||
+                error.message.includes('connection') ||
+                error.message.includes('Load failed')
+            );
+            if (isNetworkError) {
+                throw new Error(`Verbindungsproblem: Speichern in ${key} fehlgeschlagen.`);
+            }
             Logger.error(`Supabase save error in ${key}`, error);
             throw new Error(`Fehler beim Speichern in ${key}: ${error.message}`);
         }
@@ -72,21 +101,60 @@ const Storage = {
 
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from(key).select('*').in('id', uniqueIds);
-        if (error) { console.error(`Supabase getBatchByIds error (${key})`, error); return []; }
+        if (error) {
+            const isNetworkError = error.message && (
+                error.message.includes('FetchError') ||
+                error.message.includes('network') ||
+                error.message.includes('connection') ||
+                error.message.includes('Load failed')
+            );
+            if (isNetworkError) {
+                Logger.warn(`Verbindungsproblem beim Batch-Abruf von ${key}`);
+                return [];
+            }
+            console.error(`Supabase getBatchByIds error (${key})`, error);
+            return [];
+        }
         return data || [];
     },
 
     async update(key, id, updatedItem) {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from(key).update(updatedItem).eq('id', id).select('*').maybeSingle();
-        if (error) { console.error('Supabase update error', key, error); return null; }
+        if (error) {
+            const isNetworkError = error.message && (
+                error.message.includes('FetchError') ||
+                error.message.includes('network') ||
+                error.message.includes('connection') ||
+                error.message.includes('Load failed')
+            );
+            if (isNetworkError) {
+                Logger.warn(`Verbindungsproblem beim Aktualisieren von ${key}`);
+                return null;
+            }
+            console.error('Supabase update error', key, error);
+            return null;
+        }
         return data || null;
     },
 
     async delete(key, id) {
         const sb = SupabaseClient.getClient();
         const { error } = await sb.from(key).delete().eq('id', id);
-        if (error) { console.error('Supabase delete error', key, error); return false; }
+        if (error) {
+            const isNetworkError = error.message && (
+                error.message.includes('FetchError') ||
+                error.message.includes('network') ||
+                error.message.includes('connection') ||
+                error.message.includes('Load failed')
+            );
+            if (isNetworkError) {
+                Logger.warn(`Verbindungsproblem beim Löschen aus ${key}`);
+                return false;
+            }
+            console.error('Supabase delete error', key, error);
+            return false;
+        }
         return true;
     },
 

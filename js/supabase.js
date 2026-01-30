@@ -36,6 +36,24 @@ const SupabaseClient = {
     getClient() {
         if (!this.client) this.init();
         return this.client;
+    },
+
+    async testConnection() {
+        if (!this.isConfigured()) return { success: false, message: 'Supabase ist nicht konfiguriert.' };
+        const sb = this.getClient();
+        try {
+            // Test with a simple query to users table (or just health check if possible)
+            const { data, error } = await sb.from('users').select('id').limit(1);
+            if (error) {
+                if (error.message && error.message.includes('Load failed')) {
+                    return { success: false, message: 'Netzwerkfehler: Bitte überprüfe deine Internetverbindung oder ob die URL korrekt ist (CORS-Blockierung?).' };
+                }
+                return { success: false, message: `Fehler: ${error.message}` };
+            }
+            return { success: true, message: 'Verbindung zu Supabase erfolgreich hergestellt!' };
+        } catch (e) {
+            return { success: false, message: `Unerwarteter Fehler: ${e.message}` };
+        }
     }
 };
 
@@ -64,5 +82,25 @@ const SupabaseClient = {
                 console.log('Supabase settings saved');
             }
         });
+
+        // Add test connection button
+        const testBtn = document.createElement('button');
+        testBtn.type = 'button';
+        testBtn.className = 'btn btn-secondary';
+        testBtn.style.marginTop = '10px';
+        testBtn.textContent = 'Verbindung testen';
+        testBtn.onclick = async () => {
+            testBtn.disabled = true;
+            testBtn.textContent = 'Teste...';
+            const result = await SupabaseClient.testConnection();
+            if (typeof UI !== 'undefined') {
+                UI.showToast(result.message, result.success ? 'success' : 'error');
+            } else {
+                alert(result.message);
+            }
+            testBtn.disabled = false;
+            testBtn.textContent = 'Verbindung testen';
+        };
+        form.appendChild(testBtn);
     });
 })();

@@ -7549,7 +7549,7 @@ const App = {
             } else {
                 // Create new
                 Logger.userAction('Form', 'rehearsalForm', 'Submit', { action: 'Create Rehearsal', title, bandId });
-                Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);
+                await Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);
             }
         };
 
@@ -7557,7 +7557,7 @@ const App = {
         if (locationId && !forceCreate && this.checkLocationAvailability) {
             const allConflicts = [];
 
-            // Check each proposed date (jetzt: {startTime, endTime})
+            // Check each proposed date
             for (let i = 0; i < dates.length; i++) {
                 const date = dates[i];
                 let startDate, endDate;
@@ -7652,12 +7652,12 @@ const App = {
         if (conflicts && conflicts.length > 0) {
             // Build message
             const lines = conflicts.map(c => `${c.name}: ${c.dates.join(', ')}`);
-            const msg = `Achtung — Folgende Mitglieder haben für die ausgewählten Termine Abwesenheiten eingetragen:\n\n${lines.join('\n')}\n\nTrotzdem fortfahren?`;
+            const msg = `Achtung — Folgende Mitglieder haben für die ausgewählten Termine Abwesenheiten eingetragen: \n\n${lines.join('\n')}\n\nTrotzdem fortfahren?`;
             UI.showConfirm(msg, () => {
                 proceed();
             });
         } else {
-            proceed();
+            await proceed();
         }
     },
 
@@ -7667,15 +7667,16 @@ const App = {
         const bandId = document.getElementById('eventBand').value;
         const title = document.getElementById('eventTitle').value;
         const date = new Date(document.getElementById('eventDate').value).toISOString();
-        // Soundcheck: we now store combined info in a single text field
-        const soundcheckDate = null; // removed separate date field
+
         const location = document.getElementById('eventLocation').value;
-        let soundcheckLocation = null, info = null, techInfo = null;
+        let soundcheckDate = null, soundcheckLocation = null, info = null, techInfo = null;
+
         if (document.getElementById('eventShowExtras').checked) {
             soundcheckLocation = document.getElementById('eventSoundcheckLocation').value || null;
             info = document.getElementById('eventInfo').value;
             techInfo = document.getElementById('eventTechInfo').value;
         }
+
         const members = Events.getSelectedMembers();
         const guests = Events.getGuests();
 
@@ -7686,18 +7687,18 @@ const App = {
             if (editId) {
                 // Update existing
                 Logger.userAction('Form', 'eventForm', 'Submit', { action: 'Update Event', eventId: editId, title, bandId });
-                Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
+                await Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
                 // If there are draft songs, copy them to the existing event
                 if (this.draftEventSongIds && this.draftEventSongIds.length > 0) {
-                    this.copyBandSongsToEvent(editId, this.draftEventSongIds);
+                    await this.copyBandSongsToEvent(editId, this.draftEventSongIds);
                     this.draftEventSongIds = [];
                 }
             } else {
                 // Create new
                 Logger.userAction('Form', 'eventForm', 'Submit', { action: 'Create Event', title, bandId });
-                const saved = Events.createEvent(bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
+                const saved = await Events.createEvent(bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
                 if (saved && saved.id && this.draftEventSongIds && this.draftEventSongIds.length > 0) {
-                    this.copyBandSongsToEvent(saved.id, this.draftEventSongIds);
+                    await this.copyBandSongsToEvent(saved.id, this.draftEventSongIds);
                     this.draftEventSongIds = [];
                 }
             }
@@ -7712,8 +7713,7 @@ const App = {
         };
 
         // Only check absences for selected members
-        const selectedMembers = members;
-        const absences = await Promise.all(selectedMembers.map(async memberId => {
+        const absences = await Promise.all(members.map(async memberId => {
             const abs = await Storage.getUserAbsences(memberId);
             const eventDate = new Date(date);
             return abs.find(a => {
@@ -7723,13 +7723,15 @@ const App = {
             });
         }));
         const absentMembers = absences.filter(a => !!a);
+
         if (absentMembers.length > 0) {
-            UI.showConfirm('Mindestens ein ausgewähltes Bandmitglied ist am Termin abwesend. Trotzdem speichern?', () => {
-                proceed();
+            UI.showConfirm('Mindestens ein ausgewähltes Bandmitglied ist am Termin abwesend. Trotzdem speichern?', async () => {
+                await proceed();
             });
             return;
         }
-        proceed();
+
+        await proceed();
     },
 
     // Handle create absence
@@ -7857,7 +7859,7 @@ const App = {
                     <button class="btn btn-danger btn-sm delete-absence" data-id="${a.id}">🗑️ Löschen</button>
                 </div>
             </div>
-        `).join('');
+    `).join('');
 
         // Wire up edit/delete handlers
         container.querySelectorAll('.edit-absence').forEach(btn => {

@@ -637,13 +637,8 @@ const Bands = {
 
         // Reset content with structure
         container.innerHTML = `
-            <div class="absence-view-header">
-                <!-- Header removed as requested to save space -->
-            </div>
-
             <div class="absence-view-controls">
                 <div class="filter-group">
-                    <span class="filter-label">Welche Abwesenheiten?</span>
                     <div class="absence-filters">
                         <button class="absence-filter-btn active" data-filter="all">Alle</button>
                         <button class="absence-filter-btn" data-filter="own">Deine eigenen</button>
@@ -656,10 +651,6 @@ const Bands = {
                         Die Abwesenheiten erscheinen auch in der Verfügbarkeitsübersicht und der Datumsauswahl für neue Termine.
                     </div>
                 </div>
-            </div>
-
-            <div id="absenceLegend" class="absence-legend">
-                <!-- Legend removed as per new design with individual colors in sidebar -->
             </div>
 
             <div class="absence-main-layout">

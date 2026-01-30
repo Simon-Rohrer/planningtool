@@ -429,7 +429,7 @@ const Rehearsals = {
             const timeSuggestions = (await Storage.getTimeSuggestionsForDate(rehearsal.id, index)) || [];
             const suggestionHtml = (await Promise.all(timeSuggestions.map(async s => {
                 const suggUser = await Storage.getById('users', s.userId);
-                const suggName = UI.getUserDisplayName(suggUser);
+                const suggName = suggUser ? UI.getUserDisplayName(suggUser) : 'Unbekannt';
                 return `
                     <div class="time-suggestion-pill" title="Vorschlag von ${Bands.escapeHtml(suggName)}">
                         <span class="icon">🕐</span> ${Bands.escapeHtml(s.suggestedTime)} (${Bands.escapeHtml(suggName.split(' ')[0])})
@@ -441,9 +441,11 @@ const Rehearsals = {
                 <tr>
                     <td class="date-col">
                         ${formattedDate}
+                        ${suggestionHtml ? `
                         <div class="time-suggestions">
                             ${suggestionHtml}
                         </div>
+                        ` : ''}
                     </td>
                     ${voteCells}
                     <td class="zusage-col">${yesCount}/${members.length}</td>
@@ -1450,15 +1452,11 @@ const Rehearsals = {
         UI.showToast('Probetermin vorgeschlagen', 'success');
         UI.closeModal('createRehearsalModal');
 
-        // Update local list and re-render immediately to prevent stale data
-        if (!this.rehearsals) this.rehearsals = [];
-        this.rehearsals.push(savedRehearsal);
-
-        // Re-render list with updated data
-        this.renderRehearsalsList(this.rehearsals);
+        // Force a true refresh from DB to get all context (votes, creators etc)
+        await this.renderRehearsals(this.currentFilter, true);
 
         if (typeof App !== 'undefined' && App.updateDashboard) {
-            App.updateDashboard();
+            await App.updateDashboard();
         }
 
         return savedRehearsal;
