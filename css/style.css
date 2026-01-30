@@ -5497,6 +5497,30 @@ input:checked+.slider:before {
     cursor: pointer;
     color: var(--color-text);
     font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.absence-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(255, 165, 0, 0.1);
+    border: 1px solid rgba(255, 165, 0, 0.3);
+    color: orange;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.absence-pill:hover {
+    background: rgba(255, 165, 0, 0.2);
+    border-color: orange;
 }
 
 /* ===== Detail Views ===== */

@@ -2,11 +2,18 @@
 
 const Bands = {
     currentBandId: null,
+    bandsCache: null,
 
     // Clear all cached data (called during logout)
     clearCache() {
         this.currentBandId = null;
-        this.bands = null;
+        this.bandsCache = null;
+    },
+
+    invalidateCache() {
+        Logger.info('[Bands] Cache invalidated.');
+        this.bandsCache = null;
+        if (typeof Statistics !== 'undefined') Statistics.invalidateCache();
     },
 
     instrumentIcons: {
@@ -35,20 +42,29 @@ const Bands = {
     },
 
     // Render all user's bands
-    async renderBands() {
-        Logger.time('Bands Load');
-        // CRITICAL FIX: Always clear cached bands to force fresh data fetch
-        // This prevents seeing old bands after logout/re-register
-        this.bands = null;
+    async renderBands(forceRefresh = false) {
+        // Clear cached bands to force fresh data fetch if requested
+        if (forceRefresh) {
+            this.invalidateCache();
+        }
 
-        const overlay = document.getElementById('globalLoadingOverlay');
         const container = document.getElementById('bandsList');
+        if (!container) return;
+
+        // Check Cache
+        if (this.bandsCache) {
+            Logger.info('[Bands] Using cached data.');
+            this._renderBandsList(container, this.bandsCache);
+            return;
+        }
+
+        Logger.time('Bands Load');
+        UI.showLoading();
 
         try {
             const user = Auth.getCurrentUser();
             if (!user) {
-                // If no user, we shouldn't be here, but just in case
-                if (overlay) overlay.style.display = 'none';
+                UI.hideLoading();
                 return;
             }
 
@@ -60,52 +76,19 @@ const Bands = {
 
             let bands = await Storage.getUserBands(user.id);
             if (!Array.isArray(bands)) bands = [];
-            this.bands = bands;
+
+            // Fetch member counts for each band to have them in the cache
+            const bandsWithCounts = await Promise.all(bands.map(async band => {
+                const members = await Storage.getBandMembers(band.id);
+                return { ...band, memberCount: members.length };
+            }));
+
+            this.bandsCache = bandsWithCounts;
 
             // Log which bands were loaded for debugging
-            Logger.info(`[Bands.renderBands] Loaded ${bands.length} bands for user ${user.username || user.id}`);
+            Logger.info(`[Bands.renderBands] Loaded ${bandsWithCounts.length} bands for user ${user.username || user.id}`);
 
-            if (bands.length === 0) {
-                UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');
-                return;
-            }
-
-            // Render bands list logic moved here to support try/catch
-            container.innerHTML = await Promise.all(bands.map(async band => {
-                const members = await Storage.getBandMembers(band.id);
-                const memberCount = members.length;
-
-                const imageHtml = band.image_url
-                    ? `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" class="band-avatar-small">`
-                    : '';
-
-                return `
-                    <div class="band-card" data-band-id="${band.id}" style="border-left: 4px solid ${band.color || '#6366f1'}">
-                        <div class="band-card-header">
-                            <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                ${imageHtml}
-                                <h3>${this.escapeHtml(band.name)}</h3>
-                            </div>
-                            <span class="band-role-badge ${UI.getRoleClass(band.role)}">
-                                ${UI.getRoleDisplayName(band.role)}
-                            </span>
-                        </div>
-                        ${band.description ? `<p>${this.escapeHtml(band.description)}</p>` : ''}
-                        <div class="band-card-footer">
-                            <span>👥 ${memberCount} Mitglied${memberCount !== 1 ? 'er' : ''}</span>
-                            <span>${UI.formatRelativeTime(band.createdAt)}</span>
-                        </div>
-                    </div>
-                `;
-            })).then(results => results.join(''));
-
-            // Add click handlers
-            container.querySelectorAll('.band-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const bandId = card.dataset.bandId;
-                    this.showBandDetails(bandId);
-                });
-            });
+            this._renderBandsList(container, this.bandsCache);
 
             // Update nav visibility based on current membership
             this.updateNavVisibility();
@@ -114,12 +97,51 @@ const Bands = {
         } catch (error) {
             console.error('Error rendering bands:', error);
             UI.showToast('Fehler beim Laden der Bands', 'error');
-            if (container) {
-                container.innerHTML = '<p class="error-text">Fehler beim Laden der Daten. Bitte versuchen Sie es später erneut.</p>';
-            }
+            container.innerHTML = '<p class="error-text">Fehler beim Laden der Daten. Bitte versuchen Sie es später erneut.</p>';
         } finally {
-            // Loading overlay removed as per user request
+            UI.hideLoading();
         }
+    },
+
+    // Helper: render the band list
+    _renderBandsList(container, bands) {
+        if (bands.length === 0) {
+            UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');
+            return;
+        }
+
+        container.innerHTML = bands.map(band => {
+            const imageHtml = band.image_url
+                ? `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" class="band-avatar-small">`
+                : '';
+
+            return `
+                <div class="band-card" data-band-id="${band.id}" style="border-left: 4px solid ${band.color || '#6366f1'}">
+                    <div class="band-card-header">
+                        <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            ${imageHtml}
+                            <h3>${this.escapeHtml(band.name)}</h3>
+                        </div>
+                        <span class="band-role-badge ${UI.getRoleClass(band.role)}">
+                            ${UI.getRoleDisplayName(band.role)}
+                        </span>
+                    </div>
+                    ${band.description ? `<p>${this.escapeHtml(band.description)}</p>` : ''}
+                    <div class="band-card-footer">
+                        <span>👥 ${band.memberCount || 0} Mitglied${band.memberCount !== 1 ? 'er' : ''}</span>
+                        <span>${UI.formatRelativeTime(band.createdAt)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Add click handlers
+        container.querySelectorAll('.band-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const bandId = card.dataset.bandId;
+                this.showBandDetails(bandId);
+            });
+        });
     },
 
     // Show band details modal
@@ -478,7 +500,8 @@ const Bands = {
         if (joinCodeInput) joinCodeInput.value = '';
 
         UI.closeModal('joinBandModal');
-        await this.renderBands();
+        this.invalidateCache();
+        await this.renderBands(true);
 
         // Update dashboard and navigation
         if (typeof App !== 'undefined') {
@@ -850,6 +873,7 @@ const Bands = {
         }
 
         await Storage.updateBandMemberRole(bandId, userId, newRole);
+        this.invalidateCache();
         UI.showToast('Rolle aktualisiert', 'success');
         await this.renderBandMembers(bandId);
     },
@@ -904,6 +928,7 @@ const Bands = {
             // Automatically add creator as leader
             await Storage.addBandMember(band.id, userId, 'leader');
 
+            this.invalidateCache();
             UI.hideLoading();
             UI.showToast(`Band "${name}" erstellt! Du bist jetzt Bandleiter.`, 'success');
 
@@ -919,7 +944,7 @@ const Bands = {
             // Short delay to allow DB propagation
             await new Promise(r => setTimeout(r, 500));
 
-            await this.renderBands();
+            await this.renderBands(true);
 
             // Update navigation visibility to show band tabs
             await this.updateNavVisibility();
@@ -970,8 +995,10 @@ const Bands = {
 
         UI.showConfirm(`Möchtest du ${user.name} wirklich aus der Band entfernen?`, () => {
             Storage.removeBandMember(bandId, userId);
+            this.invalidateCache();
             UI.showToast('Mitglied entfernt', 'success');
             this.renderBandMembers(bandId);
+            this.renderBands(true);
         });
     },
 
@@ -990,9 +1017,10 @@ const Bands = {
         const confirmed = await UI.confirmDelete(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`);
         if (confirmed) {
             await Storage.deleteBand(bandId);
+            this.invalidateCache();
             UI.showToast('Band gelöscht', 'success');
             UI.closeModal('bandDetailsModal');
-            await this.renderBands();
+            await this.renderBands(true);
 
             // Update admin band management list
             if (typeof App !== 'undefined' && typeof App.renderAllBandsList === 'function') {
@@ -1018,9 +1046,10 @@ const Bands = {
             // Remove current user from band members
             const ok = await Storage.removeBandMember(bandId, user.id);
             if (ok) {
+                this.invalidateCache();
                 UI.showToast('Du hast die Band verlassen', 'success');
                 UI.closeModal('bandDetailsModal');
-                await this.renderBands();
+                await this.renderBands(true);
                 if (typeof App !== 'undefined' && App.updateDashboard) await App.updateDashboard();
                 // Notify other modules
                 document.dispatchEvent(new Event('bandsUpdated'));

@@ -2,6 +2,16 @@
 
 const Statistics = {
     loadingStates: {},
+    statsCache: {}, // { [bandId || 'all']: { data, timestamp } }
+
+    invalidateCache() {
+        Logger.info('[Statistics] Cache invalidated.');
+        this.statsCache = {};
+    },
+
+    clearCache() {
+        this.invalidateCache();
+    },
 
     // Initialize statistics filters (dropdowns)
     async initStatisticsFilters() {
@@ -37,6 +47,15 @@ const Statistics = {
 
     // NEW: Render General Statistics Dashboard
     async renderGeneralStatistics(bandId = null) {
+        const cacheKey = bandId || 'all';
+
+        // Check Cache
+        if (this.statsCache[cacheKey]) {
+            Logger.info(`[Statistics] Using cached data for ${cacheKey}.`);
+            this._renderDashboard(this.statsCache[cacheKey].data);
+            return;
+        }
+
         Logger.info('Statistics: renderGeneralStatistics called', { bandId });
         Logger.time('Statistics Load (General)');
         const container = document.getElementById('statsDashboardContainer');
@@ -122,44 +141,78 @@ const Statistics = {
                 }
             });
 
-            // 4. Render Dashboard
-            container.innerHTML = `
+            const dashboardData = {
+                totalEvents,
+                totalRehearsals,
+                totalBands,
+                repertoireSize,
+                topSong,
+                favLocation,
+                eventsYear: events.filter(e => new Date(e.date).getFullYear() === new Date().getFullYear()).length
+            };
+
+            // Set Cache
+            this.statsCache[cacheKey] = { data: dashboardData, timestamp: Date.now() };
+
+            this._renderDashboard(dashboardData);
+        } catch (error) {
+            console.error('[Statistics] Error rendering general stats:', error);
+            const container = document.getElementById('statsDashboardContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <p>Fehler beim Laden der Statistiken.</p>
+                    </div>
+                `;
+            }
+        } finally {
+            Logger.timeEnd('Statistics Load (General)');
+        }
+    },
+
+    // Helper: Render the dashboard from data
+    _renderDashboard(data) {
+        const container = document.getElementById('statsDashboardContainer');
+        if (!container) return;
+
+        container.innerHTML = `
                 <!-- Key Metrics Grid -->
                 <div class="stats-grid">
                     <div class="stats-card-modern">
                         <span class="stats-card-icon-bg">🎤</span>
                         <div class="stats-metric-label">Auftritte Gesamt</div>
-                        <div class="stats-metric-value">${totalEvents}</div>
+                        <div class="stats-metric-value">${data.totalEvents}</div>
                         <div class="stats-metric-trend positive">
-                            <span>📅 Dieses Jahr: ${events.filter(e => new Date(e.date).getFullYear() === new Date().getFullYear()).length}</span>
+                            <span>📅 Dieses Jahr: ${data.eventsYear}</span>
                         </div>
                     </div>
                     
                     <div class="stats-card-modern">
                         <span class="stats-card-icon-bg">🎸</span>
                         <div class="stats-metric-label">Proben Gesamt</div>
-                        <div class="stats-metric-value">${totalRehearsals}</div>
+                        <div class="stats-metric-value">${data.totalRehearsals}</div>
                         <div class="stats-metric-trend neutral">
                             <span>💪 Fleißig!</span>
                         </div>
                     </div>
-
+    
                     <div class="stats-card-modern">
                         <span class="stats-card-icon-bg">🎵</span>
                         <div class="stats-metric-label">Repertoire Größe</div>
-                        <div class="stats-metric-value">${repertoireSize}</div>
+                        <div class="stats-metric-value">${data.repertoireSize}</div>
                         <div class="stats-metric-trend positive">
                             <span>Songs in allen Bands</span>
                         </div>
                     </div>
-
+    
                     <div class="stats-card-modern">
                         <span class="stats-card-icon-bg">🏘️</span>
                         <div class="stats-metric-label">Aktive Bands</div>
-                        <div class="stats-metric-value">${totalBands}</div>
+                        <div class="stats-metric-value">${data.totalBands}</div>
                     </div>
                 </div>
-
+    
                 <!-- Fun Stats Section -->
                 <h3 style="margin-bottom: var(--spacing-md); color: var(--color-text);">🏆 Fun Facts</h3>
                 <div class="stats-fun-section">
@@ -169,27 +222,27 @@ const Statistics = {
                         <span class="stats-card-icon-bg">⭐</span>
                         <div class="stats-metric-label">Meistgespielter Song</div>
                         <div class="stats-metric-value" style="font-size: 1.8rem; word-break: break-word;">
-                            ${topSong.count > 0 ? topSong.name : 'Noch keine Daten'}
+                            ${data.topSong.count > 0 ? data.topSong.name : 'Noch keine Daten'}
                         </div>
                         <div class="stats-metric-trend">
-                            ${topSong.count > 0 ? `Gespielt ${topSong.count} mal` : ''}
+                            ${data.topSong.count > 0 ? `Gespielt ${data.topSong.count} mal` : ''}
                         </div>
                     </div>
-
+    
                     <!-- Favorite Location Card -->
                     <div class="stats-card-modern">
                         <span class="stats-card-icon-bg">📍</span>
                         <div class="stats-metric-label">Lieblings-Location</div>
                         <div class="stats-metric-value" style="font-size: 1.8rem;">
-                            ${favLocation.count > 0 ? favLocation.name : '-'}
+                            ${data.favLocation.count > 0 ? data.favLocation.name : '-'}
                         </div>
                         <div class="stats-metric-trend neutral">
-                            ${favLocation.count > 0 ? `${favLocation.count} Besuche` : ''}
+                            ${data.favLocation.count > 0 ? `${data.favLocation.count} Besuche` : ''}
                         </div>
                     </div>
-
+    
                 </div>
-
+    
                 <!-- Recent Activity Helper -->
                 <div style="margin-top: var(--spacing-xl);">
                     <h4 style="margin-bottom: var(--spacing-sm); color: var(--color-text-secondary);">💡 Tipp</h4>
@@ -198,17 +251,6 @@ const Statistics = {
                     </p>
                 </div>
             `;
-
-        } catch (error) {
-            console.error('[Statistics] Error rendering general stats:', error);
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">⚠️</div>
-                    <p>Fehler beim Laden der Statistiken.</p>
-                </div>
-            `;
-        }
-        Logger.timeEnd('Statistics Load (General)');
     },
     // Calculate best dates (used by other modules)
     async getBestDates(rehearsalId, limit = 3) {

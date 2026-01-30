@@ -4,6 +4,25 @@ const Events = {
     currentFilter: '',
     currentEventId: null,
     expandedEventId: null,
+    eventsCache: null,
+    dataContextCache: null,
+    isLoading: false,
+
+    // Clear all cached data (called during logout)
+    clearCache() {
+        this.eventsCache = null;
+        this.dataContextCache = null;
+        this.currentFilter = '';
+        this.currentEventId = null;
+        this.expandedEventId = null;
+    },
+
+    invalidateCache() {
+        Logger.info('[Events] Cache invalidated.');
+        this.eventsCache = null;
+        this.dataContextCache = null;
+        if (typeof Statistics !== 'undefined') Statistics.invalidateCache();
+    },
 
     // Helper to get display name
     _getUserName(user) {
@@ -17,12 +36,39 @@ const Events = {
     },
 
     // Render all events
-    async renderEvents(filterBandId = '') {
+    async renderEvents(filterBandId = '', forceRefresh = false) {
+        if (this.isLoading) {
+            Logger.warn('[Events] Already loading, skipping.');
+            return;
+        }
+
+        // Check if we have cached data
+        if (!forceRefresh && this.eventsCache && this.dataContextCache) {
+            Logger.info('[Events] Using cached data.');
+            let events = [...this.eventsCache];
+            if (filterBandId) {
+                events = events.filter(e => e.bandId === filterBandId);
+            }
+            const container = document.getElementById('eventsList');
+            if (container) {
+                if (events.length === 0) {
+                    UI.showEmptyState(container, '🎤', 'Noch keine Auftritte vorhanden');
+                } else {
+                    container.innerHTML = (await Promise.all(events.map(event =>
+                        this.renderEventCard(event, this.dataContextCache)
+                    ))).join('');
+                    this.attachEventHandlers();
+                }
+            }
+            return;
+        }
+
         const container = document.getElementById('eventsList');
         const user = Auth.getCurrentUser();
 
         if (!user) return;
 
+        this.isLoading = true;
         UI.showLoading('Auftritte werden geladen...');
         Logger.time('Load Events');
 
@@ -31,7 +77,6 @@ const Events = {
 
             // 1. Collect all IDs for batch fetching
             const eventIds = events.map(e => e.id);
-            const bandIds = [...new Set(events.map(e => e.bandId))];
             const memberIds = [...new Set(events.flatMap(e => e.members || []))];
 
             // 2. Batch Fetch everything in parallel
@@ -62,6 +107,10 @@ const Events = {
                 }, {}),
                 userBands: userBandsBatch.reduce((acc, b) => ({ ...acc, [b.id]: b }), {})
             };
+
+            // Set Cache
+            this.eventsCache = events;
+            this.dataContextCache = dataContext;
 
             // Apply filter
             if (filterBandId) {
@@ -101,6 +150,7 @@ const Events = {
             this.attachEventHandlers();
             Logger.timeEnd('Load Events');
         } finally {
+            this.isLoading = false;
             UI.hideLoading();
         }
     },
@@ -569,6 +619,7 @@ const Events = {
         };
 
         const savedEvent = Storage.createEvent(event);
+        this.invalidateCache();
         UI.showToast('Auftritt erstellt', 'success');
         UI.closeModal('createEventModal');
         this.renderEvents(this.currentFilter, true);
@@ -656,6 +707,7 @@ const Events = {
             guests
         });
 
+        this.invalidateCache();
         UI.showToast('Auftritt aktualisiert', 'success');
         UI.closeModal('createEventModal');
 
@@ -688,10 +740,11 @@ const Events = {
 
             // Aus der Datenbank löschen
             Storage.deleteEvent(eventId);
+            this.invalidateCache();
             UI.showToast('Auftritt gelöscht', 'success');
 
             // Liste neu laden
-            setTimeout(() => this.renderEvents(this.currentFilter), 350);
+            setTimeout(() => this.renderEvents(this.currentFilter, true), 350);
         }
     },
 
@@ -730,7 +783,12 @@ const Events = {
                     return eventDate >= start && eventDate <= end;
                 });
                 if (absence) {
-                    absenceHtml = `<span style=\"color: orange; font-weight: bold; margin-left: 0.5em;\">Abwesenheit: ${Bands.escapeHtml(absence.reason || '')} (${UI.formatDateOnly(absence.startDate)} - ${UI.formatDateOnly(absence.endDate)})</span>`;
+                    const tooltipText = `Grund: ${absence.reason || 'Nicht angegeben'}\nZeitraum: ${UI.formatDateOnly(absence.startDate)} - ${UI.formatDateOnly(absence.endDate)}`;
+                    absenceHtml = `
+                        <span class="absence-pill" title="${Bands.escapeHtml(tooltipText)}">
+                            🏖️ Abwesend
+                        </span>
+                    `;
                 }
             }
             return `

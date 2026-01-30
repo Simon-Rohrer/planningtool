@@ -357,6 +357,12 @@ const Auth = {
         if (typeof Bands !== 'undefined' && Bands.clearCache) {
             Bands.clearCache();
         }
+        if (typeof Statistics !== 'undefined' && Statistics.clearCache) {
+            Statistics.clearCache();
+        }
+        if (typeof App !== 'undefined' && App.clearCache) {
+            App.clearCache();
+        }
 
         // Sign out from Supabase
         const sb = SupabaseClient.getClient();

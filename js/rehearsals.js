@@ -14,10 +14,8 @@ const Rehearsals = {
             }
         });
     },
-    currentFilter: '',
-    isLoading: false,
-    currentRehearsalId: null,
-    expandedRehearsalId: null,
+    rehearsalsCache: null,
+    dataContextCache: null,
 
     // Clear all cached data (called during logout)
     clearCache() {
@@ -25,6 +23,15 @@ const Rehearsals = {
         this.currentRehearsalId = null;
         this.rehearsals = [];
         this.currentFilter = '';
+        this.rehearsalsCache = null;
+        this.dataContextCache = null;
+    },
+
+    invalidateCache() {
+        Logger.info('[Rehearsals] Cache invalidated.');
+        this.rehearsalsCache = null;
+        this.dataContextCache = null;
+        if (typeof Statistics !== 'undefined') Statistics.invalidateCache();
     },
 
     // Render all rehearsals
@@ -33,6 +40,18 @@ const Rehearsals = {
             Logger.warn('[Rehearsals] Already loading, skipping.');
             return;
         }
+
+        // Check if we have cached data and should use it
+        if (!forceRefresh && this.rehearsalsCache && this.dataContextCache) {
+            Logger.info('[Rehearsals] Using cached data.');
+            let rehearsals = [...this.rehearsalsCache];
+            if (filterBandId) {
+                rehearsals = rehearsals.filter(r => r.bandId === filterBandId);
+            }
+            await this.renderRehearsalsList(rehearsals, this.dataContextCache);
+            return;
+        }
+
         this.isLoading = true;
         UI.showLoading('Proben werden geladen...');
         Logger.time('Load Rehearsals');
@@ -52,7 +71,6 @@ const Rehearsals = {
             const creatorIds = rehearsals.map(r => r.createdBy || r.proposedBy).filter(id => id);
             const locationIds = rehearsals.map(r => r.locationId).filter(id => id);
             const eventIds = rehearsals.map(r => r.eventId).filter(id => id);
-            const bandIdsForRoles = [...new Set(rehearsals.map(r => r.bandId))];
 
             // 2. Batch Fetch everything in parallel
             const [
@@ -77,6 +95,10 @@ const Rehearsals = {
                 events: eventsBatch.reduce((acc, e) => ({ ...acc, [e.id]: e }), {}),
                 userBands: userBandsBatch.reduce((acc, b) => ({ ...acc, [b.id]: b }), {})
             };
+
+            // Set Cache
+            this.rehearsalsCache = rehearsals;
+            this.dataContextCache = dataContext;
 
             // Apply filter
             if (filterBandId) {
@@ -555,6 +577,8 @@ const Rehearsals = {
     async handleSaveVotes(rehearsalId, votes) {
         const user = Auth.getCurrentUser();
         if (!user) return;
+
+        this.invalidateCache();
 
         Logger.userAction('Submit', 'rehearsalVotingForm', 'Bulk Vote', { rehearsalId, votes });
 
@@ -1224,6 +1248,7 @@ const Rehearsals = {
         UI.closeModal('locationConflictModal'); // Close conflict modal if it was open
 
         // Force refresh of data
+        this.invalidateCache();
         this.rehearsals = null;
         await this.renderRehearsals(this.currentFilter);
 
@@ -1416,6 +1441,9 @@ const Rehearsals = {
 
         const savedRehearsal = await Storage.createRehearsal(rehearsal);
 
+        // Invalidate cache
+        this.invalidateCache();
+
         // No auto-vote for proposer anymore - they start with 'maybe' (no vote)
         // Votes will be created when they interact with the buttons
 
@@ -1600,6 +1628,7 @@ const Rehearsals = {
         }
 
         UI.closeModal('createRehearsalModal');
+        this.invalidateCache();
         await this.renderRehearsals(this.currentFilter);
     },
 
@@ -1620,12 +1649,9 @@ const Rehearsals = {
                 this.rehearsals = this.rehearsals.filter(r => r.id !== rehearsalId);
             }
 
-            // Aus der Datenbank löschen
-            await Storage.deleteRehearsal(rehearsalId);
-            UI.showToast('Probentermin gelöscht', 'success');
-
-            // Liste aktualisieren (lädt aus dem aktualisierten Cache)
-            await this.renderRehearsals(this.currentFilter);
+            // Liste aktualisieren (invalidiert den alten Cache)
+            this.invalidateCache();
+            await this.renderRehearsals(this.currentFilter, true);
         }
     },
 

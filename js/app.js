@@ -267,6 +267,20 @@ const App = {
     // Track deleted songs for potential rollback
     deletedEventSongs: [],
 
+    // Caching for settings lists
+    locationsCache: null,
+    calendarsCache: null,
+    allBandsCache: null,
+    absencesCache: null,
+
+    invalidateSettingsCache() {
+        this.locationsCache = null;
+        this.calendarsCache = null;
+        this.allBandsCache = null;
+        this.absencesCache = null;
+        Logger.info('[App] Settings cache invalidated.');
+    },
+
     // Account löschen Logik
     // Account löschen Logik
     // Account löschen Logik
@@ -5290,6 +5304,9 @@ const App = {
         // Update absence indicator
         await this.updateAbsenceIndicator();
 
+        // Invalidate cache
+        this.absencesCache = null;
+
         // Refresh list
         this.renderAbsencesListSettings();
     },
@@ -5301,10 +5318,16 @@ const App = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        // Cleanup past absences first
-        await this.cleanupPastAbsences(user.id);
-
-        const absences = await Storage.getUserAbsences(user.id) || [];
+        let absences;
+        if (this.absencesCache) {
+            Logger.info('[App] Using cached absences.');
+            absences = this.absencesCache;
+        } else {
+            // Cleanup past absences first
+            await this.cleanupPastAbsences(user.id);
+            absences = await Storage.getUserAbsences(user.id) || [];
+            this.absencesCache = absences;
+        }
 
         if (absences.length === 0) {
             container.innerHTML = '<p class="text-muted">Keine Abwesenheiten eingetragen.</p>';
@@ -5367,6 +5390,7 @@ const App = {
         const confirmed = await UI.confirmDelete('Möchtest du diese Abwesenheit wirklich löschen?');
         if (confirmed) {
             await Storage.deleteAbsence(absenceId);
+            this.absencesCache = null; // Invalidate cache
             UI.showToast('Abwesenheit gelöscht', 'success');
             await this.updateAbsenceIndicator(); // Update header immediately
             this.renderAbsencesListSettings();
@@ -5563,16 +5587,26 @@ const App = {
     async renderLocationsList() {
         const startTime = performance.now();
         const container = document.getElementById('locationsList');
+        if (!container) return;
 
         // Ensure dropdowns are populated with latest calendars
         await this.populateCalendarDropdowns();
 
-        const locations = await Storage.getLocations();
+        let locations, calendars;
 
-        const badge = document.getElementById('adminLocationCount');
-        if (badge) badge.textContent = locations ? locations.length : 0;
-
-        const calendars = await Storage.getAllCalendars();
+        // Check Cache
+        if (this.locationsCache && this.calendarsCache) {
+            Logger.info('[App] Using cached locations and calendars.');
+            locations = this.locationsCache;
+            calendars = this.calendarsCache;
+        } else {
+            locations = await Storage.getLocations();
+            calendars = await Storage.getAllCalendars();
+            this.locationsCache = locations || [];
+            this.calendarsCache = calendars || [];
+            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+            Logger.info(`Locations/Calendars Data Fetched (${duration}s)`);
+        }
 
         // Create map of calendar names
         const calendarMap = {
@@ -5644,6 +5678,7 @@ const App = {
                 const confirmed = await UI.confirmDelete('Möchtest du diesen Probeort wirklich löschen?');
                 if (confirmed) {
                     await Storage.deleteLocation(btn.dataset.id);
+                    this.locationsCache = null; // Invalidate cache
                     await this.renderLocationsList();
                     UI.showToast('Probeort gelöscht', 'success');
                 }
@@ -5657,7 +5692,18 @@ const App = {
         const container = document.getElementById('calendarsList');
         if (!container) return;
 
-        const calendars = await Storage.getAllCalendars();
+        let calendars;
+
+        // Check Cache
+        if (this.calendarsCache) {
+            Logger.info('[App] Using cached calendars.');
+            calendars = this.calendarsCache;
+        } else {
+            calendars = await Storage.getAllCalendars();
+            this.calendarsCache = calendars || [];
+            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+            Logger.info(`Calendars Data Fetched (${duration}s)`);
+        }
 
         const badge = document.getElementById('adminCalendarCount');
         if (badge) badge.textContent = calendars ? calendars.length : 0;
@@ -5790,6 +5836,7 @@ const App = {
                 UI.showToast('Kalender erstellt', 'success');
             }
 
+            this.invalidateSettingsCache();
             console.log('[handleCalendarForm] Closing modal and refreshing data...');
             UI.closeModal('calendarModal');
 
@@ -5846,6 +5893,7 @@ const App = {
                 }
 
                 await Storage.deleteCalendar(calendarId);
+                this.invalidateSettingsCache();
                 UI.showToast('Kalender gelöscht', 'success');
                 await this.renderCalendarsList();
                 await this.renderLocationsList();
@@ -5865,7 +5913,16 @@ const App = {
     // Render all bands list for management
     async renderAllBandsList() {
         const container = document.getElementById('allBandsList');
-        const bands = await Storage.getAllBands();
+        if (!container) return;
+
+        let bands;
+        if (this.allBandsCache) {
+            Logger.info('[App] Using cached all bands list.');
+            bands = this.allBandsCache;
+        } else {
+            bands = await Storage.getAllBands();
+            this.allBandsCache = bands || [];
+        }
 
         const badge = document.getElementById('adminBandCount');
         if (badge) badge.textContent = bands ? bands.length : 0;
@@ -5958,6 +6015,7 @@ const App = {
                 const confirmed = await UI.confirmDelete(`Möchtest du die Band "${band.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`);
                 if (confirmed) {
                     await Storage.deleteBand(bandId);
+                    this.allBandsCache = null; // Invalidate cache
                     await this.renderAllBandsList();
                     // Refresh band cards in "Meine Bands" view
                     if (typeof Bands.renderBands === 'function') {
@@ -6495,6 +6553,7 @@ const App = {
 
         if (name) {
             await Storage.createLocation({ name, address, linkedCalendar });
+            this.invalidateSettingsCache();
             nameInput.value = '';
             addressInput.value = '';
             linkedCalendarSelect.value = '';
@@ -6735,6 +6794,7 @@ const App = {
 
         if (name) {
             await Storage.updateLocation(locationId, { name, address, linkedCalendar });
+            this.invalidateSettingsCache();
             UI.closeModal('editLocationModal');
             await this.renderLocationsList();
             UI.showToast('Probeort aktualisiert', 'success');
