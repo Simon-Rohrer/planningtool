@@ -160,16 +160,20 @@ const Calendar = {
             }
             container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Lade Kalender-Termine...</p></div>';
 
-            // Use CORS proxy to fetch iCal data
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(calendar.url)}`;
-            const response = await fetch(proxyUrl);
+            // Use central ProxyService for robust fetching
+            const icalData = await ProxyService.fetch(calendar.url);
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            // PREVENT CRASH: Validate if we actually got iCal data
+            if (!icalData || typeof icalData !== 'string' || !icalData.includes('BEGIN:VCALENDAR')) {
+                console.error('Invalid iCal data received:', icalData?.substring(0, 100));
+                throw new Error('Ungültiges Kalender-Format empfangen.');
             }
 
-            const proxyData = await response.json();
-            const icalData = proxyData.contents;
+            // PREVENT CRASH: Validate if we actually got iCal data
+            if (!icalData || typeof icalData !== 'string' || !icalData.includes('BEGIN:VCALENDAR')) {
+                console.error('Invalid iCal data received from proxy:', icalData?.substring(0, 100));
+                throw new Error('Ungültiges Kalender-Format empfangen.');
+            }
 
             // Parse iCal data using ical.js
             const jcalData = ICAL.parse(icalData);
@@ -435,16 +439,15 @@ const Calendar = {
             return;
         }
 
-        // Load the calendar
+        // Load the calendar via ProxyService
         try {
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(calendar.url)}`;
-            const response = await fetch(proxyUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            const icalData = await ProxyService.fetch(calendar.url);
+
+            // Validierung
+            if (!icalData || typeof icalData !== 'string' || !icalData.includes('BEGIN:VCALENDAR')) {
+                throw new Error('Gültige Kalenderdaten konnten nicht geladen werden.');
             }
 
-            const proxyData = await response.json();
-            const icalData = proxyData.contents;
             const jcalData = ICAL.parse(icalData);
             const comp = new ICAL.Component(jcalData);
             const vevents = comp.getAllSubcomponents('vevent');
