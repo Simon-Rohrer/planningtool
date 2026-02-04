@@ -393,15 +393,14 @@ const App = {
             }
         });
     },
-    // Update header to show current page title instead of submenu buttons
+    // Update header to show current page title
     updateHeaderSubmenu(view) {
         const titleMap = {
-            dashboard: { label: 'Dashboard', icon: '🏠' },
+            dashboard: { label: 'Home', icon: '🎙️' },
             bands: { label: 'Meine Bands', icon: '🎸' },
             musikpool: { label: 'Musikerpool', icon: '🎵' },
             rehearsals: { label: 'Probetermine', icon: '📅' },
             probeorte: { label: 'Probeorte', icon: '🎙️' },
-            tonstudio: { label: 'Tonstudio', icon: '🎙️' },
             kalender: { label: 'Mein Kalender', icon: '📆' },
             events: { label: 'Auftritte', icon: '🎸' },
             statistics: { label: 'Statistiken', icon: '📊' },
@@ -411,14 +410,13 @@ const App = {
 
         const info = titleMap[view] || { label: 'BandManager', icon: '🎸' };
 
-        // Update Header Title (used in mobile and now desktop)
+        // Update Header Title (Absolute centered)
         const headerTitle = document.getElementById('headerPageTitle');
         if (headerTitle) {
             headerTitle.innerHTML = `<h2 class="header-page-title">${info.icon} ${info.label}</h2>`;
         }
 
-        // Original submenu container - we might still want to use it for other things, 
-        // but for now we've hidden it on mobile. On desktop it's also redundant if we show title in header.
+        // Keep container clean/hidden but synced with title for desktop
         const container = document.getElementById('headerSubmenu');
         if (container) {
             container.innerHTML = `<h2 class="header-page-title desktop-only">${info.icon} ${info.label}</h2>`;
@@ -442,22 +440,47 @@ const App = {
         });
     },
     setupMobileSubmenuToggle() {
+        // Prevent re-initialization
+        if (this._mobileSubmenuInitialized) {
+            console.log('[setupMobileSubmenuToggle] Already initialized, skipping...');
+            return;
+        }
+
         const navBar = document.getElementById('appNav');
         if (!navBar) return;
 
         Logger.info('[setupMobileSubmenuToggle] Initializing unified mobile nav delegation');
 
 
+        // Mark as initialized
+        this._mobileSubmenuInitialized = true;
+
+        // DEBUGGING: Log all nav-groups on initialization
+        console.log('[DEBUG] Nav groups found:', document.querySelectorAll('#appNav .nav-group').length);
+        document.querySelectorAll('#appNav .nav-group').forEach((g, i) => {
+            const mainBtn = g.querySelector('.nav-main');
+            console.log(`[DEBUG] Tab ${i}:`, mainBtn?.dataset.view, 'hasSubmenu:', !!g.querySelector('.nav-submenu'));
+        });
 
         // Central delegation handler for ALL mobile bottom nav interactions
         navBar.addEventListener('click', async (e) => {
+            // DEBUGGING: Log ALL clicks on navBar
+            console.log('[DEBUG] Click on navBar!', 'Target:', e.target, 'ClientX:', e.clientX, 'ClientY:', e.clientY);
+
             // Safety check: Only run logic if navBar is actually visible/active (mobile mode)
-            if (window.innerWidth > 768) return;
+            if (window.innerWidth > 768) {
+                console.log('[DEBUG] Ignoring - desktop mode');
+                return;
+            }
             const subitem = e.target.closest('.nav-subitem');
             const mainitem = e.target.closest('.nav-item.nav-main');
 
+            console.log('[DEBUG] Closest subitem:', subitem);
+            console.log('[DEBUG] Closest mainitem:', mainitem);
+
             // 1. CLICK ON A SUBMENU ITEM (The actual links in the bubble)
             if (subitem) {
+                console.log('[DEBUG] Subitem clicked:', subitem.dataset.view);
                 e.preventDefault();
                 const view = subitem.dataset.view;
                 const group = subitem.closest('.nav-group');
@@ -467,6 +490,7 @@ const App = {
 
                 // Navigate
                 if (view) {
+                    console.log('[DEBUG] Navigating to:', view);
                     await this.navigateTo(view, 'mobile-nav-sub');
                 }
                 return;
@@ -474,11 +498,14 @@ const App = {
 
             // 2. CLICK ON A MAIN ICON (The bottom icons)
             if (mainitem) {
+                console.log('[DEBUG] Main item clicked:', mainitem.dataset.view);
                 e.preventDefault();
                 e.stopPropagation(); // Avoid global "close all" handler
 
                 const navGroup = mainitem.closest('.nav-group');
                 const hasSubmenu = navGroup && navGroup.querySelector('.nav-submenu');
+
+                console.log('[DEBUG] Has submenu:', !!hasSubmenu);
 
                 if (hasSubmenu) {
                     // TOGGLE SUBMENU logic
@@ -488,6 +515,7 @@ const App = {
                     });
 
                     navGroup.classList.toggle('submenu-open');
+                    console.log('[DEBUG] Toggled submenu-open, now:', navGroup.classList.contains('submenu-open'));
                     return;
                 } else {
                     // DIRECT NAVIGATION (e.g. for simple buttons without submenus)
@@ -499,9 +527,12 @@ const App = {
 
                     const view = mainitem.dataset.view;
                     if (view) {
+                        console.log('[DEBUG] Direct navigation to:', view);
                         await this.navigateTo(view, 'mobile-nav-main-direct');
                     }
                 }
+            } else {
+                console.log('[DEBUG] Click on navBar but no mainitem/subitem found! This should not happen.');
             }
         });
 
@@ -849,20 +880,7 @@ const App = {
 
         // Start Auth initialization in background (non-blocking)
 
-        // CRITICAL FIX: Check for password recovery mode in URL hash BEFORE Auth.init
-        if (window.location.hash && window.location.hash.includes('type=recovery')) {
-            console.log('Detected Password Recovery Mode from URL hash');
-            this.isPasswordRecoveryMode = true;
-        }
-
         Auth.init().then(async () => {
-            // Check if we are in recovery mode
-            if (this.isPasswordRecoveryMode) {
-                console.log('In recovery mode - skipping app load and triggering UI');
-                window.dispatchEvent(new CustomEvent('auth:password_recovery'));
-                return;
-            }
-
             // After auth is ready, check if authenticated and show appropriate view
             if (Auth.isAuthenticated()) {
                 await this.showApp();
@@ -1246,17 +1264,39 @@ const App = {
 
         // Listen for password recovery event
         window.addEventListener('auth:password_recovery', () => {
+            // GHOST EVENT PROTECTION:
+            // If the main app is already visible, it means we have already logged in normally.
+            // Supabase sometimes fires 'PASSWORD_RECOVERY' as a ghost event on every reload
+            // if the session was originally recovery-based.
+            const mainApp = document.getElementById('mainApp');
+            const isAppVisible = mainApp && (mainApp.style.display === 'block' || mainApp.classList.contains('active'));
+
+            if (isAppVisible && !this.isPasswordRecoveryMode) {
+                console.log('[Recovery] Suppressing ghost recovery modal - app is already active');
+                return;
+            }
+
+            // Robustness: Only show if we explicitly detected recovery state or have a token
+            if (!this.isPasswordRecoveryMode && !(window.location.hash && window.location.hash.includes('recovery'))) {
+                console.log('[Recovery] Suppressing recovery modal - no active token found');
+                return;
+            }
+
             console.log('Opening reset password modal (Recovery Mode)');
             this.isPasswordRecoveryMode = true;
 
-            // Hide main app
+            // Hide main app completely
             const app = document.getElementById('mainApp');
-            if (app) app.style.display = 'none';
+            if (app) {
+                app.style.display = 'none';
+                app.classList.remove('active');
+            }
 
             // Ensure landing page is visible but hide its normal content
             const landing = document.getElementById('landingPage');
             if (landing) {
                 landing.classList.add('active');
+                landing.style.display = 'block';
 
                 // Hide Hero and Auth Container standard elements
                 const hero = document.getElementById('heroArea');
@@ -1270,7 +1310,12 @@ const App = {
 
                 // Ensure auth container is visible (parent of modal)
                 const authContainer = document.querySelector('.auth-container');
-                if (authContainer) authContainer.style.display = 'block';
+                if (authContainer) {
+                    authContainer.style.display = 'block';
+                    // Force the card to be visible for the modal context
+                    const authCard = document.querySelector('.auth-white-card');
+                    if (authCard) authCard.style.display = 'block';
+                }
             }
 
             // Close other modals if any
@@ -1280,9 +1325,6 @@ const App = {
             const modal = document.getElementById('resetPasswordModal');
             if (modal) {
                 UI.openModal('resetPasswordModal');
-                // Hide close button in this mode
-                const closeBtn = modal.querySelector('.modal-close');
-                if (closeBtn) closeBtn.style.display = 'none';
             }
         });
 
@@ -1290,7 +1332,7 @@ const App = {
         const forgotBtn = document.querySelector('.forgot-password');
         if (forgotBtn) {
             forgotBtn.addEventListener('click', () => {
-                UI.openModal('forgotPasswordModal');
+                UI.openModal('forgotPwdModalNew');
             });
         }
 
@@ -1318,7 +1360,7 @@ const App = {
 
                     await Auth.requestPasswordReset(email);
                     UI.showToast('E-Mail gesendet! Bitte prüfe deinen Posteingang.', 'success', 5000);
-                    UI.closeModal('forgotPasswordModal');
+                    UI.closeModal('forgotPwdModalNew');
                 } catch (error) {
                     console.error('Reset request failed:', error);
                     UI.showToast(error.message || 'Fehler beim Anfordern des Links', 'error');
@@ -1670,11 +1712,21 @@ const App = {
             document.getElementById('editEventId').value = '';
             UI.clearForm('createEventForm');
 
-            // Pre-fill default time 09:30
+            // Do not pre-fill date, keep it empty as requested by user
             const eventDateInput = document.getElementById('eventDate');
             if (eventDateInput) {
-                const today = new Date().toISOString().split('T')[0];
-                eventDateInput.value = `${today}T09:30`;
+                eventDateInput.value = '';
+            }
+
+            // Ensure proposals section is visible (might be hidden by confirmation flow)
+            const proposalsSection = document.getElementById('eventDateProposalsSection');
+            if (proposalsSection) proposalsSection.style.display = 'block';
+
+            // Reset Date Proposals
+            if (typeof Events !== 'undefined' && Events.addDateProposalRow) {
+                const container = document.getElementById('eventDateProposals');
+                container.innerHTML = '';
+                Events.addDateProposalRow();
             }
 
             Events.populateBandSelect();
@@ -1682,6 +1734,8 @@ const App = {
             this.draftEventSongIds = [];
             this.deletedEventSongs = [];
             this.renderDraftEventSongs();
+            const copyBtn = document.getElementById('copyBandSongsBtn');
+            if (copyBtn) copyBtn.style.display = 'none';
             UI.openModal('createEventModal');
         });
 
@@ -1699,6 +1753,11 @@ const App = {
             const bandId = e.target.value;
             if (bandId) {
                 await Events.loadBandMembers(bandId, null); // null = pre-select all
+                const copyBtn = document.getElementById('copyBandSongsBtn');
+                if (copyBtn) copyBtn.style.display = 'block';
+            } else {
+                const copyBtn = document.getElementById('copyBandSongsBtn');
+                if (copyBtn) copyBtn.style.display = 'none';
             }
         });
 
@@ -2763,9 +2822,19 @@ const App = {
 
     // Handle logout
     handleLogout() {
+        // 1. Clear navigation state to prevent issues on re-login
+        document.querySelectorAll('.nav-group.submenu-open').forEach(g => g.classList.remove('submenu-open'));
+        document.querySelectorAll('.nav-item.active, .nav-subitem.active, .sidebar-main.active, .sidebar-subitem.active').forEach(i => i.classList.remove('active'));
+
+        // 2. Clear any lingering modal/overlay states
+        document.body.classList.remove('modal-open');
+
         Auth.logout();
         UI.showToast('Erfolgreich abgemeldet', 'success');
         this.showAuth();
+
+        // Final safety: Force layout calculation on logout
+        void document.body.offsetHeight;
     },
 
     // News Management
@@ -4033,13 +4102,13 @@ const App = {
             tempModal.remove();
         });
 
-        tempModal.querySelector('#confirmDraftSongs').addEventListener('click', () => {
+        tempModal.querySelector('#confirmDraftSongs').addEventListener('click', async () => {
             const selectedIds = Array.from(tempModal.querySelectorAll('.band-song-checkbox-draft:checked')).map(cb => cb.value);
             // Merge into draft list (avoid duplicates)
             selectedIds.forEach(id => {
                 if (!this.draftEventSongIds.includes(id)) this.draftEventSongIds.push(id);
             });
-            this.renderDraftEventSongs();
+            await this.renderDraftEventSongs();
             tempModal.remove();
         });
 
@@ -4055,6 +4124,9 @@ const App = {
         for (const songId of songIds) {
             const bandSong = await Storage.getById('songs', songId);
             if (bandSong) {
+                // Duplicate check: Don't copy if it's already an event song for this event
+                if (bandSong.eventId === eventId) continue;
+
                 // Create a copy for the event
                 const eventSong = {
                     title: bandSong.title,
@@ -4080,10 +4152,61 @@ const App = {
         await this.renderEventSongs(eventId);
     },
 
+    // Sync draft songs to event (Handle additions, reordering, and removals)
+    async syncEventSongs(eventId, draftSongIds) {
+        const user = Auth.getCurrentUser();
+        // 1. Get existing event songs
+        const existingSongs = await Storage.getEventSongs(eventId);
+        const existingIds = existingSongs.map(s => s.id);
+
+        // a. Detect songs to delete (in existing but not in draft)
+        // BUT: draftSongIds might contain BandSong IDs (new additions) or EventSong IDs (existing).
+        // We need to be careful.
+        // Rule: If an existing EventSong ID is NOT in draftSongIds, IT MUST BE DELETED.
+        const toDeleteIds = existingIds.filter(id => !draftSongIds.includes(id));
+
+        for (const id of toDeleteIds) {
+            await Storage.deleteSong(id);
+        }
+
+        // b. Process draft list in order
+        let orderCounter = 0;
+        for (const songId of draftSongIds) {
+            // Check if it's an existing event song
+            if (existingIds.includes(songId)) {
+                // It's an existing song, kept in the list. Update order.
+                await Storage.updateSong(songId, { order: orderCounter++ });
+            } else {
+                // It's a NEW song (Band Song ID) to be added
+                const bandSong = await Storage.getById('songs', songId);
+                if (bandSong) {
+                    const eventSong = {
+                        title: bandSong.title,
+                        artist: bandSong.artist,
+                        bpm: bandSong.bpm,
+                        timeSignature: bandSong.timeSignature,
+                        key: bandSong.key,
+                        originalKey: bandSong.originalKey,
+                        leadVocal: bandSong.leadVocal,
+                        language: bandSong.language,
+                        tracks: bandSong.tracks,
+                        info: bandSong.info,
+                        ccli: bandSong.ccli,
+                        eventId: eventId,
+                        order: orderCounter++,
+                        createdBy: user.id
+                    };
+                    await Storage.createSong(eventSong);
+                }
+            }
+        }
+    },
+
     async renderBandSongs(bandId) {
         const container = document.getElementById('bandSongsList');
         if (!container) return;
 
+        // Fix: Ensure we are fetching for the correct band
         let songs = await Storage.getBandSongs(bandId);
         if (!Array.isArray(songs)) songs = [];
 
@@ -4370,7 +4493,7 @@ const App = {
         });
     },
 
-    renderDraftEventSongs() {
+    async renderDraftEventSongs() {
         const container = document.getElementById('eventSongsList');
         if (!container) return;
 
@@ -4379,7 +4502,7 @@ const App = {
             return;
         }
 
-        const songs = this.draftEventSongIds.map(id => Storage.getById('songs', id)).filter(s => s);
+        const songs = (await Promise.all(this.draftEventSongIds.map(id => Storage.getById('songs', id)))).filter(s => s);
 
         container.innerHTML = `
         <div style="overflow-x: auto;">
@@ -4517,13 +4640,23 @@ const App = {
     // Show authentication screen
     showAuth() {
         // Show landing page instead of modal
-        const landingPage = document.getElementById('landingPage');
-        const mainApp = document.getElementById('mainApp');
+        const lPage = document.getElementById('landingPage');
+        const mApp = document.getElementById('mainApp');
 
-        if (landingPage) landingPage.classList.add('active');
-        if (mainApp) mainApp.style.display = 'none';
+        if (lPage) {
+            lPage.style.display = 'flex';
+            lPage.classList.add('active');
+        }
+        if (mApp) {
+            mApp.style.display = 'none';
+            mApp.classList.remove('active');
+        }
 
-        document.getElementById('app').style.display = 'none';
+        const appDiv = document.getElementById('app');
+        if (appDiv) appDiv.style.display = 'none';
+
+        // FORCE REFLOW to ensure landing page is rendered correctly
+        void document.body.offsetHeight;
 
         // Safety: Ensure auth overlay is closed by default
         if (typeof UI !== 'undefined' && UI.toggleAuthOverlay) {
@@ -4534,18 +4667,60 @@ const App = {
     // Show main application
     // Show main application
     async showApp() {
-        // Block if in password recovery mode
-        if (this.isPasswordRecoveryMode) {
-            console.log('App view blocked due to password recovery mode');
-            return;
-        }
-
         // Hide landing page and show main app
         const landingPage = document.getElementById('landingPage');
         const mainApp = document.getElementById('mainApp');
 
-        if (landingPage) landingPage.classList.remove('active');
-        if (mainApp) mainApp.style.display = 'block';
+        if (landingPage) {
+            landingPage.style.display = 'none';
+            landingPage.classList.remove('active');
+        }
+        if (mainApp) {
+            mainApp.style.display = 'block';
+            mainApp.classList.add('active'); // Trigger CSS rules
+        }
+
+
+        // iOS-specific: Force complete layout recalculation and viewport refresh
+        if (window.Capacitor && window.Capacitor.getPlatform() === 'ios') {
+            // Multiple forced reflows to ensure iOS WebView recalculates everything
+            void document.documentElement.offsetHeight;
+            void document.body.offsetHeight;
+            if (mainApp) void mainApp.offsetHeight;
+
+            // Force viewport meta refresh
+            setTimeout(() => {
+                const viewport = document.querySelector('meta[name="viewport"]');
+                if (viewport) {
+                    const content = viewport.getAttribute('content');
+                    viewport.setAttribute('content', content);
+                }
+                // Final reflow
+                void document.body.offsetHeight;
+            }, 100);
+        }
+
+        // CRITICAL: Reset all navigation state for clean re-login
+        // This ensures mobile nav works correctly after logout/login cycles
+        const appNav = document.getElementById('appNav');
+        if (appNav) {
+            // Remove all active states
+            appNav.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
+                item.classList.remove('active');
+            });
+            // Close all open submenus
+            appNav.querySelectorAll('.nav-group').forEach(group => {
+                group.classList.remove('submenu-open', 'expanded');
+            });
+        }
+
+        // Also reset sidebar states
+        document.querySelectorAll('.sidebar-item, .sidebar-subitem').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelectorAll('.sidebar-group').forEach(group => {
+            group.classList.remove('expanded');
+        });
 
         // CRITICAL: Ensure scrolling is enabled on the body (fixes manual login/auto-login lock)
         document.body.classList.remove('modal-open');

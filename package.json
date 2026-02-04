@@ -10,7 +10,8 @@
     "add-ios": "npx cap add ios",
     "sync": "npx cap sync",
     "open-ios": "npx cap open ios",
-    "build-ios": "npx cap copy && npx cap sync && npx cap open ios"
+    "export-web": "mkdir -p www && cp index.html privacy.html manifest.json sw.js www/ && cp -R css js images assets icons www/",
+    "ios-sync": "npm run export-web && npx cap sync ios && npx cap open ios"
   },
   "keywords": [
     "band",

@@ -22,7 +22,7 @@
     <!-- <link rel="apple-touch-icon" href="/images/icon-192.png"> -->
 
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="css/style.css?v=1769686133">
+    <link rel="stylesheet" href="css/style.css?v=1769686135">
     <link rel="stylesheet" href="css/sidebar.css">
     <link rel="stylesheet" href="css/calendar.css">
     <!-- <link rel="stylesheet" href="css/loader.css"> Removed: Consolidated into style.css -->
@@ -136,9 +136,8 @@
         <!-- Auth Overlay (White Card Reference) -->
         <div id="authOverlay" class="landing-auth-overlay">
             <div class="auth-white-card">
-                <div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 10;">
-                    <button onclick="UI.toggleAuthOverlay(false)"
-                        style="background:none; border:none; color:#999; cursor:pointer; font-size: 1.5rem;">&times;</button>
+                <div class="auth-close-wrapper">
+                    <button onclick="UI.toggleAuthOverlay(false)" class="auth-close-btn">&times;</button>
                 </div>
 
                 <!-- No Tabs anymore -->
@@ -155,16 +154,12 @@
                         <label for="loginPassword">Passwort</label>
                         <input type="password" id="loginPassword" placeholder="••••••••" required>
                     </div>
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; font-size: 0.85rem;">
-                        <label
-                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #666; font-weight: 400;">
-                            <input type="checkbox" id="loginRememberMe" style="width: auto; margin: 0;"> Angemeldet
-                            bleiben
+                    <div class="auth-actions-row">
+                        <label class="auth-checkbox-label">
+                            <input type="checkbox" id="loginRememberMe">
+                            <span>Angemeldet bleiben</span>
                         </label>
-                        <button type="button" class="btn-link"
-                            style="color: #8b5cf6; text-decoration: none; font-weight: 500; background: none; border: none; padding: 0; cursor: pointer;"
-                            onclick="UI.openModal('forgotPasswordModal')">Passwort vergessen?</button>
+
                     </div>
                     <button type="submit" class="btn-submit">Anmelden</button>
                     <div style="text-align: center; margin-top: 1.5rem;">
@@ -180,18 +175,16 @@
                 </form>
 
                 <!-- Register Form -->
-                <form id="registerForm" class="auth-form"
-                    style="max-height: 60vh; overflow-y: auto; padding-right: 5px;">
-                    <h2 style="margin-bottom: 2rem; color: #333; font-size: 1.8rem; font-weight: 800;">Account erstellen
+                <form id="registerForm" class="auth-form">
+                    <h2 style="margin-bottom: 1.5rem; color: #333; font-size: 1.8rem; font-weight: 800;">Account
+                        erstellen
                     </h2>
-                    <!-- Code First (as requested) -->
-                    <div class="form-group">
-                        <label for="registerCode">Registrierungscode</label>
-                        <input type="text" id="registerCode" placeholder="Code eingeben" required>
-                    </div>
-
-                    <!-- Row 1: Names -->
+                    <!-- Row 1: Code & Names (3 Cols) -->
                     <div class="form-row">
+                        <div class="form-group">
+                            <label for="registerCode">Code</label>
+                            <input type="text" id="registerCode" placeholder="Code" required>
+                        </div>
                         <div class="form-group">
                             <label for="registerFirstName">Vorname</label>
                             <input type="text" id="registerFirstName" placeholder="Max" required>
@@ -202,31 +195,32 @@
                         </div>
                     </div>
 
-                    <!-- Row 2: User Details -->
-                    <div class="form-group">
-                        <label for="registerUsername">Benutzername</label>
-                        <input type="text" id="registerUsername" placeholder="max.music" required>
-                    </div>
+                    <!-- Row 2: User Details & Email (3 Cols) -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="registerUsername">Benutzername</label>
+                            <input type="text" id="registerUsername" placeholder="max.music" required>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="registerInstrument">Haupt-Instrument</label>
-                        <select id="registerInstrument"
-                            style="width: 100%; padding: 0.8rem; background: rgba(0,0,0,0.03); border: 1px solid #ddd; border-radius: 6px;">
-                            <option value="">Kein Instrument</option>
-                            <option value="Vocals">🎤 Gesang</option>
-                            <option value="Guitar">🎸 Gitarre</option>
-                            <option value="Bass">🎸 Bass</option>
-                            <option value="Drums">🥁 Drums</option>
-                            <option value="Keys">🎹 Keys / Piano</option>
-                            <option value="Brass">🎷 Bläser</option>
-                            <option value="Strings">🎻 Streicher</option>
-                        </select>
-                    </div>
+                        <div class="form-group">
+                            <label for="registerEmail">E-Mail</label>
+                            <input type="email" id="registerEmail" placeholder="max@mustermann.de" required>
+                        </div>
 
-
-                    <div class="form-group">
-                        <label for="registerEmail">E-Mail</label>
-                        <input type="email" id="registerEmail" placeholder="max@mustermann.de" required>
+                        <div class="form-group">
+                            <label for="registerInstrument">Instrument</label>
+                            <select id="registerInstrument"
+                                style="width: 100%; padding: 0.8rem; background: rgba(0,0,0,0.03); border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">Kein Instrument</option>
+                                <option value="Vocals">🎤 Gesang</option>
+                                <option value="Guitar">🎸 Gitarre</option>
+                                <option value="Bass">🎸 Bass</option>
+                                <option value="Drums">🥁 Drums</option>
+                                <option value="Keys">🎹 Keys / Piano</option>
+                                <option value="Brass">🎷 Bläser</option>
+                                <option value="Strings">🎻 Streicher</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Row 3: Passwords -->
@@ -259,55 +253,9 @@
         </div>
     </div>
 
-    <!-- Forgot Password Modal (Inline style hidden) -->
-    <div id="forgotPasswordModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2>Passwort vergessen</h2>
-                <button class="modal-close" onclick="UI.closeModal('forgotPasswordModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 1rem; color: var(--color-text-secondary);">
-                    Gib deinen Benutzernamen oder deine E-Mail-Adresse ein. Wir senden dir einen Link
-                    zum Zurücksetzen deines Passworts.
-                </p>
-                <form id="forgotPasswordForm">
-                    <div class="form-group">
-                        <label for="forgotIdentifier">Benutzername oder E-Mail</label>
-                        <input type="text" id="forgotIdentifier" required placeholder="z.B. max.mustermann">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Link
-                        anfordern</button>
-                </form>
-            </div>
-        </div>
-    </div>
 
-    <!-- Reset Password Modal -->
-    <div id="resetPasswordModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2>Neues Passwort setzen</h2>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 1rem; color: var(--color-text-secondary);">
-                    Bitte gib dein neues Passwort ein.
-                </p>
-                <form id="resetPasswordForm">
-                    <div class="form-group">
-                        <label for="newPassword">Neues Passwort</label>
-                        <input type="password" id="newPassword" required minlength="6">
-                    </div>
-                    <div class="form-group">
-                        <label for="newPasswordConfirm">Passwort bestätigen</label>
-                        <input type="password" id="newPasswordConfirm" required minlength="6">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Passwort
-                        speichern</button>
-                </form>
-            </div>
-        </div>
-    </div>
+
+
     <!-- Privacy link removed from here to separate footer or specific modal location -->
 
     <!-- Main Dashboard (hidden initially) -->
@@ -753,6 +701,20 @@
                                 <option value="">Alle Bands</option>
                             </select>
                             <button id="createEventBtn" class="btn btn-primary">+ Neuer Auftritt</button>
+                        </div>
+
+                        <div id="eventsListPendingHeader" class="rehearsal-section-header">
+                            <h3>👋 Offene Auftritts-Anfragen</h3>
+                        </div>
+                        <div id="eventsListPending" class="events-list" style="margin-bottom: 2rem;"></div>
+
+                        <div id="eventsListVotedHeader" class="rehearsal-section-header">
+                            <h3>✅ Meine Abstimmungen</h3>
+                        </div>
+                        <div id="eventsListVoted" class="events-list" style="margin-bottom: 2rem;"></div>
+
+                        <div id="eventsListResolvedHeader" class="rehearsal-section-header">
+                            <h3>🎸 Feste Auftritte</h3>
                         </div>
                         <div id="eventsList" class="events-list"></div>
                     </div>
@@ -1935,14 +1897,29 @@
                         <input type="text" id="eventTitle" placeholder="z.B. Hochzeit, Firmenfeier..." required>
                     </div>
                     <div class="form-group">
-                        <label for="eventDate">Datum und Uhrzeit <span style="color:red;"
-                                title="Pflichtfeld">*</span></label>
-                        <input type="datetime-local" id="eventDate" required>
+                        <label for="eventDate">Datum und Uhrzeit (Fixer Termin)</label>
+                        <input type="datetime-local" id="eventDate">
+                        <small class="help-text">Nur ausfüllen, wenn der Termin bereits feststeht.</small>
                     </div>
                     <div class="form-group">
                         <label for="eventLocation">📍 Ort / Adresse</label>
                         <input type="text" id="eventLocation" placeholder="Musterstadt, Hauptstr 1">
                     </div>
+                </div>
+
+                <div class="form-group" id="eventDateProposalsSection">
+                    <label>Terminvorschläge (Abstimmung)</label>
+                    <div id="eventDateProposals" class="date-proposals">
+                        <div class="date-proposal-item" data-confirmed="false">
+                            <div class="date-time-range">
+                                <input type="date" class="event-date-input-date">
+                                <input type="time" class="event-date-input-start">
+                            </div>
+                            <button type="button" class="btn-icon remove-event-date" disabled>🗑️</button>
+                        </div>
+                    </div>
+                    <button type="button" id="addEventDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin
+                        hinzufügen</button>
                 </div>
 
                 <div class="form-section-divider"></div>
@@ -2004,8 +1981,7 @@
                     <div class="section-header-row">
                         <label class="section-title">🎵 Setlist</label>
                         <div class="section-actions">
-                            <button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm"
-                                style="display: none;">
+                            <button type="button" id="copyBandSongsBtn" class="btn btn-secondary btn-sm">
                                 📋 Band-Pool
                             </button>
                             <button type="button" id="addEventSongBtn" class="btn btn-secondary btn-sm">
@@ -2206,6 +2182,56 @@
             </form>
         </div>
     </div>
+
+    <!-- Event Voting Modal -->
+    <div id="eventVotingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Auftritt: Jetzt abstimmen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="eventVotingForm">
+                <div class="modal-body">
+                    <div id="eventVotingContent">
+                        <!-- Dates will be injected here -->
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="submit" id="saveEventVotesBtn" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Event Time Suggestion Modal -->
+    <div id="eventTimeSuggestionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Uhrzeit vorschlagen</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="suggestTimeEventId">
+                <input type="hidden" id="suggestTimeEventDateIndex">
+
+                <div class="form-group">
+                    <label for="eventSuggestedTimeInput">Welche Uhrzeit würdest du vorschlagen?</label>
+                    <input type="time" id="eventSuggestedTimeInput" class="form-control" required>
+                    <small class="help-text">Wähle eine Uhrzeit aus, die besser für dich passt</small>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn cancel">Abbrechen</button>
+                    <button type="button" id="deleteEventTimeSuggestionBtn" class="btn btn-secondary"
+                        style="display: none;">🗑️ Vorschlag löschen</button>
+                    <button type="button" id="saveEventTimeSuggestionBtn" class="btn btn-primary">💾
+                        Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Absence Management Modal -->
     <div id="absenceModal" class="modal">
@@ -2509,24 +2535,24 @@
 
     <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
-    <script src="js/proxy-service.js?v=1.0.0"></script>
-    <script src="js/supabase.js?v=1.0.1"></script>
-    <script src="js/storage.js?v=1.0.3"></script>
-    <script src="js/auth.js?v=1769690040"></script>
-    <script src="js/email-service.js?v=1.0.1"></script>
-    <script src="js/bands.js?v=1.0.1"></script>
-    <script src="js/pdf-generator.js"></script>
-    <script src="js/events.js?v=1.0.3"></script>
-    <script src="js/rehearsals.js?v=1.0.2"></script>
-    <script src="js/statistics.js?v=1.0.4"></script>
-    <script src="js/calendar.js?v=1.0.3"></script>
-    <script src="js/personal-calendar.js?v=1.0.2"></script>
-    <script src="js/churchtools-api.js?v=1.0.1"></script>
-    <script src="js/musikpool.js?v=1.0.1"></script>
-    <script src="js/ui.js?v=1769690040"></script>
-    <script src="js/logger.js?v=1.0.3"></script>
-    <script src="js/feedback-service.js?v=1.0.1"></script>
-    <script src="js/app.js?v=1769690040"></script>
+    <script src="js/proxy-service.js?v=20260131"></script>
+    <script src="js/supabase.js?v=20260131"></script>
+    <script src="js/storage.js?v=20260131"></script>
+    <script src="js/auth.js?v=20260131"></script>
+    <script src="js/email-service.js?v=20260131"></script>
+    <script src="js/bands.js?v=20260131"></script>
+    <script src="js/pdf-generator.js?v=20260131"></script>
+    <script src="js/events.js?v=20260131"></script>
+    <script src="js/rehearsals.js?v=20260131"></script>
+    <script src="js/statistics.js?v=20260131"></script>
+    <script src="js/calendar.js?v=20260131"></script>
+    <script src="js/personal-calendar.js?v=20260131"></script>
+    <script src="js/churchtools-api.js?v=20260131"></script>
+    <script src="js/musikpool.js?v=20260131"></script>
+    <script src="js/ui.js?v=20260131"></script>
+    <script src="js/logger.js?v=20260131"></script>
+    <script src="js/feedback-service.js?v=20260131"></script>
+    <script src="js/app.js?v=20260131"></script>
 
 
     <!-- Service Worker Registration -->

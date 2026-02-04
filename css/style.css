@@ -425,7 +425,6 @@ html {
         radial-gradient(circle at 80% 80%, #1e4d6e 0%, transparent 40%);
     color: white;
     font-family: 'Montserrat', sans-serif;
-    position: relative;
     /* Full height fix for mobile browsers */
     min-height: 100vh;
     min-height: 100dvh;
@@ -600,19 +599,48 @@ html {
     z-index: 1000;
 }
 
-.landing-auth-overlay.active {
-    display: flex;
-}
-
 .auth-white-card {
     background: white;
-    width: 100%;
-    max-width: 440px;
+    width: 95%;
+    /* Default behavior, will be overridden by specific classes */
+    max-width: 480px;
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 50px 100px rgba(0, 0, 0, 0.3);
     position: relative;
     color: #333;
+    /* KEY CENTER FIX: Auto margins needed for flex-start alignment in overlay */
+    margin: auto;
+    flex-shrink: 0;
+}
+
+/* STRICT SEPARATION OF WIDTHS via ui.js classes */
+.auth-white-card.auth-mode-login {
+    max-width: 420px;
+}
+
+.auth-white-card.auth-mode-register {
+    max-width: 680px;
+}
+
+/* Ensure Close Button is Clickable */
+.auth-white-card button[onclick*="toggleAuthOverlay"] {
+    cursor: pointer;
+    z-index: 1001;
+    /* Above everything */
+    position: relative;
+    /* Ensure it respects z-index */
+}
+
+/* Auth Overlay - Mobile Scroll Fix */
+.landing-auth-overlay.active {
+    display: flex;
+    overflow-y: auto;
+    /* Allow scrolling */
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start;
+    /* Important for long content not to be cut off top */
+    padding: 20px 0;
 }
 
 .auth-white-card .auth-tabs {
@@ -691,6 +719,192 @@ html {
     font-weight: 700;
     margin-top: 1rem;
     cursor: pointer;
+}
+
+
+/* Basic styles for close button */
+.auth-close-wrapper {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 10;
+}
+
+.auth-close-btn {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 1.5rem;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.auth-close-btn:hover {
+    color: #333;
+}
+
+
+/* ===== Mobile Optimization for Auth Modal ===== */
+/* ===== Mobile Optimization for Auth Modal ===== */
+/* ===== Mobile Optimization for Auth Modal ===== */
+@media (max-width: 600px) {
+
+    /* 1. LOGO ADJUSTMENT */
+    .landing-header {
+        padding-top: 80px !important;
+        margin-top: 0 !important;
+        justify-content: center !important;
+        position: relative;
+    }
+
+    .landing-logo {
+        justify-content: center !important;
+        width: 100% !important;
+    }
+
+    /* 2. AUTH CARD COMPACTING */
+    .auth-white-card {
+        width: 90% !important;
+        max-width: 400px !important;
+        position: relative;
+        /* Context for absolute positioning */
+    }
+
+    .auth-white-card .auth-form {
+        padding: 1.25rem 1.25rem 1.5rem !important;
+    }
+
+    /* 3. CLOSE BUTTON POSITIONING (Mobile) */
+    .auth-close-wrapper {
+        position: absolute !important;
+        top: 0 !important;
+        /* Move really close to top */
+        right: 0 !important;
+        /* Move really close to right */
+        z-index: 20;
+    }
+
+    .auth-close-btn {
+        font-size: 1.5rem !important;
+        padding: 12px 14px !important;
+        /* Padding creates the clickable area and spacing from edge */
+        line-height: 1 !important;
+        color: #999;
+    }
+
+    /* 4. ACTIONS ROW (Remember me / Forgot PWD) */
+    .auth-actions-row {
+        flex-direction: column !important;
+        /* Stack vertically on small screens */
+        align-items: flex-start !important;
+        gap: 1rem !important;
+        /* More space between checkbox and link */
+        margin-bottom: 1.5rem !important;
+    }
+
+    /* Custom Modern Checkbox for Mobile */
+    .auth-checkbox-label {
+        margin-bottom: 0 !important;
+        font-size: 0.9rem !important;
+    }
+
+    .btn-link {
+        font-size: 0.9rem !important;
+        margin-left: 0;
+    }
+
+    /* 5. FORM ELEMENTS */
+    .auth-white-card .auth-form h2 {
+        font-size: 1.4rem !important;
+        margin-bottom: 1rem !important;
+        padding-right: 0;
+        text-align: center;
+    }
+
+    .auth-white-card input:not([type="checkbox"]) {
+        padding: 0.75rem 0.8rem !important;
+        margin-bottom: 0.75rem !important;
+        font-size: 0.95rem !important;
+        border-radius: 8px !important;
+        width: 100% !important;
+    }
+
+    .auth-white-card .form-group {
+        margin-bottom: 0.4rem !important;
+    }
+
+    .auth-white-card .form-group label {
+        margin-bottom: 0.2rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    .auth-white-card .btn-primary,
+    .auth-white-card .btn-submit {
+        padding: 0.8rem !important;
+        font-size: 1rem !important;
+        width: 100% !important;
+    }
+
+    /* Tabs */
+    .auth-white-card .auth-tabs {
+        padding: 0.75rem 1rem 0 !important;
+    }
+
+    /* Helper text */
+    .auth-helper-text {
+        font-size: 0.75rem !important;
+        margin-top: 0.5rem !important;
+    }
+
+    /* Layout */
+    .landing-auth-overlay.active {
+        padding: 10px 0 !important;
+        align-items: safe center !important;
+    }
+}
+
+
+/* ===== Custom Modern Checkbox Styling (Global) ===== */
+.auth-checkbox-label input[type="checkbox"] {
+    display: none;
+    /* Hide default browser checkbox */
+}
+
+.auth-checkbox-label span {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-left: 28px;
+    /* Space for Custom Checkbox */
+}
+
+.auth-checkbox-label span::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-border, #cbd5e1);
+    border-radius: 6px;
+    /* Modern rounded corners, but not circle */
+    background-color: var(--color-surface, #fff);
+    transition: all 0.2s ease;
+}
+
+.auth-checkbox-label input:checked+span::before {
+    background-color: var(--color-primary, #6366f1);
+    border-color: var(--color-primary, #6366f1);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='14px' height='14px'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 14px;
+}
+
+.auth-checkbox-label:hover span::before {
+    border-color: var(--color-primary, #6366f1);
 }
 
 
@@ -1204,6 +1418,7 @@ body.global-stage-mode .stage-lights-overlay {
 /* Main App Container (hidden by default) */
 .main-app {
     display: none;
+    height: 100vh;
     height: 100dvh;
     /* Modern mobile-first height */
     width: 100%;
@@ -1648,12 +1863,39 @@ input:checked+.slider:before {
 
 /* ===== App Container ===== */
 .app-container {
+    height: 100vh;
     height: 100dvh;
-    /* Fill main-app */
     display: flex;
     flex-direction: row;
     padding: 0;
     overflow: hidden;
+    position: relative;
+    /* Ensure it stays put */
+}
+
+/* Main Content Wrapper (right of sidebar on desktop) - Now handles vertical flex */
+.app-main-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    /* Header stays, main scrolls */
+    position: relative;
+    width: 100%;
+}
+
+/* Main Content - The actual scroll area */
+.app-main {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Native smooth scroll */
+    padding: var(--spacing-xl);
+    padding-bottom: 2rem;
+    /* Desktop default */
+    position: relative;
 }
 
 /* ===== Header ===== */
@@ -1661,11 +1903,13 @@ input:checked+.slider:before {
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
     box-shadow: var(--shadow-sm);
-    position: sticky;
+    padding-top: env(safe-area-inset-top) !important;
+    height: auto !important;
+    min-height: 0 !important;
     top: 0;
     z-index: 100;
     overflow: visible;
-    padding-top: env(safe-area-inset-top);
+    min-height: 0 !important;
 }
 
 .admin-badge {
@@ -1856,13 +2100,15 @@ input:checked+.slider:before {
 
     .header-content {
         padding: 0 var(--spacing-md) !important;
-        /* Zero vertical padding for max height */
-        min-height: 50px;
-        /* Ensure minimal touch size */
+        height: 50px !important;
+        min-height: 50px !important;
+        max-height: 50px !important;
         display: flex !important;
+        flex-direction: row !important;
         justify-content: space-between !important;
         align-items: center !important;
         position: relative !important;
+        overflow: visible !important;
     }
 
     /* Profile on the left */
@@ -1870,19 +2116,27 @@ input:checked+.slider:before {
         order: 1 !important;
         margin: 0 !important;
         flex-shrink: 0;
+        z-index: 2 !important;
+        /* Above title */
+        position: relative !important;
     }
 
-    /* Center title on mobile */
+    /* Center title on mobile - Forced Absolute centering regardless of side items */
     .header-page-title-main {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        margin: 0;
-        pointer-events: none;
-        justify-content: center;
-        flex: none;
-        order: 2;
+        position: absolute !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
         display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none !important;
+        z-index: 1 !important;
+        width: 100% !important;
+        text-align: center !important;
     }
 
     .header-page-title-main .header-page-title {
@@ -1898,6 +2152,9 @@ input:checked+.slider:before {
         order: 3 !important;
         margin-left: auto !important;
         flex-shrink: 0;
+        z-index: 2 !important;
+        /* Above title */
+        position: relative !important;
     }
 
     /* Hide username text on mobile to save space */
@@ -2275,8 +2532,8 @@ input:checked+.slider:before {
     .app-main {
         padding-left: 10px;
         padding-right: 10px;
-        padding-bottom: 250px !important;
-        /* Huge padding to force clear */
+        /* Dynamic padding for bottom nav + safe area */
+        padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important;
     }
 
     .nav-group {
@@ -4574,9 +4831,67 @@ input:checked+.slider:before {
     font-size: 1.125rem;
 }
 
-/* ===== Section ===== */
-.section {
-    margin-bottom: calc(var(--spacing-2xl) * 1.1);
+.empty-state-compact {
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--color-text-secondary);
+    width: 100%;
+}
+
+.empty-state-compact p {
+    font-size: 0.95rem;
+    font-style: italic;
+    margin: 0;
+    opacity: 0.7;
+}
+
+/* ===== Event Details Grid ===== */
+.event-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    background: var(--color-bg-secondary);
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-subtle);
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.detail-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+    font-weight: 600;
+}
+
+.detail-value {
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.guest-tag {
+    background: rgba(168, 85, 247, 0.1) !important;
+    color: var(--color-primary) !important;
+    border: 1px solid rgba(168, 85, 247, 0.2) !important;
+}
+
+.member-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
 }
 
 .section h3 {
@@ -5777,43 +6092,63 @@ s .time-suggestions-compact {
     appearance: none;
     -webkit-appearance: none;
     background: transparent;
+    /* Default transparent */
     border: 1px solid transparent;
+    /* No border by default */
     border-radius: 999px;
-    /* Pill shape */
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.6rem 1.2rem;
+    /* Slighly larger padding for better touch target */
+    font-size: 0.95rem;
+    /* Larger font */
     font-weight: 500;
     color: var(--color-text-secondary);
+    /* Text color */
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    justify-content: center;
+    /* Center content */
+    gap: 0.5rem;
     white-space: nowrap;
     flex-shrink: 0;
+    min-width: 44px;
+    /* Minimum touch target width */
+    min-height: 44px;
+    /* Minimum touch target height */
 }
 
 .header-submenu-btn:hover {
     color: var(--color-text);
-    background: rgba(0, 0, 0, 0.03);
+    /* Hover text color */
+    background: rgba(0, 0, 0, 0.05);
+    /* Softer hover bg */
 }
 
 .header-submenu-btn.active {
     background: var(--color-primary);
+    /* Active bg */
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     color: #fff;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-    /* softer shadow */
+    /* Active text white */
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    /* Stronger shadow */
     font-weight: 600;
     border-color: transparent;
     transform: translateY(-1px);
 }
 
 .header-submenu-btn .nav-icon {
-    font-size: 1.1em;
+    font-size: 1.2em;
+    /* Increase icon size */
+    line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 24px;
+    /* Fixed width for icon container */
+    height: 24px;
+    /* Fixed height for icon container */
 }
 
 /* Ensure active icon is white */
@@ -5836,10 +6171,29 @@ s .time-suggestions-compact {
         background: var(--color-surface);
         border-bottom: none;
         align-items: center;
+
+        /* FIX: Container passes clicks through, only content captures */
+        pointer-events: none;
+        position: relative;
+        z-index: 1005;
+        /* Ensure above header title */
     }
 
     /* Add gradient mask for scroll indication if desired, 
        but simple padding usually suffices */
+
+    /* Fix clickability issues: content shouldn't capture clicks */
+    .header-submenu-btn * {
+        pointer-events: none;
+    }
+
+    .header-submenu-btn {
+        pointer-events: auto;
+        /* Re-enable clicks on button */
+        position: relative;
+        z-index: 1006;
+        /* Higher than container */
+    }
 }
 
 /* Very small screens adjustments */
@@ -6273,16 +6627,6 @@ s .time-suggestions-compact {
         width: 100% !important;
         left: 0 !important;
         right: 0 !important;
-    }
-
-    .app-header .header-content {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--spacing-md);
-        padding: 10px 15px !important;
-        width: 100% !important;
-        max-width: none !important;
     }
 
     .header-actions {
@@ -9301,22 +9645,34 @@ tr.drag-over {
     box-shadow: 0 50px 100px rgba(0, 0, 0, 0.6);
     color: white;
     /* Improved Dimensions */
-    max-width: 600px !important;
+    max-width: 460px !important;
+    width: 100% !important;
     /* Wider */
-    min-height: 550px;
+    min-height: auto;
     /* Taller */
     display: flex;
     flex-direction: column;
 }
 
 .auth-white-card .auth-form {
-    padding: 3rem !important;
+    padding: 2rem !important;
     /* Spacious, symmetric padding */
     flex: 1;
     flex-direction: column;
     /* Prepare for flex, but don't force display yet */
     justify-content: center;
     /* Vertically center content */
+}
+
+/* WIDE MODE FOR REGISTRATION ONLY */
+.auth-white-card:has(#registerForm.active) {
+    width: 90vw !important;
+    max-width: 1400px !important;
+}
+
+/* ADJUST PADDING FOR WIDE MODE */
+.auth-white-card:has(#registerForm.active) .auth-form {
+    padding: 3.5rem !important;
 }
 
 /* Only apply display:flex when the form is active */
@@ -9331,8 +9687,22 @@ tr.drag-over {
 
 .auth-white-card h2 {
     color: white !important;
-    font-size: 2rem !important;
-    margin-bottom: 2.5rem !important;
+    font-size: 1.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.auth-white-card .form-group {
+    margin-bottom: 1rem !important;
+}
+
+.auth-white-card .form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0;
+}
+
+.auth-white-card .form-row .form-group {
+    flex: 1;
 }
 
 .auth-white-card label {
@@ -9349,9 +9719,10 @@ tr.drag-over {
     background: rgba(255, 255, 255, 0.08) !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
     color: white !important;
-    height: 52px;
-    /* Slightly taller inputs */
+    height: 48px;
+    /* Compact inputs */
     font-size: 1rem;
+    padding: 0 0.75rem;
     transition: all 0.2s ease;
 }
 
@@ -9368,7 +9739,7 @@ tr.drag-over {
 }
 
 .auth-white-card .btn-submit {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
     padding: 1rem;
     font-size: 1rem;
 }
@@ -10018,4 +10389,49 @@ tr.drag-over {
     font-weight: 700;
     margin-left: auto;
     font-family: monospace;
+}
+
+/* --- Mobile Fix for Auth Modal (Must be last to override) --- */
+@media (max-width: 480px) {
+    .auth-white-card {
+        max-width: 100% !important;
+        min-height: auto !important;
+        /* Allow height to adapt to content */
+        margin: 1rem;
+    }
+
+    .auth-white-card .auth-form {
+        padding: 1.5rem 1.25rem !important;
+        /* Reduced padding */
+        justify-content: flex-start;
+        /* Don't center vertically on small screens */
+    }
+
+    .auth-white-card h2 {
+        font-size: 1.5rem !important;
+        /* Smaller title */
+        margin-bottom: 1.5rem !important;
+    }
+
+    .auth-white-card input[type="text"],
+    .auth-white-card input[type="email"],
+    .auth-white-card input[type="password"],
+    .auth-white-card select {
+        padding: 0.7rem !important;
+        font-size: 16px !important;
+        /* Prevent iOS zoom */
+        margin-bottom: 0.8rem !important;
+        /* Tighter spacing */
+    }
+
+    .auth-white-card .btn-submit {
+        margin-top: 1rem !important;
+        padding: 0.8rem !important;
+    }
+
+    /* Fix for 3-Column Layout on Mobile: Stack them */
+    .auth-white-card .form-row {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'band-planning-v1';
+const CACHE_NAME = 'band-planning-v7';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -66,12 +66,12 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         // Clone the response
         const responseToCache = response.clone();
-        
+
         caches.open(CACHE_NAME)
           .then((cache) => {
             cache.put(event.request, responseToCache);
           });
-        
+
         return response;
       })
       .catch(() => {

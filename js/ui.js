@@ -57,6 +57,12 @@ const UI = {
 
                 overlay.classList.remove('active');
                 document.body.classList.remove('modal-open');
+
+                // FORCE RESET SCROLL POSITION - Fix for iOS keyboard layout issues
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+
                 if (overlay._clickHandler) {
                     overlay.removeEventListener('click', overlay._clickHandler);
                     delete overlay._clickHandler;
@@ -67,6 +73,13 @@ const UI = {
 
     // Switch between Login and Register tabs
     switchAuthTab(tabName) {
+        // Toggle specific classes on the card for sizing
+        const card = document.querySelector('.auth-white-card');
+        if (card) {
+            card.classList.remove('auth-mode-login', 'auth-mode-register');
+            card.classList.add(`auth-mode-${tabName}`);
+        }
+
         document.querySelectorAll('.auth-tab').forEach(tab => {
             if (tab.dataset.tab === tabName) {
                 tab.classList.add('active');
@@ -348,6 +361,14 @@ const UI = {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">${icon}</div>
+                <p>${message}</p>
+            </div>
+        `;
+    },
+
+    showCompactEmptyState(container, message) {
+        container.innerHTML = `
+            <div class="empty-state-compact">
                 <p>${message}</p>
             </div>
         `;

@@ -300,8 +300,11 @@ const Rehearsals = {
                 <div class="accordion-header" data-rehearsal-id="${rehearsal.id}">
                     <div class="accordion-title">
                         <h3>${Bands.escapeHtml(rehearsal.title)}</h3>
-                        <div class="rehearsal-band" style="color: ${bandColor}">
-                            🎸 ${Bands.escapeHtml(bandName)}
+                        <div class="rehearsal-band" style="color: ${bandColor}; display: flex; align-items: center; gap: 8px;">
+                            ${band?.image_url ?
+                `<img src="${band.image_url}" class="band-mini-logo" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border-subtle); display: block;">` :
+                '<span style="font-size: 1.2rem; line-height: 1;">🎸</span>'} 
+                            <span style="font-weight: 500;">${Bands.escapeHtml(bandName)}</span>
                         </div>
                     </div>
                     <div class="accordion-actions">
@@ -1647,6 +1650,9 @@ const Rehearsals = {
                 this.rehearsals = this.rehearsals.filter(r => r.id !== rehearsalId);
             }
 
+            // Aus der Datenbank löschen
+            await Storage.deleteRehearsal(rehearsalId);
+
             // Liste aktualisieren (invalidiert den alten Cache)
             this.invalidateCache();
             await this.renderRehearsals(this.currentFilter, true);
@@ -1793,7 +1799,7 @@ const Rehearsals = {
         rehearsals = rehearsals.slice(0, 3);
 
         if (rehearsals.length === 0) {
-            UI.showEmptyState(container, '📅', 'Keine offenen Abstimmungen');
+            UI.showCompactEmptyState(container, 'Keine offenen Abstimmungen 🥳');
             return;
         }
 

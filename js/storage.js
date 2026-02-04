@@ -99,23 +99,38 @@ const Storage = {
         const uniqueIds = [...new Set(ids.filter(id => id))];
         if (uniqueIds.length === 0) return [];
 
-        const sb = SupabaseClient.getClient();
-        const { data, error } = await sb.from(key).select('*').in('id', uniqueIds);
-        if (error) {
-            const isNetworkError = error.message && (
-                error.message.includes('FetchError') ||
-                error.message.includes('network') ||
-                error.message.includes('connection') ||
-                error.message.includes('Load failed')
-            );
-            if (isNetworkError) {
-                Logger.warn(`Verbindungsproblem beim Batch-Abruf von ${key}`);
+        try {
+            const sb = SupabaseClient.getClient();
+            const { data, error } = await sb.from(key).select('*').in('id', uniqueIds);
+            if (error) {
+                if (this._isNetworkError(error)) {
+                    Logger.warn(`Netzwerkproblem beim Laden von ${key} (Batch)`);
+                    return [];
+                }
+                console.error(`Supabase getBatchByIds error in ${key}`, error);
                 return [];
             }
-            console.error(`Supabase getBatchByIds error (${key})`, error);
+            return data || [];
+        } catch (err) {
+            if (this._isNetworkError(err)) {
+                Logger.warn(`Netzwerkproblem beim Laden von ${key} (Batch-Catch)`);
+            } else {
+                console.error(`Unexpected error in getBatchByIds (${key}):`, err);
+            }
             return [];
         }
-        return data || [];
+    },
+
+    _isNetworkError(error) {
+        if (!error) return false;
+        const msg = error.message || String(error);
+        return (
+            msg.includes('FetchError') ||
+            msg.includes('network') ||
+            msg.includes('connection') ||
+            msg.includes('Load failed') ||
+            msg.includes('Failed to fetch')
+        );
     },
 
     async update(key, id, updatedItem) {
@@ -306,22 +321,38 @@ const Storage = {
     },
 
     async getUserBands(userId) {
-        const sb = SupabaseClient.getClient();
-        // Optimized: Join bands table directly (1 request instead of N+1)
-        const { data, error } = await sb
-            .from('bandMembers')
-            .select('role, band:bands(*)')
-            .eq('userId', userId);
+        try {
+            const sb = SupabaseClient.getClient();
+            // Optimized: Join bands table directly (1 request instead of N+1)
+            const { data, error } = await sb
+                .from('bandMembers')
+                .select('role, band:bands(*)')
+                .eq('userId', userId);
 
-        if (error) { console.error('Supabase getUserBands error', error); return []; }
+            if (error) {
+                if (this._isNetworkError(error)) {
+                    Logger.warn('Netzwerkproblem beim Laden der Bands');
+                    return [];
+                }
+                console.error('Supabase getUserBands error', error);
+                return [];
+            }
 
-        // Transform result: {role, band: {...}} -> {...band, role}
-        const bands = (data || []).map(m => {
-            if (!m.band) return null;
-            return { ...m.band, role: m.role };
-        }).filter(b => b !== null);
+            // Transform result: {role, band: {...}} -> {...band, role}
+            const bands = (data || []).map(m => {
+                if (!m.band) return null;
+                return { ...m.band, role: m.role };
+            }).filter(b => b !== null);
 
-        return bands;
+            return bands;
+        } catch (err) {
+            if (this._isNetworkError(err)) {
+                Logger.warn('Netzwerkproblem beim Laden der Bands (Catch)');
+            } else {
+                console.error('[Storage] Unexpected error in getUserBands:', err);
+            }
+            return [];
+        }
     },
 
     async getUserRoleInBand(userId, bandId) {
@@ -379,19 +410,34 @@ const Storage = {
     },
 
     async getUserEvents(userId) {
-        const userBands = await this.getUserBands(userId);
-        const bandIds = userBands.map(b => b.id);
-        if (bandIds.length === 0) return [];
+        try {
+            const userBands = await this.getUserBands(userId);
+            const bandIds = userBands.map(b => b.id);
+            if (bandIds.length === 0) return [];
 
-        const sb = SupabaseClient.getClient();
-        // Optimized: Fetch event + band name/color in one go
-        const { data, error } = await sb
-            .from('events')
-            .select('*, band:bands(name, color)')
-            .in('bandId', bandIds);
+            const sb = SupabaseClient.getClient();
+            const { data, error } = await sb
+                .from('events')
+                .select('*, band:bands(name, color, image_url)')
+                .in('bandId', bandIds);
 
-        if (error) { console.error('Supabase getUserEvents error', error); return []; }
-        return data || [];
+            if (error) {
+                if (this._isNetworkError(error)) {
+                    Logger.warn('Netzwerkproblem beim Laden der Auftritte');
+                    return [];
+                }
+                console.error('Supabase getUserEvents error', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            if (this._isNetworkError(err)) {
+                Logger.warn('Netzwerkproblem beim Laden der Auftritte (Catch)');
+            } else {
+                console.error('[Storage] Unexpected error in getUserEvents:', err);
+            }
+            return [];
+        }
     },
 
     async updateEvent(eventId, updates) {
@@ -429,19 +475,34 @@ const Storage = {
     },
 
     async getUserRehearsals(userId) {
-        const userBands = await this.getUserBands(userId);
-        const bandIds = userBands.map(b => b.id);
-        if (bandIds.length === 0) return [];
-        const sb = SupabaseClient.getClient();
-        // Optimized: Fetch rehearsal + band name/color (Location fetch removed due to missing FK)
-        const { data, error } = await sb
-            .from('rehearsals')
-            // Reverted to * (plus band join) to avoid missing column errors
-            .select('*, band:bands(name, color)')
-            .in('bandId', bandIds);
+        try {
+            const userBands = await this.getUserBands(userId);
+            const bandIds = userBands.map(b => b.id);
+            if (bandIds.length === 0) return [];
 
-        if (error) { console.error('Supabase getUserRehearsals error', error); return []; }
-        return data || [];
+            const sb = SupabaseClient.getClient();
+            const { data, error } = await sb
+                .from('rehearsals')
+                .select('*, band:bands(name, color, image_url)')
+                .in('bandId', bandIds);
+
+            if (error) {
+                if (this._isNetworkError(error)) {
+                    Logger.warn('Netzwerkproblem beim Laden der Probetermine');
+                    return [];
+                }
+                console.error('Supabase getUserRehearsals error', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            if (this._isNetworkError(err)) {
+                Logger.warn('Netzwerkproblem beim Laden der Probetermine (Catch)');
+            } else {
+                console.error('[Storage] Unexpected error in getUserRehearsals:', err);
+            }
+            return [];
+        }
     },
 
     async updateRehearsal(rehearsalId, updates) {
@@ -502,6 +563,146 @@ const Storage = {
 
     async deleteVote(voteId) {
         return await this.delete('votes', voteId);
+    },
+
+    // Event Vote operations
+    async createEventVote(voteData) {
+        const vote = {
+            id: this.generateId(),
+            ...voteData,
+            createdAt: new Date().toISOString()
+        };
+        // Reuse the same 'votes' table but with eventId instead of rehearsalId
+        return await this.save('votes', vote);
+    },
+
+    async getEventVotes(eventId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('votes')
+            .select('*')
+            .eq('eventId', eventId);
+        if (error) { console.error('Supabase getEventVotes error', error); return []; }
+        return data || [];
+    },
+
+    async getEventVotesForMultipleEvents(eventIds) {
+        if (!eventIds || eventIds.length === 0) return [];
+        try {
+            const sb = SupabaseClient.getClient();
+            const { data, error } = await sb
+                .from('votes')
+                .select('*')
+                .in('eventId', eventIds);
+            if (error) {
+                if (this._isNetworkError(error)) {
+                    Logger.warn('Netzwerkproblem beim Laden der Event-Stimmen');
+                    return [];
+                }
+                console.error('Supabase getEventVotesForMultipleEvents error', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            if (this._isNetworkError(err)) {
+                Logger.warn('Netzwerkproblem beim Laden der Event-Stimmen (Catch)');
+            } else {
+                console.error('[Storage] Unexpected error in getEventVotesForMultipleEvents:', err);
+            }
+            return [];
+        }
+    },
+
+    async getUserEventVoteForDate(userId, eventId, dateIndex) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('votes')
+            .select('*')
+            .eq('userId', userId)
+            .eq('eventId', eventId)
+            .eq('dateIndex', dateIndex)
+            .limit(1)
+            .maybeSingle();
+        if (error) { console.error('Supabase getUserEventVoteForDate error', error); return null; }
+        return data || null;
+    },
+
+    async getUserEventVotes(userId, eventId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('votes').select('*').eq('userId', userId).eq('eventId', eventId);
+        if (error) { console.error('Supabase getUserEventVotes error', error); return []; }
+        return data || [];
+    },
+
+    async getUserEventVotesForMultipleEvents(userId, eventIds) {
+        if (!eventIds || eventIds.length === 0) return [];
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('votes')
+            .select('*')
+            .eq('userId', userId)
+            .in('eventId', eventIds);
+        if (error) { console.error('Supabase getUserEventVotesForMultipleEvents error', error); return []; }
+        return data || [];
+    },
+
+    // Event Time Suggestion operations (Reuse same table, pattern same as rehearsals)
+    async createEventTimeSuggestion(suggestionData) {
+        const suggestion = {
+            id: this.generateId(),
+            ...suggestionData,
+            createdAt: new Date().toISOString()
+        };
+        return await this.save('timeSuggestions', suggestion);
+    },
+
+    async getEventTimeSuggestions(eventId, dateIndex) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('timeSuggestions')
+            .select('*')
+            .eq('eventId', eventId)
+            .eq('dateIndex', dateIndex);
+        if (error) { console.error('Supabase getEventTimeSuggestions error', error); return []; }
+        return data || [];
+    },
+
+    async getEventTimeSuggestionsForMultipleEvents(eventIds) {
+        if (!eventIds || eventIds.length === 0) return [];
+        try {
+            const sb = SupabaseClient.getClient();
+            const { data, error } = await sb
+                .from('timeSuggestions')
+                .select('*')
+                .in('eventId', eventIds);
+            if (error) {
+                if (this._isNetworkError(error)) {
+                    Logger.warn('Netzwerkproblem beim Laden der Zeitvorschläge');
+                    return [];
+                }
+                console.error('Supabase getEventTimeSuggestionsForMultipleEvents error', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            if (this._isNetworkError(err)) {
+                Logger.warn('Netzwerkproblem beim Laden der Zeitvorschläge (Catch)');
+            } else {
+                console.error('[Storage] Unexpected error in getEventTimeSuggestionsForMultipleEvents:', err);
+            }
+            return [];
+        }
+    },
+
+    async getUserEventTimeSuggestionForDate(userId, eventId, dateIndex) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb.from('timeSuggestions')
+            .select('*')
+            .eq('userId', userId)
+            .eq('eventId', eventId)
+            .eq('dateIndex', dateIndex)
+            .limit(1)
+            .maybeSingle();
+        if (error) { console.error('Supabase getUserEventTimeSuggestionForDate error', error); return null; }
+        return data || null;
     },
 
     // Time Suggestion operations
@@ -652,16 +853,32 @@ const Storage = {
     },
 
     async getLatestNews(limit = 5) {
-        const sb = SupabaseClient.getClient();
-        // Optimized: distinct columns, exclude heavy 'images'
-        const { data, error } = await sb
-            .from('news')
-            .select('id, title, content, createdAt, createdBy, readBy')
-            .order('createdAt', { ascending: false })
-            .limit(limit);
+        try {
+            const sb = SupabaseClient.getClient();
+            // Optimized: distinct columns, exclude heavy 'images'
+            const { data, error } = await sb
+                .from('news')
+                .select('id, title, content, createdAt, createdBy, readBy')
+                .order('createdAt', { ascending: false })
+                .limit(limit);
 
-        if (error) { console.error('Supabase getLatestNews error', error); return []; }
-        return data || [];
+            if (error) {
+                if (this._isNetworkError(error)) {
+                    Logger.warn('Netzwerkproblem beim Laden der News');
+                    return [];
+                }
+                console.error('Supabase getLatestNews error', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            if (this._isNetworkError(err)) {
+                Logger.warn('Netzwerkproblem beim Laden der News (Catch)');
+            } else {
+                console.error('[Storage] Unexpected error in getLatestNews:', err);
+            }
+            return [];
+        }
     },
 
     async deleteNewsItem(newsId) {
@@ -722,14 +939,28 @@ const Storage = {
 
     async getEventSongsForMultipleEvents(eventIds) {
         if (!eventIds || eventIds.length === 0) return [];
-        const sb = SupabaseClient.getClient();
-        const { data, error } = await sb
-            .from('songs')
-            .select('*')
-            .in('eventId', eventIds);
-
-        if (error) { console.error('Supabase getEventSongsForMultipleEvents error', error); return []; }
-        return data || [];
+        try {
+            const sb = SupabaseClient.getClient();
+            const { data, error } = await sb.from('songs')
+                .select('*')
+                .in('eventId', eventIds);
+            if (error) {
+                if (this._isNetworkError(error)) {
+                    Logger.warn('Netzwerkproblem beim Laden der Setlists');
+                    return [];
+                }
+                console.error('Supabase getEventSongsForMultipleEvents error', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            if (this._isNetworkError(err)) {
+                Logger.warn('Netzwerkproblem beim Laden der Setlists (Catch)');
+            } else {
+                console.error('[Storage] Unexpected error in getEventSongsForMultipleEvents:', err);
+            }
+            return [];
+        }
     },
 
     async getBandSongs(bandId) {

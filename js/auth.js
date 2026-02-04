@@ -65,11 +65,26 @@ const Auth = {
                     this.currentUser = null;
                     this.supabaseUser = null;
                 } else if (event === 'PASSWORD_RECOVERY') {
-                    // Trigger UI to show reset modal
-                    console.log('Password recovery mode detected');
-                    setTimeout(() => {
+                    // Only trigger if URL actually contains recovery token
+                    if (window.location.hash && window.location.hash.includes('type=recovery')) {
+                        console.log('Password recovery mode detected via URL (auth.js)');
+
+                        // Clear hash IMMEDIATELY and AGGRESSIVELY
+                        try {
+                            history.replaceState(null, null, window.location.pathname + window.location.search);
+                            // Fallback for some mobile WebViews
+                            if (window.location.hash) {
+                                window.location.hash = '';
+                            }
+                        } catch (e) {
+                            window.location.hash = '';
+                        }
+
+                        // Dispatch immediately, no timeout to avoid race conditions with showApp
                         window.dispatchEvent(new CustomEvent('auth:password_recovery'));
-                    }, 500);
+                    } else {
+                        console.log('Ignoring PASSWORD_RECOVERY event (no type=recovery in URL)');
+                    }
                 }
             });
         }
@@ -326,6 +341,9 @@ const Auth = {
             password,
             options: { expiresIn }
         });
+
+        // Force scroll reset on interaction
+        window.scrollTo(0, 0);
 
         if (error) {
             console.error('Supabase signIn error:', error);

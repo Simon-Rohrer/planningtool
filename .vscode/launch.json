@@ -18,6 +18,18 @@
                 "uriFormat": "http://localhost:%s",
                 "action": "openExternally"
             }
+        },
+        {
+            "name": "iOS: Sync & Xcode öffnen",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "ios-sync"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
         }
     ]
 }

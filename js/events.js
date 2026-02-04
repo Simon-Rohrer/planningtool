@@ -42,30 +42,7 @@ const Events = {
             return;
         }
 
-        // Check if we have cached data
-        if (!forceRefresh && this.eventsCache && this.dataContextCache) {
-            Logger.info('[Events] Using cached data.');
-            let events = [...this.eventsCache];
-            if (filterBandId) {
-                events = events.filter(e => e.bandId === filterBandId);
-            }
-            const container = document.getElementById('eventsList');
-            if (container) {
-                if (events.length === 0) {
-                    UI.showEmptyState(container, '🎤', 'Noch keine Auftritte vorhanden');
-                } else {
-                    container.innerHTML = (await Promise.all(events.map(event =>
-                        this.renderEventCard(event, this.dataContextCache)
-                    ))).join('');
-                    this.attachEventHandlers();
-                }
-            }
-            return;
-        }
-
-        const container = document.getElementById('eventsList');
         const user = Auth.getCurrentUser();
-
         if (!user) return;
 
         this.isLoading = true;
@@ -77,26 +54,36 @@ const Events = {
 
             // 1. Collect all IDs for batch fetching
             const eventIds = events.map(e => e.id);
-            const memberIds = [...new Set(events.flatMap(e => e.members || []))];
+            const memberIds = [...new Set([
+                ...events.flatMap(e => e.members || []),
+                ...events.map(e => e.createdBy).filter(Boolean)
+            ])];
 
             // 2. Batch Fetch everything in parallel
             const [
                 songsBatch,
                 membersBatch,
                 absencesBatch,
-                userBandsBatch // For roles
+                userBandsBatch, // For roles
+                votesBatch,
+                suggestionsBatch
             ] = await Promise.all([
                 Storage.getEventSongsForMultipleEvents(eventIds),
                 Storage.getBatchByIds('users', memberIds),
-                Storage.getBatchByIds('absences', memberIds), // Fetching all absences for these users
-                Storage.getUserBands(user.id)
+                Storage.getBatchByIds('absences', memberIds),
+                Storage.getUserBands(user.id),
+                Storage.getEventVotesForMultipleEvents(eventIds),
+                Storage.getEventTimeSuggestionsForMultipleEvents(eventIds)
             ]);
 
             // 3. Create a data context
             const dataContext = {
-                songs: songsBatch.reduce((acc, s) => {
-                    if (!acc[s.eventId]) acc[s.eventId] = [];
-                    acc[s.eventId].push(s);
+                songs: (songsBatch || []).reduce((acc, s) => {
+                    const eid = s.eventId || s.event_id;
+                    if (eid) {
+                        if (!acc[eid]) acc[eid] = [];
+                        acc[eid].push(s);
+                    }
                     return acc;
                 }, {}),
                 members: membersBatch.reduce((acc, u) => ({ ...acc, [u.id]: u }), {}),
@@ -105,7 +92,17 @@ const Events = {
                     acc[a.userId].push(a);
                     return acc;
                 }, {}),
-                userBands: userBandsBatch.reduce((acc, b) => ({ ...acc, [b.id]: b }), {})
+                userBands: userBandsBatch.reduce((acc, b) => ({ ...acc, [b.id]: b }), {}),
+                votes: (votesBatch || []).reduce((acc, v) => {
+                    if (!acc[v.eventId]) acc[v.eventId] = [];
+                    acc[v.eventId].push(v);
+                    return acc;
+                }, {}),
+                suggestions: (suggestionsBatch || []).reduce((acc, s) => {
+                    if (!acc[s.eventId]) acc[s.eventId] = [];
+                    acc[s.eventId].push(s);
+                    return acc;
+                }, {})
             };
 
             // Set Cache
@@ -117,34 +114,69 @@ const Events = {
                 events = events.filter(e => e.bandId === filterBandId);
             }
 
-            // Sort by date (Upcoming first, then past)
-            const now = new Date();
-            events.sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                const isPastA = dateA < now;
-                const isPastB = dateB < now;
+            // Categorize events
+            const pendingEvents = [];
+            const votedEvents = [];
+            const resolvedEvents = [];
 
-                if (isPastA && !isPastB) return 1; // Past at bottom
-                if (!isPastA && isPastB) return -1; // Future at top
-
-                if (!isPastA && !isPastB) {
-                    // Both future: Ascending (nearest first)
-                    return dateA - dateB;
-                } else {
-                    // Both past: Descending (most recent past first)
-                    return dateB - dateA;
+            for (const event of events) {
+                if (event.status !== 'pending') {
+                    resolvedEvents.push(event);
+                    continue;
                 }
-            });
 
-            if (events.length === 0) {
-                UI.showEmptyState(container, '🎤', 'Noch keine Auftritte vorhanden');
-                return;
+                const eventVotes = dataContext.votes[event.id] || [];
+                const userVote = eventVotes.find(v => v.userId === user.id);
+
+                if (userVote) {
+                    votedEvents.push(event);
+                } else {
+                    pendingEvents.push(event);
+                }
             }
 
-            container.innerHTML = (await Promise.all(events.map(event =>
-                this.renderEventCard(event, dataContext)
-            ))).join('');
+            // Helper to sort events
+            const sortByDate = (arr, ascending = true) => {
+                arr.sort((a, b) => {
+                    const dateA = a.date ? new Date(a.date) : (a.proposedDates?.[0] ? new Date(a.proposedDates[0].start) : new Date(0));
+                    const dateB = b.date ? new Date(b.date) : (b.proposedDates?.[0] ? new Date(b.proposedDates[0].start) : new Date(0));
+                    return ascending ? dateA - dateB : dateB - dateA;
+                });
+            };
+
+            sortByDate(pendingEvents);
+            sortByDate(votedEvents);
+            sortByDate(resolvedEvents, false); // Bestätigte: Neueste zuerst
+
+            // Render lists
+            const pendingContainer = document.getElementById('eventsListPending');
+            const votedContainer = document.getElementById('eventsListVoted');
+            const resolvedContainer = document.getElementById('eventsList');
+
+            if (pendingContainer) {
+                if (pendingEvents.length > 0) {
+                    pendingContainer.innerHTML = (await Promise.all(pendingEvents.map(e => this.renderEventCard(e, dataContext)))).join('');
+                } else {
+                    UI.showCompactEmptyState(pendingContainer, 'Keine offenen Abstimmungen 🥳');
+                }
+                document.getElementById('eventsListPendingHeader').style.display = 'block';
+            }
+            if (votedContainer) {
+                if (votedEvents.length > 0) {
+                    votedContainer.innerHTML = (await Promise.all(votedEvents.map(e => this.renderEventCard(e, dataContext)))).join('');
+                } else {
+                    UI.showCompactEmptyState(votedContainer, 'Keine abgestimmten Auftritte 🗳️');
+                }
+                document.getElementById('eventsListVotedHeader').style.display = 'block';
+            }
+            if (resolvedContainer) {
+                if (resolvedEvents.length > 0) {
+                    resolvedContainer.innerHTML = (await Promise.all(resolvedEvents.map(e => this.renderEventCard(e, dataContext)))).join('');
+                } else {
+                    UI.showCompactEmptyState(resolvedContainer, 'Keine bestätigten Auftritte ✅');
+                }
+                document.getElementById('eventsListResolvedHeader').style.display = 'block';
+            }
 
             // Add click handlers
             this.attachEventHandlers();
@@ -156,14 +188,11 @@ const Events = {
     },
 
     // Render single event card
-    async renderEventCard(event, dataContext = {}) {
-        // Use joined band data if available, otherwise fetch
+    async renderEventCard(event, dataContext = { votes: {} }) {
         const band = event.band || await Storage.getBand(event.bandId);
-
-        const isPast = new Date(event.date) < new Date();
+        const user = Auth.getCurrentUser();
         const isExpanded = this.expandedEventId === event.id;
 
-        // Use role from context if available, fallback to async check
         let canManage = false;
         if (dataContext.userBands) {
             const userBand = dataContext.userBands[event.bandId];
@@ -173,197 +202,35 @@ const Events = {
             canManage = await Auth.canManageEvents(event.bandId);
         }
 
-        // Get band color with fallback
         const bandColor = band ? (band.color || '#e11d48') : '#e11d48';
+        const eventVotes = dataContext.votes[event.id] || [];
 
-        // Get member info and absences from context
-        const members = (event.members || []).map(memberId => {
-            const member = dataContext.members ? dataContext.members[memberId] : null;
-            if (!member && dataContext.members) return { name: 'Unbekannt', absence: null };
+        let statusText = event.status === 'pending' ? 'Abstimmung läuft' : 'Bestätigt';
+        let statusClass = `status-${event.status}`;
 
-            // If we don't have a context, we'd need to fetch (fallback)
-            // But we aim to always have it. For now, if no member in context, use placeholder.
-            const name = member ? this._getUserName(member) : 'Lädt...';
-
-            // Find absence covering event date from context
-            const eventDate = new Date(event.date);
-            const userAbsences = (dataContext.absences && dataContext.absences[memberId]) || [];
-            const absence = userAbsences.find(a => {
-                const start = new Date(a.startDate);
-                const end = new Date(a.endDate);
-                return eventDate >= start && eventDate <= end;
-            });
-
-            return { name, absence };
-        });
-
-        const guests = event.guests || [];
-
-        // Get event songs from context
-        const eventSongs = (dataContext.songs && dataContext.songs[event.id]) || [];
-
-        // Dynamisch Felder nur anzeigen, wenn sie befüllt sind
-        let detailsHtml = '';
-        // Datum (immer anzeigen)
-        detailsHtml += `
-            <div class="detail-row">
-                <div class="detail-label">📅 Datum:</div>
-                <div class="detail-value">${UI.formatDate(event.date)}</div>
-            </div>
-        `;
-        // Ort
-        if (event.location && event.location.trim() !== '') {
-            detailsHtml += `
-                <div class="detail-row">
-                    <div class="detail-label">📍 Ort:</div>
-                    <div class="detail-value">${Bands.escapeHtml(event.location)}</div>
-                </div>
-            `;
-        }
-        // Info
-        if (event.info && event.info.trim() !== '') {
-            detailsHtml += `
-                <div class="detail-row">
-                    <div class="detail-label">ℹ️ Event-Infos:</div>
-                    <div class="detail-value">${Bands.escapeHtml(event.info)}</div>
-                </div>
-            `;
-        }
-        // Technik
-        if (event.techInfo && event.techInfo.trim() !== '') {
-            detailsHtml += `
-                <div class="detail-row">
-                    <div class="detail-label">🔧 Technik:</div>
-                    <div class="detail-value">${Bands.escapeHtml(event.techInfo)}</div>
-                </div>
-            `;
-        }
-        // Mitglieder (immer anzeigen)
-        detailsHtml += `
-            <div class="detail-row">
-                <div class="detail-label">👥 Bandmitglieder:</div>
-                <div class="detail-value">
-                    ${members.map(m => `
-                        <span class="member-tag" style="margin-right: 0.5em;">
-                            ${Bands.escapeHtml(m.name)}
-                            ${m.absence ? `<span style="color: orange; font-weight: bold; margin-left: 0.5em;">Abwesenheit: ${Bands.escapeHtml(m.absence.reason || '')} (${UI.formatDateOnly(m.absence.startDate)} - ${UI.formatDateOnly(m.absence.endDate)})</span>` : ''}
-                        </span>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-        // Gäste
-        if (guests.length > 0) {
-            detailsHtml += `
-                <div class="detail-row">
-                    <div class="detail-label">🎭 Gäste:</div>
-                    <div class="detail-value">
-                        ${guests.map(guest => `<span class="guest-tag">${Bands.escapeHtml(guest)}</span>`).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        // Soundcheck
-        if (event.soundcheckLocation && event.soundcheckLocation.trim() !== '') {
-            detailsHtml += `
-                <div class="detail-row">
-                    <div class="detail-label">🎚️ Infos zum Soundcheck:</div>
-                    <div class="detail-value">${Bands.escapeHtml(event.soundcheckLocation)}</div>
-                </div>
-            `;
-        }
-        // Setlist
-        if (Array.isArray(eventSongs) && eventSongs.length > 0) {
-            // Sort songs by order if not already sorted
-            const sortedSongs = [...eventSongs].sort((a, b) => (a.order || 0) - (b.order || 0));
-
-            detailsHtml += `
-                <div class="setlist-section">
-                    <div class="setlist-header">
-                        <div class="setlist-title">🎵 Setlist</div>
-                        <button type="button" class="btn-pdf download-setlist-pdf" data-event-id="${event.id}">
-                            <img src="images/pdf-download.png" class="btn-icon-img" alt="PDF icon"><span class="btn-text-mobile-hide"> Als PDF herunterladen</span>
-                        </button>
-                    </div>
-
-                    <!-- Bulk Actions Bar -->
-                    <div id="bulk-actions-${event.id}" class="bulk-actions-bar" style="display: none; background: var(--color-surface); padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem; align-items: center; justify-content: space-between; border: 1px solid var(--color-accent);">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="font-weight: bold; color: var(--color-accent);">Ausgewählt: <span id="count-${event.id}">0</span></span>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button class="btn btn-danger btn-sm bulk-delete-event-songs" data-event-id="${event.id}">🗑️ Auswahl Löschen</button>
-                            <button class="btn btn-primary btn-sm bulk-pdf-event-songs" data-event-id="${event.id}">📥 Auswahl als PDF herunterladen</button>
-                        </div>
-                    </div>
-                    
-                    <div class="setlist-grid" style="overflow-x: auto;">
-                        <table class="songs-table" style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
-                            <thead>
-                                <tr style="border-bottom: 2px solid var(--color-border);">
-                                    <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">
-                                        <input type="checkbox" class="select-all-event-songs" data-event-id="${event.id}">
-                                    </th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Titel</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Interpret</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">BPM</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Time</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Tonart</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Orig.</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;" data-label="Infos">Infos</th>
-                                    <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${sortedSongs.map((s, idx) => `
-                                    <tr style="border-bottom: 1px solid var(--color-border);">
-                                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
-                                            <input type="checkbox" class="event-song-checkbox" data-event-id="${event.id}" value="${s.id}">
-                                        </td>
-                                        <td style="padding: var(--spacing-sm);" data-label="Titel">${Bands.escapeHtml(s.title)}</td>
-                                        <td style="padding: var(--spacing-sm);" data-label="Interpret">${s.artist ? Bands.escapeHtml(s.artist) : '-'}</td>
-                                        <td style="padding: var(--spacing-sm);" data-label="BPM">${s.bpm || '-'}</td>
-                                        <td style="padding: var(--spacing-sm);" data-label="Time">${s.timeSignature || '-'}</td>
-                                        <td style="padding: var(--spacing-sm);" data-label="Tonart">${s.key || '-'}</td>
-                                        <td style="padding: var(--spacing-sm);" data-label="Orig.">${s.originalKey || '-'}</td>
-                                        <td style="padding: var(--spacing-sm);" data-label="Lead">${s.leadVocal ? Bands.escapeHtml(s.leadVocal) : '-'}</td>
-                                        <td style="padding: var(--spacing-sm);" data-label="Sprache">${s.language || '-'}</td>
-                                        <td style="padding: var(--spacing-sm);" data-label="Tracks">${s.tracks === 'yes' ? 'Ja' : (s.tracks === 'no' ? 'Nein' : '-')}</td>
-                                        <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${s.info ? Bands.escapeHtml(s.info) : '-'}</td>
-                                        <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${s.ccli || '-'}</td>
-                                    </tr>
-                                    ${(s.notes) ? `
-                                        <tr>
-                                            <td colspan="12" style="padding: 0 var(--spacing-sm) var(--spacing-sm) var(--spacing-sm); color: var(--color-text-secondary); font-size: 0.85em;">
-                                                ${s.notes ? `<span style="font-style:italic;">📝 ${Bands.escapeHtml(s.notes)}</span>` : ''}
-                                            </td>
-                                        </tr>
-                                    ` : ''}
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
+        let cardContent = '';
+        if (event.status === 'pending') {
+            cardContent = await this._renderPendingEventBody(event, dataContext, canManage);
+        } else {
+            cardContent = await this._renderConfirmedEventBody(event, dataContext, canManage);
         }
 
         return `
-            <div class="event-card accordion-card ${isPast ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}" style="border-left: 4px solid ${bandColor}">
+            <div class="event-card accordion-card ${event.status === 'confirmed' && new Date(event.date) < new Date() ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}" style="border-left: 4px solid ${bandColor}">
                 <div class="accordion-header" data-event-id="${event.id}">
                     <div class="accordion-title">
                         <h3>${Bands.escapeHtml(event.title)}</h3>
-                        <div class="event-band" style="color: ${bandColor}">
-                            🎸 ${Bands.escapeHtml(band?.name || 'Unbekannte Band')}
+                        <div class="event-band" style="color: ${bandColor}; display: flex; align-items: center; gap: 8px;">
+                            ${(event.band && event.band.image_url) ?
+                `<img src="${event.band.image_url}" class="band-mini-logo" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border-subtle); display: block;">` :
+                '<span style="font-size: 1.2rem; line-height: 1;">🎸</span>'} 
+                            <span style="font-weight: 500;">${Bands.escapeHtml(event.band?.name || 'Unbekannte Band')}</span>
                         </div>
                     </div>
                     <div class="accordion-actions">
-                        <div class="event-quick-info">
-                            <span class="quick-info-item">📅 ${UI.formatDateShort(event.date)}</span>
-                            ${event.location && event.location.trim() !== '' ? `<span class="quick-info-item">📍 ${Bands.escapeHtml(event.location)}</span>` : ''}
-                        </div>
+                        <span class="rehearsal-status ${statusClass}">
+                            ${statusText}
+                        </span>
                         <button class="accordion-toggle" aria-label="Ausklappen">
                             <span class="toggle-icon">${isExpanded ? '▼' : '▶'}</span>
                         </button>
@@ -371,493 +238,920 @@ const Events = {
                 </div>
                 <div class="accordion-content" style="display: ${isExpanded ? 'block' : 'none'};">
                     <div class="accordion-body">
-                        <div class="event-details-expanded">
-                            ${detailsHtml}
-                        </div>
-                        ${canManage ? `
-                            <div class="event-action-buttons">
-                                <button class="btn btn-secondary edit-event" data-event-id="${event.id}">
-                                    ✏️ Bearbeiten
-                                </button>
-                                <button class="btn btn-danger delete-event" data-event-id="${event.id}">
-                                    🗑️ Löschen
-                                </button>
-                            </div>
-                        ` : ''}
+                        ${cardContent}
                     </div>
                 </div>
             </div>
         `;
     },
 
+    async _renderConfirmedEventBody(event, dataContext, canManage) {
+        const eventSongs = (dataContext.songs && (dataContext.songs[event.id] || dataContext.songs[String(event.id)])) || [];
+
+        let detailsHtml = `
+            <div class="confirmed-event-details">
+                ${this._renderEventDetailsGrid(event, dataContext)}
+                ${this._renderEventSetlist(event, dataContext)}
+            </div>
+        `;
+
+        return `
+            <div class="event-details-expanded">
+                ${detailsHtml}
+            </div>
+            ${canManage ? `
+                <div class="event-action-buttons">
+                    <button class="btn btn-secondary edit-event" data-event-id="${event.id}">✏️ Bearbeiten</button>
+                    <button class="btn btn-danger delete-event" data-event-id="${event.id}">🗑️ Löschen</button>
+                </div>
+            ` : ''}
+        `;
+    },
+
+    async _renderPendingEventBody(event, dataContext, canManage) {
+        const members = await Storage.getBandMembers(event.bandId);
+
+        return `
+            <div class="pending-event-info">
+                ${this._renderEventDetailsGrid(event, dataContext)}
+                
+                ${this._renderEventSetlist(event, dataContext)}
+
+                <div class="event-action-buttons" style="margin-bottom: 1.5rem;">
+                    <button class="btn btn-vote-now" data-event-id="${event.id}">
+                        🗳️ Jetzt abstimmen
+                    </button>
+                    ${canManage ? `
+                        <button class="btn btn-primary open-event-btn" data-event-id="${event.id}">
+                            Termin bestätigen
+                        </button>
+                        <button class="btn btn-secondary edit-event" data-event-id="${event.id}">✏️ Bearbeiten</button>
+                        <button class="btn btn-danger delete-event" data-event-id="${event.id}">🗑️ Löschen</button>
+                    ` : ''}
+                </div>
+
+                <div class="event-overview-container">
+                    ${await this.renderEventOverviewTable(event, members, dataContext, canManage)}
+                </div>
+            </div>
+        `;
+    },
+
+    _renderEventDetailsGrid(event, dataContext) {
+        const proposedBy = dataContext.members[event.createdBy];
+        const proposedByName = this._getUserName(proposedBy);
+        const members = (event.members || []).map(memberId => {
+            const member = dataContext.members ? dataContext.members[memberId] : null;
+            return member ? this._getUserName(member) : 'Unbekannt';
+        });
+
+        const guests = event.guests || [];
+
+        let html = `
+            <div class="event-details-grid">
+                
+                <div class="detail-item">
+                    <div class="detail-label">Erstellt von</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                         <div class="creator-avatar" style="width: 24px; height: 24px; font-size: 0.65rem; background: ${proposedBy ? UI.getAvatarColor(proposedByName) : 'var(--color-primary)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                            ${proposedBy && proposedBy.profile_image_url ? `<img src="${proposedBy.profile_image_url}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : UI.getUserInitials(proposedByName)}
+                        </div>
+                        <span class="detail-value">${Bands.escapeHtml(proposedByName)}</span>
+                    </div>
+                </div>
+
+                ${event.status === 'confirmed' ? `
+                <div class="detail-item">
+                    <div class="detail-label">Datum & Zeit</div>
+                    <div class="detail-value">${UI.formatDate(event.date)}</div>
+                </div>
+                ` : ''}
+
+                <div class="detail-item">
+                    <div class="detail-label">📍 Ort</div>
+                    <div class="detail-value">${Bands.escapeHtml(event.location || 'Nicht angegeben')}</div>
+                </div>
+
+                ${event.soundcheckLocation ? `
+                <div class="detail-item">
+                    <div class="detail-label">🎚️ Soundcheck</div>
+                    <div class="detail-value">${Bands.escapeHtml(event.soundcheckLocation)}</div>
+                </div>
+                ` : ''}
+
+                ${event.info ? `
+                <div class="detail-item" style="grid-column: 1 / -1;">
+                    <div class="detail-label">ℹ️ Event-Infos</div>
+                    <div class="detail-value" style="white-space: pre-wrap; font-weight: normal;">${Bands.escapeHtml(event.info)}</div>
+                </div>
+                ` : ''}
+
+                ${event.techInfo ? `
+                <div class="detail-item" style="grid-column: 1 / -1;">
+                    <div class="detail-label">🔧 Technik / PA</div>
+                    <div class="detail-value" style="white-space: pre-wrap; font-size: 0.9rem; color: var(--color-text-secondary); font-weight: normal;">${Bands.escapeHtml(event.techInfo)}</div>
+                </div>
+                ` : ''}
+
+                <div class="detail-item" style="grid-column: 1 / -1;">
+                    <div class="detail-label">👥 Besetzung</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                        ${members.map(m => `<span class="member-tag" style="font-size: 0.75rem; padding: 2px 8px;">${Bands.escapeHtml(m)}</span>`).join('')}
+                        ${guests.map(g => `<span class="member-tag guest-tag" style="font-size: 0.75rem; padding: 2px 8px;">🎭 ${Bands.escapeHtml(g)} (Gast)</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        return html;
+    },
+
+    /**
+     * Helper to render the setlist table for both confirmed and pending events
+     */
+    _renderEventSetlist(event, dataContext) {
+        const eventSongs = (dataContext.songs && (dataContext.songs[event.id] || dataContext.songs[String(event.id)])) || [];
+        if (!Array.isArray(eventSongs) || eventSongs.length === 0) return '';
+
+        const sortedSongs = [...eventSongs].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        return `
+            <div class="setlist-section" style="margin-top: 1.5rem; border-top: 1px solid var(--color-border); padding-top: 1rem;">
+                <div class="setlist-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div class="setlist-title" style="font-weight: 700; color: var(--color-text);">🎵 Setlist</div>
+                    <button type="button" class="btn btn-pdf download-setlist-pdf" data-event-id="${event.id}">
+                         📄 PDF
+                    </button>
+                </div>
+                <div class="setlist-grid">
+                             <table class="songs-table" style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+                                <thead style="background: var(--color-bg-secondary); font-size: 0.7rem; text-transform: uppercase; color: var(--color-text-secondary);">
+                                    <tr>
+                                        <th style="text-align: left; padding: 6px;">Titel</th>
+                                        <th style="text-align: left; padding: 6px;">Interpret</th>
+                                        <th style="text-align: center; padding: 6px;">BPM</th>
+                                        <th style="text-align: center; padding: 6px;">Time</th>
+                                        <th style="text-align: center; padding: 6px;">Key</th>
+                                        <th style="text-align: left; padding: 6px;">Lead</th>
+                                        <th style="text-align: left; padding: 6px;">Sprache</th>
+                                        <th style="text-align: left; padding: 6px;">Infos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${sortedSongs.map(s => `
+                                        <tr style="border-bottom: 1px solid var(--color-border-subtle);">
+                                            <td style="padding: 6px; font-weight: 600; color: var(--color-text);">${Bands.escapeHtml(s.title)}</td>
+                                            <td style="padding: 6px; color: var(--color-text-secondary);">${Bands.escapeHtml(s.artist || '-')}</td>
+                                            <td style="padding: 6px; text-align: center; color: var(--color-text-secondary);">${s.bpm || '-'}</td>
+                                            <td style="padding: 6px; text-align: center; color: var(--color-text-secondary); font-size: 0.8rem;">${s.timeSignature || '-'}</td>
+                                            <td style="padding: 6px; text-align: center; font-weight: 700; color: var(--color-primary);">${s.key || '-'}</td>
+                                            <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem;">${Bands.escapeHtml(s.leadVocal || '-')}</td>
+                                            <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem;">${Bands.escapeHtml(s.language || '-')}</td>
+                                            <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${Bands.escapeHtml(s.info || '')}">${Bands.escapeHtml(s.info || '-')}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                             </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    async renderEventOverviewTable(event, members, dataContext, canManage) {
+        const votes = dataContext.votes[event.id] || [];
+        const suggestions = dataContext.suggestions[event.id] || [];
+
+        const headerHtml = `
+            <thead>
+                <tr>
+                    <th class="date-col">Termin</th>
+                    ${(await Promise.all(members.map(async m => {
+            const memberUser = dataContext.members[m.userId];
+            const name = memberUser ? UI.getUserDisplayName(memberUser) : 'Unbekannt';
+            return `
+                            <th class="member-avatar-cell" title="${Bands.escapeHtml(name)}">
+                                <div class="member-avatar-mini" style="background: ${UI.getAvatarColor(name)}; width: 32px; height: 32px; font-size: 0.75rem; margin: 0 auto; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; overflow: hidden; border: 2px solid var(--color-surface);">
+                                    ${memberUser && memberUser.profile_image_url ?
+                    `<img src="${memberUser.profile_image_url}" style="width:100%; height:100%; object-fit:cover;">` :
+                    UI.getUserInitials(name)}
+                                </div>
+                                <div style="font-size: 0.65rem; margin-top: 4px; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${Bands.escapeHtml(name.split(' ')[0])}</div>
+                            </th>
+                        `;
+        }))).join('')}
+                    <th class="zusage-col">Zusagen</th>
+                    ${canManage ? '<th class="action-col">Aktion</th>' : ''}
+                </tr>
+            </thead>
+        `;
+
+        const rowsHtml = (event.proposedDates || []).map((date, index) => {
+            const dateString = date.start;
+            const formattedDate = UI.formatDateShort(dateString);
+
+            const dateVotes = votes.filter(v => v.dateIndex === index);
+            const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
+
+            const voteCells = members.map(m => {
+                const vote = votes.find(v => v.userId === m.userId && v.dateIndex === index);
+                let icon = '➖';
+                let className = 'vote-pending';
+
+                if (vote) {
+                    if (vote.availability === 'yes') { icon = '✅'; className = 'vote-yes'; }
+                    else if (vote.availability === 'no') { icon = '❌'; className = 'vote-no'; }
+                }
+
+                return `<td class="vote-icon ${className}">${icon}</td>`;
+            }).join('');
+
+            const dateSuggestions = suggestions.filter(s => s.dateIndex === index);
+            const suggestionHtml = dateSuggestions.map(s => {
+                const suggUser = dataContext.members[s.userId];
+                const suggName = suggUser ? UI.getUserDisplayName(suggUser) : 'Unbekannt';
+                return `
+                    <div class="time-suggestion-pill" title="Vorschlag von ${Bands.escapeHtml(suggName)}">
+                        <span class="icon">🕐</span> ${Bands.escapeHtml(s.suggestedTime)} (${Bands.escapeHtml(suggName.split(' ')[0])})
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <tr>
+                    <td class="date-col">
+                        ${formattedDate} Uhr
+                        ${suggestionHtml ? `
+                        <div class="time-suggestions">
+                            ${suggestionHtml}
+                        </div>
+                        ` : ''}
+                    </td>
+                    ${voteCells}
+                    <td class="zusage-col">${yesCount}/${members.length}</td>
+                    ${canManage ? `
+                        <td class="action-col">
+                            <button class="btn btn-sm btn-primary confirm-event-proposal" 
+                                    data-event-id="${event.id}" 
+                                    data-date-index="${index}"
+                                    style="padding: 2px 8px; font-size: 0.75rem;">
+                                ✓ Bestätigen
+                            </button>
+                        </td>
+                    ` : ''}
+                </tr>
+            `;
+        });
+
+        return `
+            <table class="rehearsal-overview-table">
+                ${headerHtml}
+                <tbody>
+                    ${rowsHtml.join('')}
+                </tbody>
+            </table>
+        `;
+    },
+
     // Attach event handlers
     attachEventHandlers() {
-        // Accordion toggle handlers
+        // Accordion toggle
         document.querySelectorAll('.event-card .accordion-header').forEach(header => {
             header.addEventListener('click', (e) => {
-                // Don't toggle if clicking on action buttons or inputs
-                if (e.target.closest('.edit-event-icon') || e.target.closest('.accordion-toggle')) {
-                    const eventId = header.dataset.eventId;
-                    this.toggleAccordion(eventId);
-                } else if (!e.target.closest('button') && e.target.tagName !== 'INPUT') {
-                    const eventId = header.dataset.eventId;
-                    this.toggleAccordion(eventId);
+                if (!e.target.closest('button')) {
+                    this.toggleAccordion(header.dataset.eventId);
                 }
             });
         });
 
-        document.querySelectorAll('.edit-event-icon').forEach(btn => {
+        // Toggle button explicitly
+        document.querySelectorAll('.accordion-toggle').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const eventId = btn.dataset.eventId;
-                this.editEvent(eventId);
+                this.toggleAccordion(btn.closest('.event-card').dataset.eventId);
             });
         });
 
-        document.querySelectorAll('.edit-event').forEach(btn => {
+        // Vote Now button
+        document.querySelectorAll('.btn-vote-now').forEach(btn => {
+            btn.onclick = () => this.openVotingModal(btn.dataset.eventId);
+        });
+
+        // Finalize Event Date (Large button)
+        document.querySelectorAll('.open-event-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const eventId = btn.dataset.eventId;
-                Logger.userAction('Button', 'edit-event', 'Click', { eventId, action: 'Edit Event' });
-                await this.editEvent(eventId);
+                await this.openEventDetails(btn.dataset.eventId);
             });
+        });
+
+        // Finalize Event Date (from Overview table)
+        document.querySelectorAll('.confirm-event-proposal').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const { eventId, dateIndex } = btn.dataset;
+                const event = await Storage.getEvent(eventId);
+                const date = event.proposedDates[dateIndex].start;
+                await this.openConfirmModal(eventId, parseInt(dateIndex), date);
+            });
+        });
+
+        // PDF Download
+        document.querySelectorAll('.download-setlist-pdf').forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                const event = await Storage.getEvent(eventId);
+                const songs = await Storage.getEventSongsForMultipleEvents([eventId]);
+                if (event && songs.length > 0) {
+                    App.downloadSongListPDF(songs, `Setlist: ${event.title}`, event.date ? UI.formatDate(event.date) : '', true);
+                } else {
+                    UI.showToast('Keine Songs in der Setlist vorhanden', 'warning');
+                }
+            };
+        });
+
+        // Standard actions
+        document.querySelectorAll('.edit-event').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                this.editEvent(btn.dataset.eventId);
+            };
         });
 
         document.querySelectorAll('.delete-event').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.onclick = (e) => {
                 e.stopPropagation();
-                const eventId = btn.dataset.eventId;
-                Logger.userAction('Button', 'delete-event', 'Click', { eventId, action: 'Delete Event' });
-                await this.deleteEvent(eventId);
-            });
+                this.deleteEvent(btn.dataset.eventId);
+            };
         });
 
-        document.querySelectorAll('.download-setlist-pdf').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const eventId = btn.dataset.eventId;
-                await this.downloadSetlistPDF(eventId);
-            });
-        });
+        // Create Event Form Logic
+        const createForm = document.getElementById('createEventForm');
+        if (createForm && !createForm.dataset.initialized) {
+            createForm.dataset.initialized = 'true';
+            createForm.onsubmit = async (e) => {
+                e.preventDefault();
+                await this.handleSaveEvent();
+            };
+        }
 
-        // --- Bulk Actions Logic ---
+        const addDateBtn = document.getElementById('addEventDateBtn');
+        if (addDateBtn && !addDateBtn.dataset.initialized) {
+            addDateBtn.dataset.initialized = 'true';
+            addDateBtn.onclick = () => this.addDateProposalRow();
+        }
 
-        // Select All
-        document.querySelectorAll('.select-all-event-songs').forEach(selectAll => {
-            const eventId = selectAll.dataset.eventId;
-            selectAll.addEventListener('click', (e) => e.stopPropagation());
-
-            selectAll.addEventListener('change', (e) => {
-                const checkboxes = document.querySelectorAll(`.event-song-checkbox[data-event-id="${eventId}"]`);
-                checkboxes.forEach(cb => cb.checked = e.target.checked);
-                this.updateBulkActionsUI(eventId);
-            });
-        });
-
-        // Individual Checkboxes
-        document.querySelectorAll('.event-song-checkbox').forEach(cb => {
-            cb.addEventListener('click', (e) => e.stopPropagation());
-            cb.addEventListener('change', () => {
-                this.updateBulkActionsUI(cb.dataset.eventId);
-            });
-        });
-
-        // Bulk Delete
-        document.querySelectorAll('.bulk-delete-event-songs').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const eventId = btn.dataset.eventId;
-                const checkboxes = document.querySelectorAll(`.event-song-checkbox[data-event-id="${eventId}"]:checked`);
-                const songIds = Array.from(checkboxes).map(cb => cb.value);
-
-                if (songIds.length === 0) return;
-
-                if (await UI.confirmDelete(`${songIds.length} Songs wirklich aus dem Event entfernen?`)) {
-                    for (const id of songIds) {
-                        await Storage.deleteSong(id);
-                    }
-                    UI.showToast(`${songIds.length} Songs entfernt`, 'success');
-                    // Refresh rendering
-                    this.renderEvents(Events.currentFilter);
-                }
-            });
-        });
-
-        // Bulk PDF
-        document.querySelectorAll('.bulk-pdf-event-songs').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const eventId = btn.dataset.eventId;
-                const checkboxes = document.querySelectorAll(`.event-song-checkbox[data-event-id="${eventId}"]:checked`);
-                const songIds = Array.from(checkboxes).map(cb => cb.value);
-
-                if (songIds.length > 0) {
-                    this.downloadSetlistPDF(eventId, songIds);
-                }
-            });
+        // Modal close buttons
+        document.querySelectorAll('.modal-close, .btn.cancel').forEach(btn => {
+            if (!btn.dataset.initialized) {
+                btn.dataset.initialized = 'true';
+                btn.addEventListener('click', () => {
+                    UI.closeAllModals();
+                });
+            }
         });
     },
 
-    updateBulkActionsUI(eventId) {
-        const checkboxes = document.querySelectorAll(`.event-song-checkbox[data-event-id="${eventId}"]:checked`);
-        const bar = document.getElementById(`bulk-actions-${eventId}`);
-        const countSpan = document.getElementById(`count-${eventId}`);
+    async openVotingModal(eventId) {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
 
-        if (bar && countSpan) {
-            countSpan.textContent = checkboxes.length;
-            bar.style.display = checkboxes.length > 0 ? 'flex' : 'none';
+        const event = await Storage.getEvent(eventId);
+        if (!event) return;
+
+        const votes = (await Storage.getEventVotesForMultipleEvents([eventId])) || [];
+        const userVotes = votes.filter(v => v.userId === user.id);
+
+        const content = document.getElementById('eventVotingContent');
+        const rows = await Promise.all(event.proposedDates.map(async (date, index) => {
+            const dateString = date.start;
+            const currentVote = userVotes.find(v => v.dateIndex === index);
+            const availability = currentVote ? currentVote.availability : 'none';
+            const userSuggestion = (await Storage.getUserEventTimeSuggestionForDate(user.id, eventId, index));
+            const allSuggestions = (await Storage.getEventTimeSuggestions(eventId, index)) || [];
+
+            const otherSuggestionsHtml = allSuggestions.length > 0 ? `
+                <div class="modal-time-suggestions" style="margin-top: 4px;">
+                    ${(await Promise.all(allSuggestions.map(async s => {
+                const suggUser = await Storage.getById('users', s.userId);
+                const suggName = UI.getUserDisplayName(suggUser);
+                return `<span class="time-suggestion-pill" style="font-size: 0.7rem;">🕐 ${Bands.escapeHtml(s.suggestedTime)} (${Bands.escapeHtml(suggName.split(' ')[0])})</span>`;
+            }))).join('')}
+                </div>
+            ` : '';
+
+            return `
+                <div class="voting-row" data-date-index="${index}">
+                    <div class="voting-date-info">
+                        <span class="date">${UI.formatDateOnly(dateString)}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="time">${new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</span>
+                            <button type="button" class="btn-suggest-time-modal ${userSuggestion ? 'has-suggestion' : ''}" 
+                                    title="${userSuggestion ? 'Zeitvorschlag bearbeiten: ' + userSuggestion.suggestedTime : 'Andere Zeit vorschlagen'}" 
+                                    data-event-id="${eventId}" 
+                                    data-date-index="${index}">🕐</button>
+                        </div>
+                        ${otherSuggestionsHtml}
+                    </div>
+                    <div class="voting-options">
+                        <button type="button" class="voting-option-btn yes ${availability === 'yes' ? 'active' : ''}" data-value="yes" title="Ich kann">✅</button>
+                        <button type="button" class="voting-option-btn no ${availability === 'no' ? 'active' : ''}" data-value="no" title="Ich kann nicht">❌</button>
+                        <button type="button" class="voting-option-btn none ${availability === 'none' ? 'active' : ''}" data-value="none" title="Keine Angabe">➖</button>
+                    </div>
+                </div>
+            `;
+        }));
+        content.innerHTML = rows.join('');
+
+        // Attach listeners to voting buttons in modal
+        const buttons = content.querySelectorAll('.voting-option-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const row = btn.closest('.voting-row');
+                row.querySelectorAll('.voting-option-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Attach listeners to time suggest buttons in modal
+        content.querySelectorAll('.btn-suggest-time-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.openTimeSuggestionModal(btn.dataset.eventId, parseInt(btn.dataset.dateIndex));
+            });
+        });
+
+        // Set up save button
+        const saveForm = document.getElementById('eventVotingForm');
+        saveForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const newVotes = [];
+            content.querySelectorAll('.voting-row').forEach(row => {
+                const index = parseInt(row.dataset.dateIndex);
+                const activeBtn = row.querySelector('.voting-option-btn.active');
+                if (activeBtn) {
+                    newVotes.push({
+                        dateIndex: index,
+                        availability: activeBtn.dataset.value
+                    });
+                }
+            });
+
+            UI.showLoading('Speichere Abstimmungen...');
+            try {
+                await this.handleSaveVotes(eventId, newVotes);
+                UI.closeModal('eventVotingModal');
+                UI.showToast('Abstimmungen gespeichert', 'success');
+                await this.renderEvents(this.currentFilter, true);
+            } catch (error) {
+                UI.showToast('Fehler beim Speichern', 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        };
+
+        UI.openModal('eventVotingModal');
+    },
+
+    async handleSaveVotes(eventId, votes) {
+        const user = Auth.getCurrentUser();
+        if (!user) return;
+
+        this.invalidateCache();
+        for (const vote of votes) {
+            const existing = await Storage.getUserEventVoteForDate(user.id, eventId, vote.dateIndex);
+            if (existing) {
+                await Storage.update('votes', existing.id, {
+                    availability: vote.availability
+                });
+            } else {
+                await Storage.createEventVote({
+                    userId: user.id,
+                    eventId: eventId,
+                    dateIndex: vote.dateIndex,
+                    availability: vote.availability
+                });
+            }
         }
     },
 
-    // Download setlist as PDF
-    async downloadSetlistPDF(eventId, selectedIds = null, preview = true) {
+    openTimeSuggestionModal(eventId, dateIndex) {
+        document.getElementById('suggestTimeEventId').value = eventId;
+        document.getElementById('suggestTimeEventDateIndex').value = dateIndex;
+        document.getElementById('eventSuggestedTimeInput').value = '';
+        UI.openModal('eventTimeSuggestionModal');
+    },
+
+    async openConfirmModal(eventId, dateIndex) {
+        const event = await Storage.getEvent(eventId);
+        if (!event) return;
+
+        const prop = event.proposedDates[dateIndex];
+
+        document.getElementById('confirmEventId').value = eventId;
+        document.getElementById('confirmEventDateIndex').value = dateIndex;
+        document.getElementById('confirmEventTitle').value = event.title;
+        document.getElementById('confirmEventLocation').value = event.location || '';
+        document.getElementById('confirmEventStartTime').value = prop.start.slice(0, 16);
+        document.getElementById('confirmEventEndTime').value = prop.end.slice(0, 16);
+
+        UI.openModal('confirmEventModal');
+    },
+
+    addDateProposalRow() {
+        const container = document.getElementById('eventDateProposals');
+        const row = document.createElement('div');
+        row.className = 'date-proposal-item';
+        row.innerHTML = `
+            <div class="date-time-range">
+                <input type="date" class="event-date-input-date">
+                <input type="time" class="event-date-input-start">
+            </div>
+            <button type="button" class="btn-icon remove-event-date">🗑️</button>
+        `;
+        container.appendChild(row);
+
+        row.querySelector('.remove-event-date').onclick = () => row.remove();
+    },
+
+    async openEventDetails(eventId) {
+        const event = await Storage.getEvent(eventId);
+        if (!event) return;
+
+        this.currentEventId = eventId;
+        const band = await Storage.getBand(event.bandId);
+        const members = await Storage.getBandMembers(event.bandId);
+        const votes = (await Storage.getEventVotesForMultipleEvents([eventId])) || [];
+
+        // Calculate statistics and get time suggestions for each date
+        const dateStats = await Promise.all((event.proposedDates || []).map(async (date, index) => {
+            const dateVotes = votes.filter(v => v.dateIndex === index);
+            const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
+            const noCount = dateVotes.filter(v => v.availability === 'no').length;
+
+            // Get time suggestions for this date
+            const timeSuggestions = await Storage.getEventTimeSuggestions(eventId, index);
+            const suggestionsByTime = {};
+            for (const suggestion of timeSuggestions) {
+                const time = suggestion.suggestedTime;
+                if (!suggestionsByTime[time]) suggestionsByTime[time] = [];
+                const suggUser = await Storage.getById('users', suggestion.userId);
+                if (suggUser) {
+                    const name = UI.getUserDisplayName(suggUser);
+                    if (!suggestionsByTime[time].includes(name)) suggestionsByTime[time].push(name);
+                }
+            }
+
+            return { date, index, yesCount, noCount, score: yesCount, timeSuggestions: suggestionsByTime };
+        }));
+
+        const votedUserIds = new Set(votes.map(v => v.userId));
+        const notVoted = members.filter(m => !votedUserIds.has(m.userId));
+
+        document.getElementById('eventDetailsTitle').textContent = event.title;
+        document.getElementById('eventDetailsContent').innerHTML = `
+            <div class="rehearsal-details-view">
+                <div class="detail-section">
+                    <h3>📊 Abstimmungsübersicht</h3>
+                    <p><strong>Band:</strong> ${Bands.escapeHtml(band?.name || '')}</p>
+                    <p><strong>Abgestimmt:</strong> ${votedUserIds.size} von ${members.length} Mitgliedern</p>
+                    ${notVoted.length > 0 ? `
+                        <p><strong>Noch nicht abgestimmt:</strong> ${await Promise.all(notVoted.map(async m => {
+            const u = await Storage.getById('users', m.userId);
+            return Bands.escapeHtml(u ? UI.getUserDisplayName(u) : 'Unbekannt');
+        })).then(names => names.join(', '))}</p>
+                    ` : ''}
+                </div>
+
+                <div class="detail-section">
+                    <h3>🏆 Termine zur Auswahl</h3>
+                    ${dateStats.sort((a, b) => b.score - a.score).map((stat, idx) => `
+                        <div class="best-date-option ${idx === 0 ? 'is-best' : ''}">
+                            <div class="date-header">
+                                ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '📅'} 
+                                ${UI.formatDate(stat.date.start)}
+                            </div>
+                            <div class="vote-breakdown">
+                                ✅ ${stat.yesCount} können • ❌ ${stat.noCount} können nicht
+                            </div>
+                            ${Object.keys(stat.timeSuggestions).length > 0 ? `
+                                <div class="time-suggestions-compact">
+                                    <strong>🕐 Zeitvorschläge:</strong>
+                                    ${Object.entries(stat.timeSuggestions).map(([time, users]) => `
+                                        <span class="time-suggestion-tag">${time} (${users.join(', ')})</span>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            <button class="btn btn-primary select-event-date-btn" 
+                                    data-date-index="${stat.index}"
+                                    data-date="${stat.date.start}">
+                                Diesen Termin auswählen
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        document.querySelectorAll('.select-event-date-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                await this.openConfirmModal(eventId, parseInt(btn.dataset.dateIndex), btn.dataset.date);
+            });
+        });
+
+        UI.openModal('eventDetailsModal');
+    },
+
+    async openConfirmModal(eventId, dateIndex, date) {
+        // Close the selection details modal first
+        UI.closeModal('eventDetailsModal');
+
+        // Reuse edit modal but prefill the confirmed date
+        // 'date' can be string or object. If object, take start.
+        const dateString = (typeof date === 'object' && date.start) ? date.start : date;
+
+        await this.editEvent(eventId, dateString);
+    },
+
+    async confirmEventProposal(eventId, dateIndex) {
+        if (!await UI.confirm('Diesen Termin endgültig bestätigen?')) return;
+
         try {
-            const event = await Storage.getById('events', eventId);
-            if (!event) {
-                UI.showToast('Auftritt nicht gefunden', 'error');
+            const event = await Storage.getEvent(eventId);
+            if (!event || !event.proposedDates || !event.proposedDates[dateIndex]) {
+                UI.showToast('Termin nicht gefunden', 'error');
                 return;
             }
 
-            let songs = await Storage.getEventSongs(eventId);
-            if (!Array.isArray(songs) || songs.length === 0) {
-                UI.showToast('Keine Songs in der Setlist', 'error');
-                return;
-            }
+            const chosenDate = event.proposedDates[dateIndex].start;
 
-            // Filter if selectedIds provided
-            if (selectedIds && Array.isArray(selectedIds) && selectedIds.length > 0) {
-                songs = songs.filter(s => selectedIds.includes(s.id));
-            }
-
-            const band = await Storage.getBand(event.bandId);
-            const bandName = band ? band.name : 'Unbekannte Band';
-
-            // Prepare Metadata for Header (as HTML strings)
-            const metaInfo = [
-                `🎸 <b>${Bands.escapeHtml(bandName)}</b>`,
-                `📅 ${UI.formatDate(event.date)}`
-            ];
-            if (event.location) {
-                metaInfo.push(`📍 ${Bands.escapeHtml(event.location)}`);
-            }
-
-            const filename = `Setlist_${Bands.escapeHtml(event.title)}_${UI.formatDateShort(event.date)}.pdf`;
-
-            const pdfData = await PDFGenerator.generateSetlistPDF({
-                title: event.title,
-                subtitle: '',
-                metaInfo: metaInfo,
-                songs: songs,
-                showNotes: true,
-                filename: filename,
-                previewOnly: preview
+            await Storage.updateEvent(eventId, {
+                status: 'confirmed',
+                date: chosenDate,
+                proposedDates: [] // Clear proposals after confirmation
             });
 
-            if (preview && pdfData && pdfData.blobUrl) {
-                if (typeof App !== 'undefined' && App.showPDFPreview) {
-                    App.showPDFPreview(pdfData);
-                } else {
-                    // Fallback
-                    pdfData.pdf.save(filename);
-                }
-            } else if (!preview) {
-                UI.showToast('Setlist-PDF heruntergeladen!', 'success');
-            }
+            UI.showToast('Auftritt wurde bestätigt!', 'success');
+            await this.renderEvents(this.currentFilter, true);
         } catch (error) {
-            console.error('Error downloading setlist PDF:', error);
-            UI.showToast('Fehler beim Erstellen der PDF: ' + error.message, 'error');
+            console.error('Error confirming event:', error);
+            UI.showToast('Fehler beim Bestätigen', 'error');
         }
     },
 
-    // Toggle accordion
+    async handleSaveEvent() {
+        const eventId = document.getElementById('editEventId').value;
+        const bandId = document.getElementById('eventBand').value;
+        const title = document.getElementById('eventTitle').value;
+        const fixedDate = document.getElementById('eventDate').value;
+        const location = document.getElementById('eventLocation').value;
+
+        const proposals = [];
+        document.querySelectorAll('#eventDateProposals .date-proposal-item').forEach(row => {
+            const date = row.querySelector('.event-date-input-date').value;
+            const start = row.querySelector('.event-date-input-start').value;
+            if (date && start) {
+                proposals.push({
+                    start: `${date}T${start}`,
+                    end: `${date}T${start}` // Default end to start for database consistency if needed
+                });
+            }
+        });
+
+        // Validation: Must have at least one date with time
+        if (!fixedDate && proposals.length === 0) {
+            UI.showToast('Bitte gib mindestens einen Termin mit Uhrzeit an.', 'warning');
+            return;
+        }
+
+        const user = Auth.getCurrentUser();
+        const eventData = {
+            bandId,
+            title,
+            location,
+            soundcheckLocation: document.getElementById('eventSoundcheckLocation')?.value,
+            status: fixedDate ? 'confirmed' : 'pending',
+            date: fixedDate || (proposals.length > 0 ? proposals[0].start : null),
+            proposedDates: proposals.length > 0 ? proposals : null,
+            info: document.getElementById('eventInfo').value,
+            techInfo: document.getElementById('eventTechInfo').value,
+            members: this.getSelectedMembers(),
+            guests: this.getGuests()
+        };
+
+        if (!eventId) {
+            eventData.createdBy = user.id;
+        }
+
+        try {
+            let savedEventId = eventId;
+            if (eventId) {
+                await Storage.updateEvent(eventId, eventData);
+                UI.showToast('Auftritt aktualisiert', 'success');
+            } else {
+                const newEvent = await Storage.createEvent(eventData);
+                savedEventId = newEvent?.id;
+                UI.showToast('Auftritt erstellt', 'success');
+            }
+
+            // Save Songs
+            if (savedEventId && typeof App !== 'undefined') {
+                // Use syncEventSongs to handle additions, deletions, and ordering
+                // We pass draftEventSongIds which contains mixture of existing IDs and new BandSong IDs
+                await App.syncEventSongs(savedEventId, App.draftEventSongIds || []);
+
+                // Clear draft
+                App.draftEventSongIds = [];
+                App.deletedEventSongs = [];
+
+                if (App.updateDashboard) await App.updateDashboard();
+            }
+
+            UI.closeModal('createEventModal');
+            await this.renderEvents(this.currentFilter, true);
+        } catch (error) {
+            console.error('Error saving event:', error);
+            UI.showToast('Fehler beim Speichern', 'error');
+        }
+    },
+
     toggleAccordion(eventId) {
         const card = document.querySelector(`.event-card[data-event-id="${eventId}"]`);
         if (!card) return;
 
         const content = card.querySelector('.accordion-content');
-        const toggle = card.querySelector('.toggle-icon');
         const wasExpanded = this.expandedEventId === eventId;
 
-        // Close all accordions
         document.querySelectorAll('.event-card').forEach(c => {
             c.classList.remove('expanded');
             const cont = c.querySelector('.accordion-content');
-            const tog = c.querySelector('.toggle-icon');
             if (cont) cont.style.display = 'none';
-            if (tog) tog.textContent = '▶';
+            const icon = c.querySelector('.toggle-icon');
+            if (icon) icon.textContent = '▶';
         });
 
-        // If it was already expanded, just close it
-        if (wasExpanded) {
-            this.expandedEventId = null;
-        } else {
-            // Open this accordion
+        if (!wasExpanded) {
             card.classList.add('expanded');
             if (content) content.style.display = 'block';
-            if (toggle) toggle.textContent = '▼';
+            const icon = card.querySelector('.toggle-icon');
+            if (icon) icon.textContent = '▼';
             this.expandedEventId = eventId;
+        } else {
+            this.expandedEventId = null;
         }
     },
 
-    // Create new event
-    createEvent(bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation) {
-        const user = Auth.getCurrentUser();
-        if (!user) return;
-
-        const event = {
-            bandId,
-            title,
-            date,
-            location,
-            info,
-            techInfo,
-            soundcheckDate,
-            soundcheckLocation,
-            members,
-            guests,
-            createdBy: user.id
-        };
-
-        const savedEvent = Storage.createEvent(event);
-        this.invalidateCache();
-        UI.showToast('Auftritt erstellt', 'success');
-        UI.closeModal('createEventModal');
-        this.renderEvents(this.currentFilter, true);
-        return savedEvent;
+    async deleteEvent(eventId) {
+        if (await UI.confirmDelete('Wirklich löschen?')) {
+            await Storage.deleteEvent(eventId);
+            UI.showToast('Gelöscht', 'success');
+            await this.renderEvents(this.currentFilter, true);
+        }
     },
 
-    // Edit event
-    async editEvent(eventId) {
+    async editEvent(eventId, confirmDate = null) {
         const event = await Storage.getEvent(eventId);
         if (!event) return;
 
         this.currentEventId = eventId;
-
-        // Clear deleted songs list when opening edit modal
-        if (window.App) {
-            window.App.deletedEventSongs = [];
-        }
-
-        // Set modal title
-        document.getElementById('eventModalTitle').textContent = 'Auftritt bearbeiten';
-        document.getElementById('saveEventBtn').textContent = 'Änderungen speichern';
         document.getElementById('editEventId').value = eventId;
+        document.getElementById('eventModalTitle').textContent = confirmDate ? 'Auftritt bestätigen' : 'Auftritt bearbeiten';
 
-        // WICHTIG: Erst Band-Select befüllen, dann Wert setzen
         await this.populateBandSelect();
-
-        // Populate form
         document.getElementById('eventBand').value = event.bandId;
         document.getElementById('eventTitle').value = event.title;
-        document.getElementById('eventDate').value = event.date.slice(0, 16);
-        document.getElementById('eventLocation').value = event.location;
+
+        // If confirming, use the passed date. Otherwise, use existing date if confirmed.
+        const dateValue = confirmDate || ((event.status === 'confirmed' && event.date) ? event.date.slice(0, 16) : '');
+        document.getElementById('eventDate').value = dateValue;
+
+        document.getElementById('eventLocation').value = event.location || '';
+        document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
         document.getElementById('eventInfo').value = event.info || '';
         document.getElementById('eventTechInfo').value = event.techInfo || '';
-        // Combine previous separate soundcheck date+location into a single info field.
-        if (event.soundcheckDate) {
-            try {
-                const dt = new Date(event.soundcheckDate);
-                const dtStr = dt.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
-                document.getElementById('eventSoundcheckLocation').value = dtStr + (event.soundcheckLocation ? ' — ' + event.soundcheckLocation : '');
-            } catch (e) {
-                document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
-            }
-        } else {
-            document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
-        }
         document.getElementById('eventGuests').value = (event.guests || []).join('\n');
 
-        // Checkboxen für Extras/Gäste korrekt setzen
-        const showExtras = (event.soundcheckLocation && event.soundcheckLocation.trim() !== '') || (event.info && event.info.trim() !== '') || (event.techInfo && event.techInfo.trim() !== '');
-        document.getElementById('eventShowExtras').checked = !!showExtras;
-        // Zeige/Verstecke die Felder entsprechend
-        document.getElementById('eventExtrasFields').style.display = showExtras ? '' : 'none';
-
-        const showGuests = Array.isArray(event.guests) && event.guests.length > 0;
-        document.getElementById('eventShowGuests').checked = !!showGuests;
-        document.getElementById('eventGuestsField').style.display = showGuests ? '' : 'none';
-
-        // Open modal first so the container exists
-        UI.openModal('createEventModal');
-
-        // Then load band members and songs (in parallel)
-        console.log('editEvent - loading songs and members for eventId:', eventId);
-        console.log('window.App exists:', !!window.App, 'renderEventSongs exists:', !!(window.App && window.App.renderEventSongs));
-
-        await Promise.all([
-            this.loadBandMembers(event.bandId, event.members),
-            window.App && window.App.renderEventSongs ? window.App.renderEventSongs(eventId) : Promise.resolve()
-        ]);
-
-        console.log('editEvent - finished loading');
-    },
-
-    // Update event
-    updateEvent(eventId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation) {
-        Storage.updateEvent(eventId, {
-            bandId,
-            title,
-            date,
-            location,
-            info,
-            techInfo,
-            soundcheckDate,
-            soundcheckLocation,
-            members,
-            guests
-        });
-
-        this.invalidateCache();
-        UI.showToast('Auftritt aktualisiert', 'success');
-        UI.closeModal('createEventModal');
-
-        // Remember which event was expanded
-        const wasExpanded = this.expandedEventId;
-        this.renderEvents(this.currentFilter, true);
-
-        // Re-expand the event after rendering
-        if (wasExpanded === eventId) {
-            // Use setTimeout to ensure DOM is updated
-            setTimeout(() => {
-                this.expandedEventId = null; // Reset so toggle works
-                this.toggleAccordion(eventId);
-            }, 100);
+        // Toggle sections if they have content
+        const extrasCheck = document.getElementById('eventShowExtras');
+        if (extrasCheck) {
+            extrasCheck.checked = !!(event.soundcheckLocation || event.info || event.techInfo);
+            document.getElementById('eventExtrasFields').style.display = extrasCheck.checked ? 'block' : 'none';
         }
-    },
+        const guestsCheck = document.getElementById('eventShowGuests');
+        if (guestsCheck) {
+            guestsCheck.checked = !!(event.guests && event.guests.length > 0);
+            document.getElementById('eventGuestsField').style.display = guestsCheck.checked ? 'block' : 'none';
+        }
 
-    // Delete event
-    async deleteEvent(eventId) {
-        const confirmed = await UI.confirmDelete('Möchtest du diesen Auftritt wirklich löschen?');
-        if (confirmed) {
-            // Sofort aus dem DOM entfernen für bessere UX
-            const card = document.querySelector(`.event-card[data-event-id="${eventId}"]`);
-            if (card) {
-                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.95)';
-                setTimeout(() => card.remove(), 300);
+        // Reset button text to 'Speichern' or 'Bestätigen'
+        const saveBtn = document.getElementById('saveEventBtn');
+        if (saveBtn) saveBtn.textContent = confirmDate ? 'Bestätigen' : 'Speichern';
+
+        await this.loadBandMembers(event.bandId, event.members);
+
+        // Load songs for this event into the App pool for the modal
+        const eventSongs = await Storage.getEventSongs(eventId);
+        if (typeof App !== 'undefined') {
+            App.draftEventSongIds = (eventSongs || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(s => s.id);
+            await App.renderDraftEventSongs();
+        }
+
+        const container = document.getElementById('eventDateProposals');
+        container.innerHTML = '';
+        const proposalsSection = document.getElementById('eventDateProposalsSection');
+
+        if (confirmDate) {
+            // Confirming: Hide proposals, user is choosing a fixed date
+            if (proposalsSection) proposalsSection.style.display = 'none';
+        } else {
+            // Normal edit
+            if (proposalsSection) proposalsSection.style.display = 'block';
+
+            if (event.proposedDates && event.proposedDates.length > 0) {
+                event.proposedDates.forEach(prop => {
+                    const row = document.createElement('div');
+                    row.className = 'date-proposal-item';
+                    const d = prop.start.split('T')[0];
+                    const s = prop.start.split('T')[1].slice(0, 5);
+                    row.innerHTML = `
+                        <div class="date-time-range">
+                            <input type="date" class="event-date-input-date" value="${d}">
+                            <input type="time" class="event-date-input-start" value="${s}">
+                        </div>
+                        <button type="button" class="btn-icon remove-event-date">🗑️</button>
+                    `;
+                    container.appendChild(row);
+                    row.querySelector('.remove-event-date').onclick = () => row.remove();
+                });
+            } else {
+                this.addDateProposalRow();
             }
-
-            // Aus der Datenbank löschen
-            Storage.deleteEvent(eventId);
-            this.invalidateCache();
-            UI.showToast('Auftritt gelöscht', 'success');
-
-            // Liste neu laden
-            setTimeout(() => this.renderEvents(this.currentFilter, true), 350);
         }
+
+        const songPoolBtn = document.getElementById('copyBandSongsBtn');
+        if (songPoolBtn) songPoolBtn.style.display = 'block';
+
+        UI.openModal('createEventModal');
     },
 
-    // Load band members for selection
+    getSelectedMembers() {
+        return Array.from(document.querySelectorAll('#eventBandMembers input:checked')).map(cb => cb.value);
+    },
+
+    getGuests() {
+        const text = document.getElementById('eventGuests')?.value || '';
+        return text.split('\n').filter(l => l.trim());
+    },
+
     async loadBandMembers(bandId, selectedMembers = null) {
         const container = document.getElementById('eventBandMembers');
-        if (!container || !bandId) return;
-
+        if (!container) return;
         const members = await Storage.getBandMembers(bandId);
+        const users = await Promise.all(members.map(m => Storage.getById('users', m.userId)));
+        const toSelect = selectedMembers || users.map(u => u.id);
 
-        // Defensive check
-        if (!Array.isArray(members)) {
-            container.innerHTML = '<p class="text-muted">Keine Mitglieder gefunden</p>';
-            return;
-        }
-
-        // Pre-select all members if selectedMembers is null (new event)
-        const membersToSelect = selectedMembers !== null ? selectedMembers : members.map(m => m.userId);
-
-        // Fetch all users in parallel
-        const userPromises = members.map(m => Storage.getById('users', m.userId));
-        const users = await Promise.all(userPromises);
-
-        container.innerHTML = await Promise.all(members.map(async (member, idx) => {
-            const user = users[idx];
-            if (!user) return '';
-            const isChecked = membersToSelect.includes(user.id);
-            let absenceHtml = '';
-            const eventDateInput = document.getElementById('eventDate');
-            let eventDate = eventDateInput && eventDateInput.value ? new Date(eventDateInput.value) : null;
-            if (eventDate && isChecked) {
-                const absences = await Storage.getUserAbsences(user.id);
-                const absence = absences.find(a => {
-                    const start = new Date(a.startDate);
-                    const end = new Date(a.endDate);
-                    return eventDate >= start && eventDate <= end;
-                });
-                if (absence) {
-                    const tooltipText = `Grund: ${absence.reason || 'Nicht angegeben'}\nZeitraum: ${UI.formatDateOnly(absence.startDate)} - ${UI.formatDateOnly(absence.endDate)}`;
-                    absenceHtml = `
-                        <span class="absence-pill" title="${Bands.escapeHtml(tooltipText)}">
-                            🏖️ Abwesend
-                        </span>
-                    `;
-                }
-            }
-            return `
-                <div class="checkbox-item">
-                    <input type="checkbox" id="member_${user.id}" value="${user.id}" ${isChecked ? 'checked' : ''}>
-                    <label for="member_${user.id}">${Bands.escapeHtml(this._getUserName(user))}${absenceHtml}</label>
-                </div>
-            `;
-        })).then(items => items.join(''));
-        // Add event listener for date change to update absences live
-        const eventDateInput = document.getElementById('eventDate');
-        if (eventDateInput) {
-            eventDateInput.addEventListener('change', async () => {
-                await Events.loadBandMembers(bandId, Events.getSelectedMembers());
-            });
-        }
+        container.innerHTML = users.map(user => `
+            <div class="checkbox-item">
+                <input type="checkbox" id="member_${user.id}" value="${user.id}" ${toSelect.includes(user.id) ? 'checked' : ''}>
+                <label for="member_${user.id}">${Bands.escapeHtml(this._getUserName(user))}</label>
+            </div>
+        `).join('');
     },
 
-    // Get selected members
-    getSelectedMembers() {
-        const checkboxes = document.querySelectorAll('#eventBandMembers input[type="checkbox"]:checked');
-        return Array.from(checkboxes).map(cb => cb.value);
-    },
-
-    // Get guests from textarea
-    getGuests() {
-        const textarea = document.getElementById('eventGuests');
-        const text = textarea.value.trim();
-        if (!text) return [];
-        return text.split('\n').map(line => line.trim()).filter(line => line);
-    },
-
-    // Populate band select
     async populateBandSelect() {
         const user = Auth.getCurrentUser();
-        if (!user) return;
-
-        const bands = (await Storage.getUserBands(user.id)) || [];
-        // Rolle egal: alle Bands, in denen der Nutzer Mitglied ist
-        const eligibleBands = bands;
-
+        const bands = await Storage.getUserBands(user.id);
         const select = document.getElementById('eventBand');
         if (select) {
-            select.innerHTML = '<option value="">Band auswählen</option>' +
-                eligibleBands.map(band =>
-                    `<option value="${band.id}">${Bands.escapeHtml(band.name)}</option>`
-                ).join('');
-
-            // Vorauswahl: wenn genau eine Band vorhanden ist
-            if (eligibleBands.length === 1) {
-                select.value = eligibleBands[0].id;
-                // Trigger change to load members
-                select.dispatchEvent(new Event('change'));
-            }
-        }
-
-        // Filter select
-        const filterSelect = document.getElementById('eventBandFilter');
-        if (filterSelect) {
-            filterSelect.innerHTML = '<option value="">Alle Bands</option>' +
-                bands.map(band =>
-                    `<option value="${band.id}">${Bands.escapeHtml(band.name)}</option>`
-                ).join('');
-
-            // Preselect filter if user is only in one band
-            if (bands.length === 1) {
-                filterSelect.value = bands[0].id;
-                filterSelect.dispatchEvent(new Event('change'));
-            }
+            select.innerHTML = '<option value="">Band wählen</option>' +
+                bands.map(b => `<option value="${b.id}">${Bands.escapeHtml(b.name)}</option>`).join('');
         }
     }
 };
+
+// Global Listeners for the Confirm & Time Suggestion Modals
+document.addEventListener('DOMContentLoaded', () => {
+
+    document.getElementById('saveEventTimeSuggestionBtn')?.addEventListener('click', async () => {
+        const eventId = document.getElementById('suggestTimeEventId').value;
+        const dateIndex = parseInt(document.getElementById('suggestTimeEventDateIndex').value);
+        const suggestedTime = document.getElementById('eventSuggestedTimeInput').value;
+        const user = Auth.getCurrentUser();
+
+        if (!suggestedTime) return;
+
+        try {
+            await Storage.createEventTimeSuggestion({
+                eventId,
+                userId: user.id,
+                dateIndex,
+                suggestedTime
+            });
+            UI.showToast('Vorschlag gespeichert', 'success');
+            UI.closeModal('eventTimeSuggestionModal');
+            await Events.renderEvents(Events.currentFilter, true);
+        } catch (error) {
+            UI.showToast('Fehler', 'error');
+        }
+    });
+});
