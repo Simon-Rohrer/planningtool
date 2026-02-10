@@ -1556,6 +1556,14 @@ input:checked+.slider:before {
     width: 95%;
 }
 
+#pdfPreviewModal .modal-content {
+    max-height: 95vh;
+}
+
+.pdf-preview-iframe {
+    background-color: var(--color-background);
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -3132,7 +3140,61 @@ input:checked+.slider:before {
     box-shadow: var(--shadow-card-hover);
 }
 
-/* ... existing headers ... */
+/* Instrument Multi-Select Chips */
+.instrument-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.instrument-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.8rem;
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 1px solid transparent;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.instrument-chip:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.instrument-chip.selected {
+    background-color: var(--color-primary-light);
+    /* Fallback or light version */
+    background-color: rgba(99, 102, 241, 0.15);
+    /* Light Indigo */
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Dark mode adjustments if needed */
+@media (prefers-color-scheme: dark) {
+    .instrument-chip {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #ddd;
+    }
+
+    .instrument-chip:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .instrument-chip.selected {
+        background-color: rgba(99, 102, 241, 0.3);
+        color: #fff;
+        border-color: var(--color-primary);
+    }
+}
+
 
 /* Upcoming List specific styles to match Bento */
 .upcoming-card {
@@ -10434,4 +10496,259 @@ tr.drag-over {
         flex-direction: column !important;
         gap: 0.5rem !important;
     }
+}
+
+/* ===== Custom Multi-Select Dropdown ===== */
+.custom-multiselect {
+    position: relative;
+    width: 100%;
+}
+
+.multiselect-trigger {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-md);
+    background-color: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    min-height: 48px;
+    /* Match typical input height */
+    transition: all var(--transition-base);
+    color: var(--color-text);
+    font-size: 1rem;
+}
+
+.multiselect-trigger:hover {
+    border-color: var(--color-text-light);
+    /* Subtle hover */
+}
+
+.multiselect-trigger.active {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.multiselect-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    flex: 1;
+    margin-right: 0.5rem;
+}
+
+.multiselect-badge {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary-darker);
+    /* Better contrast */
+    padding: 0.15rem 0.6rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+}
+
+/* Dark mode badge tweak */
+:root.theme-dark .multiselect-badge {
+    background-color: rgba(99, 102, 241, 0.2);
+    color: var(--color-primary-lighter);
+}
+
+.multiselect-placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.8;
+}
+
+.multiselect-arrow {
+    transition: transform var(--transition-base);
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+}
+
+.multiselect-trigger.active .multiselect-arrow {
+    transform: rotate(180deg);
+    color: var(--color-primary);
+}
+
+.multiselect-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    width: 100%;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    /* Dropdown border usually thinner */
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    /* Higher elevation */
+    z-index: 1000;
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    animation: fadeIn var(--transition-fast);
+}
+
+.multiselect-menu.show {
+    display: block;
+}
+
+.multiselect-option {
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    user-select: none;
+    color: var(--color-text);
+    border-radius: var(--radius-md);
+    /* Inner items rounded */
+    margin-bottom: 2px;
+}
+
+.multiselect-option:hover {
+    background-color: var(--color-bg-secondary);
+}
+
+.multiselect-option input[type="checkbox"] {
+    width: 1.2rem;
+    height: 1.2rem;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+    border-radius: 4px;
+    /* Note: native checkbox styling limited */
+    margin: 0;
+}
+
+/* Dark Mode Adjustments */
+:root.theme-dark .multiselect-trigger {
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+:root.theme-dark .multiselect-trigger:hover {
+    border-color: var(--color-text-secondary);
+}
+
+:root.theme-dark .multiselect-menu {
+    background-color: var(--color-surface);
+    /* Matches modal/card */
+    border-color: var(--color-border);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    /* Stronger shadow for separation */
+}
+
+:root.theme-dark .multiselect-option {
+    color: var(--color-text);
+}
+
+:root.theme-dark .multiselect-option:hover {
+    background-color: var(--color-surface-hover);
+}
+
+:root.theme-dark .multiselect-placeholder {
+    color: var(--color-text-secondary);
+}
+
+:root.theme-dark .multiselect-arrow {
+    color: var(--color-text-secondary);
+}
+
+/* Dark mode overrides for auth card inputs */
+.auth-white-card .custom-multiselect .multiselect-trigger,
+.auth-white-card .custom-multiselect .multiselect-menu {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+}
+
+.auth-white-card .custom-multiselect .multiselect-trigger:hover,
+.auth-white-card .custom-multiselect .multiselect-trigger:focus-within {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.auth-white-card .custom-multiselect .multiselect-option {
+    color: white !important;
+}
+
+.auth-white-card .custom-multiselect .multiselect-option:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.auth-white-card .custom-multiselect .multiselect-trigger input::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Member Instruments Display */
+.checkbox-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: 6px 0;
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin-top: 3px;
+}
+
+.checkbox-item label {
+    cursor: pointer;
+    color: var(--color-text);
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.3;
+}
+
+.member-instruments {
+    font-size: 0.8em;
+    color: var(--color-text-secondary);
+    font-style: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+/* Specific Override for Auth White Card (Registration Modal) */
+.auth-white-card .multiselect-trigger {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+}
+
+.auth-white-card .multiselect-trigger:hover,
+.auth-white-card .multiselect-trigger.active {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: #8b5cf6 !important;
+}
+
+.auth-white-card .multiselect-placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.auth-white-card .multiselect-arrow {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.auth-white-card .multiselect-menu {
+    background-color: #1e293b !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.auth-white-card .multiselect-option {
+    color: white !important;
+}
+
+.auth-white-card .multiselect-option:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
 }

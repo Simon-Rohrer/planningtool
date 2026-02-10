@@ -16,10 +16,9 @@
     <!-- Manifest -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- Icons (optional, remove if not yet created) -->
-    <!-- <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png"> -->
-    <!-- <link rel="icon" type="image/png" sizes="512x512" href="/images/icon-512.png"> -->
-    <!-- <link rel="apple-touch-icon" href="/images/icon-192.png"> -->
+    <!-- Icons -->
+    <link rel="icon" type="image/png" href="images/logo-planning.png">
+    <link rel="apple-touch-icon" href="images/logo-planning.png">
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/style.css?v=1769686135">
@@ -112,7 +111,7 @@
     <div id="landingPage" class="landing-page active">
         <header class="landing-header">
             <div class="landing-logo">
-                <img src="images/logo-planning.png" alt="Band Planning" style="height: 50px; width: auto;">
+                <img src="images/logo-planning-transparent.png" alt="Band Planning" style="height: 150px; width: auto;">
                 <span>BAND PLANNING</span>
             </div>
             <nav class="landing-nav">
@@ -208,18 +207,9 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="registerInstrument">Instrument</label>
-                            <select id="registerInstrument"
-                                style="width: 100%; padding: 0.8rem; background: rgba(0,0,0,0.03); border: 1px solid #ddd; border-radius: 6px;">
-                                <option value="">Kein Instrument</option>
-                                <option value="Vocals">🎤 Gesang</option>
-                                <option value="Guitar">🎸 Gitarre</option>
-                                <option value="Bass">🎸 Bass</option>
-                                <option value="Drums">🥁 Drums</option>
-                                <option value="Keys">🎹 Keys / Piano</option>
-                                <option value="Brass">🎷 Bläser</option>
-                                <option value="Strings">🎻 Streicher</option>
-                            </select>
+                            <label>Instrumente</label>
+                            <div class="instrument-selector" id="registerInstrumentSelector"></div>
+                            <input type="hidden" id="registerInstrument" value="">
                         </div>
                     </div>
 
@@ -1047,18 +1037,10 @@
                                             <span>🎸</span> Musiker Profil
                                         </div>
                                         <div class="form-group full-width">
-                                            <label for="profileInstrument">Hauptinstrument</label>
-                                            <select id="profileInstrument" class="profile-form-input">
-                                                <option value="">Kein Instrument gewählt</option>
-                                                <option value="drums">Schlagzeug (🥁)</option>
-                                                <option value="bass">Bass (🎸)</option>
-                                                <option value="acoustic_guitar">Akustische Gitarre (🎸)</option>
-                                                <option value="electric_guitar">Elektrische Gitarre (🎸)</option>
-                                                <option value="keyboard">Keyboard (🎹)</option>
-                                                <option value="synth">Synth (🎹)</option>
-                                                <option value="violin">Geige (🎻)</option>
-                                                <option value="vocals">Gesang (🎤)</option>
-                                            </select>
+                                            <label>Hauptinstrument(e)</label>
+                                            <div class="instrument-selector" id="profileInstrumentSelector"></div>
+                                            <!-- Hidden input to store comma-separated value for form submission -->
+                                            <input type="hidden" id="profileInstrument" value="">
                                         </div>
                                     </div>
 
@@ -2117,6 +2099,16 @@
                     <label for="songLeadVocal">Lead Vocal</label>
                     <input type="text" id="songLeadVocal" placeholder="Name des Lead-Sängers">
                 </div>
+                <div class="form-group">
+                    <label for="songPdf">PDF Upload (Noten/Text)</label>
+                    <input type="file" id="songPdf" accept=".pdf"
+                        style="display: block; width: 100%; margin-bottom: 0.5rem;">
+                    <div id="songCurrentPdf" style="display: none; font-size: 0.85rem; color: var(--color-primary);">
+                        <span class="icon">📄</span> <span id="songPdfName">Keine Datei ausgewählt</span>
+                        <button type="button" class="btn btn-sm btn-danger" id="deleteSongPdfBtn"
+                            style="margin-left: 10px; padding: 2px 8px;">Löschen</button>
+                    </div>
+                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" class="btn btn-primary">Speichern</button>
@@ -2460,17 +2452,17 @@
 
     <!-- PDF Preview Modal -->
     <div id="pdfPreviewModal" class="modal">
-        <div class="modal-content pdf-preview-modal-content">
+        <div class="modal-content modal-xl" style="height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header">
-                <h2>PDF Vorschau</h2>
+                <h2 id="pdfPreviewTitle">PDF Vorschau</h2>
                 <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body pdf-preview-body">
-                <iframe id="pdfPreviewFrame" class="pdf-preview-frame"></iframe>
+            <div class="modal-body" style="flex: 1; padding: 0; overflow: hidden; position: relative;">
+                <iframe id="pdfPreviewFrame" src="" style="width: 100%; height: 100%; border: none;"></iframe>
             </div>
-            <div class="modal-footer pdf-preview-footer">
-                <button id="pdfPreviewCancel" class="btn btn-secondary">Abbrechen</button>
-                <button id="pdfPreviewDownload" class="btn btn-primary">📥 Jetzt herunterladen</button>
+            <div class="modal-actions" style="padding: var(--spacing-md); border-top: 1px solid var(--color-border);">
+                <a id="pdfPreviewDownload" href="#" download class="btn btn-secondary">📥 Jetzt herunterladen</a>
+                <button type="button" class="btn cancel" id="pdfPreviewCancel">Schließen</button>
             </div>
         </div>
     </div>

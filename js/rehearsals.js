@@ -1121,11 +1121,23 @@ const Rehearsals = {
         membersList.innerHTML = users.map(user => {
             if (!user) return '';
 
+            let instrumentText = '';
+            // Handle 'instrument' as comma-separated string (database format)
+            if (user.instrument) {
+                const instruments = user.instrument.split(',').map(s => s.trim()).filter(s => s);
+                if (instruments.length > 0) {
+                    instrumentText = `<span class="member-instruments">${Bands.escapeHtml(instruments.join(', '))}</span>`;
+                }
+            } else if (user.instruments && Array.isArray(user.instruments) && user.instruments.length > 0) {
+                instrumentText = `<span class="member-instruments">${Bands.escapeHtml(user.instruments.join(', '))}</span>`;
+            }
+
             return `
                 <div class="checkbox-item">
                     <input type="checkbox" id="notify_${user.id}" value="${user.id}" checked>
                     <label for="notify_${user.id}">
-                        ${Bands.escapeHtml(user.name)} (${Bands.escapeHtml(user.email)})
+                        <span>${Bands.escapeHtml(user.name)} (${Bands.escapeHtml(user.email)})</span>
+                        ${instrumentText}
                     </label>
                 </div>
             `;

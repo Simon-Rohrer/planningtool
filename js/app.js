@@ -785,37 +785,12 @@ const App = {
         return username || '?';
     },
 
-    setupPDFPreviewModal() {
-        const modal = document.getElementById('pdfPreviewModal');
-        if (!modal) return;
 
-        const downloadBtn = document.getElementById('pdfPreviewDownload');
-        const cancelBtn = document.getElementById('pdfPreviewCancel');
-
-        downloadBtn.addEventListener('click', () => {
-            if (this.currentPDFData && this.currentPDFData.pdf) {
-                this.currentPDFData.pdf.save(this.currentPDFData.filename || 'setlist.pdf');
-                UI.closeModal('pdfPreviewModal');
-                UI.showToast('PDF heruntergeladen!', 'success');
-                this.cleanupPDFPreview();
-            }
-        });
-
-        cancelBtn.addEventListener('click', () => {
-            UI.closeModal('pdfPreviewModal');
-            this.cleanupPDFPreview();
-        });
-
-        // Cleanup on close when clicking X
-        const closeBtn = modal.querySelector('.modal-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                this.cleanupPDFPreview();
-            });
-        }
-    },
 
     cleanupPDFPreview() {
+        const frame = document.getElementById('pdfPreviewFrame');
+        if (frame) frame.src = '';
+
         if (this.currentPDFData && this.currentPDFData.blobUrl) {
             URL.revokeObjectURL(this.currentPDFData.blobUrl);
             this.currentPDFData = null;
@@ -836,6 +811,150 @@ const App = {
         UI.openModal('pdfPreviewModal');
     },
 
+    setupInstrumentSelector(containerId, inputId, initialValue = "") {
+        const container = document.getElementById(containerId);
+        const input = document.getElementById(inputId);
+
+        if (!container || !input) {
+            console.warn(`Instrument selector not found: ${containerId} or ${inputId}`);
+            return;
+        }
+
+        // Instrument Options Map
+        const instrumentOptions = [
+            { value: 'Vocals', label: '🎤 Gesang' },
+            { value: 'Guitar', label: '🎸 Gitarre' },
+            { value: 'Bass', label: '🎸 Bass' },
+            { value: 'Drums', label: '🥁 Drums' },
+            { value: 'Keys', label: '🎹 Keys / Piano' },
+            { value: 'Brass', label: '🎷 Bläser' },
+            { value: 'Strings', label: '🎻 Streicher' }
+        ];
+
+        // Parse initial value
+        let selectedValues = initialValue ? initialValue.split(',').map(s => s.trim()).filter(s => s) : [];
+        input.value = selectedValues.join(',');
+
+        // 1. Build UI Structure
+        container.classList.add('custom-multiselect');
+        container.innerHTML = `
+            <div class="multiselect-trigger" tabindex="0">
+                <div class="multiselect-badges"></div>
+                <div class="multiselect-arrow">▼</div>
+            </div>
+            <div class="multiselect-menu">
+                ${instrumentOptions.map(opt => `
+                    <label class="multiselect-option">
+                        <input type="checkbox" value="${opt.value}">
+                        <span>${opt.label}</span>
+                    </label>
+                `).join('')}
+            </div>
+        `;
+
+        const trigger = container.querySelector('.multiselect-trigger');
+        const badgesContainer = container.querySelector('.multiselect-badges');
+        const menu = container.querySelector('.multiselect-menu');
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+
+        // Function to update visuals based on selectedValues
+        const updateVisuals = () => {
+            // Update Badges
+            badgesContainer.innerHTML = '';
+            if (selectedValues.length === 0) {
+                badgesContainer.innerHTML = '<span class="multiselect-placeholder">Instrumente wählen...</span>';
+            } else {
+                selectedValues.forEach(val => {
+                    const opt = instrumentOptions.find(o => o.value === val);
+                    if (opt) {
+                        const badge = document.createElement('span');
+                        badge.className = 'multiselect-badge';
+                        badge.textContent = opt.label;
+                        badgesContainer.appendChild(badge);
+                    }
+                });
+            }
+
+            // Update Checkboxes
+            checkboxes.forEach(cb => {
+                cb.checked = selectedValues.includes(cb.value);
+            });
+
+            // Update Input
+            input.value = selectedValues.join(',');
+        };
+
+        // Initial Update
+        updateVisuals();
+
+        // 2. Event Listeners
+
+        // Toggle Menu
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent bubbling to document click
+            const isOpen = menu.classList.contains('show');
+
+            // Close all other multiselects first (if any)
+            document.querySelectorAll('.multiselect-menu.show').forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('show');
+                    m.closest('.custom-multiselect')?.querySelector('.multiselect-trigger')?.classList.remove('active');
+                }
+            });
+
+            if (isOpen) {
+                menu.classList.remove('show');
+                trigger.classList.remove('active');
+            } else {
+                menu.classList.add('show');
+                trigger.classList.add('active');
+            }
+        });
+
+        // Checkbox Changes
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const val = e.target.value;
+                if (e.target.checked) {
+                    if (!selectedValues.includes(val)) selectedValues.push(val);
+                } else {
+                    selectedValues = selectedValues.filter(v => v !== val);
+                }
+                updateVisuals();
+            });
+            // Stop propagation on label click so it doesn't close menu if logic overlaps
+            cb.closest('label').addEventListener('click', (e) => e.stopPropagation());
+        });
+
+
+        // Close on Click Outside works via global listener usually, but we can add one locally or rely on global approach.
+        // Let's add a document listener (careful with duplication if function called multiple times, but OK for now as elements are replaced)
+        // Better: Named function for removal
+        const closeMenu = (e) => {
+            if (!container.contains(e.target)) {
+                menu.classList.remove('show');
+                trigger.classList.remove('active');
+            }
+        };
+
+        // Remove old listener if re-initializing on same container? 
+        // We cleared innerHTML so listeners on elements are gone, but document listener persists.
+        // Actually, we can attach to document once or handle it here.
+        // For simplicity, let's attach to document and rely on garbage collection if container is removed? No, that leaks.
+        // Let's attach to the trigger's `blur` or focusout? No, simpler click.
+        document.addEventListener('click', closeMenu);
+
+        // Cleanup function (optional but good practice)
+        // If we re-run setup, we might pile up listeners.
+        // For now, this simple implementation assumes the page doesn't re-render this component constantly without full refresh,
+        // EXCEPT for settings modal which might open/close.
+        // To avoid leaks: store cleanup on the container
+        if (container._cleanup) container._cleanup();
+        container._cleanup = () => {
+            document.removeEventListener('click', closeMenu);
+        };
+    },
+
     async init() {
         // Implement unsaved changes check
         window.isProfileDirty = false;
@@ -851,6 +970,9 @@ const App = {
                         }
                     );
                     return;
+                }
+                if (modalId === 'pdfPreviewModal') {
+                    this.cleanupPDFPreview();
                 }
                 UI._originalCloseModal.call(UI, modalId);
             };
@@ -874,8 +996,6 @@ const App = {
         this.setupMobileSubmenuToggle();
         this.setupSidebarNav();
         this.setupFeedbackModal();
-        this.setupPDFPreviewModal();
-
 
 
         // Start Auth initialization in background (non-blocking)
@@ -3536,6 +3656,12 @@ const App = {
         document.getElementById('songEventId').value = eventId || '';
         document.getElementById('songBandId').value = bandId || '';
 
+        // Reset PDF input
+        const pdfInput = document.getElementById('songPdf');
+        if (pdfInput) pdfInput.value = '';
+        const currentPdfContainer = document.getElementById('songCurrentPdf');
+        const pdfNameSpan = document.getElementById('songPdfName');
+
         if (songId) {
             // Edit existing song
             const song = await Storage.getById('songs', songId);
@@ -3551,6 +3677,17 @@ const App = {
                 document.getElementById('songInfo').value = song.info || '';
                 document.getElementById('songCcli').value = song.ccli || '';
                 document.getElementById('songLeadVocal').value = song.leadVocal || '';
+
+                // Show PDF info if exists
+                if (song.pdf_url) {
+                    currentPdfContainer.style.display = 'block';
+                    // Extract filename from URL
+                    const parts = song.pdf_url.split('/');
+                    const filename = parts[parts.length - 1];
+                    pdfNameSpan.textContent = filename.replace(/^song-pdf-\d+-\d+-/, ''); // Try to show a cleaner name
+                } else {
+                    currentPdfContainer.style.display = 'none';
+                }
             }
         } else {
             // New song
@@ -3564,9 +3701,16 @@ const App = {
             document.getElementById('songInfo').value = '';
             document.getElementById('songCcli').value = '';
             document.getElementById('songLeadVocal').value = '';
+            currentPdfContainer.style.display = 'none';
         }
 
         UI.openModal('songModal');
+
+        // Wire up PDF delete button (ensure it's only added once or remove old listener)
+        const deletePdfBtn = document.getElementById('deleteSongPdfBtn');
+        if (deletePdfBtn) {
+            deletePdfBtn.onclick = () => this.handleDeleteSongPdf();
+        }
     },
 
     async handleSaveSong() {
@@ -3586,6 +3730,50 @@ const App = {
         const leadVocal = document.getElementById('songLeadVocal').value;
         const user = Auth.getCurrentUser();
 
+        const pdfFileInput = document.getElementById('songPdf');
+        let pdfUrl = null;
+
+        // If editing, get existing song to preserve/delete PDF
+        let existingSong = null;
+        if (songId) {
+            existingSong = await Storage.getById('songs', songId);
+            if (existingSong) pdfUrl = existingSong.pdf_url;
+        }
+
+        // Handle File Upload
+        if (pdfFileInput && pdfFileInput.files.length > 0) {
+            UI.showLoading('PDF wird hochgeladen...');
+            const file = pdfFileInput.files[0];
+            const sb = SupabaseClient.getClient();
+
+            // Delete old PDF if exists
+            if (pdfUrl) {
+                const oldFileName = pdfUrl.split('/').pop();
+                if (oldFileName && oldFileName.startsWith('song-pdf-')) {
+                    await sb.storage.from('song-pdfs').remove([oldFileName]);
+                }
+            }
+
+            const fileExt = 'pdf';
+            const fileName = `song-pdf-${user.id}-${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await sb.storage
+                .from('song-pdfs')
+                .upload(fileName, file, { upsert: true });
+
+            if (uploadError) {
+                UI.hideLoading();
+                UI.showToast('Fehler beim PDF-Upload: ' + uploadError.message, 'error');
+                return;
+            }
+
+            const { data: { publicUrl } } = sb.storage
+                .from('song-pdfs')
+                .getPublicUrl(fileName);
+
+            pdfUrl = publicUrl;
+        }
+
         const songData = {
             title,
             artist,
@@ -3598,8 +3786,13 @@ const App = {
             info: info || null,
             ccli: ccli || null,
             leadVocal: leadVocal || null,
+            pdf_url: pdfUrl,
             createdBy: user.id
         };
+
+        if (pdfFileInput && pdfFileInput.files.length > 0) {
+            UI.hideLoading(); // Hide after successful upload
+        }
 
         // Only set one of eventId or bandId, not both
         if (eventId) {
@@ -3673,6 +3866,64 @@ const App = {
             } else if (bandId) {
                 await this.renderBandSongs(bandId);
             }
+
+            // Also refresh draft list if applicable
+            if (this.lastSongModalContext && this.lastSongModalContext.origin === 'createEvent') {
+                this.renderDraftEventSongs();
+            }
+        }
+    },
+
+    openPdfPreview(url, title) {
+        const modal = document.getElementById('pdfPreviewModal');
+        const frame = document.getElementById('pdfPreviewFrame');
+        const titleEl = document.getElementById('pdfPreviewTitle');
+        const downloadBtn = document.getElementById('pdfPreviewDownload');
+
+        if (!modal || !frame) return;
+
+        titleEl.textContent = title || 'PDF Vorschau';
+        frame.src = url;
+
+        if (downloadBtn) {
+            downloadBtn.href = url;
+            downloadBtn.setAttribute('download', (title || 'song').replace(/[/\\?%*:|"<>]/g, '-') + '.pdf');
+        }
+
+        UI.openModal('pdfPreviewModal');
+    },
+
+    async handleDeleteSongPdf() {
+        const songId = document.getElementById('songId').value;
+        if (!songId) return;
+
+        const confirm = await UI.confirmDelete('Möchtest du das PDF wirklich entfernen?');
+        if (!confirm) return;
+
+        try {
+            const song = await Storage.getById('songs', songId);
+            if (song && song.pdf_url) {
+                const sb = SupabaseClient.getClient();
+                const fileName = song.pdf_url.split('/').pop();
+
+                if (fileName && fileName.startsWith('song-pdf-')) {
+                    await sb.storage.from('song-pdfs').remove([fileName]);
+                }
+
+                await Storage.updateSong(songId, { pdf_url: null });
+                UI.showToast('PDF entfernt', 'success');
+
+                // Refresh modal
+                const currentPdfContainer = document.getElementById('songCurrentPdf');
+                if (currentPdfContainer) currentPdfContainer.style.display = 'none';
+
+                // Refresh list
+                if (song.eventId) await this.renderEventSongs(song.eventId);
+                if (song.bandId) await this.renderBandSongs(song.bandId);
+            }
+        } catch (err) {
+            console.error('Error deleting song PDF:', err);
+            UI.showToast('Fehler beim Löschen des PDFs', 'error');
         }
     },
 
@@ -3735,6 +3986,7 @@ const App = {
                             <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
+                            <th style="padding: var(--spacing-sm); text-align: center;">PDF</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">Infos</th>
                             <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
                             <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
@@ -3756,11 +4008,16 @@ const App = {
                                 <td style="padding: var(--spacing-sm);" data-label="Lead">${song.leadVocal || '-'}</td>
                                 <td style="padding: var(--spacing-sm);" data-label="Sprache">${song.language || '-'}</td>
                                 <td style="padding: var(--spacing-sm);" data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                                <td style="padding: var(--spacing-sm); text-align: center;" data-label="PDF">
+                                    ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">📄</button>` : '-'}
+                                </td>
                                 <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(song.info || '-')}</td>
                                 <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
                                 <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
-                                    <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
-                                    <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                                    <div style="display: flex; gap: 8px; justify-content: center;">
+                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
+                                        <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                                    </div>
                                 </td>
                             </tr>
                         `).join('')}
@@ -3831,13 +4088,33 @@ const App = {
 
 
         // Add event listeners for edit/delete
-        container.querySelectorAll('.edit-song').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.openSongModal(eventId, null, btn.dataset.id);
+        const attachEventSongListeners = () => {
+            container.querySelectorAll('.edit-song').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    this.openSongModal(eventId, null, btn.dataset.id);
+                });
             });
-        });
+
+            container.querySelectorAll('.delete-song').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    if (await UI.confirmDelete('Song wirklich aus dem Event entfernen?')) {
+                        await Storage.deleteSong(btn.dataset.id);
+                        UI.showToast('Song entfernt', 'success');
+                        this.renderEventSongs(eventId);
+                    }
+                });
+            });
+        };
+
+        attachEventSongListeners();
 
         // --- Drag and Drop Logic ---
         const tbody = document.getElementById('eventSongsTableBody');
@@ -4266,6 +4543,9 @@ const App = {
                     <td style="padding: var(--spacing-sm);" data-label="Lead Vocal">${song.leadVocal || '-'}</td>
                     <td style="padding: var(--spacing-sm);" data-label="Sprache">${song.language || '-'}</td>
                     <td style="padding: var(--spacing-sm);" data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                    <td style="padding: var(--spacing-sm); text-align: center;" data-label="PDF">
+                        ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">📄</button>` : '-'}
+                    </td>
                     <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${song.info ? this.escapeHtml(song.info) : '-'}</td>
                     <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
                     <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
@@ -4276,7 +4556,7 @@ const App = {
                     </td>
                 </tr>
             `).join('') :
-            `<tr><td colspan="13" style="padding: var(--spacing-xl); text-align: center; color: var(--color-text-light);">${searchTerm ? 'Keine Songs gefunden.' : 'Noch keine Songs hinzugefügt.'}</td></tr>`;
+            `<tr><td colspan="14" style="padding: var(--spacing-xl); text-align: center; color: var(--color-text-light);">${searchTerm ? 'Keine Songs gefunden.' : 'Noch keine Songs hinzugefügt.'}</td></tr>`;
 
         // Store songs for PDF export
         this.currentBandSongs = songs;
@@ -4334,6 +4614,7 @@ const App = {
                     <th class="sortable-header ${getSortClass('leadVocal')}" data-field="leadVocal" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Lead</th>
                     <th class="sortable-header ${getSortClass('language')}" data-field="language" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Sprache</th>
                     <th class="sortable-header ${getSortClass('tracks')}" data-field="tracks" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Tracks</th>
+                    <th style="padding: var(--spacing-sm); text-align: center;">PDF</th>
                     <th style="padding: var(--spacing-sm); text-align: left; min-width: 250px;">Infos</th>
                     <th class="sortable-header ${getSortClass('ccli')}" data-field="ccli" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">CCLI</th>
                     <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
@@ -4466,31 +4747,43 @@ const App = {
             });
         }
 
-        // Add event listeners
-        container.querySelectorAll('.edit-song').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.openSongModal(null, bandId, btn.dataset.id);
-            });
-        });
-
-        container.querySelectorAll('.delete-song').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const confirmed = await UI.confirmDelete('Möchtest du diesen Song wirklich löschen?');
-                if (confirmed) {
-                    UI.showLoading('Song wird gelöscht...');
-                    try {
-                        await Storage.deleteSong(btn.dataset.id);
-                        UI.hideLoading();
-                        UI.showToast('Song gelöscht', 'success');
-                        await this.renderBandSongs(bandId);
-                    } catch (error) {
-                        UI.hideLoading();
-                        console.error('Error deleting song:', error);
-                        UI.showToast('Fehler beim Löschen des Songs', 'error');
+        // Add event listeners for edit/delete
+        const attachSongListeners = () => {
+            container.querySelectorAll('.edit-song').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
                     }
-                }
+                    this.openSongModal(null, bandId, btn.dataset.id);
+                });
             });
-        });
+
+            container.querySelectorAll('.delete-song').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    const confirmed = await UI.confirmDelete('Möchtest du diesen Song wirklich löschen?');
+                    if (confirmed) {
+                        UI.showLoading('Song wird gelöscht...');
+                        try {
+                            await Storage.deleteSong(btn.dataset.id);
+                            UI.hideLoading();
+                            UI.showToast('Song gelöscht', 'success');
+                            await this.renderBandSongs(bandId);
+                        } catch (error) {
+                            UI.hideLoading();
+                            console.error('Error deleting song:', error);
+                            UI.showToast('Fehler beim Löschen des Songs', 'error');
+                        }
+                    }
+                });
+            });
+        };
+
+        attachSongListeners();
     },
 
     async renderDraftEventSongs() {
@@ -4520,6 +4813,7 @@ const App = {
                     <th style="padding: var(--spacing-sm); text-align: left;">Lead</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Sprache</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Tracks</th>
+                    <th style="padding: var(--spacing-sm); text-align: center;">PDF</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">Infos</th>
                     <th style="padding: var(--spacing-sm); text-align: left;">CCLI</th>
                     <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
@@ -4539,6 +4833,9 @@ const App = {
                         <td style="padding: var(--spacing-sm);" data-label="Lead">${song.leadVocal || '-'}</td>
                         <td style="padding: var(--spacing-sm);" data-label="Sprache">${song.language || '-'}</td>
                         <td style="padding: var(--spacing-sm);" data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                        <td style="padding: var(--spacing-sm); text-align: center;" data-label="PDF">
+                            ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">📄</button>` : '-'}
+                        </td>
                         <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(song.info || '-')}</td>
                         <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
                         <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
@@ -4932,8 +5229,14 @@ const App = {
         if (profileLastName) profileLastName.value = user.last_name || '';
         if (profileUsername) profileUsername.value = user.username || '';
         if (profileEmail) profileEmail.value = user.email || '';
-        if (profileInstrument) profileInstrument.value = user.instrument || '';
+        // if (profileInstrument) profileInstrument.value = user.instrument || ''; // Handled by setupInstrumentSelector
         if (profilePassword) profilePassword.value = '';
+
+        // Initialize Instrument Selector for Profile
+        // Delay slightly to ensure DOM is ready if cloned
+        setTimeout(() => {
+            this.setupInstrumentSelector('profileInstrumentSelector', 'profileInstrument', user.instrument || '');
+        }, 0);
 
         // Update profile display name preview
         const profileDisplayNamePreview = effectiveRoot.querySelector('#profileDisplayNamePreview');
@@ -8218,4 +8521,7 @@ window.App = App;
 document.addEventListener('DOMContentLoaded', () => {
     RichTextEditor.init();
     App.init();
+
+    // Setup registration instrument selector if present (landing page)
+    App.setupInstrumentSelector('registerInstrumentSelector', 'registerInstrument');
 });

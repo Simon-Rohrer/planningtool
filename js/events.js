@@ -1110,12 +1110,31 @@ const Events = {
         const users = await Promise.all(members.map(m => Storage.getById('users', m.userId)));
         const toSelect = selectedMembers || users.map(u => u.id);
 
-        container.innerHTML = users.map(user => `
+        container.innerHTML = users.map(user => {
+            if (!user) return '';
+
+            let instrumentText = '';
+            // Handle 'instrument' as comma-separated string (database format)
+            if (user.instrument) {
+                // If it's a string, split and join to ensure clean formatting, or just display
+                const instruments = user.instrument.split(',').map(s => s.trim()).filter(s => s);
+                if (instruments.length > 0) {
+                    instrumentText = `<span class="member-instruments">${Bands.escapeHtml(instruments.join(', '))}</span>`;
+                }
+            } else if (user.instruments && Array.isArray(user.instruments) && user.instruments.length > 0) {
+                // Fallback for array if that ever becomes the standard
+                instrumentText = `<span class="member-instruments">${Bands.escapeHtml(user.instruments.join(', '))}</span>`;
+            }
+
+            return `
             <div class="checkbox-item">
                 <input type="checkbox" id="member_${user.id}" value="${user.id}" ${toSelect.includes(user.id) ? 'checked' : ''}>
-                <label for="member_${user.id}">${Bands.escapeHtml(this._getUserName(user))}</label>
+                <label for="member_${user.id}">
+                    <span>${Bands.escapeHtml(this._getUserName(user))}</span>
+                    ${instrumentText}
+                </label>
             </div>
-        `).join('');
+        `}).join('');
     },
 
     async populateBandSelect() {
