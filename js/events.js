@@ -128,7 +128,10 @@ const Events = {
                 const eventVotes = dataContext.votes[event.id] || [];
                 const userVote = eventVotes.find(v => v.userId === user.id);
 
-                if (userVote) {
+                // Only count as voted if there is an active availability (not 'none')
+                const hasVoted = userVote && userVote.availability !== 'none';
+
+                if (hasVoted) {
                     votedEvents.push(event);
                 } else {
                     pendingEvents.push(event);
@@ -720,6 +723,14 @@ const Events = {
         this.invalidateCache();
         for (const vote of votes) {
             const existing = await Storage.getUserEventVoteForDate(user.id, eventId, vote.dateIndex);
+
+            if (vote.availability === 'none') {
+                if (existing) {
+                    await Storage.deleteVote(existing.id);
+                }
+                continue;
+            }
+
             if (existing) {
                 await Storage.update('votes', existing.id, {
                     availability: vote.availability

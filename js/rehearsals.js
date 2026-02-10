@@ -170,7 +170,7 @@ const Rehearsals = {
         for (const rehearsal of rehearsals) {
             // Check if user has voted in the pre-loaded batch
             const userVotes = userVotesBatch.filter(v => v.rehearsalId === rehearsal.id);
-            const hasVoted = userVotes && userVotes.length > 0;
+            const hasVoted = userVotes && userVotes.some(v => v.availability !== 'none');
 
             const isDone = rehearsal.status === 'confirmed' || rehearsal.status === 'cancelled';
 
@@ -590,6 +590,13 @@ const Rehearsals = {
         for (const vote of votes) {
             // Check if vote already exists for this user/rehearsal/date
             const existing = await Storage.getUserVoteForDate(user.id, rehearsalId, vote.dateIndex);
+
+            if (vote.availability === 'none') {
+                if (existing) {
+                    await Storage.deleteVote(existing.id);
+                }
+                continue;
+            }
 
             if (existing) {
                 // Update existing vote

@@ -7488,7 +7488,7 @@ const App = {
         try {
             const dashboardSectionsContainer = document.querySelector('.dashboard-bento-grid');
             if (dashboardSectionsContainer) {
-                const sectionIds = ['dashboardNewsSection', 'dashboardQuickAccessSection', 'dashboardCalendarSection', 'dashboardActivitySection'];
+                const sectionIds = ['dashboardNewsSection', 'dashboardQuickAccessSection', 'dashboardCalendarSection', 'dashboardActivitySection', 'dashboardUpcomingSection'];
                 let order = [];
                 try { order = JSON.parse(localStorage.getItem('dashboardSectionOrder') || 'null'); } catch { }
                 if (!Array.isArray(order) || order.length !== sectionIds.length) order = sectionIds;

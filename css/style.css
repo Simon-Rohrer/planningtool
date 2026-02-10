@@ -3088,33 +3088,28 @@ input:checked+.slider:before {
 /* Bento Grid */
 .dashboard-bento-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    /* Remove explicit row definition to allow auto-flow */
-    /* grid-template-rows: auto auto; */
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: var(--spacing-xl);
     margin-bottom: var(--spacing-3xl);
     grid-auto-rows: min-content;
-    /* Ensure rows adapt to content */
     align-items: start;
-    /* Prevent items from stretching to match tallest */
 }
 
-.news-section {
+.news-section,
+.upcoming-section {
     grid-column: span 2;
-    /* Remove span 2 to allow it to tuck under the first row */
     height: fit-content;
+}
+
+.upcoming-section,
+#dashboardActivitySection {
+    grid-row: span 2;
 }
 
 /* Specific overwrite to fix the news list height issue */
 .dashboard-news-list {
     max-height: 400px;
-    /* Optional cap if needed */
     overflow-y: auto;
-}
-
-/* Activities Section: Allow it to span multiple rows since it's usually tall */
-#dashboardActivitySection {
-    grid-row: span 2;
 }
 
 .dashboard-section {
@@ -3125,14 +3120,12 @@ input:checked+.slider:before {
     border: 1px solid var(--color-border);
     transition: all var(--transition-base);
     height: fit-content;
-    /* Ensure it only takes up needed space */
     display: flex;
     flex-direction: column;
 }
 
 .dashboard-section.news-section {
     height: fit-content;
-    /* Force fit content for news */
 }
 
 .dashboard-section:hover {
