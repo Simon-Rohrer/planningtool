@@ -42,6 +42,17 @@
             window.jsPDF = window.jspdf.jsPDF;
         }
     </script>
+    <!-- pdf.js for PDF to ChordPro (Stable version with CMaps) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+
+    <!-- Tesseract.js for OCR Fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script>
+        // Initialize pdf.js worker and CMaps
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        console.log('[pdf.js] Library initialized (3.11.174)');
+    </script>
 </head>
 
 <body>
@@ -361,11 +372,11 @@
                         </button>
                     </div>
 
-                    <!-- 5. ANALYSE -->
+                    <!-- 5. SONSTIGES -->
                     <div class="sidebar-group has-submenu">
                         <button class="sidebar-item sidebar-main">
                             <span class="sidebar-icon">📊</span>
-                            <span class="sidebar-label">Analyse</span>
+                            <span class="sidebar-label">Sonstiges</span>
                             <span class="submenu-arrow">▼</span>
                         </button>
                         <div class="sidebar-submenu">
@@ -376,6 +387,10 @@
                             <button class="sidebar-subitem" data-view="news">
                                 <span class="sidebar-icon">📰</span>
                                 <span class="sidebar-label">News</span>
+                            </button>
+                            <button class="sidebar-subitem" data-view="pdftochordpro">
+                                <span class="sidebar-icon">📄</span>
+                                <span class="sidebar-label">PDF to ChordPro</span>
                             </button>
                         </div>
                     </div>
@@ -504,11 +519,11 @@
                             </button>
                         </div>
 
-                        <!-- Analyse (Hauptreiter) -->
+                        <!-- Sonstiges (Hauptreiter) -->
                         <div class="nav-group">
                             <button class="nav-item nav-main" data-view="statistics">
                                 <span class="nav-icon">📊</span>
-                                <span class="nav-label">Analyse</span>
+                                <span class="nav-label">Sonstiges</span>
                             </button>
                             <div class="nav-submenu">
                                 <button class="nav-subitem" data-view="statistics">
@@ -518,6 +533,10 @@
                                 <button class="nav-subitem" data-view="news">
                                     <span class="nav-icon">📰</span>
                                     <span class="nav-label">News</span>
+                                </button>
+                                <button class="nav-subitem" data-view="pdftochordpro">
+                                    <span class="nav-icon">📄</span>
+                                    <span class="nav-label">PDF to ChordPro</span>
                                 </button>
                             </div>
                         </div>
@@ -767,6 +786,129 @@
                                 <div class="empty-icon">📰</div>
                                 <p>Noch keine News oder Updates vorhanden.</p>
                                 <p>Hier wirst du auf dem laufenden gehalten.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PDF to ChordPro View -->
+                    <div id="pdftochordproView" class="view">
+                        <div class="converter-container">
+                            <!-- Step 1: Upload -->
+                            <div id="converterUploadStep" class="converter-step">
+                                <div class="upload-dropzone" id="converterDropzone">
+                                    <div class="dropzone-inner">
+                                        <div class="dropzone-icon-wrapper">
+                                            <span class="dropzone-icon">📄</span>
+                                        </div>
+                                        <h3 class="dropzone-title">PDF hier ablegen</h3>
+                                        <p class="dropzone-subtitle">oder klicken zum Auswählen</p>
+                                        <button class="btn btn-secondary btn-sm"
+                                            style="pointer-events: none; margin-top: 1rem;">Datei wählen</button>
+                                        <input type="file" id="converterFileInput" accept=".pdf" style="display: none;">
+                                    </div>
+                                </div>
+                                <div id="converterFileStatus" style="margin-top: 1rem; text-align: center;"></div>
+                                <div style="text-align: center; margin-top: 2rem;">
+                                    <button id="startConversionAreaBtn" class="btn btn-primary btn-lg" disabled
+                                        style="padding: 1rem 2.5rem; font-size: 1.2rem;">🚀 Konvertierung
+                                        starten</button>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Result & Actions -->
+                            <div id="converterResultStep" class="converter-step" style="display: none;">
+                                <div id="converterDisclaimer" class="premium-alert-banner"
+                                    style="margin-bottom: 1.5rem;">
+                                    <div class="banner-content">
+                                        <span class="banner-icon">ℹ️</span>
+                                        <span class="banner-text"><strong>Hinweis:</strong> Dieser Text wurde
+                                            automatisch
+                                            konvertiert. Bitte prüfe Chords und Layout auf Korrektheit!</span>
+                                    </div>
+                                </div>
+
+                                <div class="result-layout">
+                                    <div class="result-actions horizontal-actions">
+                                        <div class="action-card compact">
+                                            <h4>💾 Zu Song hinzufügen</h4>
+                                            <div class="action-row">
+                                                <div class="form-group flex-2">
+                                                    <select id="converterBandSelect" class="form-select">
+                                                        <option value="">Band wählen...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group flex-2">
+                                                    <select id="converterSongSelect" class="form-select" disabled>
+                                                        <option value="">Song wählen...</option>
+                                                    </select>
+                                                </div>
+                                                <button id="converterSaveToSongBtn" class="btn btn-success" disabled>
+                                                    💾 Speichern
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="action-card compact side-actions">
+                                            <h4>⚙️ Aktionen</h4>
+                                            <div class="action-row">
+                                                <button id="converterDownloadBtn" class="btn btn-secondary">
+                                                    📥 Download (.cho)
+                                                </button>
+                                                <button id="converterResetBtn" class="btn btn-text">
+                                                    🔄 Neu starten
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="converter-split-container">
+                                        <!-- Left Column: Editor -->
+                                        <div class="split-column">
+                                            <div class="column-header">
+                                                <span>📝 Editor</span>
+                                            </div>
+                                            <textarea id="chordproResultArea" class="chordpro-editor" spellcheck="false"
+                                                placeholder="ChordPro Inhalt hier..."></textarea>
+                                        </div>
+
+                                        <!-- Draggable Gutter -->
+                                        <div class="split-gutter" id="converterSplitGutter">
+                                            <div class="gutter-handle">
+                                                <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor"
+                                                    stroke-width="2" fill="none" stroke-linecap="round"
+                                                    stroke-linejoin="round">
+                                                    <path d="M15 3h6v18h-6M10 17l-5-5 5-5M9 3v18" />
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        <!-- Right Column: Preview -->
+                                        <div class="split-column">
+                                            <div class="column-header">
+                                                <span>👁️ Vorschau</span>
+                                            </div>
+                                            <div id="chordproPreviewArea" class="chordpro-preview">
+                                                <div class="preview-placeholder">Vorschau erscheint hier...</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Loading Overlay for converter -->
+                            <div id="converterLoading" class="converter-overlay" style="display: none;">
+                                <div class="loader-content glass-card premium-loader">
+                                    <div class="loading-spinner"></div>
+                                    <div id="converterLoadingText" class="loading-status">Konvertiere PDF...</div>
+
+                                    <div id="converterProgressWrapper" class="progress-wrap" style="display: none;">
+                                        <div class="progress-track">
+                                            <div id="converterProgressBar" class="progress-fill" style="width: 0%">
+                                            </div>
+                                        </div>
+                                        <div id="converterProgressLabel" class="progress-label">0%</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2529,6 +2671,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
+    <script src="js/logger.js?v=20260131"></script>
     <script src="js/proxy-service.js?v=20260131"></script>
     <script src="js/supabase.js?v=20260131"></script>
     <script src="js/storage.js?v=20260131"></script>
@@ -2544,9 +2687,11 @@
     <script src="js/churchtools-api.js?v=20260131"></script>
     <script src="js/musikpool.js?v=20260131"></script>
     <script src="js/ui.js?v=20260131"></script>
-    <script src="js/logger.js?v=20260131"></script>
     <script src="js/feedback-service.js?v=20260131"></script>
+    <script src="js/chordpro-converter.js?v=20260131"></script>
     <script src="js/app.js?v=20260131"></script>
+
+    <!-- Skip duplicated pdf.js block -->
 
 
     <!-- Service Worker Registration -->

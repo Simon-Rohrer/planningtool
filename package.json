@@ -5,6 +5,7 @@
   "main": "index.html",
   "scripts": {
     "start": "python3 -m http.server 8000",
+    "dev": "browser-sync start --server --files \"index.html, css/*.css, js/*.js\" --no-notify --watch",
     "install-capacitor": "npm install @capacitor/core @capacitor/cli @capacitor/ios",
     "init-capacitor": "npx cap init",
     "add-ios": "npx cap add ios",
@@ -22,7 +23,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0"
+    "@capacitor/cli": "^8.0.2",
+    "browser-sync": "^3.0.4"
   },
   "dependencies": {
     "@capacitor/core": "^6.0.0",

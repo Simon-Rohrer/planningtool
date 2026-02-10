@@ -2075,10 +2075,11 @@ input:checked+.slider:before {
 
 /* Page Title in Main Header (Desktop: Left-aligned) */
 .header-page-title-main {
-    flex: 1;
-    margin-left: var(--spacing-lg);
+    margin-right: auto;
+    margin-left: var(--spacing-sm);
     display: flex;
     align-items: center;
+    justify-content: flex-start;
 }
 
 .header-page-title-main .header-page-title {
@@ -2129,7 +2130,6 @@ input:checked+.slider:before {
         position: relative !important;
     }
 
-    /* Center title on mobile - Forced Absolute centering regardless of side items */
     .header-page-title-main {
         position: absolute !important;
         left: 0 !important;
@@ -10742,6 +10742,650 @@ tr.drag-over {
     color: white !important;
 }
 
-.auth-white-card .multiselect-option:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
+/* PDF to ChordPro Converter Styles - Premium Overhaul */
+.converter-container {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-xl);
+}
+
+/* Glassmorphism Logic */
+.glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glass-input {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+.glass-input:focus {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: var(--color-primary-light) !important;
+}
+
+/* Premium Alert Banner */
+.premium-alert-banner {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+    border-left: 4px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.banner-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.banner-icon {
+    font-size: 1.25rem;
+}
+
+.banner-text {
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+}
+
+/* Layout */
+.result-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.horizontal-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: stretch;
+    margin-bottom: var(--spacing-md);
+}
+
+@media (max-width: 1100px) {
+    .horizontal-actions {
+        flex-direction: column;
+    }
+}
+
+.action-row {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.flex-2 {
+    flex: 2;
+}
+
+.side-actions {
+    flex: 1;
+    min-width: 320px;
+}
+
+/* Action Cards */
+.action-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    flex: 1;
+}
+
+.action-card.compact {
+    padding: var(--spacing-md) var(--spacing-xl);
+}
+
+.action-card h4 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-secondary);
+}
+
+/* Split View Container */
+.converter-split-container {
+    display: grid;
+    grid-template-columns: 1fr 10px minmax(0, 1fr);
+    /* Prevent overflow */
+    gap: 0;
+    width: 100%;
+    height: 75vh;
+}
+
+/* ... existing gutter styles ... */
+
+/* Tokens and Lines */
+.cp-line {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    margin-bottom: 0 !important;
+    /* Remove line spacing */
+    min-height: auto !important;
+    /* Remove fixed height */
+}
+
+.cp-token {
+    display: flex;
+    flex-direction: column;
+    margin-right: 0;
+}
+
+.cp-chord {
+    font-weight: 700;
+    font-size: 1rem !important;
+    color: #000000 !important;
+    height: 1.4em;
+    line-height: 1.4;
+    white-space: pre;
+    position: static !important;
+}
+
+/* Collapse empty chords to restore line spacing */
+.cp-chord:empty {
+    height: 0 !important;
+    display: none !important;
+}
+
+.cp-lyric {
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+    color: #000000 !important;
+    white-space: pre;
+}
+
+/* Draggable Gutter */
+.split-gutter {
+    background: transparent;
+    cursor: col-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    user-select: none;
+    z-index: 10;
+}
+
+.split-gutter:hover,
+.split-gutter.active {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.gutter-handle {
+    width: 24px;
+    height: 24px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.split-gutter:hover .gutter-handle,
+.split-gutter.active .gutter-handle {
+    transform: scale(1.1);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    box-shadow: 0 4px 8px rgba(99, 102, 241, 0.2);
+}
+
+@media (max-width: 900px) {
+    .converter-split-container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+}
+
+.split-column {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 50vh;
+}
+
+.column-header {
+    margin-bottom: var(--spacing-sm);
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Editor Styles */
+.chordpro-editor {
+    width: 100%;
+    height: 100%;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', monospace;
+    font-size: 1rem;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    flex: 1;
+}
+
+.chordpro-editor:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Preview Styles */
+.chordpro-preview {
+    width: 100%;
+    height: 100%;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 1rem;
+    line-height: 2.4;
+    /* Extra height for chords */
+    white-space: pre-wrap;
+    flex: 1;
+}
+
+.preview-placeholder {
+    color: var(--color-text-light);
+    text-align: center;
+    margin-top: 30%;
+    font-style: italic;
+}
+
+
+.btn-premium.btn-text {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Premium Editor */
+.chordpro-editor.glass-editor {
+    width: 100%;
+    height: 65vh;
+    background: rgba(15, 15, 15, 0.8) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', monospace;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    resize: none;
+    box-shadow: inset 0 4px 30px rgba(0, 0, 0, 0.5);
+    tab-size: 4;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.chordpro-editor.glass-editor:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(20, 20, 20, 0.9) !important;
+}
+
+/* Loading Overlay & Progress */
+.converter-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.premium-loader {
+    width: 380px;
+    padding: var(--spacing-3xl);
+    text-align: center;
+}
+
+.loading-status {
+    color: white;
+    font-weight: 600;
+    margin: var(--spacing-lg) 0;
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
+}
+
+.progress-wrap {
+    margin-top: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.progress-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #a855f7);
+    width: 0%;
+    transition: width 0.3s ease-out;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+}
+
+.progress-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        CHORDPRO CONVERTER & PREVIEW                        */
+/* -------------------------------------------------------------------------- */
+
+/* Upload Dropzone Polish */
+.upload-dropzone {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    border: 3px dashed var(--color-border);
+    border-radius: var(--radius-xl);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.drag-over {
+    border-color: var(--color-primary);
+    background: rgba(99, 102, 241, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.2);
+}
+
+.dropzone-inner {
+    text-align: center;
+    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    z-index: 2;
+}
+
+.dropzone-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    background: var(--color-surface);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--spacing-sm);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.upload-dropzone:hover .dropzone-icon-wrapper {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.dropzone-icon {
+    font-size: 2.5rem;
+}
+
+.dropzone-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text);
+}
+
+.dropzone-subtitle {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+
+/* Enhanced Preview Styling (PDF Look) */
+.chordpro-preview {
+    font-family: 'Inter', sans-serif;
+    /* Cleaner font for lyrics vs code */
+    line-height: 1.5;
+    padding: 40px;
+    /* More padding like a page */
+    background: white;
+    color: #1a1a1a;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Force dark text on white background for the "paper" look, even in dark mode */
+.chordpro-preview {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+.cp-metadata-block {
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 1rem;
+}
+
+.cp-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0 0 0.2rem 0;
+    color: #000;
+}
+
+.cp-artist {
+    font-size: 1.1rem;
+    color: #444;
+    margin: 0 0 0.5rem 0;
+    font-weight: 500;
+}
+
+.cp-meta-row {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+.cp-section-header {
+    font-weight: 800;
+    font-size: 1rem;
+    text-transform: uppercase;
+    color: #000;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* Clean Preview Typography - STRICT Monospace Alignment */
+.chordpro-preview {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', monospace !important;
+    font-size: 1rem !important;
+    /* EXACTLY match editor default */
+    line-height: 1.6 !important;
+    /* EXACTLY match editor default */
+    color: #000000 !important;
+    padding: 2rem !important;
+    background: #ffffff !important;
+    white-space: pre;
+    overflow-x: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Metadata Header */
+.cp-metadata-block {
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #333;
+    padding-bottom: 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+.cp-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    color: #000 !important;
+    line-height: 1.2;
+}
+
+.cp-artist {
+    font-size: 16px;
+    font-weight: 400;
+    margin: 0 0 0.5rem 0;
+    color: #333 !important;
+}
+
+.cp-meta-row {
+    font-size: 14px;
+    color: #333 !important;
+    margin-top: 0.5rem;
+}
+
+.cp-meta-row strong {
+    color: #000 !important;
+    font-weight: 600;
+}
+
+.cp-meta-row span {
+    margin: 0 0.5rem;
+    color: #666 !important;
+    /* Slight grey for separator */
+}
+
+.cp-copyright {
+    font-size: 0.75rem !important;
+    color: #666 !important;
+    margin-top: 0.5rem;
+    font-style: italic;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+/* Section Headers */
+.cp-section-header {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 1rem !important;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #000 !important;
+    display: block;
+    letter-spacing: 0.05em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+/* Tokens and Lines */
+.cp-line {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    margin-bottom: 0.5em !important;
+    min-height: 2.8em;
+}
+
+.cp-token {
+    display: flex;
+    flex-direction: column;
+    margin-right: 0;
+}
+
+.cp-chord {
+    font-weight: 700;
+    font-size: 1rem !important;
+    /* Match lyrics size */
+    color: #000000 !important;
+    height: 1.4em;
+    line-height: 1.4;
+    white-space: pre;
+    position: static !important;
+}
+
+.cp-lyric {
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+    color: #000000 !important;
+    white-space: pre;
+}
+
+/* FORCE High Contrast in Dark Mode too - The Preview is "Print View" */
+.theme-dark .chordpro-preview {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+
+.theme-dark .cp-title,
+.theme-dark .cp-artist,
+.theme-dark .cp-meta-row,
+.theme-dark .cp-meta-row strong,
+.theme-dark .cp-section-header,
+.theme-dark .cp-chord,
+.theme-dark .cp-lyric {
+    color: #000000 !important;
+}
+
+.theme-dark .cp-metadata-block {
+    border-bottom-color: #333 !important;
 }

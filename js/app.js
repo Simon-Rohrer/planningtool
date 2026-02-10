@@ -405,7 +405,8 @@ const App = {
             events: { label: 'Auftritte', icon: '🎸' },
             statistics: { label: 'Statistiken', icon: '📊' },
             news: { label: 'News', icon: '📰' },
-            settings: { label: 'Settings', icon: '⚙️' }
+            settings: { label: 'Settings', icon: '⚙️' },
+            pdftochordpro: { label: 'PDF to ChordPro', icon: '📄' }
         };
 
         const info = titleMap[view] || { label: 'BandManager', icon: '🎸' };
@@ -416,10 +417,11 @@ const App = {
             headerTitle.innerHTML = `<h2 class="header-page-title">${info.icon} ${info.label}</h2>`;
         }
 
-        // Keep container clean/hidden but synced with title for desktop
+        // Keep container clean but synced with title for desktop
+        // (Removing redundant title population to avoid double headers)
         const container = document.getElementById('headerSubmenu');
         if (container) {
-            container.innerHTML = `<h2 class="header-page-title desktop-only">${info.icon} ${info.label}</h2>`;
+            container.innerHTML = '';
         }
     },
 
@@ -996,6 +998,10 @@ const App = {
         this.setupMobileSubmenuToggle();
         this.setupSidebarNav();
         this.setupFeedbackModal();
+
+        if (typeof ChordProConverter !== 'undefined') {
+            ChordProConverter.init();
+        }
 
 
         // Start Auth initialization in background (non-blocking)
@@ -2402,6 +2408,7 @@ const App = {
                 'news': 'newsView',
                 'probeorte': 'probeorteView',
                 'tonstudio': 'probeorteView', // Redirect old tonstudio to probeorte
+                'pdftochordpro': 'pdftochordproView',
                 'kalender': 'kalenderView',
                 'musikpool': 'musikpoolView',
                 'settings': 'settingsView'
@@ -2433,6 +2440,7 @@ const App = {
                     statistics: '#2563eb', // blue
                     news: '#f59e0b', // warning
                     probeorte: '#9333ea', // purple
+                    pdftochordpro: '#4f46e5', // indigo
                     kalender: '#f43f5e', // rose
                     musikpool: '#0ea5e9' // cyan
                 };
@@ -2441,6 +2449,7 @@ const App = {
 
                 try {
                     UI.showView(viewId);
+                    this.updateHeaderSubmenu(view);
                 } catch (uiErr) {
                     console.error('[navigateTo] UI.showView error:', uiErr);
                 }
