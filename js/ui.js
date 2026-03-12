@@ -1,6 +1,8 @@
 // UI Utilities Module
 
 const UI = {
+    LOADING_TIMEOUT_MS: 25000,
+
     // Modal management
     openModal(modalId) {
         const modal = document.getElementById(modalId);
@@ -100,6 +102,14 @@ const UI = {
     closeModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
+            if (modalId === 'feedbackModal' && typeof App !== 'undefined' && typeof App.resetFeedbackModal === 'function') {
+                try {
+                    App.resetFeedbackModal();
+                } catch (err) {
+                    console.warn('[UI.closeModal] Could not reset feedback modal:', err);
+                }
+            }
+
             modal.classList.remove('active');
 
             // Check if any other modals are open before removing scroll lock
@@ -426,14 +436,72 @@ const UI = {
         });
     },
 
+    showErrorDialog(title = 'Fehler', message = 'Bitte versuche es später erneut.', onClose = null) {
+        let existing = document.getElementById('customErrorModal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'customErrorModal';
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 460px;">
+                <div class="modal-header">
+                    <h2>${title}</h2>
+                    <button class="modal-close" aria-label="Schließen">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin: 0; white-space: pre-line;">${message}</p>
+                </div>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; padding:12px;">
+                    <button id="errorOkBtn" class="btn btn-primary">Verstanden</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        document.body.classList.add('modal-open');
+
+        const close = () => {
+            modal.remove();
+            const activeModals = document.querySelectorAll('.modal.active');
+            const authOverlay = document.getElementById('authOverlay');
+            const authOverlayActive = Boolean(authOverlay && authOverlay.classList.contains('active'));
+            if (activeModals.length === 0 && !authOverlayActive) {
+                document.body.classList.remove('modal-open');
+            }
+            if (typeof onClose === 'function') onClose();
+        };
+
+        modal.querySelector('.modal-close').addEventListener('click', close);
+        modal.querySelector('#errorOkBtn').addEventListener('click', close);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) close();
+        });
+    },
+
     // Loading spinner: delayed appearance if operation exceeds delayMs (default 0ms for immediate feedback)
     _loaderTimer: null,
-    showLoading(message = 'Lädt...', delayMs = 0) {
+    _loaderTimeoutTimer: null,
+    _loaderSessionId: 0,
+    showLoading(message = 'Lädt...', delayMs = 0, options = {}) {
+        const config = (options && typeof options === 'object') ? options : {};
+        const timeoutMs = Number.isFinite(config.timeoutMs) ? config.timeoutMs : this.LOADING_TIMEOUT_MS;
+        const timeoutTitle = config.timeoutTitle || 'Zeitüberschreitung';
+        const timeoutMessage = config.timeoutMessage || 'Der Vorgang dauert zu lange.';
+        const onTimeout = typeof config.onTimeout === 'function' ? config.onTimeout : null;
+
         // Clear previous timer
         if (this._loaderTimer) {
             clearTimeout(this._loaderTimer);
             this._loaderTimer = null;
         }
+        if (this._loaderTimeoutTimer) {
+            clearTimeout(this._loaderTimeoutTimer);
+            this._loaderTimeoutTimer = null;
+        }
+
+        const sessionId = ++this._loaderSessionId;
+
         let loader = document.getElementById('globalLoader');
         if (!loader) {
             loader = document.createElement('div');
@@ -452,12 +520,33 @@ const UI = {
             loader.querySelector('.loader-message').textContent = message;
         }
 
+        const activateTimeout = () => {
+            if (!timeoutMs || timeoutMs <= 0) return;
+            this._loaderTimeoutTimer = setTimeout(() => {
+                if (this._loaderSessionId !== sessionId) return;
+                loader.style.display = 'none';
+                this._loaderTimeoutTimer = null;
+
+                if (typeof onTimeout === 'function') {
+                    try {
+                        onTimeout();
+                    } catch (err) {
+                        console.warn('[UI.showLoading] onTimeout callback failed:', err);
+                    }
+                }
+
+                this.showErrorDialog(timeoutTitle, `${timeoutMessage}\n\nBitte versuche es später erneut.`);
+            }, timeoutMs);
+        };
+
         if (delayMs > 0) {
             this._loaderTimer = setTimeout(() => {
                 loader.style.display = 'block';
+                activateTimeout();
             }, delayMs);
         } else {
             loader.style.display = 'block';
+            activateTimeout();
         }
     },
 
@@ -465,6 +554,10 @@ const UI = {
         if (this._loaderTimer) {
             clearTimeout(this._loaderTimer);
             this._loaderTimer = null;
+        }
+        if (this._loaderTimeoutTimer) {
+            clearTimeout(this._loaderTimeoutTimer);
+            this._loaderTimeoutTimer = null;
         }
         const loader = document.getElementById('globalLoader');
         if (loader) {

@@ -759,7 +759,14 @@ const App = {
                 return;
             }
             const subitem = e.target.closest('.nav-subitem');
-            const mainitem = e.target.closest('.nav-item.nav-main');
+            let mainitem = e.target.closest('.nav-item.nav-main');
+            if (!subitem && !mainitem) {
+                const fallbackGroup = e.target.closest('.nav-group');
+                if (fallbackGroup) {
+                    mainitem = fallbackGroup.querySelector('.nav-item.nav-main');
+                    console.log('[DEBUG] Using fallback mainitem from nav-group:', mainitem);
+                }
+            }
 
             console.log('[DEBUG] Closest subitem:', subitem);
             console.log('[DEBUG] Closest mainitem:', mainitem);
@@ -1034,6 +1041,27 @@ const App = {
                 }
             });
         }
+    },
+
+    resetFeedbackModal() {
+        const modal = document.getElementById('feedbackModal');
+        if (!modal) return;
+
+        const feedbackForm = document.getElementById('feedbackForm');
+        const bugForm = document.getElementById('bugReportForm');
+
+        if (feedbackForm) feedbackForm.reset();
+        if (bugForm) bugForm.reset();
+
+        modal.querySelectorAll('.settings-tab-btn').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === 'feedback');
+        });
+
+        modal.querySelectorAll('.feedback-tab-content').forEach(content => {
+            const isFeedbackTab = content.id === 'feedbackTabContent';
+            content.style.display = isFeedbackTab ? 'block' : 'none';
+            content.classList.toggle('active', isFeedbackTab);
+        });
     },
 
     // Update sidebar profile info
@@ -2361,17 +2389,6 @@ const App = {
             });
         });
 
-        // Update profile form
-        const updateProfileForm = document.getElementById('updateProfileForm');
-        if (updateProfileForm) {
-            updateProfileForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await this.handleUpdateProfile();
-            });
-        }
-
-
-
         // Create absence form
         const createAbsenceForm = document.getElementById('createAbsenceForm');
         if (createAbsenceForm) {
@@ -2831,6 +2848,10 @@ const App = {
                 } else if (view === 'statistics') {
                     await Statistics.initStatisticsFilters();
                     await Statistics.renderGeneralStatistics();
+                } else if (view === 'pdftochordpro') {
+                    if (typeof ChordProConverter !== 'undefined' && typeof ChordProConverter.loadBands === 'function') {
+                        await ChordProConverter.loadBands();
+                    }
                 } else if (view === 'news') {
                     await this.renderNewsView(triggerSource === 'news-refresh');
 
@@ -2974,7 +2995,9 @@ const App = {
 
         // Show the global loading overlay with guitar emoji
         const overlay = document.getElementById('globalLoadingOverlay');
-        if (overlay) {
+        if (typeof window.showGlobalLoadingOverlay === 'function') {
+            window.showGlobalLoadingOverlay();
+        } else if (overlay) {
             overlay.style.display = 'flex';
             overlay.style.opacity = '1';
         }
@@ -3057,7 +3080,9 @@ const App = {
 
         // Show the global loading overlay with guitar emoji
         const overlay = document.getElementById('globalLoadingOverlay');
-        if (overlay) {
+        if (typeof window.showGlobalLoadingOverlay === 'function') {
+            window.showGlobalLoadingOverlay();
+        } else if (overlay) {
             overlay.style.display = 'flex';
             overlay.style.opacity = '1';
         }
@@ -3270,8 +3295,12 @@ const App = {
         }
 
         if (overlay) {
-            overlay.style.display = 'flex';
-            overlay.style.opacity = '1';
+            if (typeof window.showGlobalLoadingOverlay === 'function') {
+                window.showGlobalLoadingOverlay();
+            } else {
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
+            }
         }
         Logger.time('News Full Refresh'); // Added missing start timer
         Logger.time('Render News');
@@ -3929,6 +3958,10 @@ const App = {
         return div.innerHTML;
     },
 
+    getSongInfoDisplay(song) {
+        return Storage.getSongInfoPreview(song) || '-';
+    },
+
     // Generic PDF Download for Song Lists
     async downloadSongListPDF(songs, title, subtitle = '', preview = true) {
         try {
@@ -4098,7 +4131,7 @@ const App = {
                 document.getElementById('songTimeSignature').value = song.timeSignature || '';
                 document.getElementById('songLanguage').value = song.language || '';
                 document.getElementById('songTracks').value = song.tracks || '';
-                document.getElementById('songInfo').value = song.info || '';
+                document.getElementById('songInfo').value = Storage.getSongPlainInfo(song);
                 document.getElementById('songCcli').value = song.ccli || '';
                 document.getElementById('songLeadVocal').value = song.leadVocal || '';
 
@@ -4149,7 +4182,7 @@ const App = {
         const timeSignature = document.getElementById('songTimeSignature').value;
         const language = document.getElementById('songLanguage').value;
         const tracks = document.getElementById('songTracks').value;
-        const info = document.getElementById('songInfo').value;
+        const plainInfo = document.getElementById('songInfo').value;
         const ccli = document.getElementById('songCcli').value;
         const leadVocal = document.getElementById('songLeadVocal').value;
         const user = Auth.getCurrentUser();
@@ -4163,6 +4196,8 @@ const App = {
             existingSong = await Storage.getById('songs', songId);
             if (existingSong) pdfUrl = existingSong.pdf_url;
         }
+
+        const existingChordPro = existingSong ? Storage.getSongChordPro(existingSong) : '';
 
         // Handle File Upload
         if (pdfFileInput && pdfFileInput.files.length > 0) {
@@ -4207,7 +4242,7 @@ const App = {
             timeSignature: timeSignature || null,
             language: language || null,
             tracks: tracks || null,
-            info: info || null,
+            info: Storage.composeSongInfoWithChordPro(plainInfo, existingChordPro),
             ccli: ccli || null,
             leadVocal: leadVocal || null,
             pdf_url: pdfUrl,
@@ -4250,6 +4285,7 @@ const App = {
                         info: created.info,
                         ccli: created.ccli,
                         leadVocal: created.leadVocal,
+                        pdf_url: created.pdf_url,
                         bandId: event.bandId,
                         createdBy: user.id
                     });
@@ -4435,7 +4471,7 @@ const App = {
                                 <td style="padding: var(--spacing-sm); text-align: center;" data-label="PDF">
                                     ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">📄</button>` : '-'}
                                 </td>
-                                <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(song.info || '-')}</td>
+                                <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
                                 <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
                                 <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
                                     <div style="display: flex; gap: 8px; justify-content: center;">
@@ -4841,6 +4877,7 @@ const App = {
                     tracks: bandSong.tracks,
                     info: bandSong.info,
                     ccli: bandSong.ccli,
+                    pdf_url: bandSong.pdf_url,
                     eventId: eventId,
                     createdBy: user.id
                 };
@@ -4893,6 +4930,7 @@ const App = {
                         tracks: bandSong.tracks,
                         info: bandSong.info,
                         ccli: bandSong.ccli,
+                        pdf_url: bandSong.pdf_url,
                         eventId: eventId,
                         order: orderCounter++,
                         createdBy: user.id
@@ -4917,7 +4955,7 @@ const App = {
             songs = songs.filter(s =>
                 (s.title || '').toLowerCase().includes(searchTerm) ||
                 (s.artist || '').toLowerCase().includes(searchTerm) ||
-                (s.info || '').toLowerCase().includes(searchTerm) ||
+                Storage.getSongPlainInfo(s).toLowerCase().includes(searchTerm) ||
                 (s.ccli || '').toLowerCase().includes(searchTerm)
             );
         }
@@ -4970,7 +5008,7 @@ const App = {
                     <td style="padding: var(--spacing-sm); text-align: center;" data-label="PDF">
                         ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">📄</button>` : '-'}
                     </td>
-                    <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${song.info ? this.escapeHtml(song.info) : '-'}</td>
+                    <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
                     <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
                     <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
                         <div style="display: flex; gap: 8px; justify-content: center;">
@@ -5260,7 +5298,7 @@ const App = {
                         <td style="padding: var(--spacing-sm); text-align: center;" data-label="PDF">
                             ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">📄</button>` : '-'}
                         </td>
-                        <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(song.info || '-')}</td>
+                        <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
                         <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
                         <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
                             <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen">❌</button>
@@ -5373,6 +5411,9 @@ const App = {
             mApp.classList.remove('active');
         }
 
+        document.body.classList.add('landing-active');
+        document.documentElement.classList.add('landing-active-root');
+
         const appDiv = document.getElementById('app');
         if (appDiv) appDiv.style.display = 'none';
 
@@ -5382,6 +5423,11 @@ const App = {
         // Safety: Ensure auth overlay is closed by default
         if (typeof UI !== 'undefined' && UI.toggleAuthOverlay) {
             UI.toggleAuthOverlay(false);
+        }
+
+        const rememberCheckbox = document.getElementById('loginRememberMe');
+        if (rememberCheckbox && typeof SupabaseClient !== 'undefined' && SupabaseClient.getRememberPreference) {
+            rememberCheckbox.checked = SupabaseClient.getRememberPreference();
         }
     },
 
@@ -5400,6 +5446,9 @@ const App = {
             mainApp.style.display = 'block';
             mainApp.classList.add('active'); // Trigger CSS rules
         }
+
+        document.body.classList.remove('landing-active');
+        document.documentElement.classList.remove('landing-active-root');
 
 
         // iOS-specific: Force complete layout recalculation and viewport refresh
@@ -5548,6 +5597,12 @@ const App = {
                 Calendar.loadCalendar();
             }
         }
+
+        if (typeof ChordProConverter !== 'undefined' && typeof ChordProConverter.loadBands === 'function') {
+            ChordProConverter.loadBands().catch(err => {
+                console.warn('[showApp] Could not pre-load ChordPro bands:', err);
+            });
+        }
     },
 
     // Update navigation visibility based on band membership
@@ -5668,7 +5723,7 @@ const App = {
         // Continue with existing logic...
 
         // Password confirmation field toggle
-        if (profilePassword && profilePasswordConfirmGroup) {
+        if (profilePassword && profilePasswordConfirmGroup && !profilePassword.dataset.confirmToggleAttached) {
             profilePassword.addEventListener('input', () => {
                 if (profilePassword.value.trim()) {
                     profilePasswordConfirmGroup.style.display = 'block';
@@ -5679,6 +5734,7 @@ const App = {
                     if (profilePasswordConfirm) profilePasswordConfirm.value = '';
                 }
             });
+            profilePassword.dataset.confirmToggleAttached = 'true';
         }
 
         // Default to profile tab
@@ -5726,7 +5782,7 @@ const App = {
 
         // Profile form in settings view (scoped)
         const updateProfileForm = root.querySelector('#updateProfileForm');
-        if (updateProfileForm) {
+        if (updateProfileForm && !updateProfileForm.dataset.submitHandlerAttached) {
             updateProfileForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
@@ -5891,6 +5947,7 @@ const App = {
                     UI.hideLoading();
                 }
             });
+            updateProfileForm.dataset.submitHandlerAttached = 'true';
         }
 
         if (isAdmin) {
@@ -6902,13 +6959,46 @@ const App = {
         container.innerHTML = await Promise.all(bands.map(async band => {
             const members = await Storage.getBandMembers(band.id);
             const isExpanded = this.expandedBandId === band.id;
+            const memberCards = await Promise.all(members.map(async member => {
+                const user = await Storage.getById('users', member.userId);
+                const displayName = user
+                    ? ((typeof UI.getUserDisplayName === 'function')
+                        ? UI.getUserDisplayName(user)
+                        : ((user.first_name && user.last_name)
+                            ? `${user.first_name} ${user.last_name}`
+                            : (user.username || 'Unbekannt')))
+                    : 'Benutzer nicht gefunden';
+                const secondaryLabel = user
+                    ? (user.username ? `@${user.username}` : (user.email || 'Kein Benutzername'))
+                    : `ID: ${member.userId}`;
+                const initials = (typeof UI.getUserInitials === 'function')
+                    ? UI.getUserInitials(displayName)
+                    : (displayName || '?').charAt(0).toUpperCase();
+                const roleClass = `role-${member.role}`;
+                const roleText = member.role === 'leader' ? 'Leiter' :
+                    member.role === 'co-leader' ? 'Co-Leiter' : 'Mitglied';
+
+                return `
+                    <div class="band-admin-member-card">
+                        <span class="band-admin-member-avatar">${Bands.escapeHtml(initials)}</span>
+                        <div class="band-admin-member-copy">
+                            <strong>${Bands.escapeHtml(displayName)}</strong>
+                            <small>${Bands.escapeHtml(secondaryLabel)}</small>
+                        </div>
+                        <span class="role-badge ${roleClass}">${roleText}</span>
+                    </div>
+                `;
+            }));
 
             return `
                 <div class="band-management-card accordion-card ${isExpanded ? 'expanded' : ''}" data-band-id="${band.id}">
                     <div class="accordion-header" data-band-id="${band.id}">
                         <div class="accordion-title">
                             <h4>${Bands.escapeHtml(band.name)}</h4>
-                            <p class="band-meta">${members.length} Mitglieder • Code: <b><code id="joinCode_${band.id}">${band.joinCode}</code></b></p>
+                            <p class="band-meta">
+                                <span>👥 ${members.length} Mitglieder</span>
+                                <span>🔑 <code id="joinCode_${band.id}">${band.joinCode}</code></span>
+                            </p>
                         </div>
                         <div class="accordion-actions">
                             <button class="btn btn-secondary btn-sm copy-code-btn" data-code="${band.joinCode}" data-id="${band.id}">📋 Code kopieren</button>
@@ -6929,24 +7019,12 @@ const App = {
                                     </div>
                                 ` : ''}
                                 
-                                <div class="detail-row">
-                                    <div class="detail-label">👥 Mitglieder (${members.length}):</div>
-                                    <div class="detail-value">
-                                        ${members.length > 0 ? (await Promise.all(members.map(async member => {
-                const user = await Storage.getById('users', member.userId);
-                if (!user) return '';
-
-                const roleClass = `role-${member.role}`;
-                const roleText = member.role === 'leader' ? 'Leiter' :
-                    member.role === 'co-leader' ? 'Co-Leiter' : 'Mitglied';
-
-                return `
-                                                <div class="member-item">
-                                                    <span class="member-name">${Bands.escapeHtml(user.name)}</span>
-                                                    <span class="role-badge ${roleClass}">${roleText}</span>
-                                                </div>
-                                            `;
-            }))).join('') : '<p class="text-muted">Keine Mitglieder</p>'}
+                                <div class="detail-row detail-row-members">
+                                    <div class="detail-label">👥 Mitglieder (${members.length})</div>
+                                    <div class="detail-value detail-value-members">
+                                        ${members.length > 0
+                                            ? `<div class="band-admin-member-list">${memberCards.join('')}</div>`
+                                            : '<p class="text-muted">Keine Mitglieder</p>'}
                                     </div>
                                 </div>
                                 
@@ -7665,6 +7743,9 @@ const App = {
             return;
         }
 
+        submenu.classList.add('probeorte-submenu');
+        calendarSection.classList.add('probeorte-calendar-section');
+
         // Clear existing tabs and containers
         submenu.innerHTML = '';
 
@@ -7672,9 +7753,12 @@ const App = {
         calendarSection.querySelectorAll('.calendar-container').forEach(container => {
             container.remove();
         });
+        calendarSection.querySelectorAll('.probeorte-empty-state').forEach(emptyState => {
+            emptyState.remove();
+        });
 
         if (!calendars || calendars.length === 0) {
-            submenu.innerHTML = '<p style="padding: 1rem; color: var(--color-text-secondary);">Keine Kalender vorhanden</p>';
+            calendarSection.innerHTML = '<div class="probeorte-empty-state">Keine Kalender vorhanden.</div>';
             return;
         }
 
@@ -7697,7 +7781,10 @@ const App = {
             const button = document.createElement('button');
             button.className = `calendar-tab ${index === 0 ? 'active' : ''}`;
             button.dataset.calendar = calId;
-            button.innerHTML = `${icon} ${name}`;
+            button.innerHTML = `
+                <span class="calendar-tab-icon" aria-hidden="true">${this.escapeHtml(icon)}</span>
+                <span class="calendar-tab-label">${this.escapeHtml(name)}</span>
+            `;
             button.addEventListener('click', async () => {
                 // Remove active class from all tabs and containers
                 submenu.querySelectorAll('.calendar-tab').forEach(tab => tab.classList.remove('active'));
@@ -7720,7 +7807,7 @@ const App = {
             // Create calendar container
             const containerDiv = document.createElement('div');
             containerDiv.id = `${calId}Calendar`;
-            containerDiv.className = `calendar-container ${index === 0 ? 'active' : ''}`;
+            containerDiv.className = `calendar-container probeorte-calendar-panel ${index === 0 ? 'active' : ''}`;
             containerDiv.innerHTML = `
                 <div id="${calId}EventsContainer" style="min-height: 400px;">
                     <!-- Events will be rendered here -->

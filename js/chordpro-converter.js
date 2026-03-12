@@ -2,11 +2,18 @@ const ChordProConverter = {
     selectedFile: null,
     extractedText: '',
     convertedChordPro: '',
+    hasConverted: false,
+    bandsLoadedForUserId: null,
+    songLoadRequestId: 0,
+    LOADING_TIMEOUT_MS: 90000,
+    loadingTimeoutHandle: null,
 
     init() {
         console.log('💎 [ChordProConverter] Initializing converter engine...');
         this.setupEventListeners();
         this.setupResizeHandle();
+        this.loadBands();
+        this.reset();
     },
 
     setupEventListeners() {
@@ -81,9 +88,14 @@ const ChordProConverter = {
             };
         }
 
+        if (songSelect) {
+            songSelect.onchange = () => this.syncActionState();
+        }
+
         if (editor) {
             editor.addEventListener('input', () => {
                 this.renderPreview(editor.value);
+                this.syncActionState();
             });
         }
     },
@@ -102,16 +114,11 @@ const ChordProConverter = {
         }
 
         this.selectedFile = file;
-        const statusEl = document.getElementById('converterFileStatus');
-        if (statusEl) {
-            statusEl.innerHTML = `<span style="color: var(--color-primary-light)"><strong>Ausgewählt:</strong></span> ${file.name}`;
-        }
-
-        const startBtn = document.getElementById('startConversionAreaBtn');
-        if (startBtn) {
-            startBtn.disabled = false;
-            console.log('✅ [ChordProConverter] Start button enabled');
-        }
+        this.hasConverted = false;
+        this.updateFileStatus('selected');
+        this.updateDisclaimer('ready');
+        this.syncActionState();
+        console.log('✅ [ChordProConverter] Start button enabled');
     },
 
     async startConversion() {
@@ -158,22 +165,15 @@ const ChordProConverter = {
                 this.renderPreview(this.convertedChordPro);
             }
 
-            // UI Transitions
-            const uploadStep = document.getElementById('converterUploadStep');
-            const resultStep = document.getElementById('converterResultStep');
-            const startBtn = document.getElementById('startConversionAreaBtn');
-
-            if (uploadStep) uploadStep.style.display = 'none';
-            if (resultStep) {
-                resultStep.style.display = 'block';
-                resultStep.style.animation = 'fadeIn 0.5s ease-out forwards';
-            }
-            if (startBtn) startBtn.style.display = 'none';
+            this.hasConverted = true;
+            this.updateFileStatus('converted');
+            this.updateDisclaimer('converted');
+            this.syncActionState();
 
             console.log('✨ [ChordProConverter] Pipeline finished successfully');
-            this.loadBands();
         } catch (err) {
             console.error('💥 [ChordProConverter] Critical error during conversion:', err);
+            this.updateDisclaimer('error', err.message);
             alert('Fehler bei der Konvertierung: ' + err.message);
         } finally {
             this.showLoading(false);
@@ -456,39 +456,63 @@ const ChordProConverter = {
     loadBands: async function () {
         console.log('🎸 [ChordProConverter] Loading bands for selection...');
         const bandSelect = document.getElementById('converterBandSelect');
+        if (!bandSelect) return;
+
         const user = Auth.getCurrentUser();
         if (!user) {
-            console.error('❌ [ChordProConverter] No active user session');
+            bandSelect.innerHTML = '<option value="">Band wählen...</option>';
+            this.bandsLoadedForUserId = null;
+            console.warn('⚠️ [ChordProConverter] No active user session yet, bands not loaded');
             return;
         }
+
+        if (this.bandsLoadedForUserId === user.id && bandSelect.options.length > 1) {
+            return;
+        }
+
         try {
             const bands = await Storage.getUserBands(user.id);
             bandSelect.innerHTML = '<option value="">Band wählen...</option>' +
                 bands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+            this.bandsLoadedForUserId = user.id;
             console.log(`  ✅ Loaded ${bands.length} bands`);
         } catch (err) {
+            this.bandsLoadedForUserId = null;
             console.error('❌ [ChordProConverter] Error loading bands:', err);
         }
     },
 
     handleBandSelected: async function (bandId) {
         const songSelect = document.getElementById('converterSongSelect');
-        const saveBtn = document.getElementById('converterSaveToSongBtn');
         if (!bandId) {
             songSelect.disabled = true;
-            saveBtn.disabled = true;
+            songSelect.value = '';
+            songSelect.innerHTML = '<option value="">Song wählen...</option>';
+            this.syncActionState();
             return;
         }
-        songSelect.disabled = false;
+        const requestId = ++this.songLoadRequestId;
+        songSelect.disabled = true;
         songSelect.innerHTML = '<option value="">Lade Songs...</option>';
         try {
-            const songs = await Storage.getBandSongs(bandId);
-            songSelect.innerHTML = '<option value="">Song wählen...</option>' +
-                songs.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
-            saveBtn.disabled = false;
+            const songs = await Storage.getBandSongChoices(bandId);
+            if (requestId !== this.songLoadRequestId) return;
+
+            songSelect.disabled = false;
+            songSelect.innerHTML = songs.length > 0
+                ? '<option value="">Song wählen...</option>' + songs.map(s => `<option value="${s.id}">${s.title}</option>`).join('')
+                : '<option value="">Keine Songs in dieser Band</option>';
+            songSelect.value = '';
+            this.syncActionState();
             console.log(`  ✅ Loaded ${songs.length} songs for band ${bandId}`);
         } catch (err) {
+            if (requestId !== this.songLoadRequestId) return;
+            songSelect.disabled = true;
+            songSelect.value = '';
+            songSelect.innerHTML = '<option value="">Songs konnten nicht geladen werden</option>';
+            this.syncActionState();
             console.error('❌ [ChordProConverter] Error loading songs:', err);
+            UI.showToast('Songs konnten nicht geladen werden. Bitte versuche es später erneut.', 'error');
         }
     },
 
@@ -497,19 +521,28 @@ const ChordProConverter = {
         const chordpro = document.getElementById('chordproResultArea').value;
         if (!songId) {
             console.warn('⚠️ [ChordProConverter] Save attempted without song selected');
-            alert('Bitte wähle einen Song aus.');
+            UI.showToast('Bitte wähle einen Song aus.', 'warning');
+            return;
+        }
+        if (!chordpro.trim()) {
+            UI.showToast('Es ist noch kein ChordPro-Inhalt vorhanden.', 'warning');
             return;
         }
 
         console.log(`💾 [ChordProConverter] Saving content to song ${songId}...`);
         this.showLoading(true, 'In Datenbank speichern...');
         try {
-            await Storage.updateSong(songId, { lyrics: chordpro });
-            console.log('✅ [ChordProConverter] Database update successful');
-            UI.showToast('Erfolgreich gespeichert!', 'success');
+            const result = await Storage.saveChordProToSong(songId, chordpro);
+            console.log('✅ [ChordProConverter] Database update successful via field:', result.field);
+
+            if (result.usedInfoFallback) {
+                UI.showToast('ChordPro im Song gespeichert. Aktuell wird dafür das Song-Infofeld genutzt.', 'success');
+            } else {
+                UI.showToast('ChordPro erfolgreich im Song gespeichert.', 'success');
+            }
         } catch (err) {
             console.error('❌ [ChordProConverter] Database update failed:', err);
-            alert('Fehler beim Speichern');
+            UI.showToast(err.message || 'Fehler beim Speichern', 'error');
         } finally {
             this.showLoading(false);
         }
@@ -517,6 +550,10 @@ const ChordProConverter = {
 
     downloadResult() {
         const text = document.getElementById('chordproResultArea').value;
+        if (!text.trim()) {
+            UI.showToast('Noch kein ChordPro-Inhalt zum Download vorhanden.', 'error');
+            return;
+        }
         const fileName = (this.selectedFile ? this.selectedFile.name.replace('.pdf', '') : 'converted') + '.cho';
         console.log(`📥 [ChordProConverter] Generating download file: ${fileName}`);
 
@@ -534,23 +571,10 @@ const ChordProConverter = {
         this.selectedFile = null;
         this.extractedText = '';
         this.convertedChordPro = '';
+        this.hasConverted = false;
 
         const fileInput = document.getElementById('converterFileInput');
         if (fileInput) fileInput.value = '';
-
-        const statusEl = document.getElementById('converterFileStatus');
-        if (statusEl) statusEl.innerHTML = '';
-
-        const startBtn = document.getElementById('startConversionAreaBtn');
-        if (startBtn) {
-            startBtn.disabled = true;
-            startBtn.style.display = 'block';
-        }
-
-        const uploadStep = document.getElementById('converterUploadStep');
-        const resultStep = document.getElementById('converterResultStep');
-        if (uploadStep) uploadStep.style.display = 'block';
-        if (resultStep) resultStep.style.display = 'none';
 
         const bandSelect = document.getElementById('converterBandSelect');
         if (bandSelect) bandSelect.value = '';
@@ -563,11 +587,15 @@ const ChordProConverter = {
 
         const previewArea = document.getElementById('chordproPreviewArea');
         if (previewArea) {
-            previewArea.innerHTML = '<div class="preview-placeholder">Vorschau erscheint hier...</div>';
+            previewArea.innerHTML = '<div class="preview-placeholder">Lade oben eine PDF hoch und starte die Konvertierung. Die Vorschau erscheint danach hier.</div>';
         }
 
         const resultArea = document.getElementById('chordproResultArea');
         if (resultArea) resultArea.value = '';
+
+        this.updateFileStatus('idle');
+        this.updateDisclaimer('idle');
+        this.syncActionState();
     },
 
     showLoading(show, text = 'Lädt...', progress = null) {
@@ -578,6 +606,11 @@ const ChordProConverter = {
         const progressLabel = document.getElementById('converterProgressLabel');
 
         if (!loading) return;
+
+        if (this.loadingTimeoutHandle) {
+            clearTimeout(this.loadingTimeoutHandle);
+            this.loadingTimeoutHandle = null;
+        }
 
         if (show) {
             loading.style.display = 'flex';
@@ -590,6 +623,20 @@ const ChordProConverter = {
             } else if (progressWrapper) {
                 progressWrapper.style.display = 'none';
             }
+
+            this.loadingTimeoutHandle = setTimeout(() => {
+                loading.style.display = 'none';
+                this.loadingTimeoutHandle = null;
+
+                if (typeof UI !== 'undefined' && typeof UI.showErrorDialog === 'function') {
+                    UI.showErrorDialog(
+                        'Zeitüberschreitung',
+                        'Die ChordPro-Verarbeitung dauert zu lange.\n\nBitte versuche es später erneut.'
+                    );
+                } else {
+                    alert('Die ChordPro-Verarbeitung dauert zu lange. Bitte versuche es später erneut.');
+                }
+            }, this.LOADING_TIMEOUT_MS);
         } else {
             loading.style.display = 'none';
         }
@@ -627,7 +674,7 @@ const ChordProConverter = {
         }
 
         if (!chordProText.trim()) {
-            previewArea.innerHTML = '<div class="preview-placeholder">Vorschau erscheint hier...</div>';
+            previewArea.innerHTML = '<div class="preview-placeholder">Lade oben eine PDF hoch und starte die Konvertierung. Die Vorschau erscheint danach hier.</div>';
             return;
         }
 
@@ -773,6 +820,103 @@ const ChordProConverter = {
         function isSectionHeader(k) {
             return ['chorus', 'verse', 'bridge', 'intro', 'outro', 'pre-chorus'].includes(k);
         }
+    },
+
+    updateFileStatus(state = 'idle') {
+        const statusEl = document.getElementById('converterFileStatus');
+        if (!statusEl) return;
+
+        if (state === 'selected' && this.selectedFile) {
+            const fileSize = `${(this.selectedFile.size / 1024 / 1024).toFixed(2)} MB`;
+            statusEl.innerHTML = `
+                <div class="converter-file-status-row is-selected">
+                    <span class="converter-file-pill">PDF bereit</span>
+                    <strong>${this.escapeHtml(this.selectedFile.name)}</strong>
+                    <span>${fileSize}</span>
+                </div>
+            `;
+            return;
+        }
+
+        if (state === 'converted' && this.selectedFile) {
+            statusEl.innerHTML = `
+                <div class="converter-file-status-row is-converted">
+                    <span class="converter-file-pill">Konvertiert</span>
+                    <strong>${this.escapeHtml(this.selectedFile.name)}</strong>
+                    <span>Editor und Vorschau wurden aktualisiert.</span>
+                </div>
+            `;
+            return;
+        }
+
+        statusEl.innerHTML = `
+            <div class="converter-file-status-row">
+                <span class="converter-file-pill is-muted">Warten auf PDF</span>
+                <span>Wähle oben eine PDF-Datei aus, um die Konvertierung zu starten.</span>
+            </div>
+        `;
+    },
+
+    updateDisclaimer(state = 'idle', errorMessage = '') {
+        const disclaimer = document.getElementById('converterDisclaimer');
+        const textEl = disclaimer ? disclaimer.querySelector('.banner-text') : null;
+        if (!disclaimer || !textEl) return;
+
+        disclaimer.classList.remove('is-idle', 'is-ready', 'is-converted', 'is-error');
+
+        if (state === 'ready') {
+            disclaimer.classList.add('is-ready');
+            textEl.innerHTML = '<strong>Status:</strong> PDF gewählt. Du kannst die Konvertierung jetzt starten.';
+            return;
+        }
+
+        if (state === 'converted') {
+            disclaimer.classList.add('is-converted');
+            textEl.innerHTML = '<strong>Hinweis:</strong> Automatisch konvertiert. Bitte Akkorde und Zeilen vor dem Speichern kurz prüfen.';
+            return;
+        }
+
+        if (state === 'error') {
+            disclaimer.classList.add('is-error');
+            textEl.innerHTML = `<strong>Fehler:</strong> ${this.escapeHtml(errorMessage || 'Die PDF konnte nicht verarbeitet werden.')}`;
+            return;
+        }
+
+        disclaimer.classList.add('is-idle');
+        textEl.innerHTML = '<strong>Status:</strong> PDF hochladen und konvertieren, dann werden Editor und Vorschau direkt befüllt.';
+    },
+
+    syncActionState() {
+        const startBtn = document.getElementById('startConversionAreaBtn');
+        const downloadBtn = document.getElementById('converterDownloadBtn');
+        const saveBtn = document.getElementById('converterSaveToSongBtn');
+        const songSelect = document.getElementById('converterSongSelect');
+        const editor = document.getElementById('chordproResultArea');
+
+        const hasFile = Boolean(this.selectedFile);
+        const hasContent = Boolean(editor && editor.value.trim());
+        const hasSong = Boolean(songSelect && songSelect.value);
+
+        if (startBtn) {
+            startBtn.disabled = !hasFile;
+        }
+
+        if (downloadBtn) {
+            downloadBtn.disabled = !hasContent;
+        }
+
+        if (saveBtn) {
+            saveBtn.disabled = !(hasContent && hasSong);
+        }
+    },
+
+    escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     },
 
     setupResizeHandle() {

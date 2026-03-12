@@ -141,7 +141,7 @@ const PDFGenerator = {
                     <td style="padding: 8px 5px; color: #4B5563; vertical-align: top;">${this.escapeHtml(song.leadVocal || '-')}</td>
                     <td style="padding: 8px 5px; color: #4B5563; vertical-align: top;">${this.escapeHtml(song.language || '-')}</td>
                     <td style="padding: 8px 5px; color: #4B5563; vertical-align: top;">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
-                    <td style="padding: 8px 5px; color: #4B5563; vertical-align: top; word-break: break-word;">${this.escapeHtml(song.info || '-')}</td>
+                    <td style="padding: 8px 5px; color: #4B5563; vertical-align: top; word-break: break-word;">${this.escapeHtml(Storage.getSongPlainInfo(song) || '-')}</td>
                     <td style="padding: 8px 5px; color: #4B5563; vertical-align: top; font-family: monospace;">${this.escapeHtml(song.ccli || '-')}</td>
                 </tr>
             `).join('')}

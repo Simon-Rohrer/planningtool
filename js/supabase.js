@@ -3,11 +3,110 @@
 
 const SupabaseClient = {
     client: null,
+    REMEMBER_ME_KEY: 'auth.rememberMe',
+    SESSION_EXPIRY_KEY: 'auth.sessionExpiry',
 
     isConfigured() {
         const url = localStorage.getItem('supabase.url');
         const key = localStorage.getItem('supabase.anonKey');
         return !!(url && key);
+    },
+
+    getProjectRef() {
+        try {
+            const url = localStorage.getItem('supabase.url');
+            if (!url) return null;
+            return new URL(url).hostname.split('.')[0] || null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    getAuthStoragePrefix() {
+        const projectRef = this.getProjectRef();
+        return projectRef ? `sb-${projectRef}-` : 'sb-';
+    },
+
+    hasLegacyPersistentSession() {
+        const prefix = this.getAuthStoragePrefix();
+        return Object.keys(localStorage).some(key => key.startsWith(prefix) && key.includes('auth-token'));
+    },
+
+    getRememberPreference() {
+        const saved = localStorage.getItem(this.REMEMBER_ME_KEY);
+        if (saved === 'true') return true;
+        if (saved === 'false') return false;
+        return this.hasLegacyPersistentSession();
+    },
+
+    setRememberPreference(remember) {
+        localStorage.setItem(this.REMEMBER_ME_KEY, remember ? 'true' : 'false');
+    },
+
+    getAuthStorage() {
+        return this.getRememberPreference() ? window.localStorage : window.sessionStorage;
+    },
+
+    getInactiveAuthStorage() {
+        return this.getRememberPreference() ? window.sessionStorage : window.localStorage;
+    },
+
+    getStorageAdapter() {
+        return {
+            getItem: (key) => {
+                return this.getAuthStorage().getItem(key);
+            },
+            setItem: (key, value) => {
+                this.getAuthStorage().setItem(key, value);
+                this.getInactiveAuthStorage().removeItem(key);
+            },
+            removeItem: (key) => {
+                window.localStorage.removeItem(key);
+                window.sessionStorage.removeItem(key);
+            }
+        };
+    },
+
+    setSessionExpiry(remember) {
+        const expiresAt = Date.now() + (remember ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000);
+        const activeStorage = this.getAuthStorage();
+        const inactiveStorage = this.getInactiveAuthStorage();
+        activeStorage.setItem(this.SESSION_EXPIRY_KEY, String(expiresAt));
+        inactiveStorage.removeItem(this.SESSION_EXPIRY_KEY);
+    },
+
+    getSessionExpiry() {
+        const value = this.getAuthStorage().getItem(this.SESSION_EXPIRY_KEY);
+        if (!value) return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    },
+
+    isStoredSessionExpired() {
+        const expiry = this.getSessionExpiry();
+        if (!expiry) return false;
+        return Date.now() > expiry;
+    },
+
+    clearStoredAuthSession() {
+        const prefix = this.getAuthStoragePrefix();
+        [window.localStorage, window.sessionStorage].forEach(storage => {
+            const keysToRemove = [];
+            for (let i = 0; i < storage.length; i++) {
+                const key = storage.key(i);
+                if (!key) continue;
+                if (key.startsWith(prefix)) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => storage.removeItem(key));
+            storage.removeItem(this.SESSION_EXPIRY_KEY);
+        });
+    },
+
+    prepareSessionPersistence(remember) {
+        this.setRememberPreference(remember);
+        this.clearStoredAuthSession();
     },
 
     init() {
@@ -22,7 +121,13 @@ const SupabaseClient = {
             const url = localStorage.getItem('supabase.url');
             const key = localStorage.getItem('supabase.anonKey');
             if (url && key && window.supabase) {
-                this.client = window.supabase.createClient(url, key);
+                this.client = window.supabase.createClient(url, key, {
+                    auth: {
+                        persistSession: true,
+                        autoRefreshToken: true,
+                        storage: this.getStorageAdapter()
+                    }
+                });
 
             } else {
                 this.client = null;

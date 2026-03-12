@@ -69,9 +69,65 @@
     <script>
         // Show loading overlay on first load, hide when app is ready
         window.addEventListener('DOMContentLoaded', function () {
+            const overlay = document.getElementById('globalLoadingOverlay');
+            const spinner = overlay ? overlay.querySelector('.guitar-spinner') : null;
+            const overlayTimeoutMs = 25000;
+            let overlayTimeoutHandle = null;
+            let overlayWasVisible = false;
+
+            function restartOverlaySpinner() {
+                if (!spinner) return;
+                spinner.style.animation = 'none';
+                spinner.style.transform = 'rotate(0deg) scale(1)';
+                void spinner.offsetWidth;
+                spinner.style.animation = 'guitarSpin 2s linear infinite';
+            }
+
+            function clearOverlayTimeout() {
+                if (overlayTimeoutHandle) {
+                    clearTimeout(overlayTimeoutHandle);
+                    overlayTimeoutHandle = null;
+                }
+            }
+
+            function scheduleOverlayTimeout() {
+                clearOverlayTimeout();
+                overlayTimeoutHandle = setTimeout(() => {
+                    if (!overlay) return;
+                    overlay.style.opacity = '0';
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                    }, 400);
+
+                    if (window.UI && typeof UI.showErrorDialog === 'function') {
+                        UI.showErrorDialog(
+                            'Zeitüberschreitung',
+                            'Der Ladevorgang dauert zu lange.\n\nBitte versuche es später erneut.'
+                        );
+                    } else {
+                        alert('Der Ladevorgang dauert zu lange. Bitte versuche es später erneut.');
+                    }
+                }, overlayTimeoutMs);
+            }
+
+            function showOverlayImmediately() {
+                if (!overlay) return;
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
+                restartOverlaySpinner();
+                scheduleOverlayTimeout();
+            }
+
+            function syncLandingStateClass() {
+                const landing = document.getElementById('landingPage');
+                const isLandingActive = Boolean(landing && landing.classList.contains('active'));
+                document.body.classList.toggle('landing-active', isLandingActive);
+                document.documentElement.classList.toggle('landing-active-root', isLandingActive);
+            }
+
             function hideOverlay() {
-                const overlay = document.getElementById('globalLoadingOverlay');
                 if (overlay) {
+                    clearOverlayTimeout();
                     overlay.style.opacity = '0';
                     setTimeout(() => overlay.style.display = 'none', 400);
                 }
@@ -80,19 +136,48 @@
             function checkAppReady() {
                 const app = document.getElementById('mainApp');
                 const landing = document.getElementById('landingPage');
+                syncLandingStateClass();
                 if ((app && app.style.display !== 'none') || (landing && landing.classList.contains('active'))) {
                     hideOverlay();
                     return true;
                 }
                 return false;
             }
+
+            syncLandingStateClass();
             // Observe DOM changes to detect when app is shown
             const observer = new MutationObserver(() => {
                 if (checkAppReady()) observer.disconnect();
             });
             observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+
+            if (overlay) {
+                const computedInitial = window.getComputedStyle(overlay);
+                overlayWasVisible = computedInitial.display !== 'none' && computedInitial.opacity !== '0';
+                if (overlayWasVisible) {
+                    scheduleOverlayTimeout();
+                }
+
+                const overlayObserver = new MutationObserver(() => {
+                    const computed = window.getComputedStyle(overlay);
+                    const isVisible = computed.display !== 'none' && computed.opacity !== '0';
+                    if (isVisible && !overlayWasVisible) {
+                        restartOverlaySpinner();
+                        scheduleOverlayTimeout();
+                    } else if (!isVisible && overlayWasVisible) {
+                        clearOverlayTimeout();
+                    }
+                    overlayWasVisible = isVisible;
+                });
+                overlayObserver.observe(overlay, { attributes: true, attributeFilter: ['style', 'class'] });
+            }
+
             // Fallback: hide after 3s if not already hidden
             setTimeout(hideOverlay, 3000);
+
+            window.restartGlobalLoadingOverlay = restartOverlaySpinner;
+            window.showGlobalLoadingOverlay = showOverlayImmediately;
+            window.clearGlobalLoadingOverlayTimeout = clearOverlayTimeout;
         });
         // Ensure loading overlay stays visible for at least one animation cycle
         (function () {
@@ -105,98 +190,208 @@
             window.hideGlobalLoadingOverlay = function () {
                 let elapsed = Date.now() - shownAt;
                 if (elapsed >= minTime) {
+                    if (typeof window.clearGlobalLoadingOverlayTimeout === 'function') {
+                        window.clearGlobalLoadingOverlayTimeout();
+                    }
                     overlay.style.display = 'none';
                 } else {
                     hideRequested = true;
                     setTimeout(() => {
-                        if (hideRequested) overlay.style.display = 'none';
+                        if (hideRequested) {
+                            if (typeof window.clearGlobalLoadingOverlayTimeout === 'function') {
+                                window.clearGlobalLoadingOverlayTimeout();
+                            }
+                            overlay.style.display = 'none';
+                        }
                     }, minTime - elapsed);
                 }
             };
             // Patch show logic if present
             window.showGlobalLoadingOverlay = function () {
                 overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
                 shownAt = Date.now();
                 hideRequested = false;
+                if (typeof window.restartGlobalLoadingOverlay === 'function') {
+                    window.restartGlobalLoadingOverlay();
+                }
             };
         })();
     </script>
-    <!-- EXACT REFERENCE DESIGN -->
     <div id="landingPage" class="landing-page active">
-        <header class="landing-header">
-            <div class="landing-logo">
-                <img src="images/logo-planning-transparent.png" alt="Band Planning" style="height: 150px; width: auto;">
-                <span>BAND PLANNING</span>
-            </div>
-            <nav class="landing-nav">
-                <!-- Buttons removed per user request -->
-            </nav>
-        </header>
+        <div class="landing-scene">
+            <header class="landing-header">
+                <div class="landing-logo">
+                    <div class="landing-logo-mark">
+                        <img src="images/logo-planning-transparent.png" alt="Band Planning">
+                    </div>
+                    <div class="landing-brand-copy">
+                        <span class="landing-brand-title">Band Planning</span>
+                        <span class="landing-brand-subtitle">Proben, Auftritte und Organisation an einem Ort</span>
+                    </div>
+                </div>
+                <nav class="landing-nav" aria-label="Startaktionen">
+                    <button type="button" class="landing-nav-action landing-nav-login"
+                        onclick="UI.toggleAuthOverlay(true, 'login')">Login</button>
+                    <button type="button" class="landing-nav-action landing-nav-register"
+                        onclick="UI.toggleAuthOverlay(true, 'register')">Registrieren</button>
+                </nav>
+            </header>
 
-        <main class="landing-main">
-            <h1 class="hero-welcome">Welcome</h1>
-            <p class="hero-sub">
-                Organisiere deine Proben, verwalte Auftritte und bleib mit deinem Team in Verbindung.
-                Alles an einem Ort.
-            </p>
-            <div class="landing-buttons"
-                style="margin-top: 2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-                <button class="btn-ref-learn" onclick="UI.toggleAuthOverlay(true, 'login')">Login</button>
-                <button class="btn-ref-outline" onclick="UI.toggleAuthOverlay(true, 'register')">Registrieren</button>
-            </div>
-        </main>
+            <main class="landing-main">
+                <section class="landing-hero-grid">
+                    <div class="landing-copy-column">
+                        <span class="landing-kicker">Bandplanung neu gedacht</span>
+                        <h1 class="hero-welcome">Welcome</h1>
+                        <p class="hero-sub">
+                            Organisiere deine Bandproben, plane Auftritte und verwalte alles an einem Ort.
+                        </p>
+                        <div class="landing-mobile-actions">
+                            <button type="button" class="landing-mobile-action landing-mobile-action-login"
+                                onclick="UI.toggleAuthOverlay(true, 'login')">Login</button>
+                            <button type="button" class="landing-mobile-action landing-mobile-action-register"
+                                onclick="UI.toggleAuthOverlay(true, 'register')">Registrieren</button>
+                        </div>
+                    </div>
 
-        <!-- Auth Overlay (White Card Reference) -->
+                    <div class="landing-showcase" aria-hidden="true">
+                        <div class="landing-showcase-glow"></div>
+                        <div class="landing-mobile-stage">
+                            <div class="landing-mobile-stage-copy">
+                                <span class="landing-mobile-stage-brand">Band Planning</span>
+                            </div>
+                            <div class="landing-mobile-stage-guitar"></div>
+                            <div class="landing-mobile-stage-headphones">
+                                <span class="landing-mobile-stage-ear left"></span>
+                                <span class="landing-mobile-stage-ear right"></span>
+                                <span class="landing-mobile-stage-band"></span>
+                            </div>
+                            <div class="landing-mobile-stage-table"></div>
+                        </div>
+
+                        <div class="landing-desk-device">
+                            <div class="landing-device-bar">
+                                <span class="landing-device-dot"></span>
+                                <span class="landing-device-dot"></span>
+                                <span class="landing-device-dot"></span>
+                            </div>
+                            <div class="landing-device-layout">
+                                <aside class="landing-device-sidebar">
+                                    <div class="landing-device-brand-row">Band Planning</div>
+                                    <span class="landing-device-nav active">Dashboard</span>
+                                    <span class="landing-device-nav">Termine</span>
+                                    <span class="landing-device-nav">Mitglieder</span>
+                                    <span class="landing-device-nav">Notizen</span>
+                                </aside>
+                                <div class="landing-device-content">
+                                    <div class="landing-preview-heading">
+                                        <strong>The SoundWave</strong>
+                                        <span>Naechste Termine</span>
+                                    </div>
+                                    <article class="landing-preview-card accent-blue">
+                                        <span class="landing-preview-date">Mittwoch, 24. Apr</span>
+                                        <strong>Bandprobe</strong>
+                                        <p>18:00 bis 20:00 Uhr · Rock'n'Roll Studio, Hamburg</p>
+                                    </article>
+                                    <article class="landing-preview-card accent-green">
+                                        <span class="landing-preview-date">Freitag, 17. Mai</span>
+                                        <strong>Konzert</strong>
+                                        <p>Music Hall, Hamburg · 20:00 Uhr</p>
+                                    </article>
+                                    <article class="landing-preview-card accent-violet">
+                                        <span class="landing-preview-date">Antworten im Blick</span>
+                                        <strong>4 von 5 Mitgliedern haben bestaetigt</strong>
+                                        <p>Abstimmungen und Rueckmeldungen in Echtzeit.</p>
+                                    </article>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="landing-phone-device">
+                            <div class="landing-phone-notch"></div>
+                            <div class="landing-phone-screen">
+                                <div class="landing-phone-top">
+                                    <span class="landing-phone-band">The SoundWave</span>
+                                    <span class="landing-phone-user"></span>
+                                </div>
+                                <div class="landing-phone-tabs">
+                                    <span class="active">Dashboard</span>
+                                    <span>Termine</span>
+                                </div>
+                                <article class="landing-phone-card accent-blue">
+                                    <span class="landing-preview-date">Mittwoch</span>
+                                    <strong>Bandprobe</strong>
+                                    <p>18:00 bis 20:00 Uhr</p>
+                                </article>
+                                <article class="landing-phone-card accent-violet">
+                                    <span class="landing-preview-date">Freitag</span>
+                                    <strong>Konzert</strong>
+                                    <p>Music Hall</p>
+                                </article>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
         <div id="authOverlay" class="landing-auth-overlay">
-            <div class="auth-white-card">
-                <div class="auth-close-wrapper">
-                    <button onclick="UI.toggleAuthOverlay(false)" class="auth-close-btn">&times;</button>
+            <div class="auth-white-card auth-mode-login">
+                <div class="auth-card-head">
+                    <div class="auth-card-copy">
+                        <span class="auth-card-kicker">Band Planning</span>
+                        <h2 class="auth-card-title">Dein Einstieg</h2>
+                        <p class="auth-card-subtitle">Melde dich an oder erstelle deinen Zugang fuer deine Band.</p>
+                    </div>
+                    <button type="button" onclick="UI.toggleAuthOverlay(false)" class="auth-close-btn"
+                        aria-label="Schliessen">&times;</button>
                 </div>
 
-                <!-- No Tabs anymore -->
+                <div class="auth-tabs" role="tablist" aria-label="Authentifizierung">
+                    <button type="button" class="auth-tab active" data-tab="login">Login</button>
+                    <button type="button" class="auth-tab" data-tab="register">Registrieren</button>
+                </div>
 
-                <!-- Login Form -->
                 <form id="loginForm" class="auth-form active">
-                    <h2 style="margin-bottom: 2rem; color: #333; font-size: 1.8rem; font-weight: 800;">Willkommen zurück
-                    </h2>
+                    <h3 class="auth-form-title">Willkommen zurueck</h3>
+                    <p class="auth-form-subtitle">Mit deinem Konto bist du in Sekunden wieder in der Planung.</p>
+
                     <div class="form-group">
                         <label for="loginUsername">Benutzername oder E-Mail</label>
                         <input type="text" id="loginUsername" placeholder="dein@name.de" required>
                     </div>
+
                     <div class="form-group">
                         <label for="loginPassword">Passwort</label>
                         <input type="password" id="loginPassword" placeholder="••••••••" required>
                     </div>
+
                     <div class="auth-actions-row">
                         <label class="auth-checkbox-label">
                             <input type="checkbox" id="loginRememberMe">
                             <span>Angemeldet bleiben</span>
                         </label>
+                    </div>
 
-                    </div>
                     <button type="submit" class="btn-submit">Anmelden</button>
-                    <div style="text-align: center; margin-top: 1.5rem;">
-                        <a href="privacy.html" target="_blank"
-                            style="color: #999; font-size: 0.8rem; text-decoration: none;">Datenschutzerklärung</a>
-                    </div>
-                    <div
-                        style="text-align: center; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                        <span style="color: #666; font-size: 0.9rem;">Noch keinen Account? </span>
-                        <a href="#" onclick="UI.switchAuthTab('register'); return false;"
-                            style="color: #8b5cf6; font-weight: 600; text-decoration: none;">Jetzt registrieren</a>
+
+                    <div class="auth-form-footer">
+                        <a href="privacy.html" target="_blank" class="auth-inline-link">Datenschutzerklaerung</a>
+                        <span>Noch keinen Account?
+                            <a href="#" onclick="UI.switchAuthTab('register'); return false;"
+                                class="auth-inline-link strong">Jetzt registrieren</a>
+                        </span>
                     </div>
                 </form>
 
-                <!-- Register Form -->
                 <form id="registerForm" class="auth-form">
-                    <h2 style="margin-bottom: 1.5rem; color: #333; font-size: 1.8rem; font-weight: 800;">Account
-                        erstellen
-                    </h2>
-                    <!-- Row 1: Code & Names (3 Cols) -->
-                    <div class="form-row">
+                    <h3 class="auth-form-title">Account erstellen</h3>
+                    <p class="auth-form-subtitle">Lege in wenigen Schritten dein Profil fuer deine Band an.</p>
+
+                    <div class="auth-grid auth-grid-3">
                         <div class="form-group">
                             <label for="registerCode">Code</label>
-                            <input type="text" id="registerCode" placeholder="Code" required>
+                            <input type="text" id="registerCode" placeholder="Band-Code" required>
                         </div>
                         <div class="form-group">
                             <label for="registerFirstName">Vorname</label>
@@ -208,18 +403,15 @@
                         </div>
                     </div>
 
-                    <!-- Row 2: User Details & Email (3 Cols) -->
-                    <div class="form-row">
+                    <div class="auth-grid auth-grid-3">
                         <div class="form-group">
                             <label for="registerUsername">Benutzername</label>
                             <input type="text" id="registerUsername" placeholder="max.music" required>
                         </div>
-
                         <div class="form-group">
                             <label for="registerEmail">E-Mail</label>
                             <input type="email" id="registerEmail" placeholder="max@mustermann.de" required>
                         </div>
-
                         <div class="form-group">
                             <label>Instrumente</label>
                             <div class="instrument-selector" id="registerInstrumentSelector"></div>
@@ -227,30 +419,30 @@
                         </div>
                     </div>
 
-                    <!-- Row 3: Passwords -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="auth-grid auth-grid-2">
                         <div class="form-group">
                             <label for="registerPassword">Passwort</label>
                             <input type="password" id="registerPassword" placeholder="••••••••" required>
                         </div>
                         <div class="form-group">
-                            <label for="registerPasswordConfirm">Bestätigen</label>
+                            <label for="registerPasswordConfirm">Bestaetigen</label>
                             <input type="password" id="registerPasswordConfirm" placeholder="••••••••" required>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="registerProfileImage" style="cursor: pointer;">Profilbild (Optional)</label>
-                        <input type="file" id="registerProfileImage" accept="image/*" style="font-size: 0.8rem;">
+                    <div class="form-group auth-upload-field">
+                        <label for="registerProfileImage">Profilbild (optional)</label>
+                        <input type="file" id="registerProfileImage" accept="image/*">
                     </div>
 
-                    <button type="submit" class="btn-submit">Kostenlos Registrieren</button>
+                    <button type="submit" class="btn-submit">Kostenlos registrieren</button>
 
-                    <div
-                        style="text-align: center; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                        <span style="color: #666; font-size: 0.9rem;">Bereits registriert? </span>
-                        <a href="#" onclick="UI.switchAuthTab('login'); return false;"
-                            style="color: #8b5cf6; font-weight: 600; text-decoration: none;">Zum Login</a>
+                    <div class="auth-form-footer">
+                        <a href="privacy.html" target="_blank" class="auth-inline-link">Datenschutzerklaerung</a>
+                        <span>Bereits registriert?
+                            <a href="#" onclick="UI.switchAuthTab('login'); return false;"
+                                class="auth-inline-link strong">Zum Login</a>
+                        </span>
                     </div>
                 </form>
             </div>
@@ -697,7 +889,7 @@
 
                     <!-- Bands View -->
                     <div id="bandsView" class="view">
-                        <div class="view-actions-bar">
+                        <div class="view-actions-bar bands-view-actions">
                             <button id="createBandBtnView" class="btn btn-primary">
                                 + Band erstellen
                             </button>
@@ -717,20 +909,55 @@
                             <button id="createEventBtn" class="btn btn-primary">+ Neuer Auftritt</button>
                         </div>
 
-                        <div id="eventsListPendingHeader" class="rehearsal-section-header">
-                            <h3>👋 Offene Auftritts-Anfragen</h3>
-                        </div>
-                        <div id="eventsListPending" class="events-list" style="margin-bottom: 2rem;"></div>
+                        <div class="schedule-board" id="eventsScheduleBoard">
+                            <div class="schedule-status-overview">
+                                <button type="button" class="schedule-status-card is-active" data-events-status="pending">
+                                    <span class="schedule-status-icon" aria-hidden="true">👋</span>
+                                    <span class="schedule-status-eyebrow">Offen</span>
+                                    <strong id="eventsStatusCountPending">0</strong>
+                                    <span class="schedule-status-caption">Wartet auf deine Rueckmeldung</span>
+                                </button>
+                                <button type="button" class="schedule-status-card" data-events-status="voted">
+                                    <span class="schedule-status-icon" aria-hidden="true">🗳️</span>
+                                    <span class="schedule-status-eyebrow">Abgestimmt</span>
+                                    <strong id="eventsStatusCountVoted">0</strong>
+                                    <span class="schedule-status-caption">Von dir bereits beantwortet</span>
+                                </button>
+                                <button type="button" class="schedule-status-card" data-events-status="resolved">
+                                    <span class="schedule-status-icon" aria-hidden="true">🎸</span>
+                                    <span class="schedule-status-eyebrow">Fest</span>
+                                    <strong id="eventsStatusCountResolved">0</strong>
+                                    <span class="schedule-status-caption">Bestaetigte Auftritte</span>
+                                </button>
+                            </div>
 
-                        <div id="eventsListVotedHeader" class="rehearsal-section-header">
-                            <h3>✅ Meine Abstimmungen</h3>
                         </div>
-                        <div id="eventsListVoted" class="events-list" style="margin-bottom: 2rem;"></div>
 
-                        <div id="eventsListResolvedHeader" class="rehearsal-section-header">
-                            <h3>🎸 Feste Auftritte</h3>
+                        <div class="schedule-panels">
+                            <section class="schedule-panel is-active" data-events-panel="pending">
+                                <div id="eventsListPendingHeader" class="rehearsal-section-header schedule-panel-header">
+                                    <h3>👋 Offene Auftritts-Anfragen</h3>
+                                    <p>Hier siehst du alles, was noch auf Rueckmeldungen wartet.</p>
+                                </div>
+                                <div id="eventsListPending" class="events-list"></div>
+                            </section>
+
+                            <section class="schedule-panel" data-events-panel="voted">
+                                <div id="eventsListVotedHeader" class="rehearsal-section-header schedule-panel-header">
+                                    <h3>✅ Meine Abstimmungen</h3>
+                                    <p>Deine Antworten sind drin. Diese Auftritte warten noch auf eine finale Entscheidung.</p>
+                                </div>
+                                <div id="eventsListVoted" class="events-list"></div>
+                            </section>
+
+                            <section class="schedule-panel" data-events-panel="resolved">
+                                <div id="eventsListResolvedHeader" class="rehearsal-section-header schedule-panel-header">
+                                    <h3>🎸 Feste Auftritte</h3>
+                                    <p>Bereits bestaetigte Termine, kompakt und schnell auffindbar.</p>
+                                </div>
+                                <div id="eventsList" class="events-list"></div>
+                            </section>
                         </div>
-                        <div id="eventsList" class="events-list"></div>
                     </div>
 
                     <!-- Rehearsals View -->
@@ -741,21 +968,55 @@
                             </select>
                             <button id="createRehearsalBtn" class="btn btn-primary">+ Neuer Probetermin</button>
                         </div>
-                        <div id="rehearsalsListPendingHeader" class="rehearsal-section-header">
-                            <h3>👋 Offene Abstimmungen</h3>
-                        </div>
-                        <div id="rehearsalsListPending" class="rehearsal-list" style="margin-bottom: 2rem;"></div>
 
-                        <div id="rehearsalsListVotedHeader" class="rehearsal-section-header">
-                            <h3>✅ Bereits abgestimmt</h3>
-                        </div>
-                        <div id="rehearsalsListVoted" class="rehearsal-list"></div>
+                        <div class="schedule-board" id="rehearsalsScheduleBoard">
+                            <div class="schedule-status-overview">
+                                <button type="button" class="schedule-status-card is-active" data-rehearsals-status="pending">
+                                    <span class="schedule-status-icon" aria-hidden="true">👋</span>
+                                    <span class="schedule-status-eyebrow">Offen</span>
+                                    <strong id="rehearsalsStatusCountPending">0</strong>
+                                    <span class="schedule-status-caption">Wartet auf deine Rueckmeldung</span>
+                                </button>
+                                <button type="button" class="schedule-status-card" data-rehearsals-status="voted">
+                                    <span class="schedule-status-icon" aria-hidden="true">🗳️</span>
+                                    <span class="schedule-status-eyebrow">Abgestimmt</span>
+                                    <strong id="rehearsalsStatusCountVoted">0</strong>
+                                    <span class="schedule-status-caption">Von dir bereits beantwortet</span>
+                                </button>
+                                <button type="button" class="schedule-status-card" data-rehearsals-status="resolved">
+                                    <span class="schedule-status-icon" aria-hidden="true">🎼</span>
+                                    <span class="schedule-status-eyebrow">Fest</span>
+                                    <strong id="rehearsalsStatusCountResolved">0</strong>
+                                    <span class="schedule-status-caption">Bestaetigte Proben</span>
+                                </button>
+                            </div>
 
-                        <div id="rehearsalsListResolvedHeader" class="rehearsal-section-header"
-                            style="margin-top: 2rem; opacity: 0.8;">
-                            <h3>✅ Bestätigte Proben</h3>
                         </div>
-                        <div id="rehearsalsListResolved" class="rehearsal-list resolved-list" style="opacity: 0.8;">
+
+                        <div class="schedule-panels">
+                            <section class="schedule-panel is-active" data-rehearsals-panel="pending">
+                                <div id="rehearsalsListPendingHeader" class="rehearsal-section-header schedule-panel-header">
+                                    <h3>👋 Offene Abstimmungen</h3>
+                                    <p>Diese Proben brauchen noch deine Antwort oder eine finale Bestaetigung.</p>
+                                </div>
+                                <div id="rehearsalsListPending" class="rehearsal-list"></div>
+                            </section>
+
+                            <section class="schedule-panel" data-rehearsals-panel="voted">
+                                <div id="rehearsalsListVotedHeader" class="rehearsal-section-header schedule-panel-header">
+                                    <h3>✅ Bereits abgestimmt</h3>
+                                    <p>Du hast reagiert. Diese Proben laufen noch durch den Abstimmungsprozess.</p>
+                                </div>
+                                <div id="rehearsalsListVoted" class="rehearsal-list"></div>
+                            </section>
+
+                            <section class="schedule-panel" data-rehearsals-panel="resolved">
+                                <div id="rehearsalsListResolvedHeader" class="rehearsal-section-header schedule-panel-header">
+                                    <h3>✅ Bestaetigte Proben</h3>
+                                    <p>Feste Proben, kompakt geordnet und schnell wiederzufinden.</p>
+                                </div>
+                                <div id="rehearsalsListResolved" class="rehearsal-list resolved-list"></div>
+                            </section>
                         </div>
                     </div>
 
@@ -796,102 +1057,124 @@
                     <!-- PDF to ChordPro View -->
                     <div id="pdftochordproView" class="view">
                         <div class="converter-container">
-                            <!-- Step 1: Upload -->
-                            <div id="converterUploadStep" class="converter-step">
-                                <div class="upload-dropzone" id="converterDropzone">
-                                    <div class="dropzone-inner">
-                                        <div class="dropzone-icon-wrapper">
-                                            <span class="dropzone-icon">📄</span>
+                            <div class="converter-workspace">
+                                <div class="converter-top-grid">
+                                    <div id="converterUploadStep" class="converter-step converter-upload-panel action-card converter-surface-card">
+                                        <div class="converter-card-head">
+                                            <div>
+                                                <span class="converter-card-eyebrow">Import</span>
+                                                <h3 class="converter-card-title">PDF importieren</h3>
+                                                <p class="converter-card-subtitle">PDF auswählen, konvertieren und den ChordPro-Text direkt daneben bearbeiten.</p>
+                                            </div>
                                         </div>
-                                        <h3 class="dropzone-title">PDF hier ablegen</h3>
-                                        <p class="dropzone-subtitle">oder klicken zum Auswählen</p>
-                                        <button class="btn btn-secondary btn-sm"
-                                            style="pointer-events: none; margin-top: 1rem;">Datei wählen</button>
-                                        <input type="file" id="converterFileInput" accept=".pdf" style="display: none;">
-                                    </div>
-                                </div>
-                                <div id="converterFileStatus" style="margin-top: 1rem; text-align: center;"></div>
-                                <div style="text-align: center; margin-top: 2rem;">
-                                    <button id="startConversionAreaBtn" class="btn btn-primary btn-lg" disabled
-                                        style="padding: 1rem 2.5rem; font-size: 1.2rem;">🚀 Konvertierung
-                                        starten</button>
-                                </div>
-                            </div>
-
-                            <!-- Step 2: Result & Actions -->
-                            <div id="converterResultStep" class="converter-step" style="display: none;">
-                                <div id="converterDisclaimer" class="premium-alert-banner"
-                                    style="margin-bottom: 1.5rem;">
-                                    <div class="banner-content">
-                                        <span class="banner-icon">ℹ️</span>
-                                        <span class="banner-text"><strong>Hinweis:</strong> Dieser Text wurde
-                                            automatisch
-                                            konvertiert. Bitte prüfe Chords und Layout auf Korrektheit!</span>
-                                    </div>
-                                </div>
-
-                                <div class="result-layout">
-                                    <div class="result-actions horizontal-actions">
-                                        <div class="action-card compact">
-                                            <h4>💾 Zu Song hinzufügen</h4>
-                                            <div class="action-row">
-                                                <div class="form-group flex-2">
-                                                    <select id="converterBandSelect" class="form-select">
-                                                        <option value="">Band wählen...</option>
-                                                    </select>
+                                        <div class="converter-info-note">
+                                            <span class="converter-info-icon">♪</span>
+                                            <p>ChordPro-Dateien kannst du in Apps wie <strong>OnSong</strong> oder <strong>Songbook Pro</strong> nutzen, um Songs sauber zu importieren und zum Beispiel Tonarten schnell zu transponieren.</p>
+                                        </div>
+                                        <div class="upload-dropzone" id="converterDropzone">
+                                            <div class="dropzone-inner">
+                                                <div class="dropzone-icon-wrapper">
+                                                    <span class="dropzone-icon">📄</span>
                                                 </div>
-                                                <div class="form-group flex-2">
-                                                    <select id="converterSongSelect" class="form-select" disabled>
-                                                        <option value="">Song wählen...</option>
-                                                    </select>
-                                                </div>
-                                                <button id="converterSaveToSongBtn" class="btn btn-success" disabled>
-                                                    💾 Speichern
-                                                </button>
+                                                <h3 class="dropzone-title">PDF hier ablegen</h3>
+                                                <p class="dropzone-subtitle">oder klicken zum Auswählen</p>
+                                                <button class="btn btn-secondary btn-sm converter-upload-trigger"
+                                                    style="pointer-events: none; margin-top: 1rem;">Datei wählen</button>
+                                                <input type="file" id="converterFileInput" accept=".pdf" style="display: none;">
                                             </div>
                                         </div>
-
-                                        <div class="action-card compact side-actions">
-                                            <h4>⚙️ Aktionen</h4>
-                                            <div class="action-row">
-                                                <button id="converterDownloadBtn" class="btn btn-secondary">
-                                                    📥 Download (.cho)
-                                                </button>
-                                                <button id="converterResetBtn" class="btn btn-text">
-                                                    🔄 Neu starten
-                                                </button>
-                                            </div>
+                                        <div id="converterFileStatus" class="converter-file-status">
+                                            Noch keine PDF ausgewählt.
+                                        </div>
+                                        <div class="converter-upload-actions">
+                                            <button id="startConversionAreaBtn" class="btn btn-primary btn-lg" disabled>
+                                                🚀 PDF konvertieren
+                                            </button>
                                         </div>
                                     </div>
 
-                                    <div class="converter-split-container">
-                                        <!-- Left Column: Editor -->
-                                        <div class="split-column">
-                                            <div class="column-header">
-                                                <span>📝 Editor</span>
+                                    <div class="converter-side-stack">
+                                        <div class="converter-step converter-sidebar-card action-card converter-surface-card">
+                                            <div class="converter-card-head converter-sidebar-head">
+                                                <div>
+                                                    <span class="converter-card-eyebrow">Workflow</span>
+                                                    <h3 class="converter-card-title">Weiterverarbeiten</h3>
+                                                    <p class="converter-card-subtitle">Konvertierten Inhalt prüfen, einem Song zuordnen oder direkt exportieren.</p>
+                                                </div>
                                             </div>
-                                            <textarea id="chordproResultArea" class="chordpro-editor" spellcheck="false"
-                                                placeholder="ChordPro Inhalt hier..."></textarea>
-                                        </div>
 
-                                        <!-- Draggable Gutter -->
-                                        <div class="split-gutter" id="converterSplitGutter">
-                                            <div class="gutter-handle">
-                                                <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor"
-                                                    stroke-width="2" fill="none" stroke-linecap="round"
-                                                    stroke-linejoin="round">
-                                                    <path d="M15 3h6v18h-6M10 17l-5-5 5-5M9 3v18" />
-                                                </svg>
+                                            <div id="converterDisclaimer" class="premium-alert-banner converter-status-banner is-idle">
+                                                <div class="banner-content">
+                                                    <span class="banner-icon">ℹ️</span>
+                                                    <span class="banner-text"><strong>Status:</strong> PDF hochladen und konvertieren, dann werden Editor und Vorschau direkt befüllt.</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="converter-sidebar-section">
+                                                <h4>💾 Zu Song hinzufügen</h4>
+                                                <div class="converter-form-stack">
+                                                    <div class="form-group">
+                                                        <select id="converterBandSelect" class="form-select">
+                                                            <option value="">Band wählen...</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <select id="converterSongSelect" class="form-select" disabled>
+                                                            <option value="">Song wählen...</option>
+                                                        </select>
+                                                    </div>
+                                                    <button id="converterSaveToSongBtn" class="btn btn-success converter-primary-side-action" disabled>
+                                                        💾 Speichern
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="converter-sidebar-section converter-sidebar-actions">
+                                                <h4>⚙️ Aktionen</h4>
+                                                <div class="converter-inline-actions">
+                                                    <button id="converterDownloadBtn" class="btn btn-secondary" disabled>
+                                                        📥 Download (.cho)
+                                                    </button>
+                                                    <button id="converterResetBtn" class="btn btn-text converter-reset-btn">
+                                                        🔄 Zurücksetzen
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
 
-                                        <!-- Right Column: Preview -->
-                                        <div class="split-column">
-                                            <div class="column-header">
-                                                <span>👁️ Vorschau</span>
+                                <div id="converterResultStep" class="converter-step converter-result-panel action-card converter-surface-card">
+                                    <div class="result-layout">
+                                        <div class="converter-split-container">
+                                            <!-- Left Column: Editor -->
+                                            <div class="split-column converter-pane converter-pane-editor">
+                                                <div class="column-header">
+                                                    <span>📝 Editor</span>
+                                                </div>
+                                                <textarea id="chordproResultArea" class="chordpro-editor" spellcheck="false"
+                                                    placeholder="Nach der Konvertierung erscheint der ChordPro-Inhalt hier. Du kannst den Text danach direkt bearbeiten."></textarea>
                                             </div>
-                                            <div id="chordproPreviewArea" class="chordpro-preview">
-                                                <div class="preview-placeholder">Vorschau erscheint hier...</div>
+
+                                            <!-- Draggable Gutter -->
+                                            <div class="split-gutter" id="converterSplitGutter">
+                                                <div class="gutter-handle">
+                                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor"
+                                                        stroke-width="2" fill="none" stroke-linecap="round"
+                                                        stroke-linejoin="round">
+                                                        <path d="M15 3h6v18h-6M10 17l-5-5 5-5M9 3v18" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+
+                                            <!-- Right Column: Preview -->
+                                            <div class="split-column converter-pane converter-pane-preview">
+                                                <div class="column-header">
+                                                    <span>👁️ Vorschau</span>
+                                                </div>
+                                                <div id="chordproPreviewArea" class="chordpro-preview">
+                                                    <div class="preview-placeholder">Lade oben eine PDF hoch und starte die Konvertierung. Die Vorschau erscheint danach hier.</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -916,23 +1199,26 @@
                         </div>
                     </div>
                     <!-- Probeorte View -->
-                    <div id="probeorteView" class="view">
+                    <div id="probeorteView" class="view probeorte-view">
 
                         <!-- Submenu for calendar selection -->
-                        <div class="calendar-submenu">
+                        <div class="calendar-submenu probeorte-submenu">
                             <button id="probeorteBtnTonstudio" class="calendar-tab active" data-calendar="tonstudio">
-                                🎙️ Tonstudio
+                                <span class="calendar-tab-icon" aria-hidden="true">🎙️</span>
+                                <span class="calendar-tab-label">Tonstudio</span>
                             </button>
                             <button id="probeorteBtnFesthalle" class="calendar-tab" data-calendar="festhalle">
-                                🏛️ JMS Festhalle
+                                <span class="calendar-tab-icon" aria-hidden="true">🏛️</span>
+                                <span class="calendar-tab-label">JMS Festhalle</span>
                             </button>
                             <button id="probeorteBtnAnkersaal" class="calendar-tab" data-calendar="ankersaal">
-                                ⚓ Ankersaal
+                                <span class="calendar-tab-icon" aria-hidden="true">⚓</span>
+                                <span class="calendar-tab-label">Ankersaal</span>
                             </button>
                             <!-- refresh button removed per request -->
                         </div>
 
-                        <div class="section">
+                        <div class="section probeorte-calendar-section">
                             <!-- Tonstudio Calendar -->
                             <div id="tonstudioCalendar" class="calendar-container active">
                                 <div id="tonstudioEventsContainer" style="min-height: 400px;">
@@ -1088,19 +1374,44 @@
 
         <!-- Settings Modal -->
         <div id="settingsModal" class="modal">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2>Settings</h2>
+            <div class="modal-content modal-large settings-modal-content">
+                <div class="modal-header settings-modal-header">
+                    <div class="settings-modal-title-wrap">
+                        <span class="settings-modal-title-icon">⚙️</span>
+                        <div class="settings-modal-title-copy">
+                            <span class="settings-modal-kicker">Konto &amp; Verwaltung</span>
+                            <h2>Einstellungen</h2>
+                        </div>
+                    </div>
                     <button class="modal-close">&times;</button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body settings-modal-body">
+                    <div class="settings-shell">
                     <div class="settings-tabs">
                         <button id="settingsTabProfile" class="settings-tab-btn active"
-                            data-tab="profile">Profil</button>
+                            data-tab="profile">
+                            <span class="settings-tab-icon">👤</span>
+                            <span class="settings-tab-label">
+                                <strong>Profil</strong>
+                                <small>Konto, Bild und Sicherheit</small>
+                            </span>
+                        </button>
                         <button id="settingsTabAbsences" class="settings-tab-btn"
-                            data-tab="absences">Abwesenheiten</button>
+                            data-tab="absences">
+                            <span class="settings-tab-icon">🗓️</span>
+                            <span class="settings-tab-label">
+                                <strong>Abwesenheiten</strong>
+                                <small>Urlaub, Fehlzeiten und Planung</small>
+                            </span>
+                        </button>
                         <button id="settingsTabAdmin" class="settings-tab-btn" data-tab="admin"
-                            style="display: none;">Admin</button>
+                            style="display: none;">
+                            <span class="settings-tab-icon">🛠️</span>
+                            <span class="settings-tab-label">
+                                <strong>Admin</strong>
+                                <small>Nutzer, Bands und Probeorte</small>
+                            </span>
+                        </button>
                     </div>
 
 
@@ -1108,12 +1419,47 @@
 
                     <!-- Profile Tab -->
                     <div id="profileSettingsTab" class="settings-tab-content active">
-                        <div class="section">
-                            <h3 style="margin-bottom: 1.5rem;">Mein Profil & Einstellungen</h3>
+                        <div class="settings-pane">
+                            <div class="settings-pane-intro">
+                                <div>
+                                    <span class="settings-pane-kicker">Profil</span>
+                                    <h3>Mein Profil</h3>
+                                    <p>Verwalte persönliche Daten, Instrumente und deinen sicheren Zugang an einem Ort.</p>
+                                </div>
+                            </div>
 
                             <form id="updateProfileForm" class="profile-settings-grid">
-
-                                <!-- Removed separate sidebar column -->
+                                <div class="profile-sidebar-column profile-settings-summary">
+                                    <div class="profile-summary-card">
+                                        <div class="profile-avatar-wrapper profile-avatar-wrapper-summary">
+                                            <div id="profileImageSettingsContainer"
+                                                style="width:100%; height:100%; border-radius:50%; overflow:hidden;">
+                                                <!-- Profile Image Rendered by JS -->
+                                            </div>
+                                            <label for="profileImageInput" class="profile-avatar-edit-btn"
+                                                title="Profilbild ändern">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round"
+                                                    stroke-linejoin="round">
+                                                    <path
+                                                        d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                                                    </path>
+                                                    <circle cx="12" cy="13" r="4"></circle>
+                                                </svg>
+                                            </label>
+                                            <input type="file" id="profileImageInput" accept="image/*" hidden>
+                                        </div>
+                                        <div class="profile-summary-copy">
+                                            <span class="settings-column-kicker">Profilbild</span>
+                                            <h4 id="profileDisplayNamePreview">Dein Profil</h4>
+                                            <p>Verwalte dein Bild, deine Basisdaten und deine Sicherheit in einem klaren Ablauf.</p>
+                                        </div>
+                                        <button type="button" id="deleteProfileImageBtn" class="btn-image-remove">
+                                            Bild entfernen
+                                        </button>
+                                    </div>
+                                </div>
 
                                 <!-- Right Column: Form Fields -->
                                 <div class="profile-main-column">
@@ -1124,36 +1470,6 @@
                                             <span>👤</span> Persönliche Daten
                                         </div>
                                         <div class="profile-form-grid">
-                                            <!-- Avatar Section Merged -->
-                                            <div class="profile-avatar-merged-section full-width">
-                                                <div class="profile-avatar-wrapper small-merged">
-                                                    <div id="profileImageSettingsContainer"
-                                                        style="width:100%; height:100%; border-radius:50%; overflow:hidden;">
-                                                        <!-- Profile Image Rendered by JS -->
-                                                    </div>
-                                                    <label for="profileImageInput" class="profile-avatar-edit-btn"
-                                                        title="Profilbild ändern">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                            stroke-width="2" stroke-linecap="round"
-                                                            stroke-linejoin="round">
-                                                            <path
-                                                                d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
-                                                            </path>
-                                                            <circle cx="12" cy="13" r="4"></circle>
-                                                        </svg>
-                                                    </label>
-                                                    <input type="file" id="profileImageInput" accept="image/*" hidden>
-                                                </div>
-                                                <div class="profile-sub-actions">
-                                                    <h4 id="profileDisplayNamePreview" style="margin:0 0 0.5rem 0;">Dein
-                                                        Profil</h4>
-                                                    <button type="button" id="deleteProfileImageBtn"
-                                                        class="btn-image-remove">
-                                                        Bild entfernen
-                                                    </button>
-                                                </div>
-                                            </div>
                                             <!-- Personal Data Fields -->
                                             <div class="form-group">
                                                 <label for="profileFirstName">Vorname</label>
@@ -1209,9 +1525,7 @@
                                                     autocomplete="new-password">
                                             </div>
                                         </div>
-                                        <small
-                                            style="display:block; margin-top:0.5rem; color:var(--color-text-secondary);">Leer
-                                            lassen, wenn du dein Passwort nicht ändern möchtest.</small>
+                                        <small class="settings-inline-note">Leer lassen, wenn du dein Passwort nicht ändern möchtest.</small>
                                     </div>
 
                                     <!-- Actions -->
@@ -1222,9 +1536,9 @@
                                         <button id="deleteAccountBtn" class="btn btn-danger-soft">
                                             Account löschen
                                         </button>
-                                        <div style="text-align: center; margin-top: 1rem; width: 100%;">
+                                        <div class="settings-meta-links">
                                             <a href="privacy.html" class="privacy-link"
-                                                style="color: var(--color-text-secondary); font-size: 0.8rem; text-decoration: none;">Datenschutzerklärung</a>
+                                                >Datenschutzerklärung</a>
                                         </div>
                                     </div>
 
@@ -1237,14 +1551,25 @@
 
                     <!-- Absences Tab -->
                     <div id="absencesSettingsTab" class="settings-tab-content">
+                        <div class="settings-pane">
+                            <div class="settings-pane-intro">
+                                <div>
+                                    <span class="settings-pane-kicker">Abwesenheiten</span>
+                                    <h3>Meine Verfügbarkeiten</h3>
+                                    <p>Trage Urlaub, Krankheit oder andere Ausfälle ein, damit Abstimmungen sauber bleiben.</p>
+                                </div>
+                            </div>
                         <div class="absences-settings-grid">
 
                             <!-- Left Column: List of Absences -->
-                            <div class="absences-list-column">
-                                <h3 style="margin-bottom: 0.5rem;">Meine Abwesenheiten</h3>
-                                <p style="color:var(--color-text-secondary); margin-bottom:1rem; font-size:0.9rem;">
-                                    Hier siehst du alle deine eingetragenen Urlaube und Fehlzeiten.
-                                </p>
+                            <div class="absences-list-column settings-surface-card">
+                                <div class="settings-column-head">
+                                    <div>
+                                        <span class="settings-column-kicker">Übersicht</span>
+                                        <h3>Meine Abwesenheiten</h3>
+                                        <p>Hier siehst du alle deine eingetragenen Urlaube und Fehlzeiten.</p>
+                                    </div>
+                                </div>
                                 <div id="absencesListSettings">
                                     <!-- Populated by JS -->
                                     <div class="empty-state">Lade Abwesenheiten...</div>
@@ -1253,10 +1578,13 @@
 
                             <!-- Right Column: Create/Edit Form -->
                             <div class="absences-form-column">
-                                <h3
-                                    style="margin-bottom: 1.25rem; font-size:1.1rem; border-bottom:1px solid var(--color-border); padding-bottom:0.75rem;">
-                                    Neuer Eintrag
-                                </h3>
+                                <div class="settings-column-head settings-column-head-compact">
+                                    <div>
+                                        <span class="settings-column-kicker">Eintrag</span>
+                                        <h3>Neue Abwesenheit</h3>
+                                        <p>Lege einen Zeitraum an oder bearbeite einen bestehenden Eintrag.</p>
+                                    </div>
+                                </div>
 
                                 <form id="createAbsenceFormSettings">
                                     <input type="hidden" id="editAbsenceIdSettings">
@@ -1291,24 +1619,40 @@
                             </div>
 
                         </div>
+                        </div>
                     </div>
 
                     <!-- ADMIN TAB (New Consolidated Tab) -->
                     <div id="adminSettingsTab" class="settings-tab-content">
+                        <div class="settings-pane">
+                            <div class="settings-pane-intro settings-pane-intro-admin">
+                                <div>
+                                    <span class="settings-pane-kicker">Admin</span>
+                                    <h3>Verwaltung</h3>
+                                    <p>Behalte Feedback, Benutzer, Bands und Probeorte in einer klaren Oberfläche im Blick.</p>
+                                </div>
+                            </div>
 
                         <!-- 1. Admin Feedback -->
-                        <div class="admin-accordion-card" id="adminSectionFeedback">
+                        <div class="admin-accordion-card active" id="adminSectionFeedback">
                             <button class="admin-accordion-header"
                                 onclick="UI.toggleAdminAccordion('adminSectionFeedback')">
-                                <h3><span>📢</span> Admin Feedback <span id="adminFeedbackCount"
-                                        class="admin-count-badge">0</span></h3>
+                                <div class="admin-accordion-heading">
+                                    <span class="admin-accordion-symbol">📢</span>
+                                    <div class="admin-accordion-copy">
+                                        <div class="admin-accordion-title-row">
+                                            <h3>Feedback &amp; Meldungen</h3>
+                                            <span id="adminFeedbackCount" class="admin-count-badge">0</span>
+                                        </div>
+                                        <p>Neue Hinweise, Bugs und Wünsche aus der App prüfen.</p>
+                                    </div>
+                                </div>
                                 <span class="admin-accordion-toggle-icon">▼</span>
                             </button>
                             <div class="admin-accordion-content">
                                 <div class="admin-section-inner">
 
-                                    <div class="view-controls"
-                                        style="margin-bottom: 1rem; display:flex; justify-content:flex-end;">
+                                    <div class="admin-toolbar admin-toolbar-end">
                                         <button id="refreshFeedbackBtn" class="btn btn-sm btn-secondary">🔄
                                             Aktualisieren</button>
                                     </div>
@@ -1323,14 +1667,21 @@
                         <div class="admin-accordion-card" id="adminSectionBands">
                             <button class="admin-accordion-header"
                                 onclick="UI.toggleAdminAccordion('adminSectionBands')">
-                                <h3><span>🎸</span> Bandmanagement <span id="adminBandCount"
-                                        class="admin-count-badge">0</span></h3>
+                                <div class="admin-accordion-heading">
+                                    <span class="admin-accordion-symbol">🎸</span>
+                                    <div class="admin-accordion-copy">
+                                        <div class="admin-accordion-title-row">
+                                            <h3>Bandmanagement</h3>
+                                            <span id="adminBandCount" class="admin-count-badge">0</span>
+                                        </div>
+                                        <p>Neue Bands erstellen und bestehende Strukturen verwalten.</p>
+                                    </div>
+                                </div>
                                 <span class="admin-accordion-toggle-icon">▼</span>
                             </button>
                             <div class="admin-accordion-content">
                                 <div class="admin-section-inner">
-                                    <div
-                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <div class="admin-toolbar">
                                         <p class="help-text">Erstelle neue Bands oder verwalte bestehende.</p>
                                         <button id="createBandBtn" class="btn btn-primary btn-sm">+ Neu</button>
                                     </div>
@@ -1343,14 +1694,21 @@
                         <div class="admin-accordion-card" id="adminSectionUsers">
                             <button class="admin-accordion-header"
                                 onclick="UI.toggleAdminAccordion('adminSectionUsers')">
-                                <h3><span>👥</span> Benutzerverwaltung <span id="adminUserCount"
-                                        class="admin-count-badge">0</span></h3>
+                                <div class="admin-accordion-heading">
+                                    <span class="admin-accordion-symbol">👥</span>
+                                    <div class="admin-accordion-copy">
+                                        <div class="admin-accordion-title-row">
+                                            <h3>Benutzerverwaltung</h3>
+                                            <span id="adminUserCount" class="admin-count-badge">0</span>
+                                        </div>
+                                        <p>Konten, Rollen und Band-Zugehörigkeiten schnell überblicken.</p>
+                                    </div>
+                                </div>
                                 <span class="admin-accordion-toggle-icon">▼</span>
                             </button>
                             <div class="admin-accordion-content">
                                 <div class="admin-section-inner">
-                                    <div
-                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <div class="admin-toolbar">
                                         <p class="help-text">Verwalte alle registrierten Benutzer</p>
                                         <button id="addUserBtn" class="btn btn-primary btn-sm">➕ Neu</button>
                                     </div>
@@ -1363,46 +1721,62 @@
                         <div class="admin-accordion-card" id="adminSectionLocations">
                             <button class="admin-accordion-header"
                                 onclick="UI.toggleAdminAccordion('adminSectionLocations')">
-                                <h3><span>📍</span> Probeorte & Kalender <span id="adminLocationCount"
-                                        class="admin-count-badge">0</span></h3>
+                                <div class="admin-accordion-heading">
+                                    <span class="admin-accordion-symbol">📍</span>
+                                    <div class="admin-accordion-copy">
+                                        <div class="admin-accordion-title-row">
+                                            <h3>Probeorte &amp; Kalender</h3>
+                                            <span id="adminLocationCount" class="admin-count-badge">0</span>
+                                        </div>
+                                        <p>Kalender verknüpfen, Räume anlegen und Verfügbarkeiten pflegen.</p>
+                                    </div>
+                                </div>
                                 <span class="admin-accordion-toggle-icon">▼</span>
                             </button>
                             <div class="admin-accordion-content">
                                 <div class="admin-section-inner">
-                                    <div
-                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <div class="admin-toolbar">
                                         <p class="help-text">Verwalte iCal-Kalender für die Verfügbarkeitsprüfung von
                                             Probeorten</p>
                                         <button id="addCalendarBtn" class="btn btn-primary btn-sm">➕ Neu</button>
                                     </div>
                                     <div id="calendarsList" class="calendars-list"></div>
 
-                                    <div
-                                        style="margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--color-border);">
-                                        <h4>Neuer Probeort</h4>
-                                        <form id="createLocationForm" class="inline-form" style="margin-top:1rem;">
+                                    <div class="admin-subsection admin-subsection-form">
+                                        <div class="settings-column-head settings-column-head-compact">
+                                            <div>
+                                                <span class="settings-column-kicker">Neu</span>
+                                                <h4>Probeort anlegen</h4>
+                                                <p>Erstelle einen neuen Ort und verknüpfe ihn optional mit einem Kalender.</p>
+                                            </div>
+                                        </div>
+                                        <form id="createLocationForm" class="inline-form admin-inline-form">
                                             <div class="form-group">
                                                 <input type="text" id="newLocationName"
                                                     placeholder="Name (z.B. Proberaum A)" required
                                                     class="profile-form-input">
                                                 <input type="text" id="newLocationAddress"
-                                                    placeholder="Adresse (Optional)" class="profile-form-input"
-                                                    style="margin-top:0.5rem;">
+                                                    placeholder="Adresse (Optional)"
+                                                    class="profile-form-input admin-inline-input">
                                             </div>
-                                            <div class="form-group" style="margin-top:1rem;">
+                                            <div class="form-group admin-form-field">
                                                 <label for="newLocationLinkedCalendar">Mit Kalender verknüpfen:</label>
                                                 <select id="newLocationLinkedCalendar"
                                                     class="form-select profile-form-input">
                                                     <option value="">Lade Kalender...</option>
                                                 </select>
                                             </div>
-                                            <button type="submit" class="btn btn-primary"
-                                                style="margin-top:1rem; width:100%;">Probeort hinzufügen</button>
+                                            <button type="submit" class="btn btn-primary admin-full-width-btn">Probeort hinzufügen</button>
                                         </form>
                                     </div>
 
-                                    <div style="margin-top:2rem;">
-                                        <h4>Vorhandene Probeorte</h4>
+                                    <div class="admin-subsection">
+                                        <div class="settings-column-head settings-column-head-compact">
+                                            <div>
+                                                <span class="settings-column-kicker">Bestand</span>
+                                                <h4>Vorhandene Probeorte</h4>
+                                            </div>
+                                        </div>
                                         <div id="locationsList" class="admin-scroll-list"></div>
                                     </div>
                                 </div>
@@ -1413,31 +1787,44 @@
                         <div class="admin-accordion-card" id="adminSectionExtras">
                             <button class="admin-accordion-header"
                                 onclick="UI.toggleAdminAccordion('adminSectionExtras')">
-                                <h3><span>💝</span> Spenden</h3>
+                                <div class="admin-accordion-heading">
+                                    <span class="admin-accordion-symbol">💝</span>
+                                    <div class="admin-accordion-copy">
+                                        <div class="admin-accordion-title-row">
+                                            <h3>Spenden</h3>
+                                        </div>
+                                        <p>Lege einen Spenden-Link fest, der im News-Bereich angezeigt wird.</p>
+                                    </div>
+                                </div>
                                 <span class="admin-accordion-toggle-icon">▼</span>
                             </button>
                             <div class="admin-accordion-content">
                                 <div class="admin-section-inner">
                                     <!-- Spenden Link -->
-                                    <div id="donateLinkSection">
-                                        <h4>Spenden-Link</h4>
-                                        <div class="form-group" style="margin-top:0.75rem;">
+                                    <div id="donateLinkSection" class="admin-subsection admin-subsection-form">
+                                        <div class="settings-column-head settings-column-head-compact">
+                                            <div>
+                                                <span class="settings-column-kicker">Link</span>
+                                                <h4>Spenden-Link</h4>
+                                            </div>
+                                        </div>
+                                        <div class="form-group admin-form-field">
                                             <input type="url" id="donateLink"
                                                 placeholder="https://paypal.me/deinusername" value=""
                                                 class="profile-form-input">
-                                            <small
-                                                style="color: var(--color-text-secondary); display: block; margin-top: 0.5rem;">
+                                            <small class="settings-inline-note">
                                                 Gib hier deinen PayPal.me-Link ein. Er wird im News-Bereich
                                                 angezeigt.
                                             </small>
                                         </div>
-                                        <button id="saveDonateLink" class="btn btn-primary"
-                                            style="margin-top:1rem; width:100%;">Spenden-Link speichern</button>
+                                        <button id="saveDonateLink" class="btn btn-primary admin-full-width-btn">Spenden-Link speichern</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        </div>
                     </div>
+                </div>
                 </div>
 
 
@@ -1538,24 +1925,47 @@
 
     <!-- Band Details Modal -->
     <div id="bandDetailsModal" class="modal">
-        <div class="modal-content modal-xl">
-            <div class="modal-header">
-                <h2 id="bandDetailsName"></h2>
+        <div class="modal-content modal-xl band-details-modal-content">
+            <div class="modal-header band-details-modal-header">
+                <div class="band-details-hero">
+                    <div id="bandDetailsCover" class="band-details-cover"></div>
+                    <div class="band-details-hero-copy">
+                        <h2 id="bandDetailsName"></h2>
+                        <p id="bandDetailsSubtitle" class="band-details-subtitle"></p>
+                        <div id="bandDetailsMeta" class="band-details-meta"></div>
+                    </div>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="tab-buttons">
-                    <button class="tab-btn active" data-tab="members">Mitglieder</button>
-                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn">Abwesenheiten</button>
-                    <button class="tab-btn" data-tab="setlist">Setlist</button>
-                    <button class="tab-btn" data-tab="settings">Settings</button>
+            <div class="modal-body band-details-modal-body">
+                <div class="tab-buttons band-details-tabs">
+                    <button class="tab-btn active" data-tab="members">
+                        <span class="band-details-tab-icon" aria-hidden="true">👥</span>
+                        <span>Mitglieder</span>
+                    </button>
+                    <button class="tab-btn" data-tab="absences" id="bandAbsencesTabBtn">
+                        <span class="band-details-tab-icon" aria-hidden="true">🗓️</span>
+                        <span>Abwesenheiten</span>
+                    </button>
+                    <button class="tab-btn" data-tab="setlist">
+                        <span class="band-details-tab-icon" aria-hidden="true">🎵</span>
+                        <span>Setlist</span>
+                    </button>
+                    <button class="tab-btn" data-tab="settings">
+                        <span class="band-details-tab-icon" aria-hidden="true">⚙️</span>
+                        <span>Einstellungen</span>
+                    </button>
                 </div>
 
                 <!-- Members Tab -->
                 <div id="membersTab" class="tab-content active">
-                    <div class="section">
-                        <div class="section-header section-header-mobile-adjust">
-                            <h3>Bandmitglieder</h3>
+                    <div class="section band-details-panel-section">
+                        <div class="section-header section-header-mobile-adjust band-details-section-header">
+                            <div class="band-details-section-copy">
+                                <span class="band-details-section-eyebrow">Team</span>
+                                <h3>Bandmitglieder</h3>
+                                <p id="bandDetailsMembersSummary" class="band-details-section-note"></p>
+                            </div>
                             <button id="addMemberBtn" class="btn btn-primary btn-sm">+ Mitglied<span
                                     class="mobile-hidden-text"> hinzufügen</span></button>
                         </div>
@@ -1565,7 +1975,12 @@
 
                 <!-- Setlist Tab -->
                 <div id="setlistTab" class="tab-content">
-                    <div class="section">
+                    <div class="section band-details-panel-section">
+                        <div class="band-details-panel-intro">
+                            <span class="band-details-section-eyebrow">Repertoire</span>
+                            <h3>Setlist</h3>
+                            <p>Verwalte Songs, Reihenfolge und Material der Band an einem Ort.</p>
+                        </div>
                         <div id="bandSongsList"></div>
                     </div>
                 </div>
@@ -1576,15 +1991,26 @@
 
                 <!-- Settings Tab -->
                 <div id="settingsTab" class="tab-content">
-                    <div class="section" id="bandSettingsSection">
-                        <h3>Band-Einstellungen</h3>
-                        <div class="settings-actions">
-                            <div style="margin-bottom:0.5em;color:#b91c1c;font-weight:bold;; font-size: smaller;">
-                                Achtung: Beim Löschen werden alle zugehörigen Songs, Probetermine und Auftritte
-                                <u>unwiderruflich</u> entfernt!
+                    <div class="band-details-panel-intro band-details-panel-intro-compact">
+                        <span class="band-details-section-eyebrow">Verwaltung</span>
+                        <h3>Einstellungen</h3>
+                        <p>Beitrittscode, Profilbild und Bandverwaltung.</p>
+                    </div>
+                    <div id="bandDetailsSettingsMeta" class="band-details-settings-meta" hidden></div>
+                    <div class="section band-details-panel-section band-details-settings-panel" id="bandSettingsSection">
+                        <div class="band-details-panel-head">
+                            <div>
+                                <span class="band-details-section-eyebrow">Sicherheit</span>
+                                <h3>Band-Einstellungen</h3>
+                                <p class="band-details-section-note">Kritische Aktionen fuer diese Band an einem Ort.</p>
                             </div>
-                            <button id="deleteBandBtn" class="btn btn-danger" style="width: 150px;">Band
-                                löschen</button>
+                        </div>
+                        <div class="settings-actions">
+                            <div class="band-details-danger-note">
+                                <strong>Achtung</strong>
+                                <span>Beim Loeschen werden alle zugehoerigen Songs, Probetermine und Auftritte unwiderruflich entfernt.</span>
+                            </div>
+                            <button id="deleteBandBtn" class="btn btn-danger band-details-danger-action">Band loeschen</button>
                         </div>
                     </div>
                 </div>
@@ -2576,29 +3002,34 @@
 
 
     <!-- Calendar Event Detail Modal -->
-    <div id="calendarEventModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2 id="eventModalTitle">Event Details</h2>
+    <div id="calendarEventModal" class="modal calendar-event-detail-modal">
+        <div class="modal-content calendar-event-detail-content">
+            <div class="modal-header calendar-event-detail-header">
+                <div class="calendar-event-detail-hero">
+                    <span class="calendar-event-detail-eyebrow">Kalendereintrag</span>
+                    <h2 id="calendarEventDetailTitle">Termin</h2>
+                    <p id="calendarEventDetailSubtitle" class="calendar-event-detail-subtitle"></p>
+                    <div id="calendarEventDetailMeta" class="calendar-event-detail-meta"></div>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body">
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <div>
-                        <strong style="color: var(--color-text-secondary);">Titel:</strong>
-                        <p id="eventModalSummary" style="margin: 0.25rem 0 0 0;"></p>
+            <div class="modal-body calendar-event-detail-body">
+                <div class="calendar-event-detail-grid">
+                    <div class="calendar-event-detail-card">
+                        <span class="calendar-event-detail-label">Datum</span>
+                        <p id="calendarEventDetailDate" class="calendar-event-detail-value"></p>
                     </div>
-                    <div>
-                        <strong style="color: var(--color-text-secondary);">Zeit:</strong>
-                        <p id="eventModalTime" style="margin: 0.25rem 0 0 0;"></p>
+                    <div class="calendar-event-detail-card">
+                        <span class="calendar-event-detail-label">Zeit</span>
+                        <p id="calendarEventDetailTime" class="calendar-event-detail-value"></p>
                     </div>
-                    <div id="eventModalDescriptionContainer" style="display: none;">
-                        <strong style="color: var(--color-text-secondary);">Beschreibung:</strong>
-                        <p id="eventModalDescription" style="margin: 0.25rem 0 0 0; white-space: pre-wrap;"></p>
+                    <div id="calendarEventDetailLocationContainer" class="calendar-event-detail-card" hidden>
+                        <span class="calendar-event-detail-label">Ort</span>
+                        <p id="calendarEventDetailLocation" class="calendar-event-detail-value"></p>
                     </div>
-                    <div id="eventModalLocationContainer" style="display: none;">
-                        <strong style="color: var(--color-text-secondary);">Ort:</strong>
-                        <p id="eventModalLocation" style="margin: 0.25rem 0 0 0;"></p>
+                    <div id="calendarEventDetailDescriptionContainer" class="calendar-event-detail-card calendar-event-detail-card-full" hidden>
+                        <span class="calendar-event-detail-label">Beschreibung</span>
+                        <p id="calendarEventDetailDescription" class="calendar-event-detail-value calendar-event-detail-description"></p>
                     </div>
                 </div>
             </div>

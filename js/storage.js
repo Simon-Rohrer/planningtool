@@ -7,6 +7,10 @@ const Storage = {
     locationsCache: null,
     locationsCacheTimestamp: 0,
     CACHE_DURATION: 300000, // 5 Minutes
+    SONG_CHORDPRO_MARKER: '[[CHORDPRO]]',
+    SONG_CHORDPRO_PREVIEW_LABEL: 'ChordPro hinterlegt',
+    songChordProSaveField: null,
+    SONG_CHORDPRO_FIELD_STORAGE_KEY: 'bandplanning.songChordProSaveField',
 
     // Löscht einen User aus der eigenen Datenbank
     async deleteUser(userId) {
@@ -25,6 +29,35 @@ const Storage = {
 
     generateId() {
         return Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+    },
+
+    getSongChordProSaveFieldPreference() {
+        if (this.songChordProSaveField) return this.songChordProSaveField;
+
+        try {
+            const storedField = localStorage.getItem(this.SONG_CHORDPRO_FIELD_STORAGE_KEY);
+            if (storedField) {
+                this.songChordProSaveField = storedField;
+            }
+        } catch (err) {
+            console.warn('[Storage] Could not read ChordPro save field preference:', err);
+        }
+
+        return this.songChordProSaveField;
+    },
+
+    setSongChordProSaveFieldPreference(field) {
+        this.songChordProSaveField = field || null;
+
+        try {
+            if (field) {
+                localStorage.setItem(this.SONG_CHORDPRO_FIELD_STORAGE_KEY, field);
+            } else {
+                localStorage.removeItem(this.SONG_CHORDPRO_FIELD_STORAGE_KEY);
+            }
+        } catch (err) {
+            console.warn('[Storage] Could not persist ChordPro save field preference:', err);
+        }
     },
 
     // Generic CRUD operations
@@ -536,6 +569,17 @@ const Storage = {
         return data || [];
     },
 
+    async getRehearsalVotesForMultipleRehearsals(rehearsalIds) {
+        if (!rehearsalIds || rehearsalIds.length === 0) return [];
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('votes')
+            .select('*')
+            .in('rehearsalId', rehearsalIds);
+        if (error) { console.error('Supabase getRehearsalVotesForMultipleRehearsals error', error); return []; }
+        return data || [];
+    },
+
     async getUserVoteForDate(userId, rehearsalId, dateIndex) {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from('votes').select('*').eq('userId', userId).eq('rehearsalId', rehearsalId).eq('dateIndex', dateIndex).limit(1).maybeSingle();
@@ -915,6 +959,51 @@ const Storage = {
         return allNews.filter(n => !n.readBy || !n.readBy.includes(userId)).length;
     },
 
+    _getSongInfoString(songOrInfo) {
+        if (songOrInfo && typeof songOrInfo === 'object' && !Array.isArray(songOrInfo)) {
+            return typeof songOrInfo.info === 'string' ? songOrInfo.info : '';
+        }
+        return typeof songOrInfo === 'string' ? songOrInfo : '';
+    },
+
+    getSongPlainInfo(songOrInfo) {
+        const info = this._getSongInfoString(songOrInfo);
+        const markerIndex = info.indexOf(this.SONG_CHORDPRO_MARKER);
+        const plainInfo = markerIndex >= 0 ? info.slice(0, markerIndex) : info;
+        return plainInfo.trim();
+    },
+
+    getSongChordPro(songOrInfo) {
+        const info = this._getSongInfoString(songOrInfo);
+        const markerIndex = info.indexOf(this.SONG_CHORDPRO_MARKER);
+        if (markerIndex === -1) return '';
+
+        return info
+            .slice(markerIndex + this.SONG_CHORDPRO_MARKER.length)
+            .replace(/^\s+/, '')
+            .trim();
+    },
+
+    getSongInfoPreview(songOrInfo) {
+        const plainInfo = this.getSongPlainInfo(songOrInfo);
+        if (plainInfo) return plainInfo;
+        return this.getSongChordPro(songOrInfo) ? this.SONG_CHORDPRO_PREVIEW_LABEL : '';
+    },
+
+    composeSongInfoWithChordPro(plainInfo, chordProText = '') {
+        const cleanInfo = this.getSongPlainInfo(plainInfo);
+        const cleanChordPro = typeof chordProText === 'string' ? chordProText.trim() : '';
+
+        if (cleanInfo && cleanChordPro) {
+            return `${cleanInfo}\n\n${this.SONG_CHORDPRO_MARKER}\n${cleanChordPro}`;
+        }
+        if (cleanChordPro) {
+            return `${this.SONG_CHORDPRO_MARKER}\n${cleanChordPro}`;
+        }
+
+        return cleanInfo || null;
+    },
+
     // Song operations
     async createSong(songData) {
         const song = {
@@ -974,8 +1063,110 @@ const Storage = {
         return data || [];
     },
 
+    async getBandSongChoices(bandId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('songs')
+            .select('id, title')
+            .eq('bandId', bandId)
+            .order('title', { ascending: true });
+
+        if (error) {
+            console.error('Supabase getBandSongChoices error', error);
+            throw new Error(error.message || 'Songs konnten nicht geladen werden.');
+        }
+
+        return (data || []).map(song => ({
+            id: song.id,
+            title: song.title || 'Ohne Titel'
+        }));
+    },
+
     async updateSong(songId, updates) {
         return await this.update('songs', songId, updates);
+    },
+
+    async saveChordProToSong(songId, chordProText) {
+        const sb = SupabaseClient.getClient();
+        const cleanChordPro = typeof chordProText === 'string' ? chordProText.trim() : '';
+        if (!songId) throw new Error('Kein Song zum Speichern ausgewählt.');
+        if (!cleanChordPro) throw new Error('Es ist noch kein ChordPro-Inhalt vorhanden.');
+
+        const candidateFields = [
+            'chordpro',
+            'chord_pro',
+            'chordPro',
+            'chordpro_text',
+            'chordProText',
+            'lyrics',
+            'content',
+            'songText',
+            'text'
+        ];
+
+        const updateField = async (field, value) => {
+            const payload = {};
+            payload[field] = value;
+            return await sb
+                .from('songs')
+                .update(payload)
+                .eq('id', songId)
+                .select('*')
+                .maybeSingle();
+        };
+
+        const preferredField = this.getSongChordProSaveFieldPreference();
+        const preferredFields = preferredField
+            ? [this.songChordProSaveField]
+            : [];
+
+        const fieldsToTry = [
+            ...preferredFields,
+            ...candidateFields.filter(field => field !== this.songChordProSaveField)
+        ];
+
+        for (const field of fieldsToTry) {
+            const { data, error } = await updateField(field, cleanChordPro);
+            if (!error) {
+                this.setSongChordProSaveFieldPreference(field);
+                return { field, usedInfoFallback: false, song: data || null };
+            }
+
+            const isSchemaCacheMiss = error.code === 'PGRST204' ||
+                error.code === '42703' ||
+                (error.message && error.message.includes(`'${field}' column`));
+
+            if (isSchemaCacheMiss) {
+                if (this.songChordProSaveField === field) {
+                    this.setSongChordProSaveFieldPreference(null);
+                }
+                continue;
+            }
+
+            if (this._isNetworkError(error)) {
+                throw new Error('Netzwerkproblem beim Speichern des ChordPro-Inhalts.');
+            }
+
+            throw new Error(error.message || 'ChordPro konnte nicht gespeichert werden.');
+        }
+
+        const existingSong = await this.getById('songs', songId);
+        if (!existingSong) {
+            throw new Error('Der ausgewählte Song wurde nicht gefunden.');
+        }
+
+        const mergedInfo = this.composeSongInfoWithChordPro(this.getSongPlainInfo(existingSong), cleanChordPro);
+        const { data, error } = await updateField('info', mergedInfo);
+
+        if (error) {
+            if (this._isNetworkError(error)) {
+                throw new Error('Netzwerkproblem beim Speichern des ChordPro-Inhalts.');
+            }
+            throw new Error(error.message || 'ChordPro konnte nicht gespeichert werden.');
+        }
+
+        this.setSongChordProSaveFieldPreference('info');
+        return { field: 'info', usedInfoFallback: true, song: data || null };
     },
 
     async deleteSong(songId) {

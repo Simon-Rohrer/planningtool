@@ -16,6 +16,7 @@ const Rehearsals = {
     },
     rehearsalsCache: null,
     dataContextCache: null,
+    currentStatusTab: 'pending',
 
     // Clear all cached data (called during logout)
     clearCache() {
@@ -23,6 +24,7 @@ const Rehearsals = {
         this.currentRehearsalId = null;
         this.rehearsals = [];
         this.currentFilter = '';
+        this.currentStatusTab = 'pending';
         this.rehearsalsCache = null;
         this.dataContextCache = null;
     },
@@ -32,6 +34,64 @@ const Rehearsals = {
         this.rehearsalsCache = null;
         this.dataContextCache = null;
         if (typeof Statistics !== 'undefined') Statistics.invalidateCache();
+    },
+
+    setupStatusSwitcher() {
+        const view = document.getElementById('rehearsalsView');
+        if (!view) return;
+
+        view.querySelectorAll('[data-rehearsals-status]').forEach(button => {
+            if (button.dataset.initialized) return;
+            button.dataset.initialized = 'true';
+            button.addEventListener('click', () => {
+                this.currentStatusTab = button.dataset.rehearsalsStatus;
+                this.syncStatusPanels();
+            });
+        });
+    },
+
+    syncStatusPanels() {
+        const view = document.getElementById('rehearsalsView');
+        if (!view) return;
+
+        view.querySelectorAll('[data-rehearsals-status]').forEach(button => {
+            button.classList.toggle('is-active', button.dataset.rehearsalsStatus === this.currentStatusTab);
+        });
+
+        view.querySelectorAll('[data-rehearsals-panel]').forEach(panel => {
+            panel.classList.toggle('is-active', panel.dataset.rehearsalsPanel === this.currentStatusTab);
+        });
+    },
+
+    updateStatusSummary(counts) {
+        const countMap = {
+            pending: document.getElementById('rehearsalsStatusCountPending'),
+            voted: document.getElementById('rehearsalsStatusCountVoted'),
+            resolved: document.getElementById('rehearsalsStatusCountResolved')
+        };
+
+        Object.entries(counts).forEach(([key, value]) => {
+            if (countMap[key]) {
+                countMap[key].textContent = value;
+            }
+        });
+
+        if (!counts[this.currentStatusTab]) {
+            this.currentStatusTab = counts.pending ? 'pending' : counts.voted ? 'voted' : 'resolved';
+        }
+
+        this.setupStatusSwitcher();
+        this.syncStatusPanels();
+    },
+
+    getConfirmedDateValue(rehearsal) {
+        if (!rehearsal?.confirmedDate) return null;
+
+        if (typeof rehearsal.confirmedDate === 'object' && rehearsal.confirmedDate.startTime) {
+            return rehearsal.confirmedDate.startTime;
+        }
+
+        return rehearsal.confirmedDate;
     },
 
     // Render all rehearsals
@@ -75,12 +135,14 @@ const Rehearsals = {
             // 2. Batch Fetch everything in parallel
             const [
                 userVotesBatch,
+                allVotesBatch,
                 creatorsBatch,
                 locationsBatch,
                 eventsBatch,
                 userBandsBatch // This gives us roles for all bands the user is in
             ] = await Promise.all([
                 Storage.getUserVotesForMultipleRehearsals(user.id, rehearsalIds),
+                Storage.getRehearsalVotesForMultipleRehearsals(rehearsalIds),
                 Storage.getBatchByIds('users', creatorIds),
                 Storage.getBatchByIds('locations', locationIds),
                 Storage.getBatchByIds('events', eventIds),
@@ -90,6 +152,11 @@ const Rehearsals = {
             // 3. Create a data context for faster access during rendering
             const dataContext = {
                 userVotes: userVotesBatch,
+                allVotes: (allVotesBatch || []).reduce((acc, vote) => {
+                    if (!acc[vote.rehearsalId]) acc[vote.rehearsalId] = [];
+                    acc[vote.rehearsalId].push(vote);
+                    return acc;
+                }, {}),
                 creators: creatorsBatch.reduce((acc, u) => ({ ...acc, [u.id]: u }), {}),
                 locations: locationsBatch.reduce((acc, l) => ({ ...acc, [l.id]: l }), {}),
                 events: eventsBatch.reduce((acc, e) => ({ ...acc, [e.id]: e }), {}),
@@ -107,8 +174,9 @@ const Rehearsals = {
             // Sort by effective date (Upcoming first, then past)
             const now = new Date();
             const getEffectiveDate = (r) => {
-                if (r.status === 'confirmed' && r.confirmedDate) {
-                    return r.confirmedDate.startTime ? new Date(r.confirmedDate.startTime) : new Date(r.confirmedDate);
+                const confirmedDateValue = this.getConfirmedDateValue(r);
+                if (r.status === 'confirmed' && confirmedDateValue) {
+                    return new Date(confirmedDateValue);
                 }
                 if (r.proposedDates && r.proposedDates.length > 0) {
                     // Find earliest proposed date
@@ -183,9 +251,15 @@ const Rehearsals = {
             }
         }
 
+        this.updateStatusSummary({
+            pending: pendingRehearsals.length,
+            voted: votedRehearsals.length,
+            resolved: resolvedRehearsals.length
+        });
+
         // Render Pending List
         if (pendingRehearsals.length === 0) {
-            containerPending.innerHTML = '<div class="empty-section-message">Keine offenen Abstimmungen 🎉</div>';
+            UI.showCompactEmptyState(containerPending, 'Keine offenen Abstimmungen 🎉');
         } else {
             containerPending.innerHTML = (await Promise.all(pendingRehearsals.map(rehearsal =>
                 this.renderRehearsalCard(rehearsal, dataContext)
@@ -194,7 +268,7 @@ const Rehearsals = {
 
         // Render Voted List
         if (votedRehearsals.length === 0) {
-            containerVoted.innerHTML = '<div class="empty-section-message">Noch keine erledigten Abstimmungen</div>';
+            UI.showCompactEmptyState(containerVoted, 'Noch keine abgestimmten Proben');
         } else {
             containerVoted.innerHTML = (await Promise.all(votedRehearsals.map(rehearsal =>
                 this.renderRehearsalCard(rehearsal, dataContext)
@@ -205,7 +279,7 @@ const Rehearsals = {
         const containerResolved = document.getElementById('rehearsalsListResolved');
         if (containerResolved) {
             if (resolvedRehearsals.length === 0) {
-                containerResolved.innerHTML = '<div class="empty-section-message">Keine erledigten Proben</div>';
+                UI.showCompactEmptyState(containerResolved, 'Keine bestaetigten Proben');
             } else {
                 containerResolved.innerHTML = (await Promise.all(resolvedRehearsals.map(rehearsal =>
                     this.renderRehearsalCard(rehearsal, dataContext)
@@ -243,6 +317,8 @@ const Rehearsals = {
 
         const user = Auth.getCurrentUser();
         const isExpanded = this.expandedRehearsalId === rehearsal.id;
+        const currentUserVotes = (dataContext.userVotes || []).filter(v => v.rehearsalId === rehearsal.id);
+        const allRehearsalVotes = (dataContext.allVotes && dataContext.allVotes[rehearsal.id]) || [];
 
         // Get location from context or fetch fallback
         const bandName = band ? band.name : 'Unbekannte Band';
@@ -293,24 +369,72 @@ const Rehearsals = {
             </div>
         ` : '';
 
+        const respondedCount = new Set(
+            allRehearsalVotes
+                .filter(vote => vote.availability && vote.availability !== 'none')
+                .map(vote => vote.userId)
+        ).size;
+
+        const hasCurrentUserVoted = currentUserVotes.some(vote => vote.availability !== 'none');
+        const primaryDate = Array.isArray(rehearsal.proposedDates) && rehearsal.proposedDates.length > 0
+            ? rehearsal.proposedDates[0]
+            : null;
+        const confirmedDateValue = this.getConfirmedDateValue(rehearsal);
+        const primaryDateLabel = rehearsal.status === 'confirmed' && confirmedDateValue
+            ? UI.formatDateShort(confirmedDateValue)
+            : primaryDate
+                ? this.formatProposalDateLabel(primaryDate)
+                : 'Kein Termin hinterlegt';
+
+        const headerChips = [];
+        if (rehearsal.status === 'confirmed' && confirmedDateValue) {
+            headerChips.push(`<span class="schedule-card-chip"><span>📅</span>${UI.formatDateShort(confirmedDateValue)}</span>`);
+        } else if (Array.isArray(rehearsal.proposedDates) && rehearsal.proposedDates.length > 0) {
+            headerChips.push(`<span class="schedule-card-chip"><span>🗓️</span>${rehearsal.proposedDates.length} Termin${rehearsal.proposedDates.length === 1 ? '' : 'e'}</span>`);
+            headerChips.push(`<span class="schedule-card-chip"><span>⏱️</span>${this.formatProposalDateLabel(primaryDate)}</span>`);
+        }
+        if (locationName && locationName !== 'Kein Ort') {
+            headerChips.push(`<span class="schedule-card-chip"><span>📍</span>${Bands.escapeHtml(locationName)}</span>`);
+        }
+        if (rehearsal.status === 'pending') {
+            headerChips.push(`<span class="schedule-card-chip"><span>🗳️</span>${respondedCount} Rueckmeldung${respondedCount === 1 ? '' : 'en'}</span>`);
+        }
+
+        const userStateLabel = rehearsal.status === 'pending'
+            ? (hasCurrentUserVoted ? 'Du hast abgestimmt' : 'Antwort offen')
+            : 'Termin steht';
+        const userStateClass = rehearsal.status === 'pending'
+            ? (hasCurrentUserVoted ? 'is-complete' : 'is-open')
+            : 'is-confirmed';
+        const cardStateClass = rehearsal.status === 'pending'
+            ? (hasCurrentUserVoted ? 'schedule-state-voted' : 'schedule-state-pending')
+            : 'schedule-state-resolved';
+
 
 
         return `
-            <div class="rehearsal-card accordion-card ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}" style="border-left: 4px solid ${bandColor}">
+            <div class="rehearsal-card accordion-card ${cardStateClass} ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}" style="border-left: 4px solid ${bandColor}">
                 <div class="accordion-header" data-rehearsal-id="${rehearsal.id}">
                     <div class="accordion-title">
-                        <h3>${Bands.escapeHtml(rehearsal.title)}</h3>
-                        <div class="rehearsal-band" style="color: ${bandColor}; display: flex; align-items: center; gap: 8px;">
+                        <div class="schedule-card-title-row">
+                            <h3>${Bands.escapeHtml(rehearsal.title)}</h3>
+                            <span class="schedule-card-date-highlight">${primaryDateLabel}</span>
+                        </div>
+                        <div class="rehearsal-band schedule-card-band" style="color: ${bandColor}; display: flex; align-items: center; gap: 8px;">
                             ${band?.image_url ?
                 `<img src="${band.image_url}" class="band-mini-logo" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border-subtle); display: block;">` :
                 '<span style="font-size: 1.2rem; line-height: 1;">🎸</span>'} 
                             <span style="font-weight: 500;">${Bands.escapeHtml(bandName)}</span>
+                        </div>
+                        <div class="schedule-card-meta-row">
+                            ${headerChips.join('')}
                         </div>
                     </div>
                     <div class="accordion-actions">
                         <span class="rehearsal-status status-${rehearsal.status}">
                             ${rehearsal.status === 'pending' ? 'Abstimmung läuft' : 'Bestätigt'}
                         </span>
+                        <span class="schedule-card-user-state ${userStateClass}">${userStateLabel}</span>
                         <button class="accordion-toggle" aria-label="Ausklappen">
                             <span class="toggle-icon">${isExpanded ? '▼' : '▶'}</span>
                         </button>
@@ -337,8 +461,8 @@ const Rehearsals = {
                             
                             ${metaHtml}
 
-                            ${rehearsal.status === 'confirmed' && rehearsal.confirmedDate ? `
-                                <p><strong>✅ Bestätigter Termin:</strong> ${UI.formatDate(rehearsal.confirmedDate)}</p>
+                            ${rehearsal.status === 'confirmed' && confirmedDateValue ? `
+                                <p><strong>✅ Bestätigter Termin:</strong> ${UI.formatDate(confirmedDateValue)}</p>
                                 ${locationName ? `<p><strong>📍 Ort:</strong> ${locationName}</p>` : ''}
                             ` : ''}
 
@@ -2126,7 +2250,9 @@ const Rehearsals = {
     async populateStatsSelect() {
         // Show loading overlay if present
         const overlay = document.getElementById('globalLoadingOverlay');
-        if (overlay) {
+        if (typeof window.showGlobalLoadingOverlay === 'function') {
+            window.showGlobalLoadingOverlay();
+        } else if (overlay) {
             overlay.style.display = 'flex';
             overlay.style.opacity = '1';
         }

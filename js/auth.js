@@ -42,6 +42,9 @@ const Auth = {
         // Check for existing Supabase session
         const sb = SupabaseClient.getClient();
         if (sb) {
+            if (SupabaseClient.isStoredSessionExpired()) {
+                SupabaseClient.clearStoredAuthSession();
+            }
             try {
                 const { data, error } = await sb.auth.getSession();
                 if (error) {
@@ -315,11 +318,6 @@ const Auth = {
             throw new Error('Benutzername/E-Mail und Passwort sind erforderlich');
         }
 
-        const sb = SupabaseClient.getClient();
-        if (!sb) {
-            throw new Error('Supabase nicht konfiguriert');
-        }
-
         // Check if input is email or username
         let email = usernameOrEmail;
         // If it's not an email format, look up the email by username
@@ -331,16 +329,16 @@ const Auth = {
             email = profile.email;
         }
 
-        // Session-Lifetime setzen
         const rememberMe = arguments.length > 2 ? arguments[2] : false;
-        let expiresIn = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24; // 30 Tage oder 24h
+        SupabaseClient.prepareSessionPersistence(rememberMe);
+
+        const sb = SupabaseClient.getClient();
+        if (!sb) {
+            throw new Error('Supabase nicht konfiguriert');
+        }
 
         // Sign in with Supabase Auth
-        const { data, error } = await sb.auth.signInWithPassword({
-            email,
-            password,
-            options: { expiresIn }
-        });
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
         // Force scroll reset on interaction
         window.scrollTo(0, 0);
@@ -351,6 +349,7 @@ const Auth = {
         }
 
         if (data.user) {
+            SupabaseClient.setSessionExpiry(rememberMe);
             await this.setCurrentUser(data.user);
         }
 
@@ -364,6 +363,7 @@ const Auth = {
 
         // Clear any cached session data
         sessionStorage.removeItem('currentUser');
+        SupabaseClient.clearStoredAuthSession();
 
         // Clear module-level caches to prevent data from persisting between users
         if (typeof Rehearsals !== 'undefined' && Rehearsals.clearCache) {
@@ -395,15 +395,36 @@ const Auth = {
     },
 
     isAuthenticated() {
+        if (SupabaseClient.isStoredSessionExpired()) {
+            this.currentUser = null;
+            this.supabaseUser = null;
+            SupabaseClient.clearStoredAuthSession();
+            const sb = SupabaseClient.getClient();
+            if (sb) {
+                sb.auth.signOut().catch(err => console.warn('[Auth.isAuthenticated] Sign-out after expiry failed:', err));
+            }
+        }
         return this.currentUser !== null;
     },
 
     getCurrentUser() {
+        if (SupabaseClient.isStoredSessionExpired()) {
+            this.currentUser = null;
+            this.supabaseUser = null;
+            SupabaseClient.clearStoredAuthSession();
+            return null;
+        }
         // Return profile with Supabase auth ID
         return this.currentUser;
     },
 
     getSupabaseUser() {
+        if (SupabaseClient.isStoredSessionExpired()) {
+            this.currentUser = null;
+            this.supabaseUser = null;
+            SupabaseClient.clearStoredAuthSession();
+            return null;
+        }
         return this.supabaseUser;
     },
 

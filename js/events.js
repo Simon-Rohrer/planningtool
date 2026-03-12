@@ -4,6 +4,7 @@ const Events = {
     currentFilter: '',
     currentEventId: null,
     expandedEventId: null,
+    currentStatusTab: 'pending',
     eventsCache: null,
     dataContextCache: null,
     isLoading: false,
@@ -15,6 +16,7 @@ const Events = {
         this.currentFilter = '';
         this.currentEventId = null;
         this.expandedEventId = null;
+        this.currentStatusTab = 'pending';
     },
 
     invalidateCache() {
@@ -22,6 +24,54 @@ const Events = {
         this.eventsCache = null;
         this.dataContextCache = null;
         if (typeof Statistics !== 'undefined') Statistics.invalidateCache();
+    },
+
+    setupStatusSwitcher() {
+        const view = document.getElementById('eventsView');
+        if (!view) return;
+
+        view.querySelectorAll('[data-events-status]').forEach(button => {
+            if (button.dataset.initialized) return;
+            button.dataset.initialized = 'true';
+            button.addEventListener('click', () => {
+                this.currentStatusTab = button.dataset.eventsStatus;
+                this.syncStatusPanels();
+            });
+        });
+    },
+
+    syncStatusPanels() {
+        const view = document.getElementById('eventsView');
+        if (!view) return;
+
+        view.querySelectorAll('[data-events-status]').forEach(button => {
+            button.classList.toggle('is-active', button.dataset.eventsStatus === this.currentStatusTab);
+        });
+
+        view.querySelectorAll('[data-events-panel]').forEach(panel => {
+            panel.classList.toggle('is-active', panel.dataset.eventsPanel === this.currentStatusTab);
+        });
+    },
+
+    updateStatusSummary(counts) {
+        const countMap = {
+            pending: document.getElementById('eventsStatusCountPending'),
+            voted: document.getElementById('eventsStatusCountVoted'),
+            resolved: document.getElementById('eventsStatusCountResolved')
+        };
+
+        Object.entries(counts).forEach(([key, value]) => {
+            if (countMap[key]) {
+                countMap[key].textContent = value;
+            }
+        });
+
+        if (!counts[this.currentStatusTab]) {
+            this.currentStatusTab = counts.pending ? 'pending' : counts.voted ? 'voted' : 'resolved';
+        }
+
+        this.setupStatusSwitcher();
+        this.syncStatusPanels();
     },
 
     // Helper to get display name
@@ -151,6 +201,12 @@ const Events = {
             sortByDate(votedEvents);
             sortByDate(resolvedEvents, false); // Bestätigte: Neueste zuerst
 
+            this.updateStatusSummary({
+                pending: pendingEvents.length,
+                voted: votedEvents.length,
+                resolved: resolvedEvents.length
+            });
+
             // Render lists
             const pendingContainer = document.getElementById('eventsListPending');
             const votedContainer = document.getElementById('eventsListVoted');
@@ -195,6 +251,7 @@ const Events = {
         const band = event.band || await Storage.getBand(event.bandId);
         const user = Auth.getCurrentUser();
         const isExpanded = this.expandedEventId === event.id;
+        const bandName = band ? band.name : 'Unbekannte Band';
 
         let canManage = false;
         if (dataContext.userBands) {
@@ -207,6 +264,21 @@ const Events = {
 
         const bandColor = band ? (band.color || '#e11d48') : '#e11d48';
         const eventVotes = dataContext.votes[event.id] || [];
+        const eventMembers = Array.isArray(event.members) ? event.members : [];
+        const respondedCount = new Set(
+            eventVotes
+                .filter(vote => vote.availability && vote.availability !== 'none')
+                .map(vote => vote.userId)
+        ).size;
+        const hasVoted = eventVotes.some(vote => vote.userId === user.id && vote.availability !== 'none');
+        const firstProposal = Array.isArray(event.proposedDates) && event.proposedDates.length > 0
+            ? event.proposedDates[0]
+            : null;
+        const primaryDateLabel = event.status === 'confirmed' && event.date
+            ? UI.formatDateShort(event.date)
+            : firstProposal?.start
+                ? UI.formatDateShort(firstProposal.start)
+                : 'Termin offen';
 
         let statusText = event.status === 'pending' ? 'Abstimmung läuft' : 'Bestätigt';
         let statusClass = `status-${event.status}`;
@@ -218,22 +290,55 @@ const Events = {
             cardContent = await this._renderConfirmedEventBody(event, dataContext, canManage);
         }
 
+        const headerChips = [];
+        if (event.status === 'confirmed' && event.date) {
+            headerChips.push(`<span class="schedule-card-chip"><span>📅</span>${UI.formatDateShort(event.date)}</span>`);
+        } else if (Array.isArray(event.proposedDates) && event.proposedDates.length > 0) {
+            headerChips.push(`<span class="schedule-card-chip"><span>🗓️</span>${event.proposedDates.length} Termin${event.proposedDates.length === 1 ? '' : 'e'}</span>`);
+            if (firstProposal?.start) {
+                headerChips.push(`<span class="schedule-card-chip"><span>⏱️</span>${UI.formatDateShort(firstProposal.start)}</span>`);
+            }
+        }
+        if (event.location) {
+            headerChips.push(`<span class="schedule-card-chip"><span>📍</span>${Bands.escapeHtml(event.location)}</span>`);
+        }
+        if (event.status === 'pending' && eventMembers.length > 0) {
+            headerChips.push(`<span class="schedule-card-chip"><span>🗳️</span>${respondedCount}/${eventMembers.length} Rueckmeldungen</span>`);
+        }
+
+        const userStateLabel = event.status === 'pending'
+            ? (hasVoted ? 'Du hast abgestimmt' : 'Antwort offen')
+            : 'Termin steht';
+        const userStateClass = event.status === 'pending'
+            ? (hasVoted ? 'is-complete' : 'is-open')
+            : 'is-confirmed';
+        const cardStateClass = event.status === 'pending'
+            ? (hasVoted ? 'schedule-state-voted' : 'schedule-state-pending')
+            : 'schedule-state-resolved';
+
         return `
-            <div class="event-card accordion-card ${event.status === 'confirmed' && new Date(event.date) < new Date() ? 'event-past' : ''} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}" style="border-left: 4px solid ${bandColor}">
+            <div class="event-card accordion-card ${event.status === 'confirmed' && new Date(event.date) < new Date() ? 'event-past' : ''} ${cardStateClass} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}" style="border-left: 4px solid ${bandColor}">
                 <div class="accordion-header" data-event-id="${event.id}">
                     <div class="accordion-title">
-                        <h3>${Bands.escapeHtml(event.title)}</h3>
-                        <div class="event-band" style="color: ${bandColor}; display: flex; align-items: center; gap: 8px;">
-                            ${(event.band && event.band.image_url) ?
-                `<img src="${event.band.image_url}" class="band-mini-logo" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border-subtle); display: block;">` :
+                        <div class="schedule-card-title-row">
+                            <h3>${Bands.escapeHtml(event.title)}</h3>
+                            <span class="schedule-card-date-highlight">${primaryDateLabel}</span>
+                        </div>
+                        <div class="event-band schedule-card-band" style="color: ${bandColor}; display: flex; align-items: center; gap: 8px;">
+                            ${(band && band.image_url) ?
+                `<img src="${band.image_url}" class="band-mini-logo" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border-subtle); display: block;">` :
                 '<span style="font-size: 1.2rem; line-height: 1;">🎸</span>'} 
-                            <span style="font-weight: 500;">${Bands.escapeHtml(event.band?.name || 'Unbekannte Band')}</span>
+                            <span style="font-weight: 500;">${Bands.escapeHtml(bandName)}</span>
+                        </div>
+                        <div class="schedule-card-meta-row">
+                            ${headerChips.join('')}
                         </div>
                     </div>
                     <div class="accordion-actions">
                         <span class="rehearsal-status ${statusClass}">
                             ${statusText}
                         </span>
+                        <span class="schedule-card-user-state ${userStateClass}">${userStateLabel}</span>
                         <button class="accordion-toggle" aria-label="Ausklappen">
                             <span class="toggle-icon">${isExpanded ? '▼' : '▶'}</span>
                         </button>
@@ -409,7 +514,7 @@ const Events = {
                                             <td style="padding: 6px; text-align: center; font-weight: 700; color: var(--color-primary);">${s.key || '-'}</td>
                                             <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem;">${Bands.escapeHtml(s.leadVocal || '-')}</td>
                                             <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem;">${Bands.escapeHtml(s.language || '-')}</td>
-                                            <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${Bands.escapeHtml(s.info || '')}">${Bands.escapeHtml(s.info || '-')}</td>
+                                            <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${Bands.escapeHtml(Storage.getSongPlainInfo(s) || '')}">${Bands.escapeHtml(Storage.getSongInfoPreview(s) || '-')}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>

@@ -251,16 +251,17 @@ const Calendar = {
 
         // Build calendar HTML
         let html = `
-            <div class="calendar-header">
-                <button onclick="Calendar.previousMonth()" class="btn btn-icon" style="font-size: 1.5rem;">‹</button>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <h3 style="color: var(--color-text); margin: 0; font-size: 1.5rem; font-weight: 700;">${monthName}</h3>
-                    <button onclick="Calendar.goToToday()" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">📅 Heute</button>
+            <div class="calendar-header probeorte-calendar-header">
+                <button onclick="Calendar.previousMonth()" class="btn btn-icon probeorte-calendar-nav" aria-label="Vorheriger Monat">‹</button>
+                <div class="probeorte-calendar-heading">
+                    <h3 class="probeorte-calendar-title">${monthName}</h3>
+                    <button onclick="Calendar.goToToday()" class="btn btn-secondary probeorte-calendar-today">📅 Heute</button>
                 </div>
-                <button onclick="Calendar.nextMonth()" class="btn btn-icon" style="font-size: 1.5rem;">›</button>
+                <button onclick="Calendar.nextMonth()" class="btn btn-icon probeorte-calendar-nav" aria-label="Naechster Monat">›</button>
             </div>
-            
-            <div class="calendar-grid">
+            <div class="probeorte-calendar-grid-scroll">
+                <div class="probeorte-calendar-mobile-hint">Seitlich wischen, um alle Wochentage bequem zu sehen.</div>
+                <div class="calendar-grid probeorte-calendar-grid">
                 <div class="calendar-day-header">Mo</div>
                 <div class="calendar-day-header">Di</div>
                 <div class="calendar-day-header">Mi</div>
@@ -300,7 +301,7 @@ const Calendar = {
             `;
         }
 
-        html += '</div>';
+        html += '</div></div>';
 
         container.innerHTML = html;
 
@@ -334,9 +335,15 @@ const Calendar = {
         }) : null;
 
         const timeDisplay = endTime ? `${startTime} - ${endTime}` : startTime;
+        const dateDisplay = event.startDate.toLocaleDateString('de-DE', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
 
         // Truncate title at 15 characters
-        const truncateTitle = (text, maxLength = 15) => {
+        const truncateTitle = (text, maxLength = 20) => {
             const escaped = this.escapeHtml(text);
             if (text.length <= maxLength) return escaped;
             return escaped.substring(0, maxLength) + '...';
@@ -349,6 +356,7 @@ const Calendar = {
             <div class="calendar-event" 
                  id="${eventId}"
                  data-event-summary="${this.escapeHtml(event.summary)}"
+                 data-event-date="${this.escapeHtml(dateDisplay)}"
                  data-event-time="${timeDisplay}"
                  data-event-location="${this.escapeHtml(event.location || '')}"
                  data-event-description="${this.escapeHtml(event.description || '')}"
@@ -362,30 +370,58 @@ const Calendar = {
     // Show event details in modal
     showEventDetails(eventElement) {
         const summary = eventElement.dataset.eventSummary;
+        const date = eventElement.dataset.eventDate;
         const time = eventElement.dataset.eventTime;
         const location = eventElement.dataset.eventLocation;
         const description = eventElement.dataset.eventDescription;
+        const currentCalendar = this.calendars[this.currentCalendar] || {};
+        const calendarFallbacks = {
+            tonstudio: { name: 'Tonstudio', icon: '🎙️' },
+            festhalle: { name: 'JMS Festhalle', icon: '🏛️' },
+            'jms-festhalle': { name: 'JMS Festhalle', icon: '🏛️' },
+            ankersaal: { name: 'Ankersaal', icon: '⚓' }
+        };
+        const currentFallback = calendarFallbacks[this.currentCalendar] || {};
+        const calendarName = currentCalendar.name || currentFallback.name || 'Probeort';
+        const calendarIcon = currentCalendar.icon || currentFallback.icon || '📅';
 
-        document.getElementById('eventModalTitle').textContent = 'Event Details';
-        document.getElementById('eventModalSummary').textContent = summary;
-        document.getElementById('eventModalTime').textContent = time;
+        const titleEl = document.getElementById('calendarEventDetailTitle');
+        const subtitleEl = document.getElementById('calendarEventDetailSubtitle');
+        const metaEl = document.getElementById('calendarEventDetailMeta');
+        const dateEl = document.getElementById('calendarEventDetailDate');
+        const timeEl = document.getElementById('calendarEventDetailTime');
+
+        if (titleEl) titleEl.textContent = summary || 'Kalendereintrag';
+        if (subtitleEl) {
+            subtitleEl.textContent = `Details zur Belegung in ${calendarName}`;
+        }
+        if (dateEl) dateEl.textContent = date || 'Datum unbekannt';
+        if (timeEl) timeEl.textContent = time || 'Zeit unbekannt';
+
+        if (metaEl) {
+            metaEl.innerHTML = '';
+            const chip = document.createElement('span');
+            chip.className = 'calendar-event-detail-chip';
+            chip.textContent = `${calendarIcon} ${calendarName}`;
+            metaEl.appendChild(chip);
+        }
 
         // Show/hide location
-        const locationContainer = document.getElementById('eventModalLocationContainer');
+        const locationContainer = document.getElementById('calendarEventDetailLocationContainer');
         if (location) {
-            document.getElementById('eventModalLocation').textContent = location;
-            locationContainer.style.display = 'block';
+            document.getElementById('calendarEventDetailLocation').textContent = location;
+            locationContainer.hidden = false;
         } else {
-            locationContainer.style.display = 'none';
+            locationContainer.hidden = true;
         }
 
         // Show/hide description
-        const descriptionContainer = document.getElementById('eventModalDescriptionContainer');
+        const descriptionContainer = document.getElementById('calendarEventDetailDescriptionContainer');
         if (description) {
-            document.getElementById('eventModalDescription').textContent = description;
-            descriptionContainer.style.display = 'block';
+            document.getElementById('calendarEventDetailDescription').textContent = description;
+            descriptionContainer.hidden = false;
         } else {
-            descriptionContainer.style.display = 'none';
+            descriptionContainer.hidden = true;
         }
 
         // Open modal using UI helper

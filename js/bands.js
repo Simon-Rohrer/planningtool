@@ -51,6 +51,18 @@ const Bands = {
         const container = document.getElementById('bandsList');
         if (!container) return;
 
+        const canCreateBand = Auth.canCreateBand();
+        const createButtons = [
+            document.getElementById('createBandBtn'),
+            document.getElementById('createBandBtnView')
+        ];
+
+        createButtons.forEach(button => {
+            if (button) {
+                button.style.display = canCreateBand ? 'inline-flex' : 'none';
+            }
+        });
+
         // Check Cache
         if (this.bandsCache) {
             Logger.info('[Bands] Using cached data.');
@@ -68,19 +80,16 @@ const Bands = {
                 return;
             }
 
-            // Hide create button if not allowed
-            const createBtn = document.getElementById('createBandBtn');
-            if (createBtn) {
-                createBtn.style.display = Auth.canCreateBand() ? 'block' : 'none';
-            }
-
             let bands = await Storage.getUserBands(user.id);
             if (!Array.isArray(bands)) bands = [];
 
             // Fetch member counts for each band to have them in the cache
             const bandsWithCounts = await Promise.all(bands.map(async band => {
                 const members = await Storage.getBandMembers(band.id);
-                return { ...band, memberCount: members.length };
+                return {
+                    ...band,
+                    memberCount: members.length
+                };
             }));
 
             this.bandsCache = bandsWithCounts;
@@ -103,33 +112,102 @@ const Bands = {
         }
     },
 
+    getRolePriority(role) {
+        const priorities = {
+            leader: 0,
+            'co-leader': 1,
+            member: 2
+        };
+
+        return priorities[role] ?? 99;
+    },
+
+    getBandAvatarHtml(band) {
+        if (band.image_url) {
+            return `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" class="band-card-avatar-img">`;
+        }
+
+        return `
+            <div class="band-card-avatar-fallback" style="background: ${band.color || 'var(--color-primary)'};">
+                ${this.escapeHtml(UI.getUserInitials(band.name || 'Band'))}
+            </div>
+        `;
+    },
+
+    getBandDetailsCoverHtml(band) {
+        if (band.image_url) {
+            return `
+                <img
+                    src="${band.image_url}"
+                    alt="${this.escapeHtml(band.name)}"
+                    class="band-details-cover-img"
+                    onclick="UI.showLightbox('${band.image_url}')"
+                >
+            `;
+        }
+
+        return `
+            <div class="band-details-cover-fallback" style="background: ${band.color || 'var(--color-primary)'};">
+                ${this.escapeHtml(UI.getUserInitials(band.name || 'Band'))}
+            </div>
+        `;
+    },
+
     // Helper: render the band list
     _renderBandsList(container, bands) {
         if (bands.length === 0) {
-            UI.showEmptyState(container, '🎸', 'Du bist noch in keiner Band. Tritt einer Band bei!');
+            container.innerHTML = `
+                <div class="bands-empty-state">
+                    <div class="bands-empty-icon">🎸</div>
+                    <h3>Noch keine Bands</h3>
+                    <p>Erstelle eine neue Band oder tritt per Code einer bestehenden Band bei.</p>
+                </div>
+            `;
             return;
         }
 
-        container.innerHTML = bands.map(band => {
-            const imageHtml = band.image_url
-                ? `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" class="band-avatar-small">`
+        const sortedBands = [...bands].sort((a, b) => {
+            const roleDelta = this.getRolePriority(a.role) - this.getRolePriority(b.role);
+            if (roleDelta !== 0) return roleDelta;
+            return (a.name || '').localeCompare(b.name || '', 'de');
+        });
+
+        container.innerHTML = sortedBands.map((band, index) => {
+            const memberCount = band.memberCount || 0;
+            const roleLabel = UI.getRoleDisplayName(band.role);
+            const descriptionHtml = band.description
+                ? `<p class="band-card-description">${this.escapeHtml(band.description)}</p>`
                 : '';
 
             return `
-                <div class="band-card" data-band-id="${band.id}" style="border-left: 4px solid ${band.color || '#6366f1'}">
+                <div class="band-card animated-fade-in" data-band-id="${band.id}" tabindex="0" role="button" aria-label="Band ${this.escapeHtml(band.name)} oeffnen" style="--band-accent: ${band.color || '#6366f1'}; border-left: 4px solid ${band.color || '#6366f1'}; animation-delay: ${index * 0.06}s;">
                     <div class="band-card-header">
-                        <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                            ${imageHtml}
-                            <h3>${this.escapeHtml(band.name)}</h3>
+                        <div class="band-card-identity">
+                            <div class="band-card-avatar-shell">
+                                ${this.getBandAvatarHtml(band)}
+                            </div>
+                            <div class="band-card-title-group">
+                                <div class="band-card-title-row">
+                                    <h3>${this.escapeHtml(band.name)}</h3>
+                                    <span class="band-role-badge role-badge ${UI.getRoleClass(band.role)}">
+                                        ${roleLabel}
+                                    </span>
+                                </div>
+                                <p class="band-card-subtitle">Deine Rolle: ${roleLabel}</p>
+                            </div>
                         </div>
-                        <span class="band-role-badge ${UI.getRoleClass(band.role)}">
-                            ${UI.getRoleDisplayName(band.role)}
-                        </span>
+                        <span class="band-card-open-icon" aria-hidden="true">↗</span>
                     </div>
-                    ${band.description ? `<p>${this.escapeHtml(band.description)}</p>` : ''}
+
+                    ${descriptionHtml}
+
+                    <div class="band-card-facts">
+                        <span class="band-card-chip">👥 ${memberCount} Mitglied${memberCount !== 1 ? 'er' : ''}</span>
+                    </div>
+
                     <div class="band-card-footer">
-                        <span>👥 ${band.memberCount || 0} Mitglied${band.memberCount !== 1 ? 'er' : ''}</span>
-                        <span>${UI.formatRelativeTime(band.createdAt)}</span>
+                        <span class="band-card-open-label">Band oeffnen</span>
+                        <span class="band-card-hint">Mitglieder, Setlist, Planung</span>
                     </div>
                 </div>
             `;
@@ -140,6 +218,13 @@ const Bands = {
             card.addEventListener('click', () => {
                 const bandId = card.dataset.bandId;
                 this.showBandDetails(bandId);
+            });
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    const bandId = card.dataset.bandId;
+                    this.showBandDetails(bandId);
+                }
             });
         });
     },
@@ -155,23 +240,91 @@ const Bands = {
             return;
         }
 
+        const members = await Storage.getBandMembers(bandId);
+        const membersCount = Array.isArray(members) ? members.length : 0;
+
         // Set band name and add edit button if allowed
         const nameHeader = document.getElementById('bandDetailsName');
+        const coverContainer = document.getElementById('bandDetailsCover');
+        const subtitle = document.getElementById('bandDetailsSubtitle');
+        const meta = document.getElementById('bandDetailsMeta');
+        const membersSummary = document.getElementById('bandDetailsMembersSummary');
+        const settingsMeta = document.getElementById('bandDetailsSettingsMeta');
         const canEdit = await Auth.canEditBandDetails(bandId);
+        const currentRole = user ? await Storage.getUserRoleInBand(user.id, bandId) : null;
 
-        // Show/Hide Image
-        const imageHtml = band.image_url
-            ? `<img src="${band.image_url}" alt="${this.escapeHtml(band.name)}" onclick="UI.showLightbox('${band.image_url}')" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-surface); box-shadow: var(--shadow-sm); cursor: zoom-in; transition: transform 0.2s;">`
-            : '';
+        if (coverContainer) {
+            coverContainer.innerHTML = this.getBandDetailsCoverHtml(band);
+        }
+
+        if (subtitle) {
+            if (band.description) {
+                subtitle.textContent = band.description;
+                subtitle.style.display = '';
+            } else {
+                subtitle.textContent = '';
+                subtitle.style.display = 'none';
+            }
+        }
+
+        if (meta) {
+            const metaItems = [];
+            if (currentRole) {
+                metaItems.push(`
+                    <span class="band-details-meta-chip role-badge ${UI.getRoleClass(currentRole)}">
+                        ${UI.getRoleDisplayName(currentRole)}
+                    </span>
+                `);
+            }
+            metaItems.push(`
+                <span class="band-details-meta-chip">
+                    <span>👥</span>
+                    ${membersCount} Mitglied${membersCount !== 1 ? 'er' : ''}
+                </span>
+            `);
+            meta.innerHTML = metaItems.join('');
+        }
+
+        if (membersSummary) {
+            membersSummary.textContent = membersCount === 1
+                ? '1 Mitglied ist aktuell Teil dieser Band.'
+                : `${membersCount} Mitglieder sind aktuell Teil dieser Band.`;
+        }
+
+        if (settingsMeta) {
+            if (band.createdAt) {
+                const createdAt = new Date(band.createdAt);
+                const createdAtLabel = Number.isNaN(createdAt.getTime())
+                    ? UI.formatDateShort(band.createdAt)
+                    : createdAt.toLocaleString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                settingsMeta.hidden = false;
+                settingsMeta.innerHTML = `
+                    <div class="band-details-settings-meta-item">
+                        <span class="band-details-settings-meta-label">Band erstellt</span>
+                        <span class="band-details-settings-meta-value">${createdAtLabel}</span>
+                    </div>
+                `;
+            } else {
+                settingsMeta.hidden = true;
+                settingsMeta.innerHTML = '';
+            }
+        }
 
         if (canEdit) {
             nameHeader.style.display = 'flex';
             nameHeader.style.alignItems = 'center';
-            nameHeader.style.gap = '1rem';
+            nameHeader.style.flexWrap = 'wrap';
+            nameHeader.style.gap = '0.75rem';
             nameHeader.innerHTML = `
-                ${imageHtml}
-                ${this.escapeHtml(band.name)}
-                <button class="btn-icon edit-band-name" title="Bandnamen ändern">✏️</button>
+                <span class="band-details-name-text">${this.escapeHtml(band.name)}</span>
+                <button class="btn-icon band-details-edit-btn edit-band-name" title="Bandnamen ändern">✏️</button>
             `;
 
             // Add edit handler
@@ -183,10 +336,9 @@ const Bands = {
         } else {
             nameHeader.style.display = 'flex';
             nameHeader.style.alignItems = 'center';
-            nameHeader.style.gap = '1rem';
+            nameHeader.style.gap = '0.75rem';
             nameHeader.innerHTML = `
-                ${imageHtml}
-                ${this.escapeHtml(band.name)}
+                <span class="band-details-name-text">${this.escapeHtml(band.name)}</span>
             `;
         }
 
@@ -194,7 +346,7 @@ const Bands = {
         UI.openModal('bandDetailsModal');
 
         // Render members
-        await this.renderBandMembers(bandId);
+        await this.renderBandMembers(bandId, members);
 
         // Show/hide settings based on permissions
         const canManage = await Auth.canManageBand(bandId);
@@ -229,30 +381,32 @@ const Bands = {
             // New: Profile Image Section (only if canManage)
             if (canManage) {
                 const imageSection = document.createElement('div');
-                imageSection.className = 'section band-image-section';
-                imageSection.style.marginBottom = 'var(--spacing-lg)';
+                imageSection.className = 'section band-details-panel-section band-image-section';
                 imageSection.innerHTML = `
+                    <span class="band-details-section-eyebrow">Profil</span>
                     <h3>Band Profilbild</h3>
-                    <div style="display: flex; gap: var(--spacing-md); align-items: flex-start; flex-wrap: wrap;">
-                        <div style="flex-shrink: 0;">
-                            ${band.image_url
-                        ? `<img src="${band.image_url}" alt="Profilbild" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-surface); box-shadow: var(--shadow-md);">`
-                        : `<div style="width: 100px; height: 100px; border-radius: 50%; background: var(--color-bg-secondary); display: flex; align-items: center; justify-content: center; font-size: 2rem;">🎸</div>`
+                    <div class="band-settings-media">
+                        <div class="band-settings-media-preview">
+                            <div class="band-settings-media-frame">
+                                ${band.image_url
+                        ? `<img src="${band.image_url}" alt="Profilbild" class="band-settings-media-image">`
+                        : `<div class="band-settings-media-fallback" aria-hidden="true">🎸</div>`
                     }
+                            </div>
                         </div>
-                        <div style="flex: 1; min-width: 200px;">
-                            <p class="help-text" style="margin-bottom: var(--spacing-sm);">
-                                Lade ein Bild hoch (Max. 5MB). Das Bild wird automatisch hochgeladen.
+                        <div class="band-settings-media-controls">
+                            <p class="band-details-section-note">
+                                Lade ein Bild hoch. Es wird direkt uebernommen und im Bandprofil angezeigt.
                             </p>
-                            <input type="file" id="settingsBandImage" accept="image/*" style="margin-bottom: var(--spacing-sm); display: block; width: 100%;">
-                            <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
-                                <span id="uploadStatus" style="font-size: 0.875rem; color: var(--color-text-secondary);"></span>
+                            <input type="file" id="settingsBandImage" accept="image/*" class="band-settings-file-input">
+                            <div class="band-settings-inline-actions">
+                                <span id="uploadStatus" class="band-settings-status"></span>
                                 ${band.image_url ? `<button class="btn btn-danger btn-sm" id="deleteBandImageBtn">Bild löschen</button>` : ''}
                             </div>
                         </div>
                     </div>
                 `;
-                settingsTab.insertBefore(imageSection, settingsTab.firstChild);
+                settingsTab.insertBefore(imageSection, bandSettingsSection);
 
                 // Auto-upload on file selection
                 const fileInput = imageSection.querySelector('#settingsBandImage');
@@ -320,20 +474,22 @@ const Bands = {
             }
 
             const codeSection = document.createElement('div');
-            codeSection.className = 'section join-code-section';
+            codeSection.className = 'section band-details-panel-section join-code-section';
             codeSection.innerHTML = `
+                <span class="band-details-section-eyebrow">Zugang</span>
                 <h3>Band-Beitrittscode</h3>
                 <div class="join-code-display">
-                    <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
+                    <div class="band-settings-code-row">
                         <b><code class="join-code" id="bandJoinCode">${band.joinCode || 'Kein Code'}</code></b>
-                        <button class="btn btn-sm btn-secondary" id="copyJoinCodeBtn" title="Code kopieren">
+                        <button class="btn btn-sm btn-secondary band-settings-code-copy" id="copyJoinCodeBtn" title="Code kopieren">
                             📋 Kopieren
                         </button>
                     </div>
-                    <p class="help-text">Teile diesen Code mit neuen Mitgliedern, damit sie der Band beitreten können.</p>
+                    <p class="band-details-section-note">Teile diesen Code mit neuen Mitgliedern, damit sie der Band direkt beitreten koennen.</p>
                 </div>
             `;
-            settingsTab.insertBefore(codeSection, settingsTab.firstChild);
+            const codeInsertAnchor = settingsTab.querySelector('.band-image-section') || bandSettingsSection;
+            settingsTab.insertBefore(codeSection, codeInsertAnchor);
 
             // Add copy handler
             const copyBtn = codeSection.querySelector('#copyJoinCodeBtn');
@@ -379,13 +535,11 @@ const Bands = {
         if (existingLeaveSection) existingLeaveSection.remove();
 
         const leaveSection = document.createElement('div');
-        leaveSection.className = 'section leave-band-section';
-        leaveSection.style.marginTop = 'var(--spacing-lg)';
-        leaveSection.style.borderTop = '1px solid var(--color-border)';
-        leaveSection.style.paddingTop = 'var(--spacing-md)';
+        leaveSection.className = 'section band-details-panel-section leave-band-section';
         leaveSection.innerHTML = `
+            <span class="band-details-section-eyebrow">Mitgliedschaft</span>
             <h3>Band verlassen</h3>
-            <p class="help-text">Möchtest du diese Band verlassen?</p>
+            <p class="band-details-section-note">Verlasse die Band, wenn du kuenftig nicht mehr dazugehoeren moechtest.</p>
             <button class="btn btn-warning" id="leaveBandBtn">Band verlassen</button>
         `;
 
@@ -514,9 +668,9 @@ const Bands = {
     },
 
     // Render band members
-    async renderBandMembers(bandId) {
+    async renderBandMembers(bandId, preloadedMembers = null) {
         const container = document.getElementById('membersList');
-        const members = await Storage.getBandMembers(bandId);
+        const members = Array.isArray(preloadedMembers) ? preloadedMembers : await Storage.getBandMembers(bandId);
         const currentUser = Auth.getCurrentUser();
         const canManage = await Auth.canManageBand(bandId);
         const canChangeRoles = await Auth.canChangeRoles(bandId);
@@ -562,6 +716,9 @@ const Bands = {
 
             // Instrument display
             const instrumentIcon = user.instrument ? (this.instrumentIcons[user.instrument] || '') : '';
+            const instrumentLabel = user.instrument
+                ? `${instrumentIcon} ${this.getInstrumentName(user.instrument)}`
+                : 'Kein Instrument hinterlegt';
 
             return `
                 <div class="member-row animated-fade-in" style="animation-delay: ${index * 0.1}s">
@@ -580,7 +737,7 @@ const Bands = {
                             ${isCurrentUser ? '<span class="self-status-badge">DU</span>' : ''}
                         </div>
                         <div class="member-meta-row">
-                            ${instrumentIcon ? `<span class="member-instrument-pill">${instrumentIcon} ${this.getInstrumentName(user.instrument)}</span>` : ''}
+                            <span class="member-instrument-pill ${user.instrument ? '' : 'is-muted'}">${instrumentLabel}</span>
                         </div>
                     </div>
 
@@ -637,6 +794,11 @@ const Bands = {
 
         // Reset content with structure
         container.innerHTML = `
+            <div class="band-details-panel-intro band-details-panel-intro-compact">
+                <span class="band-details-section-eyebrow">Kalender</span>
+                <h3>Abwesenheiten</h3>
+                <p>Behalte Verfuegbarkeiten der Band im Blick und plane transparenter.</p>
+            </div>
             <div class="absence-view-controls">
                 <div class="filter-group">
                     <div class="absence-filters">
