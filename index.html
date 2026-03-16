@@ -1195,10 +1195,12 @@
                             <div class="view-actions-bar bands-view-actions">
                                 <div class="bands-view-action-group">
                                     <button id="joinBandBtn" class="btn btn-secondary btn-bands-join-modal">
-                                        Band beitreten
+                                        <span class="bands-action-icon" aria-hidden="true">↪</span>
+                                        <span class="bands-action-label">Beitreten</span>
                                     </button>
                                     <button id="createBandBtnView" class="btn btn-primary">
-                                        + Band erstellen
+                                        <span class="bands-action-icon" aria-hidden="true">＋</span>
+                                        <span class="bands-action-label">Erstellen</span>
                                     </button>
                                 </div>
                             </div>
@@ -2444,13 +2446,17 @@
     </div>
 
     <!-- Add Member Modal -->
-    <div id="addMemberModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Mitglied hinzufügen</h2>
+    <div id="addMemberModal" class="modal modal-band-entry modal-band-entry-compact">
+        <div class="modal-content band-entry-modal-content band-entry-modal-content-compact">
+            <div class="modal-header band-entry-modal-header">
+                <div class="band-entry-modal-copy">
+                    <span class="band-entry-modal-kicker">Band</span>
+                    <h2>Mitglied hinzufügen</h2>
+                    <p>Füge ein bestehendes Konto per Benutzername hinzu und weise direkt die passende Rolle zu.</p>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
-            <form id="addMemberForm">
+            <form id="addMemberForm" class="band-entry-form">
                 <div class="form-group">
                     <label for="memberUsername">Benutzername</label>
                     <input type="text" id="memberUsername" required>
@@ -3287,19 +3293,23 @@
     </div>
 
     <!-- Rehearsal Voting Modal -->
-    <div id="rehearsalVotingModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Jetzt abstimmen</h2>
+    <div id="rehearsalVotingModal" class="modal modal-voting-shell">
+        <div class="modal-content voting-modal-content">
+            <div class="modal-header voting-modal-header">
+                <div class="voting-modal-copy">
+                    <span class="voting-modal-kicker">Abstimmung</span>
+                    <h2>Jetzt abstimmen</h2>
+                    <p>Markiere pro Termin kurz, ob du teilnehmen kannst.</p>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
-            <form id="rehearsalVotingForm">
-                <div class="modal-body">
-                    <div id="rehearsalVotingContent">
+            <form id="rehearsalVotingForm" class="voting-modal-form">
+                <div class="modal-body voting-modal-body">
+                    <div id="rehearsalVotingContent" class="voting-modal-list">
                         <!-- Dates will be injected here -->
                     </div>
                 </div>
-                <div class="modal-actions">
+                <div class="modal-actions voting-modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" id="saveRehearsalVotesBtn" class="btn btn-primary">Speichern</button>
                 </div>
@@ -3308,19 +3318,23 @@
     </div>
 
     <!-- Event Voting Modal -->
-    <div id="eventVotingModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Auftritt: Jetzt abstimmen</h2>
+    <div id="eventVotingModal" class="modal modal-voting-shell">
+        <div class="modal-content voting-modal-content">
+            <div class="modal-header voting-modal-header">
+                <div class="voting-modal-copy">
+                    <span class="voting-modal-kicker">Abstimmung</span>
+                    <h2>Auftritt abstimmen</h2>
+                    <p>Wähle für jeden vorgeschlagenen Termin deine Rückmeldung aus.</p>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
-            <form id="eventVotingForm">
-                <div class="modal-body">
-                    <div id="eventVotingContent">
+            <form id="eventVotingForm" class="voting-modal-form">
+                <div class="modal-body voting-modal-body">
+                    <div id="eventVotingContent" class="voting-modal-list">
                         <!-- Dates will be injected here -->
                     </div>
                 </div>
-                <div class="modal-actions">
+                <div class="modal-actions voting-modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="submit" id="saveEventVotesBtn" class="btn btn-primary">Speichern</button>
                 </div>
@@ -3576,15 +3590,19 @@
     </div>
 
     <!-- Profile Image Preview Modal -->
-    <div id="profileImageModal" class="modal">
-        <div class="modal-content" style="max-width: 600px; text-align: center;">
-            <div class="modal-header">
-                <h2>Profilbild</h2>
+    <div id="profileImageModal" class="modal profile-image-preview-modal">
+        <div class="modal-content profile-image-preview-modal-content">
+            <div class="modal-header profile-image-preview-header">
+                <div class="profile-image-preview-copy">
+                    <span class="profile-image-preview-kicker">Profil</span>
+                    <h2>Profilbild</h2>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body">
-                <img id="profileImagePreview" src="" alt="Profilbild"
-                    style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
+            <div class="modal-body profile-image-preview-body">
+                <div class="profile-image-preview-frame">
+                    <img id="profileImagePreview" src="" alt="Profilbild" class="profile-image-preview-img">
+                </div>
             </div>
         </div>
     </div>

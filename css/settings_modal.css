@@ -2114,3 +2114,168 @@
         max-height: min(250px, calc(100vh - 240px));
     }
 }
+
+/* =========================================
+   SETTINGS MOBILE POLISH
+   ========================================= */
+
+@media (max-width: 640px) {
+    #settingsModal .settings-modal-content {
+        max-height: 94dvh;
+        border-radius: 24px 24px 0 0;
+    }
+
+    #settingsModal .settings-modal-header {
+        padding: 0.9rem 0.95rem 0.75rem;
+    }
+
+    #settingsModal .settings-modal-body {
+        padding: 0.85rem 0.95rem calc(6.2rem + env(safe-area-inset-bottom));
+    }
+
+    #settingsModal .settings-pane-intro,
+    #settingsModal .profile-section,
+    #settingsModal .settings-surface-card,
+    #settingsModal .absences-form-column,
+    #settingsModal .admin-accordion-card,
+    #settingsModal .admin-subsection-form {
+        padding: 0.9rem;
+        border-radius: 16px;
+    }
+
+    #settingsModal .settings-pane-intro h3,
+    #settingsModal .settings-column-head h3,
+    #settingsModal .settings-column-head h4 {
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    #settingsModal .settings-pane-intro p,
+    #settingsModal .settings-column-head p,
+    #settingsModal .profile-summary-copy p,
+    #settingsModal .settings-inline-note {
+        font-size: 0.8rem;
+        line-height: 1.38;
+    }
+
+    #settingsModal .profile-summary-card {
+        gap: 0.75rem;
+        padding: 0.85rem;
+    }
+
+    #settingsModal .profile-summary-copy h4 {
+        font-size: 1.04rem;
+    }
+
+    #settingsModal .settings-form-actions {
+        gap: 0.55rem;
+        padding-top: 0.7rem;
+    }
+
+    #settingsModal .settings-form-actions .btn,
+    #settingsModal .settings-meta-links {
+        width: 100%;
+    }
+
+    #settingsModal .settings-meta-links {
+        justify-content: flex-start;
+    }
+
+    #settingsModal .absence-item-card,
+    #settingsModal .band-admin-member-card,
+    #settingsModal .member-item,
+    #settingsModal .user-band-tag {
+        border-radius: 14px;
+    }
+
+    #settingsModal .admin-toolbar-end,
+    #settingsModal .absence-actions,
+    #settingsModal .confirm-notify-actions {
+        width: 100%;
+    }
+}
+
+/* =========================================
+   SETTINGS MOBILE FINAL PASS
+   ========================================= */
+
+@media (max-width: 640px) {
+    #settingsModal .settings-modal-body {
+        gap: 0.8rem;
+        scroll-padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    }
+
+    #settingsModal .settings-tabs {
+        gap: 0.45rem;
+    }
+
+    #settingsModal .settings-tab-btn {
+        min-width: 136px;
+        min-height: 52px;
+        padding: 0.68rem 0.75rem;
+    }
+
+    #settingsModal .settings-tab-label {
+        gap: 0.12rem;
+    }
+
+    #settingsModal .settings-pane-intro,
+    #settingsModal .profile-section,
+    #settingsModal .settings-surface-card,
+    #settingsModal .absences-form-column,
+    #settingsModal .admin-accordion-card,
+    #settingsModal .admin-subsection-form {
+        padding: 0.82rem;
+        border-radius: 15px;
+    }
+
+    #settingsModal .settings-pane-intro,
+    #settingsModal .settings-column-head,
+    #settingsModal .settings-column-head-compact,
+    #settingsModal .profile-summary-copy,
+    #settingsModal .profile-main-column {
+        gap: 0.45rem;
+    }
+
+    #settingsModal .profile-summary-card {
+        gap: 0.7rem;
+        padding: 0.82rem;
+    }
+
+    #settingsModal .profile-section-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+
+    #settingsModal .profile-form-grid,
+    #settingsModal .profile-settings-grid {
+        gap: 0.75rem;
+    }
+
+    #settingsModal .settings-pane-intro p,
+    #settingsModal .settings-column-head p,
+    #settingsModal .profile-summary-copy p,
+    #settingsModal .settings-inline-note {
+        max-width: none;
+    }
+
+    #settingsModal .settings-form-actions {
+        gap: 0.5rem;
+        padding-top: 0.6rem;
+    }
+
+    #settingsModal .settings-form-actions .btn {
+        min-height: 48px;
+    }
+
+    #settingsModal .settings-meta-links {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.45rem;
+    }
+
+    #settingsModal .settings-meta-links > * {
+        width: 100%;
+    }
+}

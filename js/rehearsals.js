@@ -604,32 +604,44 @@ const Rehearsals = {
             const allSuggestions = (await Storage.getTimeSuggestionsForDate(rehearsalId, index)) || [];
 
             const otherSuggestionsHtml = allSuggestions.length > 0 ? `
-                <div class="modal-time-suggestions" style="margin-top: 4px;">
+                <div class="modal-time-suggestions">
                     ${(await Promise.all(allSuggestions.map(async s => {
                 const suggUser = await Storage.getById('users', s.userId);
                 const suggName = UI.getUserDisplayName(suggUser);
-                return `<span class="time-suggestion-pill" style="font-size: 0.7rem;">🕐 ${Bands.escapeHtml(s.suggestedTime)} (${Bands.escapeHtml(suggName.split(' ')[0])})</span>`;
+                return `<span class="time-suggestion-pill">${Bands.escapeHtml(s.suggestedTime)} · ${Bands.escapeHtml(suggName.split(' ')[0])}</span>`;
             }))).join('')}
                 </div>
             ` : '';
 
             return `
                 <div class="voting-row" data-date-index="${index}">
-                    <div class="voting-date-info">
-                        <span class="date">${UI.formatDateOnly(dateString)}</span>
-                        <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="voting-row-main">
+                        <div class="voting-date-info">
+                            <span class="date">${UI.formatDateOnly(dateString)}</span>
                             <span class="time">${new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</span>
-                            <button type="button" class="btn-suggest-time-modal ${userSuggestion ? 'has-suggestion' : ''}" 
-                                    title="${userSuggestion ? 'Zeitvorschlag bearbeiten: ' + userSuggestion.suggestedTime : 'Andere Zeit vorschlagen'}" 
-                                    data-rehearsal-id="${rehearsalId}" 
-                                    data-date-index="${index}">🕐</button>
                         </div>
-                        ${otherSuggestionsHtml}
+                        <button type="button" class="btn-suggest-time-modal ${userSuggestion ? 'has-suggestion' : ''}" 
+                                title="${userSuggestion ? 'Zeitvorschlag bearbeiten: ' + userSuggestion.suggestedTime : 'Andere Zeit vorschlagen'}" 
+                                data-rehearsal-id="${rehearsalId}" 
+                                data-date-index="${index}">
+                            <span class="btn-suggest-time-icon">🕐</span>
+                            <span class="btn-suggest-time-label">${userSuggestion ? Bands.escapeHtml(userSuggestion.suggestedTime) : 'Zeit vorschlagen'}</span>
+                        </button>
                     </div>
-                    <div class="voting-options">
-                        <button type="button" class="voting-option-btn yes ${availability === 'yes' ? 'active' : ''}" data-value="yes" title="Ich kann">✅</button>
-                        <button type="button" class="voting-option-btn no ${availability === 'no' ? 'active' : ''}" data-value="no" title="Ich kann nicht">❌</button>
-                        <button type="button" class="voting-option-btn none ${availability === 'none' ? 'active' : ''}" data-value="none" title="Keine Angabe">➖</button>
+                    ${otherSuggestionsHtml}
+                    <div class="voting-options" role="group" aria-label="Verfügbarkeit wählen">
+                        <button type="button" class="voting-option-btn yes ${availability === 'yes' ? 'active' : ''}" data-value="yes" title="Ich kann">
+                            <span class="vote-choice-icon">✓</span>
+                            <span class="vote-choice-label">Ja</span>
+                        </button>
+                        <button type="button" class="voting-option-btn no ${availability === 'no' ? 'active' : ''}" data-value="no" title="Ich kann nicht">
+                            <span class="vote-choice-icon">✕</span>
+                            <span class="vote-choice-label">Nein</span>
+                        </button>
+                        <button type="button" class="voting-option-btn none ${availability === 'none' ? 'active' : ''}" data-value="none" title="Keine Angabe">
+                            <span class="vote-choice-icon">–</span>
+                            <span class="vote-choice-label">Offen</span>
+                        </button>
                     </div>
                 </div>
             `;

@@ -1251,10 +1251,324 @@ button[onclick*="importSongsModal"] {
     transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.dashboard-news-item.clickable:hover,
-.dashboard-activity-item.clickable:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-md);
+    .dashboard-news-item.clickable:hover,
+    .dashboard-activity-item.clickable:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+
+/* ===== Voting Modal Refresh ===== */
+.modal-voting-shell {
+    z-index: 1600;
+}
+
+.voting-modal-content {
+    width: min(92vw, 680px);
+    max-width: 680px;
+    max-height: min(84vh, 760px);
+    padding: 0;
+    overflow: hidden;
+    border-radius: 24px;
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--accent-secondary) 5%, transparent), transparent 38%),
+        var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+}
+
+.voting-modal-header {
+    padding: 1.15rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+}
+
+.voting-modal-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.voting-modal-kicker {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.voting-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+}
+
+.voting-modal-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.voting-modal-form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.voting-modal-body {
+    padding: 1rem 1.25rem 0.35rem;
+    max-height: min(56vh, 520px);
+    overflow: auto;
+}
+
+.voting-modal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.voting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--surface-secondary);
+    box-shadow: none;
+}
+
+.voting-row:last-child {
+    border-bottom: 1px solid var(--border);
+}
+
+.voting-row-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.voting-date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    min-width: 0;
+}
+
+.voting-date-info .date {
+    font-size: 1rem;
+    line-height: 1.3;
+    font-weight: 650;
+    color: var(--text-primary);
+}
+
+.voting-date-info .time {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.btn-suggest-time-modal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 38px;
+    padding: 0.48rem 0.72rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    opacity: 1;
+}
+
+.btn-suggest-time-modal:hover {
+    background: var(--hover-bg);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+    transform: none;
+}
+
+.btn-suggest-time-modal.has-suggestion {
+    color: var(--accent-secondary);
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent-secondary) 24%, var(--border));
+}
+
+.btn-suggest-time-icon {
+    font-size: 0.92rem;
+    line-height: 1;
+}
+
+.btn-suggest-time-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.modal-time-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: -0.15rem;
+}
+
+.time-suggestion-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.26rem 0.62rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent-secondary) 20%, var(--border));
+    background: var(--accent-soft);
+    color: var(--accent-secondary);
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
+.voting-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+.voting-option-btn {
+    width: 100%;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    padding: 0.55rem 0.4rem;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    box-shadow: none;
+}
+
+.voting-option-btn:hover {
+    background: var(--hover-bg);
+    border-color: var(--border-strong);
+    transform: none;
+    box-shadow: none;
+}
+
+.vote-choice-icon {
+    font-size: 1.02rem;
+    line-height: 1;
+}
+
+.vote-choice-label {
+    font-size: 0.76rem;
+    font-weight: 650;
+    line-height: 1.1;
+}
+
+.voting-option-btn.active.yes {
+    background: var(--success-soft);
+    border-color: color-mix(in srgb, #22c55e 38%, var(--border));
+    color: #15803d;
+}
+
+.voting-option-btn.active.no {
+    background: var(--danger-soft);
+    border-color: color-mix(in srgb, #ef4444 38%, var(--border));
+    color: #dc2626;
+}
+
+.voting-option-btn.active.none {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent-secondary) 28%, var(--border));
+    color: var(--accent-secondary);
+}
+
+html[data-theme="dark"] .voting-option-btn.active.yes,
+:root.theme-dark .voting-option-btn.active.yes {
+    color: #86efac;
+}
+
+html[data-theme="dark"] .voting-option-btn.active.no,
+:root.theme-dark .voting-option-btn.active.no {
+    color: #fca5a5;
+}
+
+.voting-modal-actions {
+    padding: 0.95rem 1.25rem 1.15rem;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+}
+
+@media (max-width: 768px) {
+    #rehearsalVotingModal.active,
+    #eventVotingModal.active {
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    #rehearsalVotingModal .voting-modal-content,
+    #eventVotingModal .voting-modal-content {
+        width: min(92vw, 420px);
+        max-width: 420px;
+        max-height: min(78dvh, 760px);
+        margin: 0;
+        border-radius: 22px;
+    }
+
+    #rehearsalVotingModal .voting-modal-header,
+    #eventVotingModal .voting-modal-header {
+        padding: 1rem 1rem 0.85rem;
+    }
+
+    #rehearsalVotingModal .voting-modal-body,
+    #eventVotingModal .voting-modal-body {
+        padding: 0.95rem 1rem 0.3rem;
+        max-height: min(52dvh, 520px);
+    }
+
+    #rehearsalVotingModal .voting-modal-actions,
+    #eventVotingModal .voting-modal-actions {
+        padding: 0.85rem 1rem calc(0.95rem + env(safe-area-inset-bottom));
+        gap: 0.65rem;
+    }
+
+    #rehearsalVotingModal .voting-modal-actions .btn,
+    #eventVotingModal .voting-modal-actions .btn {
+        flex: 1 1 0;
+        width: auto;
+        justify-content: center;
+    }
+
+    .voting-row {
+        padding: 0.88rem;
+        gap: 0.72rem;
+    }
+
+    .voting-row-main {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-suggest-time-modal {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 420px) {
+    .voting-modal-header h2 {
+        font-size: 1.32rem;
+    }
+
+    .voting-option-btn {
+        min-height: 50px;
+        border-radius: 13px;
+    }
+
+    .vote-choice-label {
+        font-size: 0.72rem;
+    }
 }
 
 .news-heading,
@@ -5797,17 +6111,44 @@ input:checked+.slider:before {
 
 .member-meta-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--spacing-md);
 }
 
-.member-instrument-pill {
-    font-size: 0.75rem;
-    color: var(--color-text-secondary);
+.member-instrument-list {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.28rem;
+}
+
+.member-instrument-item {
+    display: inline-flex;
     align-items: center;
-    gap: 4px;
+    min-height: 0;
+    padding: 0 0 0 0.82rem;
+    position: relative;
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
     font-weight: 500;
+    line-height: 1.35;
+}
+
+.member-instrument-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0.34rem;
+    height: 0.34rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 68%, white 10%);
+    transform: translateY(-50%);
+}
+
+.member-instrument-list.is-empty .member-instrument-item,
+.member-instrument-item.is-muted {
+    opacity: 0.78;
 }
 
 .member-actions-col {
@@ -20181,17 +20522,35 @@ body:not(.landing-active) .calendar-submenu {
     gap: 8px;
 }
 
-#bandDetailsModal .member-instrument-pill {
+#bandDetailsModal .member-instrument-list {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.28rem;
+}
+
+#bandDetailsModal .member-instrument-item {
     display: inline-flex;
     align-items: center;
-    min-height: 30px;
-    padding: 0.35rem 0.7rem;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    min-height: 0;
+    padding: 0 0 0 0.82rem;
+    position: relative;
     color: var(--text-secondary);
     font-size: 0.8rem;
     font-weight: 500;
+    line-height: 1.35;
+}
+
+#bandDetailsModal .member-instrument-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0.34rem;
+    height: 0.34rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 68%, white 10%);
+    transform: translateY(-50%);
 }
 
 #bandDetailsModal .member-actions-col {
@@ -21817,6 +22176,14 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
     margin-top: 4px;
     padding-top: 16px;
     border-top: 1px solid var(--border);
+}
+
+.modal-band-entry-compact .band-entry-modal-content {
+    width: min(500px, calc(100vw - 32px));
+}
+
+.modal-band-entry-compact .band-entry-form {
+    gap: 12px;
 }
 
 #setlistTab .band-details-panel-intro {
@@ -23678,4 +24045,1545 @@ html[data-theme="light"] #statisticsView .stats-empty-state,
 html[data-theme="light"] .multiselect-menu,
 :root:not(.theme-dark) .multiselect-menu {
     box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+}
+
+/* ===== Unified Mobile App Content ===== */
+@media (max-width: 768px) {
+    body:not(.landing-active) .app-main {
+        padding-bottom: calc(7.2rem + env(safe-area-inset-bottom));
+    }
+
+    body:not(.landing-active) .view.active {
+        padding-bottom: calc(7.2rem + env(safe-area-inset-bottom));
+    }
+
+    #dashboardView,
+    #statisticsView.statistics-view,
+    #newsView,
+    #pdftochordproView,
+    #probeorteView.probeorte-view,
+    #kalenderView,
+    #musikpoolView,
+    .view-page-shell {
+        gap: 0.8rem;
+    }
+
+    .view-page-shell,
+    #dashboardView,
+    #statisticsView.statistics-view,
+    #newsView,
+    #pdftochordproView {
+        padding-inline: 14px;
+    }
+
+    .page-overview-card {
+        gap: 0.5rem;
+        padding: 0.95rem 1rem;
+        border-radius: 18px;
+    }
+
+    .page-overview-copy {
+        gap: 0.18rem;
+    }
+
+    .page-overview-kicker {
+        font-size: 0.68rem;
+        letter-spacing: 0.16em;
+    }
+
+    .page-overview-card h2 {
+        font-size: 1.16rem;
+        line-height: 1.15;
+    }
+
+    .page-overview-card p,
+    .page-overview-caption {
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+
+    .page-overview-meta {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: 0;
+    }
+
+    .view-actions-bar {
+        gap: 0.65rem;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0;
+    }
+
+    .view-actions-bar .btn,
+    .view-actions-bar .form-select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .dashboard-hero {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .hero-welcome,
+    .next-event-hero-card {
+        min-height: 0;
+        padding: 1rem;
+        border-radius: 20px;
+    }
+
+    .hero-welcome {
+        gap: 0.35rem;
+    }
+
+    .hero-welcome h2.welcome-text {
+        font-size: clamp(1.48rem, 7vw, 2rem);
+        line-height: 1.04;
+        text-align: left;
+    }
+
+    .hero-subtitle {
+        font-size: 0.88rem;
+        line-height: 1.42;
+    }
+
+    .next-event-content {
+        gap: 0.6rem;
+    }
+
+    .next-event-title {
+        font-size: 1.32rem;
+    }
+
+    .next-event-detail-list,
+    .next-event-info-grid {
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+    }
+
+    .next-event-detail-item,
+    .next-event-info-block {
+        padding: 0.72rem 0.82rem;
+        border-radius: 14px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .dashboard-card.stat-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 0;
+        padding: 1rem;
+        border-radius: 18px;
+    }
+
+    .dashboard-card .card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+    }
+
+    .dashboard-card .card-content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.08rem 0.65rem;
+        align-items: center;
+    }
+
+    .dashboard-card .card-eyebrow,
+    .dashboard-card h3,
+    .dashboard-card .card-caption {
+        grid-column: 1;
+    }
+
+    .dashboard-card .card-stat {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        align-self: center;
+        font-size: 1.9rem;
+    }
+
+    .dashboard-card .card-caption {
+        font-size: 0.83rem;
+        line-height: 1.4;
+    }
+
+    .dashboard-bento-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .dashboard-section {
+        padding: 1rem;
+        border-radius: 18px;
+    }
+
+    .dashboard-section-header {
+        align-items: flex-start;
+        gap: 0.45rem;
+    }
+
+    .dashboard-section-header h3 {
+        font-size: 1.02rem;
+    }
+
+    .dashboard-quick-links {
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+    }
+
+    .calendar-sync-card,
+    .dashboard-news-list .news-card-modern,
+    .dashboard-activity-list > *,
+    #upcomingList > * {
+        border-radius: 16px;
+    }
+
+    .dashboard-news-list,
+    .dashboard-activity-list,
+    #upcomingList {
+        gap: 0.65rem;
+    }
+
+    #bandsView .bands-view-action-group {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+        width: 100%;
+    }
+
+    #bandsView .bands-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .band-card {
+        padding: 0.95rem;
+        border-radius: 18px;
+    }
+
+    .band-card-header {
+        gap: 0.8rem;
+    }
+
+    .band-card-title-row {
+        gap: 0.55rem;
+    }
+
+    .band-card h3 {
+        font-size: 1.28rem;
+    }
+
+    .band-card-subtitle,
+    .band-card-description,
+    .band-card-hint {
+        font-size: 0.84rem;
+        line-height: 1.42;
+    }
+
+    #eventsView .schedule-status-overview,
+    #rehearsalsView .schedule-status-overview {
+        display: flex;
+        gap: 0.65rem;
+        overflow-x: auto;
+        padding-bottom: 0.15rem;
+        margin: 0 -0.1rem;
+        scroll-snap-type: x proximity;
+    }
+
+    #eventsView .schedule-status-card,
+    #rehearsalsView .schedule-status-card {
+        flex: 0 0 min(74vw, 220px);
+        min-height: 132px;
+        padding: 0.85rem 0.95rem;
+        scroll-snap-align: start;
+    }
+
+    #eventsView .schedule-status-caption,
+    #rehearsalsView .schedule-status-caption {
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    #eventsView .schedule-panels,
+    #rehearsalsView .schedule-panels {
+        gap: 0.75rem;
+    }
+
+    #eventsView .schedule-panel,
+    #rehearsalsView .schedule-panel {
+        padding: 0.95rem 1rem;
+        border-radius: 18px;
+    }
+
+    #eventsView .schedule-panel-header,
+    #rehearsalsView .schedule-panel-header {
+        gap: 0.22rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+
+    #eventsView .schedule-panel-header h3,
+    #rehearsalsView .schedule-panel-header h3 {
+        font-size: 1rem;
+    }
+
+    #eventsView .schedule-panel-header p,
+    #rehearsalsView .schedule-panel-header p {
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    .event-card,
+    .rehearsal-card {
+        border-radius: 18px;
+    }
+
+    .accordion-header,
+    .accordion-body {
+        padding-left: 0.95rem;
+        padding-right: 0.95rem;
+    }
+
+    .schedule-card-title-row {
+        gap: 0.35rem;
+    }
+
+    .schedule-card-title-row h3 {
+        font-size: 1.04rem;
+        line-height: 1.2;
+    }
+
+    .schedule-card-band {
+        font-size: 0.85rem;
+    }
+
+    .schedule-card-meta-row {
+        gap: 0.42rem;
+    }
+
+    .schedule-card-chip {
+        font-size: 0.76rem;
+        padding: 0.38rem 0.62rem;
+    }
+
+    .schedule-card-status-stack {
+        align-items: flex-start;
+        gap: 0.45rem;
+    }
+
+    .schedule-card-user-state {
+        font-size: 0.74rem;
+    }
+
+    #statisticsView .statistics-top-shell,
+    #statisticsView .statistics-content-shell {
+        margin-left: 14px;
+        margin-right: 14px;
+    }
+
+    #statisticsView .statistics-filter-shell {
+        gap: 0.55rem;
+        padding: 0.85rem 1rem;
+    }
+
+    #statisticsView .stats-summary-container {
+        padding: 0 1rem 1rem;
+    }
+
+    #statisticsView .stats-kpi-grid,
+    #statisticsView .stats-insights-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    #statisticsView .stats-kpi-card,
+    #statisticsView .stats-insight-card,
+    #statisticsView .stats-note-card {
+        padding: 1rem;
+        min-height: 0;
+    }
+
+    #newsView .view-actions-bar {
+        padding-inline: 14px;
+    }
+
+    #newsView .btn {
+        justify-content: center;
+    }
+
+    #newsView .news-content {
+        padding-inline: 14px;
+    }
+
+    #pdftochordproView .converter-workspace {
+        gap: 0.8rem;
+    }
+
+    #pdftochordproView .converter-top-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+
+    #pdftochordproView .converter-step,
+    #pdftochordproView .converter-surface-card {
+        border-radius: 18px;
+    }
+
+    #pdftochordproView .converter-card-head {
+        gap: 0.3rem;
+    }
+
+    #pdftochordproView .converter-card-title {
+        font-size: 1.02rem;
+    }
+
+    #pdftochordproView .converter-card-subtitle,
+    #pdftochordproView .converter-info-note p,
+    #pdftochordproView .banner-text {
+        font-size: 0.82rem;
+        line-height: 1.42;
+    }
+
+    #pdftochordproView .converter-inline-actions,
+    #pdftochordproView .converter-form-stack {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+    }
+
+    #pdftochordproView .converter-inline-actions .btn,
+    #pdftochordproView .converter-primary-side-action {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #pdftochordproView .converter-split-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+
+    #pdftochordproView .split-gutter {
+        display: none;
+    }
+
+    #pdftochordproView .converter-pane {
+        min-height: 280px;
+    }
+
+    #musikpoolView .split-content-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+
+    #musikpoolView .section-header,
+    #musikpoolView .section-header-stack {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.65rem;
+    }
+
+    #musikpoolView .section-header .btn,
+    #musikpoolView .section-header-stack .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #musikpoolView .musikpool-members-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #musikpoolView .musikpool-member-card {
+        border-radius: 16px;
+        padding: 0.9rem;
+    }
+
+    .calendar-subscription-block {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.7rem;
+        padding: 0.95rem 1rem;
+        border-radius: 18px;
+    }
+
+    .calendar-subscription-block .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .modal-band-entry .band-entry-modal-content,
+    #feedbackModal .feedback-modal-shell,
+    #createEventModal .modal-content.scheduler-modal,
+    #createRehearsalModal .modal-content.scheduler-modal,
+    #songModal .song-editor-modal,
+    .song-pool-modal,
+    #locationConflictModal .conflict-modal-content,
+    #bandDetailsModal .band-details-modal-content {
+        width: 100vw;
+        max-width: 100vw;
+        max-height: 92dvh;
+        margin: 0;
+        border-radius: 24px 24px 0 0;
+    }
+
+    #createEventModal.active,
+    #createRehearsalModal.active,
+    #songModal.active,
+    #feedbackModal.active,
+    #locationConflictModal.active,
+    #bandDetailsModal.active,
+    .modal-band-entry.active {
+        align-items: flex-end;
+    }
+
+    .modal-band-entry .band-entry-modal-header,
+    .song-editor-modal-header,
+    .song-pool-modal-header,
+    .scheduler-modal .scheduler-modal-header,
+    #feedbackModal .feedback-modal-header {
+        padding: 0.95rem 1rem 0.8rem;
+    }
+
+    .modal-band-entry .band-entry-form,
+    .song-editor-scroll,
+    .song-pool-modal-body,
+    .scheduler-form-scroll,
+    #feedbackModal .feedback-modal-body {
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    }
+
+    .modal-band-entry .modal-actions,
+    .song-editor-actions,
+    .song-pool-modal-actions,
+    .scheduler-modal .modal-actions {
+        padding: 0.9rem 1rem calc(0.95rem + env(safe-area-inset-bottom));
+        gap: 0.6rem;
+    }
+
+    .modal-band-entry .modal-actions .btn,
+    .song-editor-actions .btn,
+    .song-pool-modal-actions .btn,
+    .scheduler-modal .modal-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .scheduler-modal .scheduler-modal-title-group h2,
+    .song-editor-title-group h2 {
+        font-size: 1.32rem;
+        line-height: 1.12;
+    }
+
+    .scheduler-modal .scheduler-modal-subtitle,
+    .song-editor-subtitle,
+    .band-entry-modal-copy p,
+    #feedbackModal .feedback-modal-subtitle {
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+
+    .scheduler-modal .scheduler-panel {
+        padding: 0.95rem;
+        border-radius: 18px;
+    }
+
+    .scheduler-modal .scheduler-panel-head {
+        display: grid;
+        gap: 0.35rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .scheduler-modal .scheduler-panel-head p {
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    .scheduler-modal .form-grid-2,
+    .scheduler-modal .scheduler-grid,
+    .scheduler-modal .scheduler-grid-basics {
+        grid-template-columns: 1fr !important;
+    }
+
+    .scheduler-modal .scheduler-span-2 {
+        grid-column: auto !important;
+    }
+
+    .scheduler-modal .date-proposal-item {
+        gap: 0.6rem;
+        align-items: stretch;
+    }
+
+    .scheduler-modal .date-time-range {
+        grid-template-columns: 1fr;
+    }
+
+    .scheduler-modal .time-separator {
+        justify-self: flex-start;
+        padding: 0 0.1rem;
+    }
+
+    .scheduler-modal-event .scheduler-panel-members .member-selection-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .scheduler-modal .section-header-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+    }
+
+    .scheduler-modal .section-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+    }
+
+    .scheduler-modal .section-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .scheduler-modal-event #eventSongsList .event-setlist-table-wrap,
+    #bandDetailsModal .songs-table-wrap,
+    #bandDetailsModal .event-setlist-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #bandDetailsModal .band-details-modal-content {
+        max-height: 94dvh;
+    }
+
+    #bandDetailsModal .band-details-modal-header {
+        padding: 0.95rem 1rem 0.8rem;
+    }
+
+    #bandDetailsModal .band-details-modal-body {
+        padding: 0 1rem calc(1rem + env(safe-area-inset-bottom));
+        gap: 0.75rem;
+    }
+
+    #bandDetailsModal .band-details-tabs {
+        gap: 0.5rem;
+    }
+
+    #bandDetailsModal .tab-btn {
+        width: calc(50% - 0.25rem);
+        min-height: 44px;
+    }
+
+    #bandDetailsModal .members-section-card,
+    #bandDetailsModal .setlist-section-card,
+    #bandDetailsModal .absence-section-card,
+    #bandDetailsModal .settings-section-card {
+        border-radius: 18px;
+    }
+}
+
+@media (max-width: 560px) {
+    .view-page-shell,
+    #dashboardView,
+    #statisticsView.statistics-view,
+    #newsView,
+    #pdftochordproView {
+        padding-inline: 12px;
+    }
+
+    .page-overview-card {
+        padding: 0.9rem 0.9rem;
+        border-radius: 16px;
+    }
+
+    .page-overview-card h2 {
+        font-size: 1.08rem;
+    }
+
+    .page-overview-card p,
+    .page-overview-caption {
+        font-size: 0.78rem;
+    }
+
+    .hero-welcome,
+    .next-event-hero-card,
+    .dashboard-card.stat-card,
+    .dashboard-section {
+        padding: 0.9rem;
+        border-radius: 16px;
+    }
+
+    .dashboard-card .card-icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .dashboard-card .card-stat {
+        font-size: 1.72rem;
+    }
+
+    #eventsView .schedule-status-card,
+    #rehearsalsView .schedule-status-card {
+        flex-basis: min(82vw, 208px);
+    }
+
+    .accordion-header,
+    .accordion-body {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    .schedule-card-chip {
+        font-size: 0.72rem;
+        padding: 0.34rem 0.54rem;
+    }
+
+    #statisticsView .statistics-top-shell,
+    #statisticsView .statistics-content-shell {
+        margin-left: 12px;
+        margin-right: 12px;
+    }
+
+    #statisticsView .statistics-filter-shell,
+    #statisticsView .stats-summary-container {
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+
+    .modal-band-entry .band-entry-modal-header,
+    .song-editor-modal-header,
+    .song-pool-modal-header,
+    .scheduler-modal .scheduler-modal-header,
+    #feedbackModal .feedback-modal-header,
+    #bandDetailsModal .band-details-modal-header {
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+
+    .modal-band-entry .band-entry-form,
+    .song-editor-scroll,
+    .song-pool-modal-body,
+    .scheduler-form-scroll,
+    #feedbackModal .feedback-modal-body,
+    #bandDetailsModal .band-details-modal-body {
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+
+    .modal-band-entry .modal-actions,
+    .song-editor-actions,
+    .song-pool-modal-actions,
+    .scheduler-modal .modal-actions {
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+}
+
+/* ===== Bands Mobile Final Pass ===== */
+@media (max-width: 768px) {
+    #bandsView .bands-view-action-group {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+
+    #bandsView .bands-view-action-group .btn {
+        min-width: 0;
+        min-height: 44px;
+        padding: 0.72rem 0.8rem;
+        font-size: 0.88rem;
+        border-radius: 14px;
+        justify-content: center;
+    }
+
+    #bandsView .bands-grid {
+        gap: 0.65rem;
+    }
+
+    .band-card {
+        padding: 0.8rem;
+        border-radius: 16px;
+    }
+
+    .band-card-header {
+        gap: 0.7rem;
+        margin-bottom: 0.72rem;
+    }
+
+    .band-card-identity {
+        gap: 0.72rem;
+    }
+
+    .band-card-avatar-shell {
+        width: 52px;
+        height: 52px;
+        border-radius: 15px;
+    }
+
+    .band-card-title-row {
+        gap: 0.4rem;
+        margin-bottom: 0.22rem;
+    }
+
+    .band-card h3 {
+        font-size: 1.02rem;
+        line-height: 1.18;
+    }
+
+    .band-card-subtitle {
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    .band-card-open-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        font-size: 0.88rem;
+    }
+
+    .band-card-facts {
+        margin-bottom: 0;
+        gap: 0.45rem;
+    }
+
+    .band-card-chip {
+        padding: 0.34rem 0.68rem;
+        font-size: 0.76rem;
+    }
+
+    #bandDetailsModal .band-details-modal-content {
+        max-height: 94dvh;
+    }
+
+    #bandDetailsModal .band-details-modal-header {
+        position: relative;
+        padding-right: 3.9rem;
+    }
+
+    #bandDetailsModal .modal-close {
+        position: absolute;
+        top: 0.95rem;
+        right: 1rem;
+        z-index: 3;
+    }
+
+    #bandDetailsModal .band-details-modal-body {
+        position: relative;
+        padding-top: 0.35rem;
+    }
+
+    #bandDetailsModal .band-details-tabs {
+        position: sticky;
+        top: 0;
+        z-index: 8;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.45rem;
+        width: 100%;
+        align-self: stretch !important;
+        margin: 0;
+        padding: 0.45rem 0 0.65rem;
+        border: none;
+        border-radius: 0;
+        background: linear-gradient(180deg, var(--color-bg), color-mix(in srgb, var(--color-bg) 86%, transparent) 82%, transparent);
+        overflow: visible !important;
+    }
+
+    #bandDetailsModal .tab-btn {
+        display: inline-flex !important;
+        width: 100% !important;
+        min-width: 0;
+        min-height: 42px;
+        padding: 0.62rem 0.7rem;
+        border-radius: 12px;
+        justify-content: center;
+        white-space: nowrap;
+    }
+
+    #bandDetailsModal .tab-btn span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #bandDetailsModal .band-details-panel-section,
+    #bandDetailsModal .band-details-panel-intro {
+        border-radius: 16px;
+    }
+
+    #bandDetailsModal .member-row {
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.8rem;
+        padding: 0.9rem;
+    }
+
+    #bandDetailsModal .member-main-col {
+        gap: 0.35rem;
+    }
+
+    #bandDetailsModal .member-name {
+        font-size: 0.98rem;
+        line-height: 1.25;
+        white-space: normal;
+    }
+
+    #bandDetailsModal .member-instrument-list {
+        gap: 0.35rem;
+    }
+
+    #bandDetailsModal .member-instrument-item {
+        min-height: 26px;
+        padding: 0.3rem 0.62rem;
+        font-size: 0.74rem;
+    }
+
+    #bandDetailsModal .member-actions-col {
+        grid-column: 1 / -1;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+        padding-top: 0.1rem;
+    }
+
+    #bandDetailsModal .member-role-selector {
+        flex: 1;
+    }
+
+    #createBandModal.active,
+    #joinBandModal.active,
+    #addMemberModal.active {
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    #createBandModal .band-entry-modal-content,
+    #joinBandModal .band-entry-modal-content,
+    #addMemberModal .band-entry-modal-content {
+        width: min(520px, calc(100vw - 24px));
+        max-width: 520px;
+        max-height: min(88dvh, 720px);
+        margin: auto;
+        border-radius: 22px;
+    }
+
+    #createBandModal .band-entry-form,
+    #joinBandModal .band-entry-form,
+    #addMemberModal .band-entry-form {
+        padding-bottom: 1rem;
+    }
+
+    #createBandModal .modal-actions,
+    #joinBandModal .modal-actions,
+    #addMemberModal .modal-actions {
+        padding-bottom: 0;
+    }
+
+    #bandDetailsModal .member-role-selector .role-select {
+        width: 100%;
+    }
+}
+
+@media (max-width: 420px) {
+    #bandsView .bands-view-action-group {
+        grid-template-columns: 1fr;
+    }
+
+    .band-card {
+        padding: 0.74rem;
+    }
+
+    .band-card-avatar-shell {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+    }
+
+    .band-card h3 {
+        font-size: 0.98rem;
+    }
+
+    .band-card-subtitle {
+        font-size: 0.78rem;
+    }
+
+    #bandDetailsModal .tab-btn {
+        padding: 0.58rem 0.62rem;
+        font-size: 0.8rem;
+    }
+
+    #createBandModal .band-entry-modal-content,
+    #joinBandModal .band-entry-modal-content,
+    #addMemberModal .band-entry-modal-content {
+        width: min(100vw - 20px, 460px);
+        border-radius: 20px;
+    }
+}
+
+/* ===== Mobile Header + Bands Final Cleanup ===== */
+@media (max-width: 768px) {
+    body:not(.landing-active) .view-page-shell > .page-overview-card {
+        display: none;
+    }
+
+    .header-content {
+        display: grid !important;
+        grid-template-columns: auto 1fr auto !important;
+        align-items: center !important;
+        column-gap: 0.55rem !important;
+    }
+
+    .header-context {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    #headerProfileImage {
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: start;
+        align-self: center;
+        width: 38px;
+        height: 38px;
+        margin: 0 !important;
+    }
+
+    .header-actions {
+        grid-column: 3;
+        grid-row: 1;
+        justify-self: end;
+        margin-left: 0 !important;
+    }
+
+    #bandsView .bands-view-actions {
+        margin-top: 0;
+    }
+
+    #bandsView .bands-view-action-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+
+    #bandsView .bands-view-action-group .btn {
+        min-width: 0;
+        min-height: 42px;
+        padding: 0.72rem 0.75rem;
+        border-radius: 14px;
+        font-size: 0.84rem;
+        gap: 0.45rem;
+    }
+
+    #bandsView .bands-action-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.05rem;
+        font-size: 1rem;
+        line-height: 1;
+        flex-shrink: 0;
+    }
+
+    #bandsView .bands-action-label {
+        white-space: nowrap;
+    }
+
+    #createBandModal .band-entry-modal-content,
+    #joinBandModal .band-entry-modal-content {
+        width: min(420px, calc(100vw - 28px));
+        max-width: 420px;
+        max-height: min(76dvh, 540px);
+    }
+
+    #createBandModal .band-entry-modal-header,
+    #joinBandModal .band-entry-modal-header {
+        padding: 1rem 1rem 0.8rem;
+    }
+
+    #createBandModal .band-entry-form,
+    #joinBandModal .band-entry-form {
+        gap: 0.8rem;
+        padding: 0 1rem 1rem;
+    }
+}
+
+@media (max-width: 420px) {
+    #bandsView .bands-view-action-group {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    #bandsView .bands-view-action-group .btn {
+        padding-inline: 0.65rem;
+        font-size: 0.8rem;
+    }
+
+    #bandsView .bands-action-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #createBandModal .band-entry-modal-content,
+    #joinBandModal .band-entry-modal-content {
+        width: min(100vw - 20px, 400px);
+        max-height: min(78dvh, 520px);
+    }
+
+    #bandDetailsModal .band-details-tab-icon {
+        display: none;
+    }
+}
+
+/* ===== Voting Modal Final Pass ===== */
+.modal-voting-shell {
+    z-index: 1600;
+}
+
+.modal-voting-shell .modal-content,
+.modal-voting-shell .voting-modal-content {
+    width: min(92vw, 680px);
+    max-width: 680px;
+    max-height: min(84vh, 760px);
+    padding: 0;
+    overflow: hidden;
+    border-radius: 24px;
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--accent-secondary) 5%, transparent), transparent 38%),
+        var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-voting-shell .modal-header,
+.modal-voting-shell .voting-modal-header {
+    padding: 1.15rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+}
+
+.modal-voting-shell .voting-modal-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.modal-voting-shell .voting-modal-kicker {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.modal-voting-shell .modal-header h2,
+.modal-voting-shell .voting-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+}
+
+.modal-voting-shell .voting-modal-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.modal-voting-shell .voting-modal-form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.modal-voting-shell .modal-body,
+.modal-voting-shell .voting-modal-body {
+    padding: 1rem 1.25rem 0.35rem;
+    max-height: min(56vh, 520px);
+    overflow: auto;
+}
+
+#rehearsalVotingContent,
+#eventVotingContent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.modal-voting-shell .voting-modal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.modal-voting-shell .voting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--surface-secondary);
+}
+
+.modal-voting-shell .voting-row:last-child {
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-voting-shell .voting-row-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.modal-voting-shell .voting-date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    min-width: 0;
+}
+
+.modal-voting-shell .voting-date-info .date {
+    font-size: 1rem;
+    line-height: 1.3;
+    font-weight: 650;
+    color: var(--text-primary);
+}
+
+.modal-voting-shell .voting-date-info .time {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.modal-voting-shell .btn-suggest-time-modal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 38px;
+    padding: 0.48rem 0.72rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    opacity: 1;
+}
+
+.modal-voting-shell .btn-suggest-time-modal:hover {
+    background: var(--hover-bg);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+    transform: none;
+    box-shadow: none;
+}
+
+.modal-voting-shell .btn-suggest-time-modal.has-suggestion {
+    color: var(--accent-secondary);
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent-secondary) 24%, var(--border));
+}
+
+.modal-voting-shell .btn-suggest-time-icon {
+    font-size: 0.92rem;
+    line-height: 1;
+}
+
+.modal-voting-shell .btn-suggest-time-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.modal-voting-shell .modal-time-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: -0.15rem;
+}
+
+.modal-voting-shell .time-suggestion-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.26rem 0.62rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent-secondary) 20%, var(--border));
+    background: var(--accent-soft);
+    color: var(--accent-secondary);
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
+.modal-voting-shell .voting-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+.modal-voting-shell .voting-option-btn {
+    width: 100%;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    padding: 0.55rem 0.4rem;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    box-shadow: none;
+}
+
+.modal-voting-shell .voting-option-btn:hover {
+    background: var(--hover-bg);
+    border-color: var(--border-strong);
+    transform: none;
+    box-shadow: none;
+}
+
+.modal-voting-shell .vote-choice-icon {
+    font-size: 1.02rem;
+    line-height: 1;
+}
+
+.modal-voting-shell .vote-choice-label {
+    font-size: 0.76rem;
+    font-weight: 650;
+    line-height: 1.1;
+}
+
+.modal-voting-shell .voting-option-btn.active.yes {
+    background: var(--success-soft);
+    border-color: color-mix(in srgb, #22c55e 38%, var(--border));
+    color: #15803d;
+}
+
+.modal-voting-shell .voting-option-btn.active.no {
+    background: var(--danger-soft);
+    border-color: color-mix(in srgb, #ef4444 38%, var(--border));
+    color: #dc2626;
+}
+
+.modal-voting-shell .voting-option-btn.active.none {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent-secondary) 28%, var(--border));
+    color: var(--accent-secondary);
+}
+
+html[data-theme="dark"] .modal-voting-shell .voting-option-btn.active.yes,
+:root.theme-dark .modal-voting-shell .voting-option-btn.active.yes {
+    color: #86efac;
+}
+
+html[data-theme="dark"] .modal-voting-shell .voting-option-btn.active.no,
+:root.theme-dark .modal-voting-shell .voting-option-btn.active.no {
+    color: #fca5a5;
+}
+
+.modal-voting-shell .modal-actions,
+.modal-voting-shell .voting-modal-actions {
+    padding: 0.95rem 1.25rem 1.15rem;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+}
+
+@media (max-width: 768px) {
+    #rehearsalVotingModal.active,
+    #eventVotingModal.active {
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    #rehearsalVotingModal .modal-content,
+    #eventVotingModal .modal-content,
+    #rehearsalVotingModal .voting-modal-content,
+    #eventVotingModal .voting-modal-content {
+        width: min(92vw, 420px);
+        max-width: 420px;
+        max-height: min(78dvh, 760px);
+        margin: 0;
+        border-radius: 22px;
+    }
+
+    #rehearsalVotingModal .modal-header,
+    #eventVotingModal .modal-header,
+    #rehearsalVotingModal .voting-modal-header,
+    #eventVotingModal .voting-modal-header {
+        padding: 1rem 1rem 0.85rem;
+    }
+
+    #rehearsalVotingModal .modal-body,
+    #eventVotingModal .modal-body,
+    #rehearsalVotingModal .voting-modal-body,
+    #eventVotingModal .voting-modal-body {
+        padding: 0.95rem 1rem 0.3rem;
+        max-height: min(52dvh, 520px);
+    }
+
+    #rehearsalVotingModal .modal-actions,
+    #eventVotingModal .modal-actions,
+    #rehearsalVotingModal .voting-modal-actions,
+    #eventVotingModal .voting-modal-actions {
+        padding: 0.85rem 1rem calc(0.95rem + env(safe-area-inset-bottom));
+        gap: 0.65rem;
+    }
+
+    #rehearsalVotingModal .modal-actions .btn,
+    #eventVotingModal .modal-actions .btn,
+    #rehearsalVotingModal .voting-modal-actions .btn,
+    #eventVotingModal .voting-modal-actions .btn {
+        flex: 1 1 0;
+        width: auto;
+        justify-content: center;
+    }
+
+    .modal-voting-shell .voting-row {
+        padding: 0.88rem;
+        gap: 0.72rem;
+    }
+
+    .modal-voting-shell .voting-row-main {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .modal-voting-shell .btn-suggest-time-modal {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 420px) {
+    .modal-voting-shell .voting-modal-header h2 {
+        font-size: 1.32rem;
+    }
+
+    .modal-voting-shell .voting-option-btn {
+        min-height: 50px;
+        border-radius: 13px;
+    }
+
+    .modal-voting-shell .vote-choice-label {
+        font-size: 0.72rem;
+    }
+}
+
+/* ===== Profile Image Preview Modal ===== */
+#profileImageModal {
+    z-index: 1650;
+}
+
+#profileImageModal .profile-image-preview-modal-content {
+    width: min(90vw, 520px);
+    max-width: 520px;
+    max-height: min(84vh, 760px);
+    padding: 0;
+    overflow: hidden;
+    border-radius: 24px;
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--accent-secondary) 4%, transparent), transparent 36%),
+        var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+}
+
+#profileImageModal .profile-image-preview-header {
+    padding: 1.05rem 1.1rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+}
+
+#profileImageModal .profile-image-preview-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+#profileImageModal .profile-image-preview-kicker {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+#profileImageModal .profile-image-preview-header h2 {
+    margin: 0;
+    font-size: 1.38rem;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+}
+
+#profileImageModal .profile-image-preview-body {
+    padding: 1rem 1.1rem 1.1rem;
+}
+
+#profileImageModal .profile-image-preview-frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-height: min(66vh, 620px);
+    padding: 0.35rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
+        var(--surface-secondary);
+    overflow: hidden;
+}
+
+#profileImageModal .profile-image-preview-img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    max-height: min(62vh, 580px);
+    height: auto;
+    object-fit: contain;
+    border-radius: 16px;
+    background: var(--surface);
+}
+
+@media (max-width: 768px) {
+    #profileImageModal.active {
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    #profileImageModal .profile-image-preview-modal-content {
+        width: min(88vw, 360px);
+        max-width: 360px;
+        max-height: min(72dvh, 620px);
+        border-radius: 22px;
+    }
+
+    #profileImageModal .profile-image-preview-header {
+        padding: 0.95rem 1rem 0.8rem;
+    }
+
+    #profileImageModal .profile-image-preview-header h2 {
+        font-size: 1.24rem;
+    }
+
+    #profileImageModal .profile-image-preview-body {
+        padding: 0.9rem 1rem 1rem;
+    }
+
+    #profileImageModal .profile-image-preview-frame {
+        max-height: min(52dvh, 460px);
+        border-radius: 18px;
+    }
+
+    #profileImageModal .profile-image-preview-img {
+        max-height: min(48dvh, 420px);
+        border-radius: 14px;
+    }
 }

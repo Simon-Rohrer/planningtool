@@ -1785,10 +1785,7 @@ const App = {
                 headerProfileImg.addEventListener('click', () => {
                     const user = Auth.getCurrentUser();
                     if (user && user.profile_image_url) {
-                        const modal = document.getElementById('profileImageModal');
-                        const img = document.getElementById('profileImagePreview');
-                        img.src = user.profile_image_url;
-                        modal.classList.add('active');
+                        App.openProfileImagePreview(user.profile_image_url);
                     }
                 });
             }
@@ -1801,11 +1798,9 @@ const App = {
                     settingsProfileImg.dataset.clickHandlerAdded = 'true';
                     settingsProfileImg.addEventListener('click', () => {
                         const user = Auth.getCurrentUser();
-                        if (user && user.profile_image_url) {
-                            const modal = document.getElementById('profileImageModal');
-                            const img = document.getElementById('profileImagePreview');
-                            img.src = user.profile_image_url;
-                            modal.classList.add('active');
+                        const previewUrl = App.profileImageDraftUrl || user?.profile_image_url;
+                        if (previewUrl) {
+                            App.openProfileImagePreview(previewUrl);
                         }
                     });
                 }
@@ -2909,6 +2904,16 @@ const App = {
                 Bands.joinBand(code);
             });
         }
+    },
+
+    openProfileImagePreview(imageUrl) {
+        if (!imageUrl) return;
+        const modal = document.getElementById('profileImageModal');
+        const img = document.getElementById('profileImagePreview');
+        if (!modal || !img) return;
+
+        img.src = imageUrl;
+        modal.classList.add('active');
     },
 
 
@@ -6969,7 +6974,7 @@ const App = {
                 img.className = 'profile-avatar-preview';
                 img.dataset.clickHandlerAdded = 'true';
                 img.style.cursor = 'zoom-in';
-                img.addEventListener('click', () => UI.showLightbox(effectiveImageUrl));
+                img.addEventListener('click', () => this.openProfileImagePreview(effectiveImageUrl));
                 img.addEventListener('error', () => {
                     container.innerHTML = '';
                     container.appendChild(this.createProfileImageFallback(user));

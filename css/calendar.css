@@ -829,3 +829,69 @@
         line-height: 1.4;
     }
 }
+
+/* ===== Probeorte Mobile Final Pass ===== */
+@media (max-width: 768px) {
+    #probeorteView .calendar-submenu.probeorte-submenu {
+        overflow-x: auto;
+        padding: 0.32rem;
+        gap: 0.38rem;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #probeorteView .calendar-tab {
+        flex: 0 0 auto;
+        min-width: max-content;
+        justify-content: center;
+        scroll-snap-align: start;
+    }
+
+    #probeorteView .probeorte-calendar-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.72rem;
+        padding: 0.72rem;
+    }
+
+    #probeorteView .probeorte-calendar-header {
+        margin-bottom: 0;
+    }
+
+    #probeorteView .probeorte-calendar-grid-scroll {
+        margin: 0 -0.18rem;
+        padding: 0 0.18rem 0.3rem;
+    }
+
+    #probeorteView .probeorte-calendar-mobile-hint {
+        margin-bottom: 0;
+        padding: 0 0.1rem;
+        font-size: 0.72rem;
+        line-height: 1.3;
+        opacity: 0.92;
+    }
+}
+
+@media (max-width: 520px) {
+    #probeorteView .calendar-submenu.probeorte-submenu {
+        padding: 0.28rem;
+        gap: 0.32rem;
+    }
+
+    #probeorteView .calendar-tab {
+        padding: 0.6rem 0.68rem;
+        border-radius: 14px;
+        font-size: 0.81rem;
+    }
+
+    #probeorteView .probeorte-calendar-panel {
+        gap: 0.65rem;
+        padding: 0.68rem;
+        border-radius: 20px;
+    }
+
+    #probeorteView .probeorte-calendar-grid-scroll {
+        margin: 0 -0.12rem;
+        padding: 0 0.12rem 0.28rem;
+    }
+}

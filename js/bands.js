@@ -779,8 +779,12 @@ const Bands = {
             // Instrument display
             const instrumentLabels = this.getInstrumentLabels(user.instrument);
             const instrumentHtml = instrumentLabels.length > 0
-                ? instrumentLabels.map(label => `<span class="member-instrument-pill">${this.escapeHtml(label)}</span>`).join('')
-                : '<span class="member-instrument-pill is-muted">Kein Instrument hinterlegt</span>';
+                ? `
+                    <div class="member-instrument-list" aria-label="Instrumente">
+                        ${instrumentLabels.map(label => `<span class="member-instrument-item">${this.escapeHtml(label)}</span>`).join('')}
+                    </div>
+                `
+                : '<div class="member-instrument-list is-empty"><span class="member-instrument-item is-muted">Kein Instrument hinterlegt</span></div>';
 
             return `
                 <div class="member-row animated-fade-in" style="animation-delay: ${index * 0.1}s">
