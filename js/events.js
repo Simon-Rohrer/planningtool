@@ -176,7 +176,7 @@ const Events = {
                 }
 
                 const eventVotes = dataContext.votes[event.id] || [];
-                const userVote = eventVotes.find(v => v.userId === user.id);
+                const userVote = eventVotes.find(v => String(v.userId) === String(user.id));
 
                 // Only count as voted if there is an active availability (not 'none')
                 const hasVoted = userVote && userVote.availability !== 'none';
@@ -270,7 +270,7 @@ const Events = {
                 .filter(vote => vote.availability && vote.availability !== 'none')
                 .map(vote => vote.userId)
         ).size;
-        const hasVoted = eventVotes.some(vote => vote.userId === user.id && vote.availability !== 'none');
+        const hasVoted = eventVotes.some(vote => String(vote.userId) === String(user.id) && vote.availability !== 'none');
         const firstProposal = Array.isArray(event.proposedDates) && event.proposedDates.length > 0
             ? event.proposedDates[0]
             : null;
@@ -286,13 +286,13 @@ const Events = {
 
         const headerChips = [];
         if (event.status === 'confirmed' && event.date) {
-            headerChips.push(`<span class="schedule-card-chip schedule-card-chip-primary">${UI.formatDateShort(event.date)}</span>`);
+            headerChips.push(`<span class="schedule-card-chip schedule-card-chip-primary">${UI.formatDateTimeRange(event.date)}</span>`);
         } else if (Array.isArray(event.proposedDates) && event.proposedDates.length > 0) {
             if (event.proposedDates.length > 1) {
                 headerChips.push(`<span class="schedule-card-chip">${event.proposedDates.length} Termine</span>`);
             }
             if (firstProposal?.start) {
-                headerChips.push(`<span class="schedule-card-chip schedule-card-chip-primary">${UI.formatDateShort(firstProposal.start)}</span>`);
+                headerChips.push(`<span class="schedule-card-chip schedule-card-chip-primary">${UI.formatDateTimeRange(firstProposal.start, firstProposal.end)}</span>`);
             }
         }
         if (event.location) {
@@ -305,6 +305,7 @@ const Events = {
         const userStateClass = event.status === 'pending'
             ? (hasVoted ? 'is-complete' : 'is-open')
             : 'is-confirmed';
+        const showPrimaryStatus = !(event.status === 'pending' && userStateLabel);
         const cardStateClass = event.status === 'pending'
             ? (hasVoted ? 'schedule-state-voted' : 'schedule-state-pending')
             : 'schedule-state-resolved';
@@ -328,9 +329,11 @@ const Events = {
                     </div>
                     <div class="accordion-actions">
                         <div class="schedule-card-status-stack">
-                            <span class="rehearsal-status ${statusClass}">
-                                ${statusText}
-                            </span>
+                            ${showPrimaryStatus ? `
+                                <span class="rehearsal-status ${statusClass}">
+                                    ${statusText}
+                                </span>
+                            ` : ''}
                             ${userStateLabel ? `<span class="schedule-card-user-state ${userStateClass}">${userStateLabel}</span>` : ''}
                         </div>
                         <button class="accordion-toggle" aria-label="Ausklappen">
@@ -552,11 +555,11 @@ const Events = {
             const dateString = date.start;
             const formattedDate = UI.formatDateShort(dateString);
 
-            const dateVotes = votes.filter(v => v.dateIndex === index);
+            const dateVotes = votes.filter(v => Number(v.dateIndex) === index);
             const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
 
             const voteCells = members.map(m => {
-                const vote = votes.find(v => v.userId === m.userId && v.dateIndex === index);
+                const vote = votes.find(v => String(v.userId) === String(m.userId) && Number(v.dateIndex) === index);
                 let icon = '➖';
                 let className = 'vote-pending';
 
@@ -568,7 +571,7 @@ const Events = {
                 return `<td class="vote-icon ${className}">${icon}</td>`;
             }).join('');
 
-            const dateSuggestions = suggestions.filter(s => s.dateIndex === index);
+            const dateSuggestions = suggestions.filter(s => Number(s.dateIndex) === index);
             const suggestionHtml = dateSuggestions.map(s => {
                 const suggUser = dataContext.members[s.userId];
                 const suggName = suggUser ? UI.getUserDisplayName(suggUser) : 'Unbekannt';
@@ -723,12 +726,12 @@ const Events = {
         if (!event) return;
 
         const votes = (await Storage.getEventVotesForMultipleEvents([eventId])) || [];
-        const userVotes = votes.filter(v => v.userId === user.id);
+        const userVotes = votes.filter(v => String(v.userId) === String(user.id));
 
         const content = document.getElementById('eventVotingContent');
         const rows = await Promise.all(event.proposedDates.map(async (date, index) => {
             const dateString = date.start;
-            const currentVote = userVotes.find(v => v.dateIndex === index);
+            const currentVote = userVotes.find(v => Number(v.dateIndex) === index);
             const availability = currentVote ? currentVote.availability : 'none';
             const userSuggestion = (await Storage.getUserEventTimeSuggestionForDate(user.id, eventId, index));
             const allSuggestions = (await Storage.getEventTimeSuggestions(eventId, index)) || [];
@@ -832,27 +835,31 @@ const Events = {
         if (!user) return;
 
         this.invalidateCache();
-        for (const vote of votes) {
-            const existing = await Storage.getUserEventVoteForDate(user.id, eventId, vote.dateIndex);
+        const existingVotes = await Storage.getUserEventVotes(user.id, eventId);
 
-            if (vote.availability === 'none') {
-                if (existing) {
-                    await Storage.deleteVote(existing.id);
+        for (const vote of votes) {
+            const targetDateIndex = Number(vote.dateIndex);
+            const existingForDate = existingVotes.filter(existingVote => Number(existingVote.dateIndex) === targetDateIndex);
+
+            if (existingForDate.length > 0) {
+                for (const existingVote of existingForDate) {
+                    const deleted = await Storage.deleteVote(existingVote.id);
+                    if (!deleted) {
+                        throw new Error('Vorhandene Abstimmung konnte nicht aktualisiert werden.');
+                    }
                 }
-                continue;
             }
 
-            if (existing) {
-                await Storage.update('votes', existing.id, {
-                    availability: vote.availability
-                });
-            } else {
-                await Storage.createEventVote({
+            if (vote.availability !== 'none') {
+                const createdVote = await Storage.createEventVote({
                     userId: user.id,
-                    eventId: eventId,
-                    dateIndex: vote.dateIndex,
+                    eventId: String(eventId),
+                    dateIndex: targetDateIndex,
                     availability: vote.availability
                 });
+                if (!createdVote) {
+                    throw new Error('Abstimmung konnte nicht gespeichert werden.');
+                }
             }
         }
     },
@@ -1084,6 +1091,7 @@ const Events = {
 
                 // Clear draft
                 App.draftEventSongIds = [];
+                App.draftEventSongOverrides = {};
                 App.deletedEventSongs = [];
 
                 if (App.updateDashboard) await App.updateDashboard();
@@ -1175,6 +1183,7 @@ const Events = {
         const eventSongs = await Storage.getEventSongs(eventId);
         if (typeof App !== 'undefined') {
             App.draftEventSongIds = (eventSongs || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(s => s.id);
+            App.draftEventSongOverrides = {};
             await App.renderDraftEventSongs();
         }
 

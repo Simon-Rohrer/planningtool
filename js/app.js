@@ -556,6 +556,7 @@ const App = {
 
     // Track deleted songs for potential rollback
     deletedEventSongs: [],
+    draftEventSongOverrides: {},
 
     // Caching for settings lists
     locationsCache: null,
@@ -569,6 +570,64 @@ const App = {
         this.allBandsCache = null;
         this.absencesCache = null;
         Logger.info('[App] Settings cache invalidated.');
+    },
+
+    getSongKeyOptionsMarkup(selectedValue = '') {
+        const select = document.getElementById('songKey');
+        const currentValue = selectedValue || '';
+        if (!select) {
+            const fallbackOptions = ['', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            return fallbackOptions.map(value => {
+                const label = value || '—';
+                return `<option value="${value}"${value === currentValue ? ' selected' : ''}>${label}</option>`;
+            }).join('');
+        }
+
+        return Array.from(select.options).map(option => {
+            const value = option.value || '';
+            return `<option value="${this.escapeHtml(value)}"${value === currentValue ? ' selected' : ''}>${this.escapeHtml(option.textContent || option.label || value || '—')}</option>`;
+        }).join('');
+    },
+
+    getDraftEventSongField(song, field) {
+        const mergedSong = this.getDraftEventSong(song);
+        return mergedSong ? mergedSong[field] : undefined;
+    },
+
+    getDraftEventSong(song) {
+        if (!song) return null;
+        const override = this.draftEventSongOverrides?.[song.id];
+        return override ? { ...song, ...override } : song;
+    },
+
+    getDraftEventSongOverridePayload(songData) {
+        const editableFields = [
+            'title',
+            'artist',
+            'bpm',
+            'timeSignature',
+            'key',
+            'originalKey',
+            'leadVocal',
+            'language',
+            'tracks',
+            'info',
+            'ccli',
+            'pdf_url'
+        ];
+
+        return editableFields.reduce((payload, field) => {
+            if (Object.prototype.hasOwnProperty.call(songData, field)) {
+                payload[field] = songData[field];
+            }
+            return payload;
+        }, {});
+    },
+
+    resetDraftEventState() {
+        this.draftEventSongIds = [];
+        this.draftEventSongOverrides = {};
+        this.deletedEventSongs = [];
     },
 
     // Account löschen Logik
@@ -699,6 +758,37 @@ const App = {
         window.__bandmateTheme = resolvedMode;
     },
 
+    syncThemeBrandAssets(mode = this.getResolvedThemeMode()) {
+        const resolvedMode = mode === 'dark' ? 'dark' : 'light';
+        const logoOnlySrc = resolvedMode === 'dark'
+            ? 'images/branding/bandmate-logo-only-dark.svg'
+            : 'images/branding/bandmate-logo-only.svg';
+        const logoShortSrc = resolvedMode === 'dark'
+            ? 'images/branding/bandmate-logo-short-dark.svg'
+            : 'images/branding/bandmate-logo-short.svg';
+
+        const updateImage = (id, src) => {
+            const el = document.getElementById(id);
+            if (el && el.getAttribute('src') !== src) {
+                el.setAttribute('src', src);
+            }
+        };
+
+        updateImage('loaderBrandLogo', logoOnlySrc);
+        updateImage('landingBrandLogo', logoOnlySrc);
+        updateImage('sidebarBrandLogo', logoShortSrc);
+
+        const favicon = document.getElementById('faviconSvg');
+        if (favicon) {
+            favicon.setAttribute('href', logoOnlySrc);
+        }
+
+        const appleTouchIcon = document.getElementById('appleTouchIcon');
+        if (appleTouchIcon) {
+            appleTouchIcon.setAttribute('href', logoOnlySrc);
+        }
+    },
+
     getResolvedThemeMode() {
         const savedTheme = this.getStoredThemePreference();
         if (savedTheme === 'light' || savedTheme === 'dark') {
@@ -770,6 +860,7 @@ const App = {
         }
 
         this.syncThemeMeta(resolvedMode);
+        this.syncThemeBrandAssets(resolvedMode);
         this.syncThemeControls(resolvedMode);
         return resolvedMode;
     },
@@ -896,8 +987,20 @@ const App = {
                 const view = subitem.dataset.view;
                 const group = subitem.closest('.nav-group');
 
-                // Close menu
-                if (group) group.classList.remove('submenu-open');
+                // Close all menus immediately so no hidden touch area remains active
+                document.querySelectorAll('.app-nav .nav-group.submenu-open').forEach(g => {
+                    g.classList.remove('submenu-open');
+                });
+
+                if (group) {
+                    const submenu = group.querySelector('.nav-submenu');
+                    if (submenu) {
+                        submenu.style.pointerEvents = 'none';
+                        requestAnimationFrame(() => {
+                            submenu.style.pointerEvents = '';
+                        });
+                    }
+                }
 
                 // Navigate
                 if (view) {
@@ -1344,6 +1447,15 @@ const App = {
             return null;
         };
 
+        const resetMenuPlacement = () => {
+            menu.style.removeProperty('left');
+            menu.style.removeProperty('width');
+            menu.style.removeProperty('top');
+            menu.style.removeProperty('bottom');
+            menu.style.removeProperty('max-height');
+            menu.style.removeProperty('position');
+        };
+
         const updateMenuPlacement = () => {
             if (!menu.classList.contains('show')) return;
 
@@ -1363,8 +1475,17 @@ const App = {
             const availableSpace = shouldOpenUpward ? spaceAbove : spaceBelow;
             const maxHeight = Math.max(180, Math.min(320, availableSpace));
 
+            menu.style.position = 'fixed';
+            menu.style.left = `${Math.max(12, triggerRect.left)}px`;
+            menu.style.width = `${Math.max(220, triggerRect.width)}px`;
+
             if (shouldOpenUpward) {
                 menu.classList.add('show-upward');
+                menu.style.top = 'auto';
+                menu.style.bottom = `${Math.max(12, viewportHeight - triggerRect.top + 8)}px`;
+            } else {
+                menu.style.top = `${Math.max(12, triggerRect.bottom + 8)}px`;
+                menu.style.bottom = 'auto';
             }
 
             menu.style.maxHeight = `${maxHeight}px`;
@@ -1421,7 +1542,7 @@ const App = {
             if (isOpen) {
                 menu.classList.remove('show');
                 menu.classList.remove('show-upward');
-                menu.style.removeProperty('max-height');
+                resetMenuPlacement();
                 trigger.classList.remove('active');
                 container.classList.remove('is-open');
             } else {
@@ -1456,7 +1577,7 @@ const App = {
             if (!container.contains(e.target)) {
                 menu.classList.remove('show');
                 menu.classList.remove('show-upward');
-                menu.style.removeProperty('max-height');
+                resetMenuPlacement();
                 trigger.classList.remove('active');
                 container.classList.remove('is-open');
             }
@@ -1571,6 +1692,7 @@ const App = {
         }
         // init draft song list for new events
         this.draftEventSongIds = [];
+        this.draftEventSongOverrides = {};
         this.lastSongModalContext = null; // { eventId, bandId, origin }
 
         // Update absence indicator
@@ -2377,8 +2499,7 @@ const App = {
 
             Events.populateBandSelect();
             // Clear draft song selection and deleted songs for new event
-            this.draftEventSongIds = [];
-            this.deletedEventSongs = [];
+            this.resetDraftEventState();
             this.renderDraftEventSongs();
             const copyBtn = document.getElementById('copyBandSongsBtn');
             if (copyBtn) copyBtn.style.display = 'none';
@@ -2577,8 +2698,10 @@ const App = {
                         for (const song of this.deletedEventSongs) {
                             await Storage.createSong(song);
                         }
-                        this.deletedEventSongs = [];
+                        this.resetDraftEventState();
                         UI.showToast('Änderungen verworfen', 'info');
+                    } else if (modal.id === 'createEventModal') {
+                        this.resetDraftEventState();
                     }
                     UI.closeModal(modal.id);
                 }
@@ -4418,6 +4541,9 @@ const App = {
         document.getElementById('songEventId').value = eventId || '';
         document.getElementById('songBandId').value = bandId || '';
         const modalTitle = document.getElementById('songModalTitle');
+        const modalSubtitle = document.querySelector('.song-editor-subtitle');
+        const isDraftEventSongEdit = this.lastSongModalContext && this.lastSongModalContext.origin === 'draftEventSong';
+        const isEventSongEdit = this.lastSongModalContext && this.lastSongModalContext.origin === 'eventSong';
 
         // Reset PDF input
         const pdfInput = document.getElementById('songPdf');
@@ -4427,9 +4553,19 @@ const App = {
 
         if (songId) {
             // Edit existing song
-            const song = await Storage.getById('songs', songId);
+            const storedSong = await Storage.getById('songs', songId);
+            const song = isDraftEventSongEdit ? this.getDraftEventSong(storedSong) : storedSong;
             if (song) {
-                if (modalTitle) modalTitle.textContent = 'Song bearbeiten';
+                if (modalTitle) {
+                    modalTitle.textContent = (isDraftEventSongEdit || isEventSongEdit)
+                        ? 'Song in Setlist bearbeiten'
+                        : 'Song bearbeiten';
+                }
+                if (modalSubtitle) {
+                    modalSubtitle.textContent = (isDraftEventSongEdit || isEventSongEdit)
+                        ? 'Passe diesen Song nur für die Setlist des Auftritts an. Deine Haupt-Setlist der Band bleibt unverändert.'
+                        : 'Pflege die wichtigsten Songdaten, Metainformationen und optional ein PDF in einer kompakten Arbeitsfläche.';
+                }
                 document.getElementById('songTitle').value = song.title;
                 document.getElementById('songArtist').value = song.artist;
                 document.getElementById('songBPM').value = song.bpm || '';
@@ -4456,6 +4592,9 @@ const App = {
         } else {
             // New song
             if (modalTitle) modalTitle.textContent = 'Song hinzufügen';
+            if (modalSubtitle) {
+                modalSubtitle.textContent = 'Pflege die wichtigsten Songdaten, Metainformationen und optional ein PDF in einer kompakten Arbeitsfläche.';
+            }
             document.getElementById('songTitle').value = '';
             document.getElementById('songArtist').value = '';
             document.getElementById('songBPM').value = '';
@@ -4483,6 +4622,9 @@ const App = {
         const songId = document.getElementById('songId').value;
         const eventId = document.getElementById('songEventId').value;
         const bandId = document.getElementById('songBandId').value;
+        const modalContext = this.lastSongModalContext || null;
+        const isDraftEventSongEdit = modalContext && modalContext.origin === 'draftEventSong';
+        const isEventSongEdit = modalContext && modalContext.origin === 'eventSong';
         const title = document.getElementById('songTitle').value;
         const artist = document.getElementById('songArtist').value;
         const bpm = document.getElementById('songBPM').value;
@@ -4506,7 +4648,12 @@ const App = {
             if (existingSong) pdfUrl = existingSong.pdf_url;
         }
 
-        const existingChordPro = existingSong ? Storage.getSongChordPro(existingSong) : '';
+        const currentSongState = isDraftEventSongEdit ? this.getDraftEventSong(existingSong) : existingSong;
+        if (isDraftEventSongEdit && currentSongState) {
+            pdfUrl = currentSongState.pdf_url || null;
+        }
+
+        const existingChordPro = currentSongState ? Storage.getSongChordPro(currentSongState) : '';
 
         // Handle File Upload
         if (pdfFileInput && pdfFileInput.files.length > 0) {
@@ -4515,7 +4662,7 @@ const App = {
             const sb = SupabaseClient.getClient();
 
             // Delete old PDF if exists
-            if (pdfUrl) {
+            if (pdfUrl && !isDraftEventSongEdit) {
                 const oldFileName = pdfUrl.split('/').pop();
                 if (oldFileName && oldFileName.startsWith('song-pdf-')) {
                     await sb.storage.from('song-pdfs').remove([oldFileName]);
@@ -4562,6 +4709,18 @@ const App = {
             UI.hideLoading(); // Hide after successful upload
         }
 
+        if (isDraftEventSongEdit && songId) {
+            this.draftEventSongOverrides[songId] = {
+                ...(this.draftEventSongOverrides[songId] || {}),
+                ...this.getDraftEventSongOverridePayload(songData)
+            };
+            UI.showToast('Song nur für diesen Auftritt aktualisiert', 'success');
+            UI.closeModal('songModal');
+            this.lastSongModalContext = null;
+            await this.renderDraftEventSongs();
+            return;
+        }
+
         // Only set one of eventId or bandId, not both
         if (eventId) {
             songData.eventId = eventId;
@@ -4572,7 +4731,7 @@ const App = {
         if (songId) {
             // Update existing song
             await Storage.updateSong(songId, songData);
-            UI.showToast('Song aktualisiert', 'success');
+            UI.showToast(isEventSongEdit ? 'Song nur für diesen Auftritt aktualisiert' : 'Song aktualisiert', 'success');
         } else {
             // Create new song
             const created = await Storage.createSong(songData);
@@ -4670,21 +4829,39 @@ const App = {
         if (!confirm) return;
 
         try {
+            const modalContext = this.lastSongModalContext || null;
+            const isDraftEventSongEdit = modalContext && modalContext.origin === 'draftEventSong';
             const song = await Storage.getById('songs', songId);
-            if (song && song.pdf_url) {
-                const sb = SupabaseClient.getClient();
-                const fileName = song.pdf_url.split('/').pop();
+            const currentSong = isDraftEventSongEdit ? this.getDraftEventSong(song) : song;
 
-                if (fileName && fileName.startsWith('song-pdf-')) {
+            if (currentSong && currentSong.pdf_url) {
+                const sb = SupabaseClient.getClient();
+                const fileName = currentSong.pdf_url.split('/').pop();
+                const shouldDeletePhysicalFile = fileName
+                    && fileName.startsWith('song-pdf-')
+                    && (!song || currentSong.pdf_url !== song.pdf_url);
+
+                if (shouldDeletePhysicalFile) {
                     await sb.storage.from('song-pdfs').remove([fileName]);
+                }
+
+                const currentPdfContainer = document.getElementById('songCurrentPdf');
+                if (currentPdfContainer) currentPdfContainer.style.display = 'none';
+                const pdfInput = document.getElementById('songPdf');
+                if (pdfInput) pdfInput.value = '';
+
+                if (isDraftEventSongEdit) {
+                    this.draftEventSongOverrides[songId] = {
+                        ...(this.draftEventSongOverrides[songId] || {}),
+                        pdf_url: null
+                    };
+                    UI.showToast('PDF für diesen Auftritt entfernt', 'success');
+                    await this.renderDraftEventSongs();
+                    return;
                 }
 
                 await Storage.updateSong(songId, { pdf_url: null });
                 UI.showToast('PDF entfernt', 'success');
-
-                // Refresh modal
-                const currentPdfContainer = document.getElementById('songCurrentPdf');
-                if (currentPdfContainer) currentPdfContainer.style.display = 'none';
 
                 // Refresh list
                 if (song.eventId) await this.renderEventSongs(song.eventId);
@@ -4783,7 +4960,7 @@ const App = {
                                 <td style="font-family: monospace;" data-label="CCLI">${song.ccli || '-'}</td>
                                 <td class="event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
                                     <div>
-                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
+                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">✏️</button>
                                         <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
                                     </div>
                                 </td>
@@ -4864,6 +5041,11 @@ const App = {
                         e.preventDefault();
                         e.stopPropagation();
                     }
+                    this.lastSongModalContext = {
+                        origin: 'eventSong',
+                        eventId,
+                        songId: btn.dataset.id
+                    };
                     this.openSongModal(eventId, null, btn.dataset.id);
                 });
             });
@@ -5216,6 +5398,37 @@ const App = {
     // Sync draft songs to event (Handle additions, reordering, and removals)
     async syncEventSongs(eventId, draftSongIds) {
         const user = Auth.getCurrentUser();
+        const overrides = this.draftEventSongOverrides || {};
+
+        const getOverridePayload = (songId) => {
+            const override = overrides[songId];
+            if (!override) return null;
+
+            const editableFields = [
+                'title',
+                'artist',
+                'bpm',
+                'timeSignature',
+                'key',
+                'originalKey',
+                'leadVocal',
+                'language',
+                'tracks',
+                'info',
+                'ccli',
+                'pdf_url'
+            ];
+
+            const payload = editableFields.reduce((nextPayload, field) => {
+                if (Object.prototype.hasOwnProperty.call(override, field)) {
+                    nextPayload[field] = override[field];
+                }
+                return nextPayload;
+            }, {});
+
+            return Object.keys(payload).length > 0 ? payload : null;
+        };
+
         // 1. Get existing event songs
         const existingSongs = await Storage.getEventSongs(eventId);
         const existingIds = existingSongs.map(s => s.id);
@@ -5236,17 +5449,25 @@ const App = {
             // Check if it's an existing event song
             if (existingIds.includes(songId)) {
                 // It's an existing song, kept in the list. Update order.
-                await Storage.updateSong(songId, { order: orderCounter++ });
+                const updatePayload = {
+                    order: orderCounter++
+                };
+                const overridePayload = getOverridePayload(songId);
+                if (overridePayload) Object.assign(updatePayload, overridePayload);
+                await Storage.updateSong(songId, updatePayload);
             } else {
                 // It's a NEW song (Band Song ID) to be added
                 const bandSong = await Storage.getById('songs', songId);
                 if (bandSong) {
+                    const overridePayload = getOverridePayload(songId);
                     const eventSong = {
                         title: bandSong.title,
                         artist: bandSong.artist,
                         bpm: bandSong.bpm,
                         timeSignature: bandSong.timeSignature,
-                        key: bandSong.key,
+                        key: overridePayload && Object.prototype.hasOwnProperty.call(overridePayload, 'key')
+                            ? overridePayload.key
+                            : bandSong.key,
                         originalKey: bandSong.originalKey,
                         leadVocal: bandSong.leadVocal,
                         language: bandSong.language,
@@ -5258,6 +5479,7 @@ const App = {
                         order: orderCounter++,
                         createdBy: user.id
                     };
+                    if (overridePayload) Object.assign(eventSong, overridePayload);
                     await Storage.createSong(eventSong);
                 }
             }
@@ -5611,29 +5833,33 @@ const App = {
                 </tr>
             </thead>
             <tbody id="draftEventSongsTableBody">
-                ${songs.map((song, idx) => `
+                ${songs.map((song, idx) => {
+                    const draftSong = this.getDraftEventSong(song);
+                    return `
                     <tr draggable="true" data-song-id="${song.id}">
                         <td class="drag-handle" data-label="Pos.">☰</td>
                         <td style="color: var(--color-text-muted);" data-label="#">${idx + 1}</td>
-                        <td class="event-setlist-title-cell" data-label="Titel">${this.escapeHtml(song.title)}</td>
-                        <td data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
-                        <td style="text-align: center;" data-label="BPM">${song.bpm || '-'}</td>
-                        <td style="text-align: center;" data-label="Time">${song.timeSignature || '-'}</td>
-                        <td class="event-setlist-key-cell" style="text-align: center;" data-label="Key">${song.key || '-'}</td>
-                        <td style="text-align: center;" data-label="Orig.">${song.originalKey || '-'}</td>
-                        <td data-label="Lead">${song.leadVocal || '-'}</td>
-                        <td data-label="Sprache">${song.language || '-'}</td>
-                        <td data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                        <td class="event-setlist-title-cell" data-label="Titel">${this.escapeHtml(draftSong.title)}</td>
+                        <td data-label="Interpret">${this.escapeHtml(draftSong.artist || '-')}</td>
+                        <td style="text-align: center;" data-label="BPM">${draftSong.bpm || '-'}</td>
+                        <td style="text-align: center;" data-label="Time">${draftSong.timeSignature || '-'}</td>
+                        <td class="event-setlist-key-cell" style="text-align: center;" data-label="Key">${draftSong.key || '-'}</td>
+                        <td style="text-align: center;" data-label="Orig.">${draftSong.originalKey || '-'}</td>
+                        <td data-label="Lead">${draftSong.leadVocal || '-'}</td>
+                        <td data-label="Sprache">${draftSong.language || '-'}</td>
+                        <td data-label="Tracks">${draftSong.tracks === 'yes' ? 'Ja' : (draftSong.tracks === 'no' ? 'Nein' : '-')}</td>
                         <td style="text-align: center;" data-label="PDF">
-                            ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">📄</button>` : '-'}
+                            ${draftSong.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${draftSong.pdf_url}', '${this.escapeHtml(draftSong.title)}')">📄</button>` : '-'}
                         </td>
-                        <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
-                        <td style="font-family: monospace;" data-label="CCLI">${song.ccli || '-'}</td>
+                        <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(draftSong))}</td>
+                        <td style="font-family: monospace;" data-label="CCLI">${draftSong.ccli || '-'}</td>
                         <td class="event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
+                            <button type="button" class="btn-icon edit-draft-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
                             <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen">❌</button>
                         </td>
                     </tr>
-                `).join('')}
+                `;
+                }).join('')}
             </tbody>
         </table>
         </div>
@@ -5716,14 +5942,30 @@ const App = {
             });
         }
 
+        container.querySelectorAll('.edit-draft-song').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.lastSongModalContext = {
+                    origin: 'draftEventSong',
+                    draftSongId: btn.dataset.id
+                };
+                await this.openSongModal(null, null, btn.dataset.id);
+            });
+        });
+
         container.querySelectorAll('.remove-draft-song').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault(); // Prevent form submit if inside form
                 const id = btn.dataset.id;
                 this.draftEventSongIds = this.draftEventSongIds.filter(x => x !== id);
+                if (this.draftEventSongOverrides && this.draftEventSongOverrides[id]) {
+                    delete this.draftEventSongOverrides[id];
+                }
                 this.renderDraftEventSongs();
             });
         });
+
     },
 
     // Show authentication screen
@@ -6347,11 +6589,12 @@ const App = {
 
         // Setup absences form in settings
         const absenceFormSettings = document.getElementById('createAbsenceFormSettings');
-        if (absenceFormSettings) {
+        if (absenceFormSettings && !absenceFormSettings._bound) {
             absenceFormSettings.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 await this.handleCreateAbsenceFromSettings();
             });
+            absenceFormSettings._bound = true;
         }
 
         // Create location form (scoped to settings view)
@@ -6661,11 +6904,7 @@ const App = {
             UI.showToast('Abwesenheit eingetragen', 'success');
         }
 
-        // Reset form
-        document.getElementById('createAbsenceFormSettings').reset();
-        editIdInput.value = '';
-        document.getElementById('saveAbsenceBtnSettings').textContent = 'Abwesenheit hinzufügen';
-        document.getElementById('cancelEditAbsenceBtnSettings').style.display = 'none';
+        this.resetAbsenceFormSettings();
 
         // Update absence indicator
         await this.updateAbsenceIndicator();
@@ -6674,7 +6913,24 @@ const App = {
         this.absencesCache = null;
 
         // Refresh list
-        this.renderAbsencesListSettings();
+        await this.renderAbsencesListSettings();
+    },
+
+    resetAbsenceFormSettings() {
+        const form = document.getElementById('createAbsenceFormSettings');
+        if (form) form.reset();
+
+        const editIdInput = document.getElementById('editAbsenceIdSettings');
+        if (editIdInput) editIdInput.value = '';
+
+        const saveBtn = document.getElementById('saveAbsenceBtnSettings');
+        if (saveBtn) saveBtn.textContent = 'Abwesenheit hinzufügen';
+
+        const cancelBtn = document.getElementById('cancelEditAbsenceBtnSettings');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+            cancelBtn.onclick = null;
+        }
     },
 
     async renderAbsencesListSettings() {
@@ -6736,8 +6992,8 @@ const App = {
         const absence = await Storage.getById('absences', absenceId);
         if (!absence) return;
 
-        document.getElementById('absenceStartSettings').value = absence.start;
-        document.getElementById('absenceEndSettings').value = absence.end;
+        document.getElementById('absenceStartSettings').value = (absence.startDate || absence.start || '').slice(0, 10);
+        document.getElementById('absenceEndSettings').value = (absence.endDate || absence.end || '').slice(0, 10);
         document.getElementById('absenceReasonSettings').value = absence.reason || '';
         document.getElementById('editAbsenceIdSettings').value = absenceId;
         document.getElementById('saveAbsenceBtnSettings').textContent = 'Änderungen speichern';
@@ -6745,10 +7001,7 @@ const App = {
 
         const cancelBtn = document.getElementById('cancelEditAbsenceBtnSettings');
         cancelBtn.onclick = () => {
-            document.getElementById('createAbsenceFormSettings').reset();
-            document.getElementById('editAbsenceIdSettings').value = '';
-            document.getElementById('saveAbsenceBtnSettings').textContent = 'Abwesenheit hinzufügen';
-            cancelBtn.style.display = 'none';
+            this.resetAbsenceFormSettings();
         };
     },
 
@@ -6756,10 +7009,14 @@ const App = {
         const confirmed = await UI.confirmDelete('Möchtest du diese Abwesenheit wirklich löschen?');
         if (confirmed) {
             await Storage.deleteAbsence(absenceId);
+            const editIdInput = document.getElementById('editAbsenceIdSettings');
+            if (!editIdInput || editIdInput.value === absenceId) {
+                this.resetAbsenceFormSettings();
+            }
             this.absencesCache = null; // Invalidate cache
             UI.showToast('Abwesenheit gelöscht', 'success');
             await this.updateAbsenceIndicator(); // Update header immediately
-            this.renderAbsencesListSettings();
+            await this.renderAbsencesListSettings();
         }
     },
 
@@ -8676,21 +8933,41 @@ const App = {
         });
 
         // Handle Activities (needs News + Events + Rehearsals)
-        Promise.all([eventsPromise, rehearsalsPromise, newsPromise]).then(([events, rehearsals, news]) => {
+        Promise.all([eventsPromise, rehearsalsPromise, newsPromise, Storage.getLocations().catch(() => [])]).then(([events, rehearsals, news, locations]) => {
             const activitySection = document.getElementById('dashboardActivityList');
             if (activitySection) {
+                const locationMap = new Map((locations || []).map(loc => [String(loc.id), loc]));
                 let activities = [];
                 activities = activities.concat(
-                    (events || []).map(e => ({ type: 'event', date: e.date, title: e.title, id: e.id })),
+                    (events || []).map(e => ({
+                        type: 'event',
+                        date: e.date,
+                        title: e.title,
+                        id: e.id,
+                        bandName: e.band?.name || '',
+                        metaSecondary: e.location || '',
+                        accent: e.band?.color || '#8b5cf6'
+                    })),
                     (rehearsals || [])
                         .map(r => ({
                             type: 'rehearsal',
                             date: this.getConfirmedRehearsalDate(r),
                             title: r.title,
-                            id: r.id
+                            id: r.id,
+                            bandName: r.band?.name || '',
+                            metaSecondary: r.locationId ? (locationMap.get(String(r.locationId))?.name || '') : '',
+                            accent: r.band?.color || '#5b8cff'
                         }))
                         .filter(r => r.date),
-                    (news || []).map(n => ({ type: 'news', date: n.createdAt, title: n.title, id: n.id }))
+                    (news || []).map(n => ({
+                        type: 'news',
+                        date: n.createdAt,
+                        title: n.title,
+                        id: n.id,
+                        bandName: '',
+                        metaSecondary: '',
+                        accent: '#8b5cf6'
+                    }))
                 );
                 activities = activities.filter(a => a.date).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
 
@@ -8698,13 +8975,17 @@ const App = {
                     activitySection.innerHTML = '<div class="dashboard-empty-state"><strong>Keine neue Aktivität</strong><p>Neue Termine, bestätigte Proben oder News erscheinen hier automatisch.</p></div>';
                 } else {
                     activitySection.innerHTML = activities.map(a => `
-                    <div class="dashboard-activity-item upcoming-card activity-card clickable" data-type="${a.type}" data-id="${a.id || ''}">
+                    <div class="dashboard-activity-item upcoming-card clickable" data-type="${a.type}" data-id="${a.id || ''}" style="--upcoming-accent: ${a.accent}">
                         <div class="upcoming-card-content">
                             <div class="upcoming-card-topline">
                                 <span class="upcoming-card-type">${a.type === 'event' ? 'Auftritt' : a.type === 'rehearsal' ? 'Probetermin' : 'News'}</span>
-                                <span class="upcoming-card-band">${UI.formatDateShort(a.date)}</span>
+                                ${a.bandName ? `<span class="upcoming-card-band">${Bands.escapeHtml(a.bandName)}</span>` : `<span class="upcoming-card-band">${UI.formatDateShort(a.date)}</span>`}
                             </div>
                             <div class="upcoming-card-title">${Bands.escapeHtml(a.title)}</div>
+                            <div class="upcoming-card-meta">
+                                <span class="upcoming-card-meta-primary">${UI.formatDate(a.date)}</span>
+                                ${a.metaSecondary ? `<span class="upcoming-card-meta-secondary">${Bands.escapeHtml(a.metaSecondary)}</span>` : ''}
+                            </div>
                         </div>
                         <div class="upcoming-card-action" aria-hidden="true">Öffnen</div>
                     </div>
@@ -9227,24 +9508,23 @@ const App = {
         const proceed = async () => {
             // Clear deleted songs list - changes are being saved
             this.deletedEventSongs = [];
+            let savedEventId = editId || null;
 
             if (editId) {
                 // Update existing
                 Logger.userAction('Form', 'eventForm', 'Submit', { action: 'Update Event', eventId: editId, title, bandId });
                 await Events.updateEvent(editId, bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
-                // If there are draft songs, copy them to the existing event
-                if (this.draftEventSongIds && this.draftEventSongIds.length > 0) {
-                    await this.copyBandSongsToEvent(editId, this.draftEventSongIds);
-                    this.draftEventSongIds = [];
-                }
             } else {
                 // Create new
                 Logger.userAction('Form', 'eventForm', 'Submit', { action: 'Create Event', title, bandId });
                 const saved = await Events.createEvent(bandId, title, date, location, info, techInfo, members, guests, soundcheckDate, soundcheckLocation);
-                if (saved && saved.id && this.draftEventSongIds && this.draftEventSongIds.length > 0) {
-                    await this.copyBandSongsToEvent(saved.id, this.draftEventSongIds);
-                    this.draftEventSongIds = [];
-                }
+                savedEventId = saved?.id || null;
+            }
+
+            if (savedEventId) {
+                await this.syncEventSongs(savedEventId, this.draftEventSongIds || []);
+                this.draftEventSongIds = [];
+                this.draftEventSongOverrides = {};
             }
             // Always update dashboard after event changes
             await this.updateDashboard();

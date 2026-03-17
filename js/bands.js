@@ -601,7 +601,7 @@ const Bands = {
         leaveSection.innerHTML = `
             <span class="band-details-section-eyebrow">Mitgliedschaft</span>
             <h3>Band verlassen</h3>
-            <p class="band-details-section-note">Verlasse die Band, wenn du kuenftig nicht mehr dazugehoeren moechtest.</p>
+            <p class="band-details-section-note">Verlasse die Band, wenn du künftig nicht mehr dazugehören möchtest.</p>
             <button class="btn btn-warning" id="leaveBandBtn">Band verlassen</button>
         `;
 
@@ -1261,23 +1261,29 @@ const Bands = {
         const user = Auth.getCurrentUser();
         if (!band || !user) return;
 
-        UI.showConfirm('Willst du die Band wirklich verlassen?', async () => {
-            // Remove current user from band members
-            const ok = await Storage.removeBandMember(bandId, user.id);
-            if (ok) {
-                this.invalidateCache();
-                UI.showToast('Du hast die Band verlassen', 'success');
-                UI.closeModal('bandDetailsModal');
-                await this.renderBands(true);
-                if (typeof App !== 'undefined' && App.updateDashboard) await App.updateDashboard();
-                // Notify other modules
-                document.dispatchEvent(new Event('bandsUpdated'));
-                // Update nav visibility
-                await this.updateNavVisibility();
-            } else {
-                UI.showToast('Konnte die Band-Zugehörigkeit nicht entfernen', 'error');
-            }
-        });
+        const confirmed = await UI.confirmAction(
+            `Möchtest du die Band "${band.name}" wirklich verlassen?`,
+            'Band verlassen?',
+            'Verlassen',
+            'btn-warning'
+        );
+        if (!confirmed) return;
+
+        // Remove current user from band members
+        const ok = await Storage.removeBandMember(bandId, user.id);
+        if (ok) {
+            this.invalidateCache();
+            UI.showToast('Du hast die Band verlassen', 'success');
+            UI.closeModal('bandDetailsModal');
+            await this.renderBands(true);
+            if (typeof App !== 'undefined' && App.updateDashboard) await App.updateDashboard();
+            // Notify other modules
+            document.dispatchEvent(new Event('bandsUpdated'));
+            // Update nav visibility
+            await this.updateNavVisibility();
+        } else {
+            UI.showToast('Konnte die Band-Zugehörigkeit nicht entfernen', 'error');
+        }
     },
 
     // Show/hide navigation items depending on whether the current user is in at least one band

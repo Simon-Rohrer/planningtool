@@ -55,8 +55,8 @@
     <link rel="manifest" href="manifest.json">
 
     <!-- Icons -->
-    <link rel="icon" type="image/svg+xml" href="images/branding/bandmate-logo-only.svg">
-    <link rel="apple-touch-icon" href="images/branding/bandmate-logo-only.svg">
+    <link rel="icon" type="image/svg+xml" href="images/branding/bandmate-logo-only.svg" id="faviconSvg">
+    <link rel="apple-touch-icon" href="images/branding/bandmate-logo-only.svg" id="appleTouchIcon">
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/style.css?v=1769686135">
@@ -105,7 +105,7 @@
         <div class="loader-panel" role="status" aria-live="polite">
             <div class="loader-spin-shell">
                 <span class="guitar-spinner" aria-hidden="true">
-                    <img src="images/branding/bandmate-logo-only.svg" alt="">
+                    <img src="images/branding/bandmate-logo-only.svg" alt="" id="loaderBrandLogo">
                 </span>
             </div>
             <div class="loader-panel-copy">
@@ -271,7 +271,7 @@
             <header class="landing-header">
                 <div class="landing-logo">
                     <div class="landing-logo-mark">
-                        <img src="images/branding/bandmate-logo-only.svg" alt="Bandmate">
+                        <img src="images/branding/bandmate-logo-only.svg" alt="Bandmate" id="landingBrandLogo">
                     </div>
                     <div class="landing-brand-copy">
                         <span class="landing-brand-title">Bandmate</span>
@@ -290,28 +290,26 @@
             <main class="landing-main">
                 <section class="landing-hero-grid">
                     <div class="landing-copy-column">
-                        <span class="landing-kicker">Bandplanung neu gedacht</span>
-                        <h1 class="landing-hero-title">Organisiere Proben, plane Auftritte und führe deine Band an einem Ort.</h1>
+                        <span class="landing-kicker">Bandplanung ohne Chaos</span>
+                        <h1 class="landing-hero-title">Plane Proben, Auftritte und Kommunikation in einer Oberfläche.</h1>
                         <p class="hero-sub">
-                            Bandmate bringt Termine, Rückmeldungen, News, Orte und Songs in eine klare,
-                            produktive Oberfläche für Bands und Leitungsteams.
+                            Bandmate bündelt Termine, Rückmeldungen, Songs, News und Orte in einem ruhigen
+                            Arbeitsbereich für Bands und Leitungsteams.
                         </p>
-                        <div class="landing-cta-row">
-                            <button type="button" class="landing-cta landing-cta-primary"
-                                onclick="UI.toggleAuthOverlay(true, 'register')">Registrieren</button>
-                            <button type="button" class="landing-cta landing-cta-secondary"
-                                onclick="UI.toggleAuthOverlay(true, 'login')">Login</button>
+                        <div class="landing-copy-points" aria-label="Kernvorteile">
+                            <span class="landing-copy-point">Abstimmungen</span>
+                            <span class="landing-copy-point">Kalender</span>
+                            <span class="landing-copy-point">Songs &amp; PDFs</span>
                         </div>
-                        <div class="landing-mobile-actions">
-                            <button type="button" class="landing-mobile-action landing-mobile-action-register"
-                                onclick="UI.toggleAuthOverlay(true, 'register')">Registrieren</button>
-                            <button type="button" class="landing-mobile-action landing-mobile-action-login"
-                                onclick="UI.toggleAuthOverlay(true, 'login')">Login</button>
-                        </div>
+                        <p class="landing-copy-note">Für Bands, Leitungen und Teams, die ihre Planung einfach und klar halten wollen.</p>
                     </div>
 
                     <div class="landing-showcase" aria-hidden="true">
                         <div class="landing-showcase-glow"></div>
+                        <div class="landing-showcase-caption">
+                            <span class="landing-showcase-badge">Live-Vorschau</span>
+                            <p>Ein kompakter Blick auf das neu gestaltete Dashboard von Bandmate.</p>
+                        </div>
 
                         <div class="landing-desk-device">
                             <div class="landing-device-bar">
@@ -334,35 +332,35 @@
                                 <div class="landing-device-content">
                                     <div class="landing-preview-heading">
                                         <strong>Willkommen zurück, Simon</strong>
-                                        <span>Übersicht für die nächsten Termine und Aktivitäten</span>
+                                        <span>Dein Überblick für Termine, Bands und aktuelle Abstimmungen</span>
                                     </div>
                                     <div class="landing-preview-metrics">
                                         <article class="landing-preview-metric">
-                                            <span class="landing-preview-metric-label">Meine Bands</span>
+                                            <span class="landing-preview-metric-label">Bands</span>
                                             <strong>4</strong>
-                                            <span class="landing-preview-metric-caption">Aktive Projekte</span>
+                                            <span class="landing-preview-metric-caption">aktiv</span>
                                         </article>
                                         <article class="landing-preview-metric">
-                                            <span class="landing-preview-metric-label">Auftritte</span>
+                                            <span class="landing-preview-metric-label">Gigs</span>
                                             <strong>3</strong>
-                                            <span class="landing-preview-metric-caption">Nächste 30 Tage</span>
+                                            <span class="landing-preview-metric-caption">demnächst</span>
                                         </article>
                                         <article class="landing-preview-metric">
                                             <span class="landing-preview-metric-label">Proben</span>
                                             <strong>8</strong>
-                                            <span class="landing-preview-metric-caption">Bestätigte Termine</span>
+                                            <span class="landing-preview-metric-caption">geplant</span>
                                         </article>
                                     </div>
                                     <div class="landing-preview-panels">
                                         <article class="landing-preview-feature-card">
                                             <span class="landing-preview-badge">Nächster Termin</span>
                                             <strong>Coldplay Acoustic Session</strong>
-                                            <p>Donnerstag, 14. März · 19:00 Uhr · JMS Festhalle</p>
+                                            <p>Do, 14. März · 19:00 Uhr · JMS Festhalle</p>
                                         </article>
                                         <div class="landing-preview-workspace">
                                             <div class="landing-preview-workspace-head">
-                                                <strong>Diese Woche</strong>
-                                                <span>Agenda</span>
+                                                <strong>Agenda</strong>
+                                                <span>Diese Woche</span>
                                             </div>
                                             <article class="landing-preview-row">
                                                 <strong>Bandprobe</strong>
@@ -411,26 +409,26 @@
 
                 <section class="landing-feature-strip" aria-label="Kernfunktionen">
                     <article class="landing-feature-card">
-                        <span class="landing-feature-label">Band Management</span>
-                        <h2>Mitglieder, Rollen und Kommunikation in einer klaren Struktur.</h2>
-                        <p>Verwalte Bands, Verantwortlichkeiten und Abwesenheiten ohne verteilte Listen.</p>
+                        <span class="landing-feature-label">Bands</span>
+                        <h2>Mitglieder, Rollen und Zuständigkeiten an einem Ort.</h2>
+                        <p>Halte Bands, Verantwortlichkeiten und Zugänge sauber organisiert.</p>
                     </article>
                     <article class="landing-feature-card">
                         <span class="landing-feature-label">Planung</span>
-                        <h2>Rückmeldungen und Terminfindung ohne Reibung.</h2>
-                        <p>Proben und Auftritte werden mit Abstimmungen, Orten und Kalender-Sync sauber geplant.</p>
+                        <h2>Proben und Auftritte mit klaren Rückmeldungen koordinieren.</h2>
+                        <p>Plane Termine, prüfe Orte und sammle Zusagen ohne Listenchaos.</p>
                     </article>
                     <article class="landing-feature-card">
                         <span class="landing-feature-label">Organisation</span>
-                        <h2>News, Songs und PDFs dort, wo dein Team sie braucht.</h2>
-                        <p>Halte Inhalte, ChordPro-Dateien und Informationen in einer gemeinsamen Arbeitsfläche bereit.</p>
+                        <h2>Songs, PDFs, News und Orte immer griffbereit halten.</h2>
+                        <p>Alle Inhalte bleiben dort, wo dein Team sie für den Alltag wirklich braucht.</p>
                     </article>
                 </section>
 
                 <footer class="landing-footer">
                     <div class="landing-footer-brand">
                         <span class="landing-footer-title">Bandmate</span>
-                        <span class="landing-footer-copy">Premium Planung für moderne Bands und Leitungsteams.</span>
+                        <span class="landing-footer-copy">Klare Planung für moderne Bands und Leitungsteams.</span>
                     </div>
                     <div class="landing-footer-links">
                         <a href="privacy.html" target="_blank">Datenschutz</a>
@@ -440,13 +438,13 @@
             </main>
         </div>
 
-        <div id="authOverlay" class="landing-auth-overlay">
+        <div id="authOverlay" class="landing-auth-overlay" hidden aria-hidden="true">
             <div class="auth-white-card auth-mode-login">
                 <div class="auth-card-head">
                     <div class="auth-card-copy">
                         <span class="auth-card-kicker">Bandmate</span>
-                        <h2 class="auth-card-title">Dein Einstieg</h2>
-                        <p class="auth-card-subtitle">Melde dich an oder erstelle deinen Zugang für deine Band.</p>
+                        <h2 class="auth-card-title" id="authCardTitle">Anmelden</h2>
+                        <p class="auth-card-subtitle" id="authCardSubtitle">Greife direkt wieder auf Proben, Auftritte, Bands und Planung zu.</p>
                     </div>
                     <button type="button" onclick="UI.toggleAuthOverlay(false)" class="auth-close-btn"
                         aria-label="Schließen">&times;</button>
@@ -458,9 +456,6 @@
                 </div>
 
                 <form id="loginForm" class="auth-form active">
-                    <h3 class="auth-form-title">Willkommen zurück</h3>
-                    <p class="auth-form-subtitle">Mit deinem Konto bist du in Sekunden wieder in der Planung.</p>
-
                     <div class="form-group">
                         <label for="loginUsername">Benutzername oder E-Mail</label>
                         <input type="text" id="loginUsername" placeholder="dein@name.de" required>
@@ -481,7 +476,7 @@
                     <button type="submit" class="btn-submit">Anmelden</button>
 
                     <div class="auth-form-footer">
-                        <a href="privacy.html" target="_blank" class="auth-inline-link">Datenschutzerklaerung</a>
+                        <a href="privacy.html" target="_blank" class="auth-inline-link">Datenschutzerklärung</a>
                         <span>Noch keinen Account?
                             <a href="#" onclick="UI.switchAuthTab('register'); return false;"
                                 class="auth-inline-link strong">Jetzt registrieren</a>
@@ -490,9 +485,6 @@
                 </form>
 
                 <form id="registerForm" class="auth-form">
-                    <h3 class="auth-form-title">Account erstellen</h3>
-                    <p class="auth-form-subtitle">Lege in wenigen Schritten dein Profil für deine Band an.</p>
-
                     <div class="auth-grid auth-grid-3">
                         <div class="form-group">
                             <label for="registerCode">Code</label>
@@ -543,7 +535,7 @@
                     <button type="submit" class="btn-submit">Kostenlos registrieren</button>
 
                     <div class="auth-form-footer">
-                        <a href="privacy.html" target="_blank" class="auth-inline-link">Datenschutzerklaerung</a>
+                        <a href="privacy.html" target="_blank" class="auth-inline-link">Datenschutzerklärung</a>
                         <span>Bereits registriert?
                             <a href="#" onclick="UI.switchAuthTab('login'); return false;"
                                 class="auth-inline-link strong">Zum Login</a>
@@ -601,7 +593,7 @@
             <!-- Purple Sidebar (Desktop only) -->
             <aside class="app-sidebar">
                 <div class="sidebar-brand sidebar-brand-wordmark">
-                    <img src="images/branding/bandmate-logo-short.svg" alt="Bandmate">
+                    <img src="images/branding/bandmate-logo-short.svg" alt="Bandmate" id="sidebarBrandLogo">
                 </div>
 
                 <!-- Profile Section Removed (now in Header) -->
@@ -1027,12 +1019,14 @@
                             <strong>Neue News verfügbar!</strong>
                             <span id="newsBannerMessage">Es gibt ungelesene Updates</span>
                         </div>
-                        <button id="newsBannerButton" class="btn btn-sm btn-primary">
-                            Mehr Infos
-                        </button>
-                        <button id="newsBannerClose" class="news-banner-close" title="Schließen">
-                            ×
-                        </button>
+                        <div class="news-banner-actions">
+                            <button id="newsBannerButton" class="btn btn-sm btn-primary">
+                                Mehr Infos
+                            </button>
+                            <button id="newsBannerClose" class="news-banner-close" title="Schließen" aria-label="News-Banner schließen">
+                                ×
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1132,8 +1126,19 @@
                                         <h3>Schnellzugriff</h3>
                                     </div>
                                     <div class="section-header-actions">
-                                        <button id="editQuickAccessBtn" class="btn btn-icon-sm"
-                                            title="Bearbeiten">Anpassen</button>
+                                        <button id="editQuickAccessBtn" class="btn btn-icon-sm quick-access-edit-btn"
+                                            title="Schnellzugriff bearbeiten"
+                                            aria-label="Schnellzugriff bearbeiten">
+                                            <svg class="quick-access-edit-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M4 17.25V20h2.75L17.81 8.94l-2.75-2.75L4 17.25Z" fill="none"
+                                                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                                    stroke-linejoin="round" />
+                                                <path d="M14.06 4.94 16.81 7.69" fill="none" stroke="currentColor"
+                                                    stroke-width="1.8" stroke-linecap="round"
+                                                    stroke-linejoin="round" />
+                                            </svg>
+                                            <span>Anpassen</span>
+                                        </button>
                                         <span class="dashboard-drag-handle" title="Zum Verschieben ziehen">≡</span>
                                     </div>
                                 </div>
@@ -1999,9 +2004,9 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label for="absenceReasonSettings">Grund</label>
+                                        <label for="absenceReasonSettings">Grund (optional)</label>
                                         <input type="text" id="absenceReasonSettings" class="profile-form-input"
-                                            placeholder="Urlaub, Krankheit, ..." required>
+                                            placeholder="Urlaub, Krankheit, ...">
                                     </div>
 
                                     <div class="settings-form-actions absence-form-actions">
@@ -2264,13 +2269,17 @@
     </div>
 
     <!-- Edit Band Modal -->
-    <div id="editBandModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Band bearbeiten</h2>
+    <div id="editBandModal" class="modal modal-band-entry modal-band-entry-compact">
+        <div class="modal-content band-entry-modal-content band-entry-modal-content-compact">
+            <div class="modal-header band-entry-modal-header">
+                <div class="band-entry-modal-copy">
+                    <span class="band-entry-modal-kicker">Bands</span>
+                    <h2>Band bearbeiten</h2>
+                    <p>Aktualisiere Name und Beschreibung deiner Band in einem kompakten Schritt.</p>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
-            <form id="editBandForm">
+            <form id="editBandForm" class="band-entry-form">
                 <input type="hidden" id="editBandId">
                 <div class="form-group">
                     <label for="editBandName">Bandname</label>
@@ -2478,65 +2487,73 @@
     </div>
 
     <!-- Import Songs Modal -->
-    <div id="importSongsModal" class="modal">
-        <div class="modal-content modal-xl">
-            <div class="modal-header">
-                <h2>Songs importieren</h2>
-                <button class="modal-close">&times;</button>
+    <div id="importSongsModal" class="modal modal-import-songs">
+        <div class="modal-content import-songs-modal">
+            <div class="modal-header import-songs-modal-header">
+                <div class="import-songs-title-group">
+                    <span class="import-songs-kicker">Import</span>
+                    <h2>Songs importieren</h2>
+                    <p>Importiere mehrere Songs gesammelt per CSV und übernimm sie direkt in deine Setlist.</p>
+                </div>
+                <button class="modal-close" aria-label="Schließen">&times;</button>
             </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 1rem;">Du kannst mehrere Songs gleichzeitig per CSV-Datei importieren.
-                </p>
-
-                <div class="import-info-box">
-                    <h4 class="import-info-title">Erforderliches Format:</h4>
-                    <div class="import-table-wrapper">
-                        <table class="import-table">
-                            <thead>
-                                <tr>
-                                    <th>Titel</th>
-                                    <th>Interpret</th>
-                                    <th>BPM</th>
-                                    <th>Time</th>
-                                    <th>Key</th>
-                                    <th>Orig.</th>
-                                    <th>Lead</th>
-                                    <th>Sprache</th>
-                                    <th>Tracks</th>
-                                    <th>Infos</th>
-                                    <th>CCLI</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Amazing Grace</td>
-                                    <td>John Newton</td>
-                                    <td>80</td>
-                                    <td>4/4</td>
-                                    <td>G</td>
-                                    <td>C</td>
-                                    <td>John</td>
-                                    <td>DE</td>
-                                    <td>Nein</td>
-                                    <td>Start ruhig</td>
-                                    <td>123456</td>
-                                </tr>
-                            </tbody>
-                        </table>
+            <div class="modal-body import-songs-modal-body">
+                <section class="import-songs-panel import-songs-panel-soft">
+                    <div class="import-songs-panel-head">
+                        <div>
+                            <span class="import-songs-panel-kicker">Format</span>
+                            <h3>So sollte deine CSV aufgebaut sein</h3>
+                        </div>
+                        <p>Nutze diese Reihenfolge für Titel, Metadaten und optionale Zusatzinfos.</p>
                     </div>
-                    <p class="import-hint">
-                        ⚠️ Wichtig: Wenn du Excel oder Numbers verwendest, wähle bitte "Exportieren als CSV".
-                    </p>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel"
-                        onclick="UI.closeModal('importSongsModal')">Abbrechen</button>
-                    <button type="button" class="btn btn-primary"
-                        onclick="document.getElementById('csvSongUpload').click()">
-                        📂 CSV-Datei auswählen
-                    </button>
-                </div>
+                    <div class="import-table-shell">
+                        <div class="import-table-wrapper">
+                            <table class="import-table">
+                                <thead>
+                                    <tr>
+                                        <th>Titel</th>
+                                        <th>Interpret</th>
+                                        <th>BPM</th>
+                                        <th>Time</th>
+                                        <th>Key</th>
+                                        <th>Orig.</th>
+                                        <th>Lead</th>
+                                        <th>Sprache</th>
+                                        <th>Tracks</th>
+                                        <th>Infos</th>
+                                        <th>CCLI</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Amazing Grace</td>
+                                        <td>John Newton</td>
+                                        <td>80</td>
+                                        <td>4/4</td>
+                                        <td>G</td>
+                                        <td>C</td>
+                                        <td>John</td>
+                                        <td>DE</td>
+                                        <td>Nein</td>
+                                        <td>Start ruhig</td>
+                                        <td>123456</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="import-songs-note">
+                        <strong>Hinweis</strong>
+                        <span>Wenn du Excel oder Numbers verwendest, exportiere die Datei bitte vorher als CSV.</span>
+                    </div>
+                </section>
+            </div>
+            <div class="modal-actions import-songs-actions">
+                <button type="button" class="btn cancel" onclick="UI.closeModal('importSongsModal')">Abbrechen</button>
+                <button type="button" class="btn btn-primary import-songs-upload-btn"
+                    onclick="document.getElementById('csvSongUpload').click()">
+                    CSV-Datei auswählen
+                </button>
             </div>
         </div>
     </div>
@@ -2721,29 +2738,31 @@
 
     <!-- Confirm Rehearsal Modal -->
     <!-- Time Suggestion Modal -->
-    <div id="timeSuggestionModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Uhrzeit vorschlagen</h2>
-                <button class="modal-close">&times;</button>
+    <div id="timeSuggestionModal" class="modal time-suggestion-modal">
+        <div class="modal-content time-suggestion-modal-content">
+            <div class="time-suggestion-modal-header">
+                <div class="time-suggestion-modal-copy">
+                    <span class="time-suggestion-modal-kicker">Zeitvorschlag</span>
+                    <h2>Uhrzeit vorschlagen</h2>
+                    <p>Schlage eine alternative Uhrzeit für diesen Termin vor.</p>
+                </div>
+                <button class="modal-close" aria-label="Schließen">&times;</button>
             </div>
-            <div class="modal-body">
+            <div class="time-suggestion-modal-body">
                 <input type="hidden" id="suggestTimeRehearsalId">
                 <input type="hidden" id="suggestTimeDateIndex">
 
-                <div class="form-group">
-                    <label for="suggestedTimeInput">Welche Uhrzeit würdest du vorschlagen?</label>
+                <div class="time-suggestion-input-card">
+                    <label for="suggestedTimeInput">Welche Uhrzeit würde für dich besser passen?</label>
                     <input type="time" id="suggestedTimeInput" class="form-control" required>
-                    <small class="help-text">Wähle eine Uhrzeit aus, die besser für dich passt</small>
+                    <small class="help-text">Wähle nur eine neue Uhrzeit. Das Datum bleibt unverändert.</small>
                 </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="button" id="deleteTimeSuggestionBtn" class="btn btn-secondary"
-                        style="display: none;">🗑️ Vorschlag löschen</button>
-                    <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">💾
-                        Speichern</button>
-                </div>
+            </div>
+            <div class="time-suggestion-modal-actions">
+                <button type="button" class="btn cancel">Abbrechen</button>
+                <button type="button" id="deleteTimeSuggestionBtn" class="btn btn-secondary btn-destructive-soft"
+                    style="display: none;">Vorschlag löschen</button>
+                <button type="button" id="saveTimeSuggestionBtn" class="btn btn-primary">Speichern</button>
             </div>
         </div>
     </div>
@@ -3343,29 +3362,31 @@
     </div>
 
     <!-- Event Time Suggestion Modal -->
-    <div id="eventTimeSuggestionModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Uhrzeit vorschlagen</h2>
-                <button class="modal-close">&times;</button>
+    <div id="eventTimeSuggestionModal" class="modal time-suggestion-modal">
+        <div class="modal-content time-suggestion-modal-content">
+            <div class="time-suggestion-modal-header">
+                <div class="time-suggestion-modal-copy">
+                    <span class="time-suggestion-modal-kicker">Zeitvorschlag</span>
+                    <h2>Uhrzeit vorschlagen</h2>
+                    <p>Schlage eine alternative Uhrzeit für diesen Termin vor.</p>
+                </div>
+                <button class="modal-close" aria-label="Schließen">&times;</button>
             </div>
-            <div class="modal-body">
+            <div class="time-suggestion-modal-body">
                 <input type="hidden" id="suggestTimeEventId">
                 <input type="hidden" id="suggestTimeEventDateIndex">
 
-                <div class="form-group">
-                    <label for="eventSuggestedTimeInput">Welche Uhrzeit würdest du vorschlagen?</label>
+                <div class="time-suggestion-input-card">
+                    <label for="eventSuggestedTimeInput">Welche Uhrzeit würde für dich besser passen?</label>
                     <input type="time" id="eventSuggestedTimeInput" class="form-control" required>
-                    <small class="help-text">Wähle eine Uhrzeit aus, die besser für dich passt</small>
+                    <small class="help-text">Wähle nur eine neue Uhrzeit. Das Datum bleibt unverändert.</small>
                 </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="button" id="deleteEventTimeSuggestionBtn" class="btn btn-secondary"
-                        style="display: none;">🗑️ Vorschlag löschen</button>
-                    <button type="button" id="saveEventTimeSuggestionBtn" class="btn btn-primary">💾
-                        Speichern</button>
-                </div>
+            </div>
+            <div class="time-suggestion-modal-actions">
+                <button type="button" class="btn cancel">Abbrechen</button>
+                <button type="button" id="deleteEventTimeSuggestionBtn" class="btn btn-secondary btn-destructive-soft"
+                    style="display: none;">Vorschlag löschen</button>
+                <button type="button" id="saveEventTimeSuggestionBtn" class="btn btn-primary">Speichern</button>
             </div>
         </div>
     </div>
@@ -3532,20 +3553,21 @@
     </div>
 
     <!-- Confirm Delete Modal -->
-    <div id="confirmDeleteModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2 id="confirmDeleteTitle">Wirklich löschen?</h2>
+    <div id="confirmDeleteModal" class="modal confirm-action-modal">
+        <div class="modal-content confirm-action-modal-content">
+            <div class="modal-header confirm-action-modal-header">
+                <div class="confirm-action-modal-copy">
+                    <span class="confirm-action-modal-kicker">Bestätigung</span>
+                    <h2 id="confirmDeleteTitle">Wirklich löschen?</h2>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body">
-                <p id="confirmDeleteMessage" style="margin: 0; color: var(--color-text-secondary);">
-                    Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig
-                    gemacht
-                    werden.
+            <div class="modal-body confirm-action-modal-body">
+                <p id="confirmDeleteMessage" class="confirm-action-modal-message">
+                    Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
                 </p>
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions confirm-action-modal-actions">
                 <button type="button" class="btn cancel" id="confirmDeleteCancel">Abbrechen</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteConfirm">Löschen</button>
             </div>

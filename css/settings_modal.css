@@ -2039,18 +2039,39 @@
     overflow: visible;
 }
 
+#settingsModal .settings-modal-body,
+#settingsModal .settings-shell,
+#settingsModal .settings-tab-content.active,
+#settingsModal .profile-settings-grid,
 #settingsModal .profile-main-column,
 #settingsModal .profile-section,
 #settingsModal .form-group {
     position: relative;
 }
 
+#settingsModal .profile-section,
+#settingsModal .settings-surface-card {
+    isolation: isolate;
+}
+
 #settingsModal .custom-multiselect {
     position: relative;
+    isolation: isolate;
 }
 
 #settingsModal .custom-multiselect.is-open {
-    z-index: 6000;
+    z-index: 9000;
+}
+
+#settingsModal .form-group:has(.custom-multiselect.is-open),
+#settingsModal .settings-modal-body:has(.custom-multiselect.is-open),
+#settingsModal .settings-shell:has(.custom-multiselect.is-open),
+#settingsModal .settings-tab-content.active:has(.custom-multiselect.is-open),
+#settingsModal .profile-settings-grid:has(.custom-multiselect.is-open),
+#settingsModal .profile-main-column:has(.custom-multiselect.is-open),
+#settingsModal .profile-section:has(.custom-multiselect.is-open),
+#settingsModal .settings-surface-card:has(.custom-multiselect.is-open) {
+    z-index: 9000;
 }
 
 #settingsModal .multiselect-trigger {
@@ -2082,26 +2103,76 @@
 }
 
 #settingsModal .multiselect-menu {
-    z-index: 6001;
-    border-color: var(--settings-border);
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
-        var(--settings-surface);
-    box-shadow: 0 22px 42px rgba(6, 14, 31, 0.24);
+    z-index: 9001;
+    border-color: color-mix(in srgb, var(--settings-border) 92%, rgba(255, 255, 255, 0.08));
+    background: #1c2740;
+    backdrop-filter: none;
+    box-shadow: 0 28px 56px rgba(6, 14, 31, 0.46);
     max-height: min(280px, calc(100vh - 220px));
+    padding: 0.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 #settingsModal .multiselect-option {
+    position: relative;
     min-height: 50px;
+    border-color: transparent;
+    background: color-mix(in srgb, #21314f 78%, var(--settings-surface));
 }
 
 #settingsModal .multiselect-option:hover {
-    background: var(--settings-surface-strong);
-    border-color: var(--settings-border-soft);
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--settings-surface-strong));
+    border-color: color-mix(in srgb, var(--color-primary) 18%, var(--settings-border-soft));
+}
+
+#settingsModal .multiselect-option:has(input[type="checkbox"]:checked) {
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 85%),
+        color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-primary) 26%, var(--settings-border));
+}
+
+#settingsModal .multiselect-option-indicator {
+    background: color-mix(in srgb, var(--color-surface) 96%, #0d1728);
+    border-color: color-mix(in srgb, var(--color-primary) 24%, var(--settings-border));
+}
+
+#settingsModal .multiselect-option:has(input[type="checkbox"]:checked) .multiselect-option-indicator {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 #settingsModal .multiselect-option-label {
     color: var(--color-text);
+    font-weight: 600;
+}
+
+html[data-theme="light"] #settingsModal .multiselect-menu,
+:root:not(.theme-dark) #settingsModal .multiselect-menu {
+    background: #ffffff;
+    border-color: rgba(148, 163, 184, 0.34);
+    box-shadow: 0 22px 40px rgba(15, 23, 42, 0.18);
+}
+
+html[data-theme="dark"] #settingsModal .multiselect-menu,
+:root.theme-dark #settingsModal .multiselect-menu {
+    background: #1b2537;
+    border-color: rgba(132, 157, 214, 0.42);
+    box-shadow: 0 24px 48px rgba(2, 6, 23, 0.44);
+}
+
+html[data-theme="dark"] #settingsModal .multiselect-option,
+:root.theme-dark #settingsModal .multiselect-option {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+html[data-theme="dark"] #settingsModal .multiselect-option:hover,
+:root.theme-dark #settingsModal .multiselect-option:hover {
+    background: rgba(143, 180, 255, 0.1);
 }
 
 #settingsModal .settings-form-actions {

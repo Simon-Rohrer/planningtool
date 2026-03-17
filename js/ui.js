@@ -40,10 +40,17 @@ const UI = {
         const overlay = document.getElementById('authOverlay');
         if (overlay) {
             if (show) {
+                overlay.hidden = false;
+                overlay.setAttribute('aria-hidden', 'false');
                 overlay.classList.add('active');
                 document.body.classList.add('modal-open');
                 // Auto-switch to requested tab
                 this.switchAuthTab(tabName);
+
+                const activeForm = overlay.querySelector('.auth-form.active');
+                if (activeForm) {
+                    activeForm.scrollTop = 0;
+                }
 
                 // Add One-Time Click Listener for outside click
                 const clickHandler = (e) => {
@@ -58,6 +65,8 @@ const UI = {
             } else {
 
                 overlay.classList.remove('active');
+                overlay.setAttribute('aria-hidden', 'true');
+                overlay.hidden = true;
                 document.body.classList.remove('modal-open');
 
                 // FORCE RESET SCROLL POSITION - Fix for iOS keyboard layout issues
@@ -76,13 +85,31 @@ const UI = {
     // Switch between Login and Register tabs
     switchAuthTab(tabName) {
         // Toggle specific classes on the card for sizing
-        const card = document.querySelector('.auth-white-card');
+        const card = document.querySelector('#authOverlay .auth-white-card');
+        const title = document.getElementById('authCardTitle');
+        const subtitle = document.getElementById('authCardSubtitle');
         if (card) {
             card.classList.remove('auth-mode-login', 'auth-mode-register');
             card.classList.add(`auth-mode-${tabName}`);
         }
 
-        document.querySelectorAll('.auth-tab').forEach(tab => {
+        if (title && subtitle) {
+            const copy = {
+                login: {
+                    title: 'Anmelden',
+                    subtitle: 'Greife direkt wieder auf Proben, Auftritte, Bands und Planung zu.'
+                },
+                register: {
+                    title: 'Registrieren',
+                    subtitle: 'Lege dein Profil an und verbinde dich mit deiner Band.'
+                }
+            };
+
+            title.textContent = copy[tabName]?.title || 'Anmelden';
+            subtitle.textContent = copy[tabName]?.subtitle || 'Greife direkt wieder auf Proben, Auftritte, Bands und Planung zu.';
+        }
+
+        document.querySelectorAll('#authOverlay .auth-tab').forEach(tab => {
             if (tab.dataset.tab === tabName) {
                 tab.classList.add('active');
             } else {
@@ -90,9 +117,10 @@ const UI = {
             }
         });
 
-        document.querySelectorAll('.auth-form').forEach(form => {
+        document.querySelectorAll('#authOverlay .auth-form').forEach(form => {
             if (form.id === `${tabName}Form`) {
                 form.classList.add('active');
+                form.scrollTop = 0;
             } else {
                 form.classList.remove('active');
             }
@@ -108,6 +136,27 @@ const UI = {
                 } catch (err) {
                     console.warn('[UI.closeModal] Could not reset feedback modal:', err);
                 }
+            }
+
+            if (modalId === 'createEventModal' && typeof App !== 'undefined' && typeof App.resetDraftEventState === 'function') {
+                const deletedSongs = Array.isArray(App.deletedEventSongs) ? [...App.deletedEventSongs] : [];
+                (async () => {
+                    try {
+                        if (deletedSongs.length > 0) {
+                            for (const song of deletedSongs) {
+                                await Storage.createSong(song);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('[UI.closeModal] Could not restore deleted event songs:', err);
+                    } finally {
+                        try {
+                            App.resetDraftEventState();
+                        } catch (err) {
+                            console.warn('[UI.closeModal] Could not reset event draft state:', err);
+                        }
+                    }
+                })();
             }
 
             modal.classList.remove('active');
@@ -130,6 +179,26 @@ const UI = {
     closeAllModals() {
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modal => {
+            if (modal.id === 'createEventModal' && modal.classList.contains('active') && typeof App !== 'undefined' && typeof App.resetDraftEventState === 'function') {
+                const deletedSongs = Array.isArray(App.deletedEventSongs) ? [...App.deletedEventSongs] : [];
+                (async () => {
+                    try {
+                        if (deletedSongs.length > 0) {
+                            for (const song of deletedSongs) {
+                                await Storage.createSong(song);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('[UI.closeAllModals] Could not restore deleted event songs:', err);
+                    } finally {
+                        try {
+                            App.resetDraftEventState();
+                        } catch (err) {
+                            console.warn('[UI.closeAllModals] Could not reset event draft state:', err);
+                        }
+                    }
+                })();
+            }
             if (modal.id !== 'authModal') {
                 modal.classList.remove('active');
             }
@@ -170,6 +239,15 @@ const UI = {
 
             if (messageEl) {
                 messageEl.textContent = message;
+            }
+
+            modal.classList.remove('is-danger', 'is-warning', 'is-primary');
+            if (confirmClass.includes('btn-danger')) {
+                modal.classList.add('is-danger');
+            } else if (confirmClass.includes('btn-warning')) {
+                modal.classList.add('is-warning');
+            } else {
+                modal.classList.add('is-primary');
             }
 
             // Remove old event listeners by cloning
@@ -279,6 +357,43 @@ const UI = {
             minute: '2-digit'
         };
         return date.toLocaleDateString('de-DE', options);
+    },
+
+    formatDateTimeRange(dateString, endDateString = null) {
+        const startDate = new Date(dateString);
+        if (Number.isNaN(startDate.getTime())) return '';
+
+        const dateLabel = startDate.toLocaleDateString('de-DE', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+
+        const startTime = startDate.toLocaleTimeString('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const endDate = endDateString ? new Date(endDateString) : null;
+        const hasDistinctEnd = !!(
+            endDate &&
+            !Number.isNaN(endDate.getTime()) &&
+            (
+                endDate.getHours() !== startDate.getHours() ||
+                endDate.getMinutes() !== startDate.getMinutes()
+            )
+        );
+
+        if (hasDistinctEnd) {
+            const endTime = endDate.toLocaleTimeString('de-DE', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            return `${dateLabel} von ${startTime} - ${endTime} Uhr`;
+        }
+
+        return `${dateLabel} um ${startTime} Uhr`;
     },
 
     // Date only (no time)

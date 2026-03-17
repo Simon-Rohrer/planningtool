@@ -60,6 +60,24 @@ const Storage = {
         }
     },
 
+    normalizeVoteRecord(vote) {
+        if (!vote) return vote;
+
+        const normalized = { ...vote };
+
+        if (normalized.id != null) normalized.id = String(normalized.id);
+        if (normalized.userId != null) normalized.userId = String(normalized.userId);
+        if (normalized.rehearsalId != null) normalized.rehearsalId = String(normalized.rehearsalId);
+        if (normalized.eventId != null) normalized.eventId = String(normalized.eventId);
+
+        const parsedDateIndex = Number(normalized.dateIndex);
+        if (Number.isFinite(parsedDateIndex)) {
+            normalized.dateIndex = parsedDateIndex;
+        }
+
+        return normalized;
+    },
+
     // Generic CRUD operations
     async getAll(key) {
         const sb = SupabaseClient.getClient();
@@ -566,7 +584,7 @@ const Storage = {
             .select('*')
             .eq('rehearsalId', rehearsalId);
         if (error) { console.error('Supabase getRehearsalVotes error', error); return []; }
-        return data || [];
+        return (data || []).map(vote => this.normalizeVoteRecord(vote));
     },
 
     async getRehearsalVotesForMultipleRehearsals(rehearsalIds) {
@@ -577,21 +595,21 @@ const Storage = {
             .select('*')
             .in('rehearsalId', rehearsalIds);
         if (error) { console.error('Supabase getRehearsalVotesForMultipleRehearsals error', error); return []; }
-        return data || [];
+        return (data || []).map(vote => this.normalizeVoteRecord(vote));
     },
 
     async getUserVoteForDate(userId, rehearsalId, dateIndex) {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from('votes').select('*').eq('userId', userId).eq('rehearsalId', rehearsalId).eq('dateIndex', dateIndex).limit(1).maybeSingle();
         if (error) { console.error('Supabase getUserVoteForDate error', error); return null; }
-        return data || null;
+        return data ? this.normalizeVoteRecord(data) : null;
     },
 
     async getUserVotesForRehearsal(userId, rehearsalId) {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from('votes').select('*').eq('userId', userId).eq('rehearsalId', rehearsalId);
         if (error) { console.error('Supabase getUserVotesForRehearsal error', error); return []; }
-        return data || [];
+        return (data || []).map(vote => this.normalizeVoteRecord(vote));
     },
 
     async getUserVotesForMultipleRehearsals(userId, rehearsalIds) {
@@ -602,7 +620,7 @@ const Storage = {
             .eq('userId', userId)
             .in('rehearsalId', rehearsalIds);
         if (error) { console.error('Supabase getUserVotesForMultipleRehearsals error', error); return []; }
-        return data || [];
+        return (data || []).map(vote => this.normalizeVoteRecord(vote));
     },
 
     async deleteVote(voteId) {
@@ -627,7 +645,7 @@ const Storage = {
             .select('*')
             .eq('eventId', eventId);
         if (error) { console.error('Supabase getEventVotes error', error); return []; }
-        return data || [];
+        return (data || []).map(vote => this.normalizeVoteRecord(vote));
     },
 
     async getEventVotesForMultipleEvents(eventIds) {
@@ -646,7 +664,7 @@ const Storage = {
                 console.error('Supabase getEventVotesForMultipleEvents error', error);
                 return [];
             }
-            return data || [];
+            return (data || []).map(vote => this.normalizeVoteRecord(vote));
         } catch (err) {
             if (this._isNetworkError(err)) {
                 Logger.warn('Netzwerkproblem beim Laden der Event-Stimmen (Catch)');
@@ -667,14 +685,14 @@ const Storage = {
             .limit(1)
             .maybeSingle();
         if (error) { console.error('Supabase getUserEventVoteForDate error', error); return null; }
-        return data || null;
+        return data ? this.normalizeVoteRecord(data) : null;
     },
 
     async getUserEventVotes(userId, eventId) {
         const sb = SupabaseClient.getClient();
         const { data, error } = await sb.from('votes').select('*').eq('userId', userId).eq('eventId', eventId);
         if (error) { console.error('Supabase getUserEventVotes error', error); return []; }
-        return data || [];
+        return (data || []).map(vote => this.normalizeVoteRecord(vote));
     },
 
     async getUserEventVotesForMultipleEvents(userId, eventIds) {
@@ -685,7 +703,7 @@ const Storage = {
             .eq('userId', userId)
             .in('eventId', eventIds);
         if (error) { console.error('Supabase getUserEventVotesForMultipleEvents error', error); return []; }
-        return data || [];
+        return (data || []).map(vote => this.normalizeVoteRecord(vote));
     },
 
     // Event Time Suggestion operations (Reuse same table, pattern same as rehearsals)

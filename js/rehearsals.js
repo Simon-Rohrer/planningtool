@@ -36,6 +36,11 @@ const Rehearsals = {
         if (typeof Statistics !== 'undefined') Statistics.invalidateCache();
     },
 
+    normalizeDateIndex(value) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : value;
+    },
+
     setupStatusSwitcher() {
         const view = document.getElementById('rehearsalsView');
         if (!view) return;
@@ -237,7 +242,7 @@ const Rehearsals = {
 
         for (const rehearsal of rehearsals) {
             // Check if user has voted in the pre-loaded batch
-            const userVotes = userVotesBatch.filter(v => v.rehearsalId === rehearsal.id);
+            const userVotes = userVotesBatch.filter(v => String(v.rehearsalId) === String(rehearsal.id));
             const hasVoted = userVotes && userVotes.some(v => v.availability !== 'none');
 
             const isDone = rehearsal.status === 'confirmed' || rehearsal.status === 'cancelled';
@@ -317,7 +322,7 @@ const Rehearsals = {
 
         const user = Auth.getCurrentUser();
         const isExpanded = this.expandedRehearsalId === rehearsal.id;
-        const currentUserVotes = (dataContext.userVotes || []).filter(v => v.rehearsalId === rehearsal.id);
+        const currentUserVotes = (dataContext.userVotes || []).filter(v => String(v.rehearsalId) === String(rehearsal.id));
         const allRehearsalVotes = (dataContext.allVotes && dataContext.allVotes[rehearsal.id]) || [];
 
         // Get location from context or fetch fallback
@@ -399,6 +404,7 @@ const Rehearsals = {
         const userStateClass = rehearsal.status === 'pending'
             ? (hasCurrentUserVoted ? 'is-complete' : 'is-open')
             : 'is-confirmed';
+        const showPrimaryStatus = !(rehearsal.status === 'pending' && userStateLabel);
         const cardStateClass = rehearsal.status === 'pending'
             ? (hasCurrentUserVoted ? 'schedule-state-voted' : 'schedule-state-pending')
             : 'schedule-state-resolved';
@@ -424,9 +430,11 @@ const Rehearsals = {
                     </div>
                     <div class="accordion-actions">
                         <div class="schedule-card-status-stack">
-                            <span class="rehearsal-status status-${rehearsal.status}">
-                                ${rehearsal.status === 'pending' ? 'Offen' : 'Bestätigt'}
-                            </span>
+                            ${showPrimaryStatus ? `
+                                <span class="rehearsal-status status-${rehearsal.status}">
+                                    ${rehearsal.status === 'pending' ? 'Offen' : 'Bestätigt'}
+                                </span>
+                            ` : ''}
                             ${userStateLabel ? `<span class="schedule-card-user-state ${userStateClass}">${userStateLabel}</span>` : ''}
                         </div>
                         <button class="accordion-toggle" aria-label="Ausklappen">
@@ -531,11 +539,14 @@ const Rehearsals = {
             const dateString = typeof date === 'string' ? date : date.startTime;
             const formattedDate = UI.formatDateShort(dateString);
 
-            const dateVotes = votes.filter(v => v.dateIndex === index);
+            const dateVotes = votes.filter(v => this.normalizeDateIndex(v.dateIndex) === index);
             const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
 
             const voteCells = members.map(m => {
-                const vote = votes.find(v => v.userId === m.userId && v.dateIndex === index);
+                const vote = votes.find(v =>
+                    String(v.userId) === String(m.userId) &&
+                    this.normalizeDateIndex(v.dateIndex) === index
+                );
                 let icon = '➖';
                 let className = 'vote-pending';
 
@@ -593,12 +604,12 @@ const Rehearsals = {
         if (!rehearsal) return;
 
         const votes = (await Storage.getRehearsalVotes(rehearsalId)) || [];
-        const userVotes = votes.filter(v => v.userId === user.id);
+        const userVotes = votes.filter(v => String(v.userId) === String(user.id));
 
         const content = document.getElementById('rehearsalVotingContent');
         const rows = await Promise.all(rehearsal.proposedDates.map(async (date, index) => {
             const dateString = typeof date === 'string' ? date : date.startTime;
-            const currentVote = userVotes.find(v => v.dateIndex === index);
+            const currentVote = userVotes.find(v => this.normalizeDateIndex(v.dateIndex) === index);
             const availability = currentVote ? currentVote.availability : 'none';
             const userSuggestion = (await Storage.getUserTimeSuggestionForDate(user.id, rehearsalId, index));
             const allSuggestions = (await Storage.getTimeSuggestionsForDate(rehearsalId, index)) || [];
@@ -717,30 +728,33 @@ const Rehearsals = {
 
         Logger.userAction('Submit', 'rehearsalVotingForm', 'Bulk Vote', { rehearsalId, votes });
 
-        for (const vote of votes) {
-            // Check if vote already exists for this user/rehearsal/date
-            const existing = await Storage.getUserVoteForDate(user.id, rehearsalId, vote.dateIndex);
+        const existingVotes = await Storage.getUserVotesForRehearsal(user.id, rehearsalId);
 
-            if (vote.availability === 'none') {
-                if (existing) {
-                    await Storage.deleteVote(existing.id);
+        for (const vote of votes) {
+            const targetDateIndex = this.normalizeDateIndex(vote.dateIndex);
+            const existingForDate = existingVotes.filter(existingVote =>
+                this.normalizeDateIndex(existingVote.dateIndex) === targetDateIndex
+            );
+
+            if (existingForDate.length > 0) {
+                for (const existingVote of existingForDate) {
+                    const deleted = await Storage.deleteVote(existingVote.id);
+                    if (!deleted) {
+                        throw new Error('Vorhandene Abstimmung konnte nicht aktualisiert werden.');
+                    }
                 }
-                continue;
             }
 
-            if (existing) {
-                // Update existing vote
-                await Storage.update('votes', existing.id, {
-                    availability: vote.availability
-                });
-            } else {
-                // Create new vote
-                await Storage.createVote({
+            if (vote.availability !== 'none') {
+                const createdVote = await Storage.createVote({
                     userId: user.id,
-                    rehearsalId: rehearsalId,
-                    dateIndex: vote.dateIndex,
+                    rehearsalId: String(rehearsalId),
+                    dateIndex: targetDateIndex,
                     availability: vote.availability
                 });
+                if (!createdVote) {
+                    throw new Error('Abstimmung konnte nicht gespeichert werden.');
+                }
             }
         }
     },
@@ -992,16 +1006,10 @@ const Rehearsals = {
 
     formatProposalDateLabel(date) {
         if (date && typeof date === 'object' && date.startTime) {
-            let label = UI.formatDate(date.startTime);
-            if (date.endTime) {
-                const start = new Date(date.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                const end = new Date(date.endTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                label += ` (${start} - ${end})`;
-            }
-            return label;
+            return UI.formatDateTimeRange(date.startTime, date.endTime);
         }
 
-        return UI.formatDate(date);
+        return UI.formatDateTimeRange(date);
     },
 
     getCheckedSingleRehearsalIndexes() {
@@ -1148,7 +1156,7 @@ const Rehearsals = {
 
         // Calculate statistics and get time suggestions for each date
         const dateStats = await Promise.all(proposedDates.map(async (date, index) => {
-            const dateVotes = votes.filter(v => v.dateIndex === index);
+            const dateVotes = votes.filter(v => this.normalizeDateIndex(v.dateIndex) === index);
             const yesCount = dateVotes.filter(v => v.availability === 'yes').length;
             const noCount = dateVotes.filter(v => v.availability === 'no').length;
             const totalVotes = dateVotes.length;
@@ -1205,8 +1213,8 @@ const Rehearsals = {
         );
 
         // Get members who haven't voted
-        const votedUserIds = new Set(votes.map(v => v.userId));
-        const notVoted = members.filter(m => !votedUserIds.has(m.userId))
+        const votedUserIds = new Set(votes.map(v => String(v.userId)));
+        const notVoted = members.filter(m => !votedUserIds.has(String(m.userId)))
             .map(m => Storage.getById('users', m.userId)?.name)
             .filter(Boolean);
         document.getElementById('rehearsalDetailsTitle').textContent = rehearsal.title;
