@@ -547,6 +547,7 @@ const RichTextEditor = {
 };
 
 const App = {
+    currentView: null,
 
     // Sorting state for band songs
     bandSongSort: {
@@ -1349,6 +1350,7 @@ const App = {
     setupInstrumentSelector(containerId, inputId, initialValue = "") {
         const container = document.getElementById(containerId);
         const input = document.getElementById(inputId);
+        const isSettingsSelector = !!container?.closest('#settingsModal');
 
         if (!container || !input) {
             console.warn(`Instrument selector not found: ${containerId} or ${inputId}`);
@@ -1447,6 +1449,26 @@ const App = {
             return null;
         };
 
+        const settingsLayerTargets = isSettingsSelector
+            ? [
+                container,
+                container.closest('.form-group'),
+                container.closest('.profile-section'),
+                container.closest('.profile-main-column'),
+                container.closest('.profile-settings-grid'),
+                container.closest('.settings-tab-content'),
+                container.closest('.settings-shell'),
+                container.closest('.settings-modal-body')
+            ].filter(Boolean)
+            : [];
+
+        const toggleSettingsMenuLayers = (isActive) => {
+            if (!isSettingsSelector) return;
+            settingsLayerTargets.forEach(element => {
+                element.classList.toggle('multiselect-host-active', isActive);
+            });
+        };
+
         const resetMenuPlacement = () => {
             menu.style.removeProperty('left');
             menu.style.removeProperty('width');
@@ -1474,6 +1496,23 @@ const App = {
             const shouldOpenUpward = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
             const availableSpace = shouldOpenUpward ? spaceAbove : spaceBelow;
             const maxHeight = Math.max(180, Math.min(320, availableSpace));
+
+            if (isSettingsSelector) {
+                menu.style.position = 'absolute';
+                menu.style.left = '0';
+                menu.style.width = '100%';
+                menu.style.maxHeight = `${maxHeight}px`;
+
+                if (shouldOpenUpward) {
+                    menu.classList.add('show-upward');
+                    menu.style.top = 'auto';
+                    menu.style.bottom = 'calc(100% + 8px)';
+                } else {
+                    menu.style.top = 'calc(100% + 8px)';
+                    menu.style.bottom = 'auto';
+                }
+                return;
+            }
 
             menu.style.position = 'fixed';
             menu.style.left = `${Math.max(12, triggerRect.left)}px`;
@@ -1536,6 +1575,9 @@ const App = {
                     m.classList.remove('show-upward');
                     m.closest('.custom-multiselect')?.querySelector('.multiselect-trigger')?.classList.remove('active');
                     m.closest('.custom-multiselect')?.classList.remove('is-open');
+                    m.closest('#settingsModal')?.querySelectorAll('.multiselect-host-active').forEach(element => {
+                        element.classList.remove('multiselect-host-active');
+                    });
                 }
             });
 
@@ -1545,10 +1587,12 @@ const App = {
                 resetMenuPlacement();
                 trigger.classList.remove('active');
                 container.classList.remove('is-open');
+                toggleSettingsMenuLayers(false);
             } else {
                 menu.classList.add('show');
                 trigger.classList.add('active');
                 container.classList.add('is-open');
+                toggleSettingsMenuLayers(true);
                 requestAnimationFrame(updateMenuPlacement);
             }
         });
@@ -1580,6 +1624,7 @@ const App = {
                 resetMenuPlacement();
                 trigger.classList.remove('active');
                 container.classList.remove('is-open');
+                toggleSettingsMenuLayers(false);
             }
         };
 
@@ -1599,6 +1644,7 @@ const App = {
         // To avoid leaks: store cleanup on the container
         if (container._cleanup) container._cleanup();
         container._cleanup = () => {
+            toggleSettingsMenuLayers(false);
             document.removeEventListener('click', closeMenu);
             window.removeEventListener('resize', updateMenuPlacement);
             window.removeEventListener('scroll', updateMenuPlacement, true);
@@ -1825,21 +1871,6 @@ const App = {
             });
         }
 
-        const soundCheckBtn = document.getElementById('soundCheckHeroBtn');
-        if (soundCheckBtn) {
-            soundCheckBtn.addEventListener('click', () => {
-                const body = document.body;
-                const isActive = body.classList.toggle('global-stage-mode');
-
-                if (isActive) {
-                    soundCheckBtn.innerHTML = '🛑 Show stoppen';
-                    UI.showToast('ROCK ON! 🤘 Bühnen-Modus aktiviert.', 'success');
-                } else {
-                    soundCheckBtn.innerHTML = '⚡ Virtueller Soundcheck';
-                    UI.showToast('Show beendet. Danke fürs Kommen! 🙏', 'info');
-                }
-            });
-        }
 
         // Donate button is configured dynamically based on admin settings
         this.updateDonateButton().catch(err => {
@@ -3069,6 +3100,7 @@ const App = {
 
             // Special handling for Settings (Modal instead of View)
             if (view === 'settings') {
+                this.currentView = view;
                 this.openSettings();
                 // Update active state for nav items manually
                 document.querySelectorAll('.nav-item, .nav-subitem').forEach(item => {
@@ -3082,6 +3114,7 @@ const App = {
             }
 
             if (viewId) {
+                this.currentView = view;
                 // Set nav active color per view for sticky bottom bar indicator
                 const navActiveColorMap = {
                     dashboard: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
@@ -4934,7 +4967,7 @@ const App = {
                             <th style="text-align: center;">PDF</th>
                             <th>Infos</th>
                             <th>CCLI</th>
-                            <th style="text-align: center;">Aktionen</th>
+                            <th style="text-align: center; width: 108px;">Aktionen</th>
                         </tr>
                     </thead>
                     <tbody id="eventSongsTableBody">
@@ -4959,9 +4992,11 @@ const App = {
                                 <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
                                 <td style="font-family: monospace;" data-label="CCLI">${song.ccli || '-'}</td>
                                 <td class="event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
-                                    <div>
-                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">✏️</button>
-                                        <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                                    <div class="event-setlist-actions">
+                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">
+                                            <span aria-hidden="true">✎</span>
+                                        </button>
+                                        <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen" aria-label="Song aus der Setlist löschen">🗑️</button>
                                     </div>
                                 </td>
                             </tr>
@@ -5829,7 +5864,7 @@ const App = {
                     <th style="text-align: center;">PDF</th>
                     <th>Infos</th>
                     <th>CCLI</th>
-                    <th style="text-align: center;">Aktionen</th>
+                    <th style="text-align: center; width: 108px;">Aktionen</th>
                 </tr>
             </thead>
             <tbody id="draftEventSongsTableBody">
@@ -5854,8 +5889,12 @@ const App = {
                         <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(draftSong))}</td>
                         <td style="font-family: monospace;" data-label="CCLI">${draftSong.ccli || '-'}</td>
                         <td class="event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
-                            <button type="button" class="btn-icon edit-draft-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
-                            <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen">❌</button>
+                            <div class="event-setlist-actions">
+                                <button type="button" class="btn-icon edit-draft-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">
+                                    <span aria-hidden="true">✎</span>
+                                </button>
+                                <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen" aria-label="Song aus der Setlist entfernen">❌</button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -6066,11 +6105,6 @@ const App = {
 
         // CRITICAL: Ensure scrolling is enabled on the body (fixes manual login/auto-login lock)
         document.body.classList.remove('modal-open');
-        document.body.classList.remove('global-stage-mode');
-        const soundCheckBtn = document.getElementById('soundCheckBtn');
-        if (soundCheckBtn) {
-            soundCheckBtn.innerHTML = '⚡ Virtueller Soundcheck';
-        }
 
         document.getElementById('app').style.display = 'flex';
 
@@ -9777,7 +9811,7 @@ const App = {
         newDonateBtn.style.display = 'inline-flex';
 
         if (donateLink) {
-            // Wenn ein gueltiger https-Link vorhanden ist, oeffne externe Seite
+            // Wenn ein gueltiger https-Link vorhanden ist, öffne externe Seite
             newDonateBtn.href = donateLink;
             newDonateBtn.target = '_blank';
             newDonateBtn.rel = 'noopener noreferrer';

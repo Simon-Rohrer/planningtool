@@ -551,9 +551,23 @@ const UI = {
         });
     },
 
-    showErrorDialog(title = 'Fehler', message = 'Bitte versuche es später erneut.', onClose = null) {
+    showErrorDialog(title = 'Fehler', message = 'Bitte versuche es später erneut.', onCloseOrOptions = null) {
         let existing = document.getElementById('customErrorModal');
         if (existing) existing.remove();
+
+        const dialogOptions = (onCloseOrOptions && typeof onCloseOrOptions === 'object')
+            ? onCloseOrOptions
+            : { onClose: onCloseOrOptions };
+        const onClose = typeof dialogOptions.onClose === 'function' ? dialogOptions.onClose : null;
+        const onRetry = typeof dialogOptions.onRetry === 'function' ? dialogOptions.onRetry : null;
+        const retryLabel = dialogOptions.retryLabel || 'Neu laden';
+        const closeLabel = dialogOptions.closeLabel || (onRetry ? 'Schließen' : 'Verstanden');
+        const actionsMarkup = onRetry
+            ? `
+                <button id="errorCloseBtn" class="btn btn-secondary">${closeLabel}</button>
+                <button id="errorRetryBtn" class="btn btn-primary">${retryLabel}</button>
+            `
+            : `<button id="errorCloseBtn" class="btn btn-primary">${closeLabel}</button>`;
 
         const modal = document.createElement('div');
         modal.id = 'customErrorModal';
@@ -568,7 +582,7 @@ const UI = {
                     <p style="margin: 0; white-space: pre-line;">${message}</p>
                 </div>
                 <div class="modal-actions" style="display:flex; justify-content:flex-end; padding:12px;">
-                    <button id="errorOkBtn" class="btn btn-primary">Verstanden</button>
+                    ${actionsMarkup}
                 </div>
             </div>
         `;
@@ -587,8 +601,22 @@ const UI = {
             if (typeof onClose === 'function') onClose();
         };
 
+        const retry = () => {
+            modal.remove();
+            const activeModals = document.querySelectorAll('.modal.active');
+            const authOverlay = document.getElementById('authOverlay');
+            const authOverlayActive = Boolean(authOverlay && authOverlay.classList.contains('active'));
+            if (activeModals.length === 0 && !authOverlayActive) {
+                document.body.classList.remove('modal-open');
+            }
+            if (typeof onRetry === 'function') onRetry();
+        };
+
         modal.querySelector('.modal-close').addEventListener('click', close);
-        modal.querySelector('#errorOkBtn').addEventListener('click', close);
+        modal.querySelector('#errorCloseBtn').addEventListener('click', close);
+        if (onRetry) {
+            modal.querySelector('#errorRetryBtn').addEventListener('click', retry);
+        }
         modal.addEventListener('click', (e) => {
             if (e.target === modal) close();
         });
@@ -604,6 +632,7 @@ const UI = {
         const timeoutTitle = config.timeoutTitle || 'Zeitüberschreitung';
         const timeoutMessage = config.timeoutMessage || 'Der Vorgang dauert zu lange.';
         const onTimeout = typeof config.onTimeout === 'function' ? config.onTimeout : null;
+        const onRetry = typeof config.onRetry === 'function' ? config.onRetry : null;
 
         // Clear previous timer
         if (this._loaderTimer) {
@@ -651,7 +680,15 @@ const UI = {
                     }
                 }
 
-                this.showErrorDialog(timeoutTitle, `${timeoutMessage}\n\nBitte versuche es später erneut.`);
+                const retryAction = onRetry || (
+                    window.App && typeof window.App.navigateTo === 'function' && window.App.currentView
+                        ? () => window.App.navigateTo(window.App.currentView, 'timeout-retry')
+                        : null
+                );
+
+                this.showErrorDialog(timeoutTitle, `${timeoutMessage}\n\nBitte versuche es später erneut.`, {
+                    onRetry: retryAction
+                });
             }, timeoutMs);
         };
 

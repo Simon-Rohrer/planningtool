@@ -246,23 +246,23 @@ const Statistics = {
         const topSongName = data.topSong.count > 0 ? this.escapeHtml(data.topSong.name) : 'Noch keine Daten';
         const favLocationName = data.favLocation.count > 0 ? this.escapeHtml(data.favLocation.name) : 'Noch keine Daten';
         const eventSentence = data.totalEvents > 0
-            ? `Davon ${data.eventsYear} ${data.eventsYear === 1 ? 'Auftritt' : 'Auftritte'} in ${year}.`
-            : 'Sobald Auftritte geplant sind, erscheinen sie hier.';
+            ? `${data.eventsYear} in ${year}.`
+            : 'Noch keine Auftritte.';
         const rehearsalSentence = data.totalRehearsals > 0
-            ? `Es stehen aktuell ${data.totalRehearsals} ${this.pluralize(data.totalRehearsals, 'Probe', 'Proben')} in deinen Daten.`
-            : 'Noch keine Proben in deinen Statistiken erfasst.';
+            ? `${data.totalRehearsals} geplant.`
+            : 'Noch keine Proben.';
         const repertoireSentence = data.repertoireSize > 0
-            ? `${data.repertoireSize} ${this.pluralize(data.repertoireSize, 'Song', 'Songs')} liegen aktuell im Repertoire.`
-            : 'Noch keine Songs im Repertoire hinterlegt.';
+            ? `${data.repertoireSize} Songs gesamt.`
+            : 'Noch kein Repertoire.';
         const bandSentence = data.totalBands > 0
-            ? `Du spielst aktuell in ${data.totalBands} ${this.pluralize(data.totalBands, 'Band', 'Bands')}.`
-            : 'Aktuell ist noch keine Band verknüpft.';
+            ? `${data.totalBands} aktive ${this.pluralize(data.totalBands, 'Band', 'Bands')}.`
+            : 'Noch keine Band.';
         const topSongSentence = data.topSong.count > 0
-            ? `Der Song war bereits ${data.topSong.count} ${this.pluralize(data.topSong.count, 'Mal', 'Mal')} Teil deiner Planungen.`
-            : 'Sobald Setlists genutzt werden, taucht hier automatisch dein meistgespielter Song auf.';
+            ? `${data.topSong.count} Einsätze bisher.`
+            : 'Noch keine Daten.';
         const favLocationSentence = data.favLocation.count > 0
-            ? `${data.favLocation.count} ${this.pluralize(data.favLocation.count, 'Termin', 'Termine')} fanden dort statt.`
-            : 'Noch keine ausreichend belastbaren Daten für einen Lieblingsort.';
+            ? `${data.favLocation.count} ${this.pluralize(data.favLocation.count, 'Termin', 'Termine')} dort.`
+            : 'Noch keine Daten.';
         const summarySentence = data.totalEvents + data.totalRehearsals > 0
             ? `${data.totalEvents} ${this.pluralize(data.totalEvents, 'Auftritt', 'Auftritte')} · ${data.totalRehearsals} ${this.pluralize(data.totalRehearsals, 'Probe', 'Proben')}`
             : 'Noch keine Termine';
@@ -327,7 +327,7 @@ const Statistics = {
 
                 <article class="stats-note-card">
                     <span class="stats-panel-kicker">Hinweis</span>
-                    <p>Deine Kennzahlen aktualisieren sich automatisch, sobald du neue Auftritte, Proben oder Songs anlegst.</p>
+                    <p>Aktualisiert sich automatisch bei neuen Daten.</p>
                 </article>
             </div>
         `;

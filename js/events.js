@@ -560,12 +560,36 @@ const Events = {
 
             const voteCells = members.map(m => {
                 const vote = votes.find(v => String(v.userId) === String(m.userId) && Number(v.dateIndex) === index);
-                let icon = '➖';
+                let icon = `
+                    <span class="vote-mark-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none">
+                            <path d="M6 10H14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                `;
                 let className = 'vote-pending';
 
                 if (vote) {
-                    if (vote.availability === 'yes') { icon = '✅'; className = 'vote-yes'; }
-                    else if (vote.availability === 'no') { icon = '❌'; className = 'vote-no'; }
+                    if (vote.availability === 'yes') {
+                        icon = `
+                            <span class="vote-mark-icon" aria-hidden="true">
+                                <svg viewBox="0 0 20 20" fill="none">
+                                    <path d="M4.5 10.5L8 14L15.5 6.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                        `;
+                        className = 'vote-yes';
+                    } else if (vote.availability === 'no') {
+                        icon = `
+                            <span class="vote-mark-icon" aria-hidden="true">
+                                <svg viewBox="0 0 20 20" fill="none">
+                                    <path d="M6 6L14 14" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+                                    <path d="M14 6L6 14" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+                        `;
+                        className = 'vote-no';
+                    }
                 }
 
                 return `<td class="vote-icon ${className}">${icon}</td>`;

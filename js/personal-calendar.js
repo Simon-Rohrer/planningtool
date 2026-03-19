@@ -3,21 +3,24 @@
 const PersonalCalendar = {
     events: [],
     rehearsals: [],
+    absences: [],
     userBands: [],
     currentMonth: new Date(),
     isLoading: false,
+    hasLoaded: false,
 
     // Clear all cached data (called during logout)
     clearCache() {
         this.events = [];
         this.rehearsals = [];
+        this.absences = [];
         this.userBands = [];
+        this.hasLoaded = false;
     },
 
     async loadPersonalCalendar() {
         Logger.time('Personal Calendar Load');
-        // Nur laden, wenn noch keine Daten im Speicher
-        if (this.events && this.events.length > 0 && this.rehearsals && this.rehearsals.length > 0 && this.userBands && this.userBands.length > 0) {
+        if (this.hasLoaded) {
             this.renderCalendar();
             Logger.timeEnd('Personal Calendar Load');
             return;
@@ -37,9 +40,16 @@ const PersonalCalendar = {
         let overlay = document.getElementById('globalLoadingOverlay');
         try {
             const user = Auth.getCurrentUser();
-            // Load user's bands to filter relevant data
             const userBands = await Storage.getUserBands(user.id);
-            if (!Array.isArray(userBands) || userBands.length === 0) {
+            const bandIds = (userBands || []).map(b => b.id || b.band_id || b.bandId).filter(Boolean);
+
+            const [allEvents, allRehearsals, allAbsences] = await Promise.all([
+                bandIds.length > 0 ? this.loadUserEvents(bandIds) : [],
+                bandIds.length > 0 ? this.loadUserRehearsals(bandIds) : [],
+                this.loadUserAbsences(user.id)
+            ]);
+
+            if ((!Array.isArray(userBands) || userBands.length === 0) && (!Array.isArray(allAbsences) || allAbsences.length === 0)) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">📅</div>
@@ -50,22 +60,20 @@ const PersonalCalendar = {
                 Logger.timeEnd('Personal Calendar Load');
                 return;
             }
-            const bandIds = userBands.map(b => b.id || b.band_id || b.bandId);
-            // Load all events and rehearsals
-            const [allEvents, allRehearsals] = await Promise.all([
-                this.loadUserEvents(bandIds),
-                this.loadUserRehearsals(bandIds)
-            ]);
+
             this.events = allEvents;
             this.rehearsals = allRehearsals;
+            this.absences = allAbsences;
             this.userBands = userBands;
+            this.hasLoaded = true;
             this.renderCalendar();
 
             const duration = ((performance.now() - startTime) / 1000).toFixed(2);
-            Logger.info(`Personal Calendar Loaded – (${allEvents.length} events, ${allRehearsals.length} rehearsals, ${duration}s)`);
+            Logger.info(`Personal Calendar Loaded – (${allEvents.length} events, ${allRehearsals.length} rehearsals, ${allAbsences.length} absences, ${duration}s)`);
             delete Logger.timers['Personal Calendar Load']; // handled manually
         } catch (error) {
             console.error('[PersonalCalendar] Error loading personal calendar:', error);
+            this.hasLoaded = false;
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">⚠️</div>
@@ -139,6 +147,44 @@ const PersonalCalendar = {
                 bandIds.includes(rehearsal.bandId) && rehearsal.status === 'confirmed'
             );
         }
+    },
+
+    async loadUserAbsences(userId) {
+        if (!userId) return [];
+        try {
+            const absences = await Storage.getUserAbsences(userId);
+            return Array.isArray(absences) ? absences : [];
+        } catch (error) {
+            console.error('[PersonalCalendar] Error loading absences:', error);
+            return [];
+        }
+    },
+
+    normalizeDate(dateValue) {
+        const date = new Date(dateValue);
+        date.setHours(0, 0, 0, 0);
+        return date;
+    },
+
+    getAbsenceTitle(absence) {
+        const reason = (absence.reason || '').trim();
+        return reason || 'Abwesenheit';
+    },
+
+    getAbsenceMeta(absence) {
+        const startDate = this.normalizeDate(absence.startDate);
+        const endDate = this.normalizeDate(absence.endDate || absence.startDate);
+        const startLabel = startDate.toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        const endLabel = endDate.toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        return startLabel === endLabel ? 'Nicht verfügbar' : `${startLabel} – ${endLabel}`;
     },
 
     renderCalendar() {
@@ -265,15 +311,7 @@ const PersonalCalendar = {
         const month = this.currentMonth.getMonth();
         const monthName = this.currentMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
 
-        // Get first and last day of month
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-
-        // Get day of week for first day (Monday = 0)
-        let startDay = firstDay.getDay() - 1;
-        if (startDay === -1) startDay = 6; // Sunday becomes 6
-
-        const daysInMonth = lastDay.getDate();
+        const weeks = this.buildCalendarWeeks(year, month);
 
         // Build calendar HTML
         let html = `
@@ -286,47 +324,69 @@ const PersonalCalendar = {
                 <button onclick="PersonalCalendar.nextMonth()" class="btn btn-icon" style="font-size: 1.5rem;">›</button>
             </div>
             
-            <div class="calendar-grid">
-                <div class="calendar-day-header">Mo</div>
-                <div class="calendar-day-header">Di</div>
-                <div class="calendar-day-header">Mi</div>
-                <div class="calendar-day-header">Do</div>
-                <div class="calendar-day-header">Fr</div>
-                <div class="calendar-day-header">Sa</div>
-                <div class="calendar-day-header">So</div>
+            <div class="calendar-grid personal-calendar-grid">
+                <div class="calendar-day-headers">
+                    <div class="calendar-day-header">Mo</div>
+                    <div class="calendar-day-header">Di</div>
+                    <div class="calendar-day-header">Mi</div>
+                    <div class="calendar-day-header">Do</div>
+                    <div class="calendar-day-header">Fr</div>
+                    <div class="calendar-day-header">Sa</div>
+                    <div class="calendar-day-header">So</div>
+                </div>
+                <div class="calendar-weeks">
         `;
 
-        // Add empty cells before month starts
-        for (let i = 0; i < startDay; i++) {
-            html += '<div class="calendar-day empty"></div>';
-        }
-
-        // Add actual days
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            const currentDate = new Date(year, month, day);
-            currentDate.setHours(0, 0, 0, 0);
-
-            const isToday = currentDate.getTime() === today.getTime();
-            const dayItems = this.getItemsForDate(currentDate);
-
-            let dayClass = 'calendar-day';
-            if (isToday) dayClass += ' today';
-            if (dayItems.length > 0) dayClass += ' has-events';
+        weeks.forEach(weekDates => {
+            const absenceLayout = this.getAbsenceSegmentsForWeek(weekDates);
+            const hasAbsenceBars = absenceLayout.segments.length > 0;
 
             html += `
-                <div class="${dayClass}">
-                    <div class="calendar-day-number">${day}</div>
-                    <div class="calendar-day-events">
-                        ${dayItems.map(item => this.renderCalendarItem(item)).join('')}
+                <div class="calendar-week-row${hasAbsenceBars ? ' has-absence-bars' : ''}" style="--absence-lanes:${absenceLayout.laneCount};">
+                    ${hasAbsenceBars ? `
+                        <div class="calendar-week-absence-layer">
+                            ${absenceLayout.segments.map(segment => this.renderAbsenceBar(segment)).join('')}
+                        </div>
+                    ` : ''}
+                    <div class="calendar-week-days">
+            `;
+
+            weekDates.forEach(currentDate => {
+                if (!currentDate) {
+                    html += '<div class="calendar-day empty"></div>';
+                    return;
+                }
+
+                const isToday = currentDate.getTime() === today.getTime();
+                const dayItems = this.getItemsForDate(currentDate);
+
+                let dayClass = 'calendar-day';
+                if (isToday) dayClass += ' today';
+                if (dayItems.length > 0) dayClass += ' has-events';
+
+                html += `
+                    <div class="${dayClass}">
+                        <div class="calendar-day-number">${currentDate.getDate()}</div>
+                        <div class="calendar-day-events">
+                            ${dayItems.map(item => this.renderCalendarItem(item)).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
                     </div>
                 </div>
             `;
-        }
+        });
 
-        html += '</div>';
+        html += `
+                </div>
+            </div>
+        `;
         container.innerHTML = html;
     },
 
@@ -344,14 +404,121 @@ const PersonalCalendar = {
 
         // Add rehearsals for this date
         this.rehearsals.forEach(rehearsal => {
-            const rehearsalDate = new Date(rehearsal.confirmedDate);
-            rehearsalDate.setHours(0, 0, 0, 0);
+            const rehearsalDate = this.normalizeDate(rehearsal.confirmedDate);
             if (rehearsalDate.getTime() === date.getTime()) {
                 items.push({ ...rehearsal, type: 'rehearsal' });
             }
         });
 
         return items;
+    },
+
+    buildCalendarWeeks(year, month) {
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+
+        let startDay = firstDay.getDay() - 1;
+        if (startDay === -1) startDay = 6;
+
+        const weeks = [];
+        let currentWeek = [];
+
+        for (let i = 0; i < startDay; i++) {
+            currentWeek.push(null);
+        }
+
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const date = new Date(year, month, day);
+            date.setHours(0, 0, 0, 0);
+            currentWeek.push(date);
+
+            if (currentWeek.length === 7) {
+                weeks.push(currentWeek);
+                currentWeek = [];
+            }
+        }
+
+        if (currentWeek.length > 0) {
+            while (currentWeek.length < 7) {
+                currentWeek.push(null);
+            }
+            weeks.push(currentWeek);
+        }
+
+        return weeks;
+    },
+
+    getAbsenceSegmentsForWeek(weekDates) {
+        const visibleDates = weekDates.filter(Boolean);
+        if (visibleDates.length === 0) {
+            return { laneCount: 0, segments: [] };
+        }
+
+        const weekStart = visibleDates[0];
+        const weekEnd = visibleDates[visibleDates.length - 1];
+        const segments = [];
+
+        this.absences.forEach(absence => {
+            const startDate = this.normalizeDate(absence.startDate);
+            const endDate = this.normalizeDate(absence.endDate || absence.startDate);
+
+            if (endDate.getTime() < weekStart.getTime() || startDate.getTime() > weekEnd.getTime()) {
+                return;
+            }
+
+            const segmentStart = startDate.getTime() < weekStart.getTime() ? weekStart : startDate;
+            const segmentEnd = endDate.getTime() > weekEnd.getTime() ? weekEnd : endDate;
+
+            const startCol = weekDates.findIndex(day => day && day.getTime() === segmentStart.getTime()) + 1;
+            const endCol = weekDates.findIndex(day => day && day.getTime() === segmentEnd.getTime()) + 1;
+
+            if (startCol <= 0 || endCol <= 0) return;
+
+            segments.push({
+                id: absence.id,
+                title: this.getAbsenceTitle(absence),
+                startCol,
+                endCol,
+                continuesFromPrev: startDate.getTime() < weekStart.getTime(),
+                continuesToNext: endDate.getTime() > weekEnd.getTime()
+            });
+        });
+
+        segments.sort((a, b) => a.startCol - b.startCol || a.endCol - b.endCol);
+
+        const laneEndByIndex = [];
+        segments.forEach(segment => {
+            let laneIndex = laneEndByIndex.findIndex(lastEnd => segment.startCol > lastEnd);
+            if (laneIndex === -1) {
+                laneIndex = laneEndByIndex.length;
+                laneEndByIndex.push(segment.endCol);
+            } else {
+                laneEndByIndex[laneIndex] = segment.endCol;
+            }
+            segment.lane = laneIndex + 1;
+        });
+
+        return {
+            laneCount: laneEndByIndex.length,
+            segments
+        };
+    },
+
+    renderAbsenceBar(segment) {
+        const classes = ['calendar-absence-bar'];
+        if (segment.continuesFromPrev) classes.push('is-continued-start');
+        if (segment.continuesToNext) classes.push('is-continued-end');
+
+        return `
+            <button
+                type="button"
+                class="${classes.join(' ')}"
+                style="grid-column: ${segment.startCol} / ${segment.endCol + 1}; grid-row: ${segment.lane};"
+                onclick="PersonalCalendar.showItemDetails('${segment.id}', 'absence')"
+            >
+                <span class="calendar-absence-bar-label">${this.escapeHtml(segment.title)}</span>
+            </button>
+        `;
     },
 
     renderCalendarItem(item) {
@@ -367,7 +534,9 @@ const PersonalCalendar = {
                     <div class="calendar-event-band">${this.escapeHtml(bandName)}</div>
                 </div>
             `;
-        } else {
+        }
+
+        if (item.type === 'rehearsal') {
             const band = this.userBands.find(b => b.id === item.bandId);
             const bandName = band ? band.name : 'Unbekannte Band';
             const title = item.title || 'Probe';
@@ -380,6 +549,14 @@ const PersonalCalendar = {
                 </div>
             `;
         }
+
+        return `
+            <div class="calendar-event absence-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'absence')" style="cursor: pointer;">
+                <div class="calendar-event-type">Abwesenheit</div>
+                <div class="calendar-event-title">${this.escapeHtml(this.getAbsenceTitle(item))}</div>
+                <div class="calendar-event-band">${this.escapeHtml(this.getAbsenceMeta(item))}</div>
+            </div>
+        `;
     },
 
     previousMonth() {
@@ -402,8 +579,10 @@ const PersonalCalendar = {
 
         if (itemType === 'event') {
             item = this.events.find(e => e.id === itemId);
-        } else {
+        } else if (itemType === 'rehearsal') {
             item = this.rehearsals.find(r => r.id === itemId);
+        } else {
+            item = this.absences.find(a => a.id === itemId);
         }
 
         if (!item) {
@@ -411,7 +590,7 @@ const PersonalCalendar = {
             return;
         }
 
-        const band = this.userBands.find(b => b.id === item.bandId);
+        const band = item.bandId ? this.userBands.find(b => b.id === item.bandId) : null;
         const bandName = band ? band.name : 'Unbekannte Band';
         const bandColor = band ? (band.color || '#e11d48') : '#e11d48';
 
@@ -532,7 +711,7 @@ const PersonalCalendar = {
                     ${setlistHTML}
                 </div>
             `;
-        } else {
+        } else if (itemType === 'rehearsal') {
             const date = new Date(item.confirmedDate);
             const dateStr = date.toLocaleDateString('de-DE', {
                 weekday: 'long',
@@ -688,6 +867,54 @@ const PersonalCalendar = {
                     ${attendanceHTML}
                 </div>
             `;
+        } else {
+            const startDate = this.normalizeDate(item.startDate);
+            const endDate = this.normalizeDate(item.endDate || item.startDate);
+            const startLabel = startDate.toLocaleDateString('de-DE', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+            const endLabel = endDate.toLocaleDateString('de-DE', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+            const durationLabel = startLabel === endLabel ? startLabel : `${startLabel} bis ${endLabel}`;
+
+            detailsHTML = `
+                <div class="calendar-details-container">
+                    <div class="calendar-detail-header" style="border-left-color: #f59e0b">
+                        <div class="calendar-detail-title-group">
+                            <h2 class="calendar-detail-title">${this.escapeHtml(this.getAbsenceTitle(item))}</h2>
+                            <div class="calendar-detail-subtitle" style="color: #f59e0b">Abwesenheit</div>
+                        </div>
+                    </div>
+
+                    <div class="calendar-info-grid">
+                        <div class="calendar-info-item">
+                            <div class="info-content">
+                                <div class="info-label">Zeitraum</div>
+                                <div class="info-value">${this.escapeHtml(durationLabel)}</div>
+                            </div>
+                        </div>
+                        <div class="calendar-info-item">
+                            <div class="info-content">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">Nicht verfügbar</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${item.reason ? `
+                    <div class="calendar-detail-section">
+                        <div class="calendar-detail-label">Grund</div>
+                        <div class="calendar-detail-notes">${this.escapeHtml(item.reason)}</div>
+                    </div>` : ''}
+                </div>
+            `;
         }
 
         // Create modal
@@ -696,7 +923,7 @@ const PersonalCalendar = {
                 <div class="modal-content" style="max-width: 600px;">
                     <div class="modal-header">
                         <h2>
-                            ${itemType === 'event' ? 'Auftrittdetails' : 'Probendetails'}
+                            ${itemType === 'event' ? 'Auftrittdetails' : itemType === 'rehearsal' ? 'Probendetails' : 'Abwesenheit'}
                         </h2>
                         <button class="modal-close" onclick="PersonalCalendar.closeDetailsModal()">×</button>
                     </div>

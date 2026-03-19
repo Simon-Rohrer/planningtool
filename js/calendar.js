@@ -257,7 +257,7 @@ const Calendar = {
                     <h3 class="probeorte-calendar-title">${monthName}</h3>
                     <button onclick="Calendar.goToToday()" class="btn btn-secondary probeorte-calendar-today">📅 Heute</button>
                 </div>
-                <button onclick="Calendar.nextMonth()" class="btn btn-icon probeorte-calendar-nav" aria-label="Naechster Monat">›</button>
+                <button onclick="Calendar.nextMonth()" class="btn btn-icon probeorte-calendar-nav" aria-label="Nächster Monat">›</button>
             </div>
             <div class="probeorte-calendar-grid-scroll">
                 <div class="probeorte-calendar-mobile-hint">Seitlich wischen, um alle Wochentage bequem zu sehen.</div>

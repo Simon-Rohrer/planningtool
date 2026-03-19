@@ -122,6 +122,7 @@ const Bands = {
             timeoutMs: 5000,
             timeoutTitle: 'Zeitüberschreitung',
             timeoutMessage: 'Die Bands konnten nicht rechtzeitig geladen werden.',
+            onRetry: () => this.renderBands(true),
             onTimeout: () => {
                 bandsLoadTimedOut = true;
                 container.innerHTML = '<p class="error-text">Die Bands konnten nicht rechtzeitig geladen werden. Bitte versuche es erneut.</p>';
@@ -547,7 +548,7 @@ const Bands = {
                             Code kopieren
                         </button>
                     </div>
-                    <p class="band-details-section-note">Teile diesen Code mit neuen Mitgliedern, damit sie der Band direkt beitreten koennen.</p>
+                    <p class="band-details-section-note">Teile diesen Code mit neuen Mitgliedern, damit sie der Band direkt beitreten können.</p>
                 </div>
             `;
             const codeInsertAnchor = settingsTab.querySelector('.band-image-section') || bandSettingsSection;

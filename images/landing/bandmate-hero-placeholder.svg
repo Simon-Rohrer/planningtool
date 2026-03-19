@@ -1,0 +1,86 @@
+<svg width="1400" height="1280" viewBox="0 0 1400 1280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="180" y1="90" x2="1180" y2="1210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0E1730"/>
+      <stop offset="0.55" stop-color="#181F42"/>
+      <stop offset="1" stop-color="#251D47"/>
+    </linearGradient>
+    <radialGradient id="violetGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1060 260) rotate(140) scale(460 380)">
+      <stop stop-color="#7A7CFF" stop-opacity="0.66"/>
+      <stop offset="1" stop-color="#7A7CFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cyanGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(290 320) rotate(90) scale(320 320)">
+      <stop stop-color="#5FB0FF" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#5FB0FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="floorGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(690 1030) rotate(90) scale(240 470)">
+      <stop stop-color="#6A4DFF" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#6A4DFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="desk" x1="285" y1="870" x2="1088" y2="1110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1C243D"/>
+      <stop offset="1" stop-color="#121A31"/>
+    </linearGradient>
+    <linearGradient id="headphones" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0F1730"/>
+      <stop offset="1" stop-color="#262042"/>
+    </linearGradient>
+    <linearGradient id="guitarBody" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F26474"/>
+      <stop offset="1" stop-color="#6636FF"/>
+    </linearGradient>
+    <filter id="blur24" x="-80" y="-80" width="1560" height="1440" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <filter id="shadow" x="190" y="710" width="1030" height="460" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#040811" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect width="1400" height="1280" rx="44" fill="url(#bg)"/>
+  <rect width="1400" height="1280" rx="44" fill="url(#violetGlow)"/>
+  <rect width="1400" height="1280" rx="44" fill="url(#cyanGlow)"/>
+  <rect width="1400" height="1280" rx="44" fill="url(#floorGlow)"/>
+
+  <g opacity="0.55" filter="url(#blur24)">
+    <ellipse cx="1174" cy="318" rx="58" ry="58" fill="#8DA2FF"/>
+    <ellipse cx="222" cy="273" rx="36" ry="36" fill="#7FC8FF"/>
+    <ellipse cx="1044" cy="1002" rx="86" ry="40" fill="#7B4DFF"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="272" y="790" width="856" height="248" rx="36" fill="url(#desk)"/>
+  </g>
+
+  <ellipse cx="702" cy="1086" rx="468" ry="58" fill="#0B1020" fill-opacity="0.4"/>
+
+  <g opacity="0.96">
+    <path d="M939 412L1012 467L1101 361C1116 343 1143 337 1164 348L1181 357C1192 363 1197 376 1193 388L1178 433C1172 454 1157 470 1138 481L1086 512L1103 553C1110 569 1105 587 1090 598L1044 632C1028 644 1004 642 990 627L951 585L909 622C897 632 880 633 867 626L840 611C824 602 817 582 821 565L838 491L812 457C800 441 803 419 819 410L857 389C873 381 892 384 906 396L939 412Z" fill="url(#guitarBody)"/>
+    <path d="M944 404L1085 183C1094 168 1111 160 1128 162L1159 166C1172 168 1179 182 1173 194L1050 427L944 404Z" fill="#DED7FF" fill-opacity="0.9"/>
+    <path d="M1068 204L1186 244" stroke="#C7D0FF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M1046 244L1160 283" stroke="#C7D0FF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M1026 286L1138 323" stroke="#C7D0FF" stroke-width="4" stroke-linecap="round"/>
+    <rect x="930" y="391" width="130" height="170" rx="46" fill="#EBEDF8" fill-opacity="0.72"/>
+    <rect x="979" y="425" width="30" height="98" rx="15" fill="#9F3358" fill-opacity="0.55"/>
+    <circle cx="938" cy="449" r="22" fill="#E7EAF8" fill-opacity="0.84"/>
+    <circle cx="984" cy="488" r="16" fill="#ECF0FF" fill-opacity="0.9"/>
+  </g>
+
+  <g opacity="0.98">
+    <path d="M524 925C524 836 594 764 684 764C774 764 844 836 844 925V954H786V925C786 868 742 824 684 824C626 824 582 868 582 925V954H524V925Z" fill="url(#headphones)"/>
+    <rect x="498" y="914" width="104" height="176" rx="50" fill="url(#headphones)"/>
+    <rect x="770" y="914" width="104" height="176" rx="50" fill="url(#headphones)"/>
+    <rect x="468" y="1086" width="112" height="28" rx="14" fill="#111935"/>
+    <rect x="794" y="1086" width="112" height="28" rx="14" fill="#111935"/>
+    <circle cx="550" cy="1001" r="62" fill="#1F2950"/>
+    <circle cx="822" cy="1001" r="62" fill="#1F2950"/>
+  </g>
+
+  <g opacity="0.9">
+    <rect x="332" y="876" width="165" height="124" rx="26" fill="#151F39" stroke="#2B3655" stroke-width="2"/>
+    <rect x="345" y="892" width="82" height="12" rx="6" fill="#28355A"/>
+    <rect x="345" y="918" width="128" height="10" rx="5" fill="#2A3657"/>
+    <rect x="345" y="941" width="104" height="10" rx="5" fill="#2A3657"/>
+    <rect x="345" y="964" width="138" height="10" rx="5" fill="#2A3657"/>
+  </g>
+</svg>
