@@ -41,7 +41,8 @@ html.theme-dark {
     bottom: 0;
     display: flex;
     flex-direction: column;
-    padding: var(--spacing-md) 0;
+    padding: 0;
+    overflow: hidden; /* Prevent both vertical and horizontal scrollbars */
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
     z-index: 100;
     border-right: 1px solid var(--sidebar-border);
@@ -213,7 +214,8 @@ html.theme-dark {
 /* Sidebar Navigation */
 .sidebar-nav {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: hidden; /* Disabled per user request */
+    overflow-x: hidden; /* Prevent horizontal scrollbar */
     overscroll-behavior: contain;
     padding: 0 var(--spacing-md);
 }
@@ -234,6 +236,7 @@ html.theme-dark {
     transition: all var(--transition-base);
     text-align: left;
     width: 100%;
+    min-width: 0;
 }
 
 .sidebar-item:hover {
@@ -264,6 +267,10 @@ html.theme-dark .sidebar-item.active {
 
 .sidebar-label {
     flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 /* Dropdown/Accordion Styles */
@@ -357,6 +364,7 @@ html.theme-dark .sidebar-subitem.active {
 .app-sidebar .logout-group {
     margin-top: auto;
     padding-top: var(--spacing-md);
+    padding-bottom: var(--spacing-md); /* Added since parent padding was removed */
     border-top: 1px solid var(--sidebar-separator);
 }
 
