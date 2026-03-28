@@ -375,6 +375,9 @@ const Auth = {
         if (typeof Bands !== 'undefined' && Bands.clearCache) {
             Bands.clearCache();
         }
+        if (typeof Notifications !== 'undefined' && Notifications.stop) {
+            Notifications.stop();
+        }
         if (typeof Statistics !== 'undefined' && Statistics.clearCache) {
             Statistics.clearCache();
         }

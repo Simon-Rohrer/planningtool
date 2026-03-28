@@ -435,6 +435,176 @@ const Storage = {
         return true;
     },
 
+    async createBandMembershipRequest(requestData) {
+        const request = {
+            id: this.generateId(),
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+            respondedAt: null,
+            respondedByUserId: null,
+            ...requestData
+        };
+        return await this.save('bandMembershipRequests', request);
+    },
+
+    async getBandMembershipRequest(requestId) {
+        return await this.getById('bandMembershipRequests', requestId);
+    },
+
+    async updateBandMembershipRequest(requestId, updates) {
+        return await this.update('bandMembershipRequests', requestId, updates);
+    },
+
+    async getPendingBandMembershipRequest(bandId, targetUserId, type = null) {
+        const sb = SupabaseClient.getClient();
+        let query = sb
+            .from('bandMembershipRequests')
+            .select('*')
+            .eq('bandId', bandId)
+            .eq('targetUserId', targetUserId)
+            .eq('status', 'pending')
+            .order('createdAt', { ascending: false })
+            .limit(1);
+
+        if (type) {
+            query = query.eq('type', type);
+        }
+
+        const { data, error } = await query.maybeSingle();
+        if (error) {
+            console.error('Supabase getPendingBandMembershipRequest error', error);
+            return null;
+        }
+
+        return data || null;
+    },
+
+    async getBandLeadershipMembers(bandId) {
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('bandMembers')
+            .select('id, bandId, userId, role, joinedAt')
+            .eq('bandId', bandId)
+            .in('role', ['leader', 'co-leader']);
+
+        if (error) {
+            console.error('Supabase getBandLeadershipMembers error', error);
+            return [];
+        }
+
+        return data || [];
+    },
+
+    async createNotification(notificationData) {
+        const notification = {
+            id: this.generateId(),
+            status: 'unread',
+            actionStatus: notificationData.actionType ? 'pending' : null,
+            createdAt: new Date().toISOString(),
+            readAt: null,
+            actorUserId: null,
+            actorName: '',
+            actorImageUrl: '',
+            bandName: '',
+            requestedRole: '',
+            ...notificationData
+        };
+        return await this.save('notifications', notification);
+    },
+
+    async getNotificationsForUser(userId, options = {}) {
+        if (!userId) return [];
+
+        const { limit = 30 } = options;
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('notifications')
+            .select('*')
+            .eq('userId', userId)
+            .order('createdAt', { ascending: false })
+            .limit(limit);
+
+        if (error) {
+            console.error('Supabase getNotificationsForUser error', error);
+            return [];
+        }
+
+        return data || [];
+    },
+
+    async getUnreadNotificationCount(userId) {
+        if (!userId) return 0;
+
+        const sb = SupabaseClient.getClient();
+        const { count, error } = await sb
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('userId', userId)
+            .eq('status', 'unread');
+
+        if (error) {
+            console.error('Supabase getUnreadNotificationCount error', error);
+            return 0;
+        }
+
+        return count || 0;
+    },
+
+    async markNotificationsRead(userId, notificationIds = []) {
+        const ids = Array.isArray(notificationIds) ? notificationIds.filter(Boolean) : [];
+        if (!userId || ids.length === 0) return true;
+
+        const sb = SupabaseClient.getClient();
+        const timestamp = new Date().toISOString();
+        const { error } = await sb
+            .from('notifications')
+            .update({ status: 'read', readAt: timestamp })
+            .eq('userId', userId)
+            .in('id', ids);
+
+        if (error) {
+            console.error('Supabase markNotificationsRead error', error);
+            return false;
+        }
+
+        return true;
+    },
+
+    async updateNotificationsByRequest(requestId, updates) {
+        if (!requestId) return false;
+
+        const sb = SupabaseClient.getClient();
+        const { error } = await sb
+            .from('notifications')
+            .update(updates)
+            .eq('requestId', requestId);
+
+        if (error) {
+            console.error('Supabase updateNotificationsByRequest error', error);
+            return false;
+        }
+
+        return true;
+    },
+
+    async getNotificationsByRequest(requestId) {
+        if (!requestId) return [];
+
+        const sb = SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('notifications')
+            .select('*')
+            .eq('requestId', requestId)
+            .order('createdAt', { ascending: false });
+
+        if (error) {
+            console.error('Supabase getNotificationsByRequest error', error);
+            return [];
+        }
+
+        return data || [];
+    },
+
     // Event operations
     async createEvent(eventData) {
         const event = {

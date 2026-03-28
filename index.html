@@ -777,6 +777,40 @@
                             <span class="absence-text">Abwesend bis <span id="absenceEndDate"></span></span>
                         </div>
 
+                        <div class="header-notifications">
+                            <button
+                                id="notificationBellBtn"
+                                class="btn btn-icon header-notification-btn"
+                                type="button"
+                                title="Benachrichtigungen"
+                                aria-label="Benachrichtigungen"
+                                aria-expanded="false"
+                            >
+                                <span class="header-notification-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+                                        <path d="M10.5 20a1.5 1.5 0 0 0 3 0"></path>
+                                    </svg>
+                                </span>
+                                <span id="notificationBadge" class="header-notification-badge" hidden>0</span>
+                            </button>
+
+                            <div id="notificationDropdown" class="notification-dropdown" hidden>
+                                <div class="notification-dropdown-head">
+                                    <div>
+                                        <span class="notification-dropdown-kicker">Inbox</span>
+                                        <h3>Benachrichtigungen</h3>
+                                    </div>
+                                </div>
+                                <div id="notificationList" class="notification-list">
+                                    <div class="notification-empty-state">
+                                        <strong>Noch nichts neu</strong>
+                                        <p>Sobald es Einladungen oder Anfragen gibt, tauchen sie hier auf.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Profile Image (separate for mobile left positioning) -->
                         <span id="headerProfileImage" class="profile-avatar"></span>
 
@@ -1921,6 +1955,22 @@
                                         <small class="settings-inline-note">Leer lassen, wenn du dein Passwort nicht ändern möchtest.</small>
                                     </div>
 
+                                    <div class="profile-section profile-theme-mobile-only">
+                                        <div class="profile-section-title">
+                                            <span>🌙</span> Darstellung
+                                        </div>
+                                        <div class="profile-theme-card">
+                                            <div class="profile-theme-copy">
+                                                <strong>Dunkelmodus</strong>
+                                                <p>Schalte das Farbschema direkt hier im Profil um, wenn du die App auf dem Handy nutzt.</p>
+                                            </div>
+                                            <label class="toggle-switch" for="themeToggle">
+                                                <input type="checkbox" id="themeToggle" aria-label="Dunkelmodus umschalten">
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
                                     <!-- Actions -->
                                     <div class="settings-form-actions">
                                         <button type="submit" class="btn btn-primary btn-save">
@@ -2419,7 +2469,7 @@
                 <div class="band-entry-modal-copy">
                     <span class="band-entry-modal-kicker">Band</span>
                     <h2>Mitglied hinzufügen</h2>
-                    <p>Füge ein bestehendes Konto per Benutzername hinzu und weise direkt die passende Rolle zu.</p>
+                    <p>Lade ein bestehendes Konto per Benutzername ein und lege fest, welche Rolle nach der Annahme gelten soll.</p>
                 </div>
                 <button class="modal-close">&times;</button>
             </div>
@@ -2438,7 +2488,7 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                    <button type="submit" class="btn btn-primary">Einladung senden</button>
                 </div>
             </form>
         </div>
@@ -3343,7 +3393,7 @@
                 <div class="band-entry-modal-copy">
                     <span class="band-entry-modal-kicker">Bands</span>
                     <h2>Band beitreten</h2>
-                    <p>Nutze den Code deiner Band und trete direkt dem gemeinsamen Arbeitsbereich bei.</p>
+                    <p>Nutze den Code deiner Band und sende eine Beitrittsanfrage an die Bandleitung.</p>
                 </div>
                 <button class="modal-close">&times;</button>
             </div>
@@ -3358,7 +3408,7 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn cancel">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Beitreten</button>
+                    <button type="submit" class="btn btn-primary">Anfrage senden</button>
                 </div>
             </form>
         </div>
@@ -3812,6 +3862,7 @@
     <script src="js/ui.js?v=20260311"></script>
     <script src="js/feedback-service.js?v=20260311"></script>
     <script src="js/chordpro-converter.js?v=20260311"></script>
+    <script src="js/notifications.js?v=20260328"></script>
     <script src="js/app.js?v=20260323"></script>
 
     <!-- Skip duplicated pdf.js block -->

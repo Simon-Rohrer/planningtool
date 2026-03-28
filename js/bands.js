@@ -307,6 +307,7 @@ const Bands = {
         const settingsMeta = document.getElementById('bandDetailsSettingsMeta');
         const canEdit = await Auth.canEditBandDetails(bandId);
         const currentRole = user ? await Storage.getUserRoleInBand(user.id, bandId) : null;
+        const canManageBandSettings = currentRole === 'leader' || currentRole === 'co-leader';
 
         if (coverContainer) {
             coverContainer.innerHTML = this.getBandDetailsCoverHtml(band);
@@ -420,11 +421,11 @@ const Bands = {
             addMemberBtn.style.display = canManage ? 'inline-flex' : 'none';
         }
         if (deleteBandBtn) {
-            deleteBandBtn.style.display = canManage ? 'inline-flex' : 'none';
+            deleteBandBtn.style.display = canManageBandSettings ? 'inline-flex' : 'none';
         }
         // Hide entire Band-Einstellungen section if user can't manage
         if (bandSettingsSection) {
-            bandSettingsSection.style.display = canManage ? 'block' : 'none';
+            bandSettingsSection.style.display = canManageBandSettings ? 'block' : 'none';
         }
 
         // Clean up settings tab for a fresh start
@@ -453,14 +454,16 @@ const Bands = {
                 <div class="band-settings-compact-copy">
                     <span class="band-details-section-eyebrow">Verwaltung</span>
                     <h3>Einstellungen</h3>
-                    <p>Beitrittscode, Profilbild und Bandverwaltung in einer kompakten Übersicht.</p>
+                    <p>${canManageBandSettings
+                        ? 'Beitrittscode, Profilbild und Bandverwaltung in einer kompakten Übersicht.'
+                        : 'Beitrittscode und deine Mitgliedschaft an einem Ort.'}</p>
                 </div>
                 ${createdAtLabel ? `<span class="band-settings-date-badge" title="Erstellungsdatum">Erstellt am ${createdAtLabel}</span>` : ''}
             </div>
 
             <div class="band-settings-compact-grid">
                 <!-- Profile Image Area -->
-                ${canManage ? `
+                ${canManageBandSettings ? `
                     <section class="band-settings-card band-settings-compact-item profile-image-item">
                         <div class="band-settings-card-head">
                             <label class="compact-setting-label">Profilbild</label>
@@ -501,13 +504,13 @@ const Bands = {
             <div class="band-settings-compact-footer">
                 <div class="band-settings-danger-copy">
                     <strong>Bandverwaltung</strong>
-                    <span>${canManage
+                    <span>${canManageBandSettings
                         ? 'Band verlassen beendet nur deine Mitgliedschaft. Band loeschen entfernt Songs, Proben und Auftritte dauerhaft.'
-                        : 'Wenn du die Band verlaesst, endet nur deine Mitgliedschaft in dieser Band.'}</span>
+                        : 'Wenn du die Band verlaesst, endet nur deine Mitgliedschaft in dieser Band. Profilbild und Loeschaktionen sind nur fuer Leiter und Co-Leiter sichtbar.'}</span>
                 </div>
                 <div class="band-settings-compact-actions">
                     <button class="btn btn-warning btn-sm" id="leaveBandBtn">Band verlassen</button>
-                    ${canManage ? `<button class="btn btn-danger btn-sm" id="deleteBandBtn">Band löschen</button>` : ''}
+                    ${canManageBandSettings ? `<button class="btn btn-danger btn-sm" id="deleteBandBtn">Band löschen</button>` : ''}
                 </div>
             </div>
         `;
@@ -515,7 +518,7 @@ const Bands = {
         settingsTab.appendChild(compactPanel);
 
         // Add event listeners for the compact panel
-        if (canManage) {
+        if (canManageBandSettings) {
             const fileInput = compactPanel.querySelector('#settingsBandImage');
             const deleteImgBtn = compactPanel.querySelector('#deleteBandImageBtn');
             const deleteBandBtn = compactPanel.querySelector('#deleteBandBtn');
@@ -634,7 +637,8 @@ const Bands = {
         const user = Auth.getCurrentUser();
         if (!user) return;
 
-        const band = await Storage.getBandByJoinCode(joinCode);
+        const normalizedCode = String(joinCode || '').trim().toUpperCase();
+        const band = await Storage.getBandByJoinCode(normalizedCode);
 
         if (!band) {
             UI.showToast('Ungültiger Beitrittscode', 'error');
@@ -647,38 +651,25 @@ const Bands = {
             return;
         }
 
-        // Determine role: Admin gets leader, others get member
         const role = Auth.isAdmin() ? 'leader' : 'member';
 
-        // Add as member or leader
-        await Storage.addBandMember(band.id, user.id, role);
-        await Auth.updateCurrentUser();
+        try {
+            if (typeof Notifications === 'undefined' || typeof Notifications.createJoinRequest !== 'function') {
+                throw new Error('Das Benachrichtigungssystem ist aktuell nicht verfuegbar.');
+            }
 
-        // Update header to reflect current user
-        const updatedUser = Auth.getCurrentUser();
-        const userNameElement = document.getElementById('currentUserName');
-        if (userNameElement && updatedUser) {
-            userNameElement.textContent = updatedUser.name;
+            await Notifications.createJoinRequest(band.id, role);
+
+            UI.showToast(`Anfrage fuer "${band.name}" wurde an die Bandleitung gesendet.`, 'success');
+
+            const joinCodeInput = document.getElementById('joinBandCode');
+            if (joinCodeInput) joinCodeInput.value = '';
+
+            UI.closeModal('joinBandModal');
+        } catch (error) {
+            console.error('[Bands.joinBand] Error creating join request:', error);
+            UI.showToast(error.message || 'Die Anfrage konnte nicht gesendet werden.', 'error');
         }
-
-        UI.showToast(`Erfolgreich der Band "${band.name}" beigetreten!`, 'success');
-
-        // Clear the input field
-        const joinCodeInput = document.getElementById('joinBandCode');
-        if (joinCodeInput) joinCodeInput.value = '';
-
-        UI.closeModal('joinBandModal');
-        this.invalidateCache();
-        await this.renderBands(true);
-
-        // Update dashboard and navigation
-        if (typeof App !== 'undefined') {
-            if (App.updateDashboard) await App.updateDashboard();
-            if (App.updateNavigationVisibility) App.updateNavigationVisibility();
-        }
-
-        // Update nav visibility
-        await this.updateNavVisibility();
     },
 
     // Render band members
@@ -1202,10 +1193,11 @@ const Bands = {
         const band = await Storage.getBand(bandId);
         if (!band) return;
 
-        // Check permission: only leader can delete band
-        const canDelete = await Auth.canManageBand(bandId);
+        const user = Auth.getCurrentUser();
+        const currentRole = user ? await Storage.getUserRoleInBand(user.id, bandId) : null;
+        const canDelete = currentRole === 'leader' || currentRole === 'co-leader';
         if (!canDelete) {
-            UI.showToast('Nur der Band-Leiter kann die Band löschen', 'error');
+            UI.showToast('Nur Bandleiter und Co-Leiter dürfen die Band löschen', 'error');
             return;
         }
 
@@ -1387,33 +1379,34 @@ const Bands = {
 
     // Add member to band
     async addMember(bandId, username, role) {
-        const userToAdd = await Storage.getUserByUsername(username);
+        const normalizedUsername = String(username || '').trim();
+        const userToAdd = await Storage.getUserByUsername(normalizedUsername);
 
         if (!userToAdd) {
-            UI.showToast(`Benutzer "${username}" nicht gefunden`, 'error');
-            return;
+            UI.showToast(`Benutzer "${normalizedUsername}" nicht gefunden`, 'error');
+            return false;
         }
 
         // Check if already a member
         const currentRole = await Storage.getUserRoleInBand(userToAdd.id, bandId);
         if (currentRole) {
             UI.showToast('Benutzer ist bereits Mitglied der Band', 'warning');
-            return;
+            return false;
         }
 
-        const success = await Storage.addBandMember(bandId, userToAdd.id, role);
-        if (success) {
-            UI.showToast('Mitglied erfolgreich hinzugefügt', 'success');
-
-            // Refresh logic handled in UI calls but good to have here options
-            if (this.currentBandId === bandId) {
-                this.renderBandMembers(bandId);
+        try {
+            if (typeof Notifications === 'undefined' || typeof Notifications.sendBandInvite !== 'function') {
+                throw new Error('Das Benachrichtigungssystem ist aktuell nicht verfuegbar.');
             }
 
+            await Notifications.sendBandInvite(bandId, userToAdd, role);
+            UI.showToast(`Einladung an ${UI.getUserDisplayName(userToAdd)} wurde gesendet.`, 'success');
             UI.closeModal('addMemberModal');
-            // Bands.renderBands(); // Only needed if member count in list changes
-        } else {
-            UI.showToast('Fehler beim Hinzufügen des Mitglieds', 'error');
+            return true;
+        } catch (error) {
+            console.error('[Bands.addMember] Error sending invite:', error);
+            UI.showToast(error.message || 'Fehler beim Senden der Einladung', 'error');
+            return false;
         }
     }
 };

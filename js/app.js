@@ -6379,6 +6379,12 @@ const App = {
         // Render header profile image
         this.renderProfileImageHeader(user);
 
+        if (typeof Notifications !== 'undefined' && typeof Notifications.start === 'function') {
+            Notifications.start().catch(error => {
+                console.error('[App.showApp] Could not start notifications:', error);
+            });
+        }
+
         this.applyThemeMode(this.getResolvedThemeMode(), false);
         this.bindThemeControls();
 
@@ -9596,6 +9602,14 @@ const App = {
         if (!file || !bandId) return;
 
         try {
+            const currentUser = Auth.getCurrentUser();
+            const currentRole = currentUser ? await Storage.getUserRoleInBand(currentUser.id, bandId) : null;
+            const canManageBandSettings = currentRole === 'leader' || currentRole === 'co-leader';
+            if (!canManageBandSettings) {
+                UI.showToast('Nur Bandleiter und Co-Leiter dürfen das Bandbild bearbeiten', 'error');
+                return false;
+            }
+
             const sb = SupabaseClient.getClient();
 
             // DELETE OLD IMAGE FIRST
@@ -9681,6 +9695,15 @@ const App = {
     // Handle deleting band profile image
     async handleDeleteBandImage(bandId) {
         if (!bandId) return;
+
+        const currentUser = Auth.getCurrentUser();
+        const currentRole = currentUser ? await Storage.getUserRoleInBand(currentUser.id, bandId) : null;
+        const canManageBandSettings = currentRole === 'leader' || currentRole === 'co-leader';
+        if (!canManageBandSettings) {
+            UI.showToast('Nur Bandleiter und Co-Leiter dürfen das Bandbild löschen', 'error');
+            return false;
+        }
+
         const confirm = await UI.confirmDelete('Möchtest du das Band-Profilbild wirklich entfernen?');
         if (!confirm) return;
 
@@ -9738,8 +9761,10 @@ const App = {
         const role = document.getElementById('memberRole').value;
 
         if (Bands.currentBandId) {
-            await Bands.addMember(Bands.currentBandId, username, role);
-            UI.clearForm('addMemberForm');
+            const success = await Bands.addMember(Bands.currentBandId, username, role);
+            if (success) {
+                UI.clearForm('addMemberForm');
+            }
         }
     },
 
