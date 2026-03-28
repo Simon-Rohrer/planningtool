@@ -486,36 +486,48 @@ const Events = {
                          📄 PDF
                     </button>
                 </div>
-                <div class="setlist-grid">
-                             <table class="songs-table" style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
-                                <thead style="background: var(--color-bg-secondary); font-size: 0.7rem; text-transform: uppercase; color: var(--color-text-secondary);">
+                <div class="event-setlist-workspace">
+                    <div class="event-setlist-table-wrap">
+                        <table class="songs-table event-setlist-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center; width: 52px;">Pos.</th>
+                                    <th>Titel</th>
+                                    <th>Interpret</th>
+                                    <th style="text-align: center;">BPM</th>
+                                    <th style="text-align: center;">Time</th>
+                                    <th style="text-align: center;">Tonart</th>
+                                    <th style="text-align: center;">Orig.</th>
+                                    <th>Lead</th>
+                                    <th>Sprache</th>
+                                    <th>Tracks</th>
+                                    <th style="text-align: center;">PDF</th>
+                                    <th>Infos</th>
+                                    <th>CCLI</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${sortedSongs.map((song, idx) => `
                                     <tr>
-                                        <th style="text-align: left; padding: 6px;">Titel</th>
-                                        <th style="text-align: left; padding: 6px;">Interpret</th>
-                                        <th style="text-align: center; padding: 6px;">BPM</th>
-                                        <th style="text-align: center; padding: 6px;">Time</th>
-                                        <th style="text-align: center; padding: 6px;">Key</th>
-                                        <th style="text-align: left; padding: 6px;">Lead</th>
-                                        <th style="text-align: left; padding: 6px;">Sprache</th>
-                                        <th style="text-align: left; padding: 6px;">Infos</th>
+                                        <td style="text-align: center;" data-label="Pos.">${idx + 1}</td>
+                                        <td class="event-setlist-title-cell" data-label="Titel">${Bands.escapeHtml(song.title)}</td>
+                                        <td data-label="Interpret">${Bands.escapeHtml(song.artist || '-')}</td>
+                                        <td style="text-align: center;" data-label="BPM">${song.bpm || '-'}</td>
+                                        <td style="text-align: center;" data-label="Time">${song.timeSignature || '-'}</td>
+                                        <td class="event-setlist-key-cell" style="text-align: center;" data-label="Tonart">${song.key || '-'}</td>
+                                        <td style="text-align: center;" data-label="Orig.">${song.originalKey || '-'}</td>
+                                        <td data-label="Lead">${Bands.escapeHtml(song.leadVocal || '-')}</td>
+                                        <td data-label="Sprache">${Bands.escapeHtml(song.language || '-')}</td>
+                                        <td data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                                        <td style="text-align: center;" data-label="PDF">
+                                            ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${Bands.escapeHtml(song.title)}')">📄</button>` : '-'}
+                                        </td>
+                                        <td data-label="Infos">${Bands.escapeHtml(Storage.getSongInfoPreview(song) || '-')}</td>
+                                        <td style="font-family: monospace;" data-label="CCLI">${song.ccli || '-'}</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    ${sortedSongs.map(s => `
-                                        <tr style="border-bottom: 1px solid var(--color-border-subtle);">
-                                            <td style="padding: 6px; font-weight: 600; color: var(--color-text);">${Bands.escapeHtml(s.title)}</td>
-                                            <td style="padding: 6px; color: var(--color-text-secondary);">${Bands.escapeHtml(s.artist || '-')}</td>
-                                            <td style="padding: 6px; text-align: center; color: var(--color-text-secondary);">${s.bpm || '-'}</td>
-                                            <td style="padding: 6px; text-align: center; color: var(--color-text-secondary); font-size: 0.8rem;">${s.timeSignature || '-'}</td>
-                                            <td style="padding: 6px; text-align: center; font-weight: 700; color: var(--color-primary);">${s.key || '-'}</td>
-                                            <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem;">${Bands.escapeHtml(s.leadVocal || '-')}</td>
-                                            <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem;">${Bands.escapeHtml(s.language || '-')}</td>
-                                            <td style="padding: 6px; color: var(--color-text-secondary); font-size: 0.8rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${Bands.escapeHtml(Storage.getSongPlainInfo(s) || '')}">${Bands.escapeHtml(Storage.getSongInfoPreview(s) || '-')}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                             </table>
-                        </div>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -982,7 +994,7 @@ const Events = {
         }
 
         if (proposalsSection) {
-            proposalsSection.style.display = normalizedMode === 'proposals' ? 'block' : 'none';
+            proposalsSection.style.display = normalizedMode === 'proposals' ? '' : 'none';
         }
 
         if (fixedDateInput) {

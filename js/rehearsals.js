@@ -3,11 +3,14 @@
 const Rehearsals = {
     // Attach listeners to date/time inputs for availability checks
     attachAvailabilityListeners(context = document) {
-        const dateInputs = context.querySelectorAll('.date-input-date');
-        const startInputs = context.querySelectorAll('.date-input-start');
-        const endInputs = context.querySelectorAll('.date-input-end');
+        const availabilityInputs = [
+            ...context.querySelectorAll('.date-input-date'),
+            ...context.querySelectorAll('.date-input-start'),
+            ...context.querySelectorAll('.date-input-end'),
+            ...context.querySelectorAll('#rehearsalFixedDate, #rehearsalFixedStartTime, #rehearsalFixedEndTime')
+        ];
 
-        [...dateInputs, ...startInputs, ...endInputs].forEach(input => {
+        availabilityInputs.forEach(input => {
             if (!input._availabilityBound) {
                 input.addEventListener('change', () => this.updateAvailabilityIndicators());
                 input._availabilityBound = true;
@@ -17,6 +20,215 @@ const Rehearsals = {
     rehearsalsCache: null,
     dataContextCache: null,
     currentStatusTab: 'pending',
+
+    bindTimeRangeValidation(startInput, endInput) {
+        if (!startInput || !endInput || startInput._timeValidationBound || endInput._timeValidationBound) {
+            return;
+        }
+
+        const validateTimes = () => {
+            if (!startInput.value || !endInput.value) {
+                endInput.setCustomValidity('');
+                return;
+            }
+
+            if (endInput.value <= startInput.value) {
+                endInput.setCustomValidity('Endzeit muss nach Startzeit liegen');
+                endInput.reportValidity();
+            } else {
+                endInput.setCustomValidity('');
+            }
+        };
+
+        startInput.addEventListener('change', validateTimes);
+        endInput.addEventListener('change', validateTimes);
+        startInput._timeValidationBound = true;
+        endInput._timeValidationBound = true;
+    },
+
+    clearFixedDateAvailability() {
+        const fixedSection = document.getElementById('rehearsalFixedDateSection');
+        const fixedIndicator = document.getElementById('rehearsalFixedDateAvailability');
+
+        if (fixedIndicator) {
+            fixedIndicator.innerHTML = '';
+            fixedIndicator.className = 'date-availability';
+        }
+
+        if (fixedSection) {
+            fixedSection.querySelectorAll('.availability-details-stack').forEach(details => details.remove());
+        }
+    },
+
+    getScheduleMode() {
+        return document.querySelector('input[name="rehearsalScheduleMode"]:checked')?.value === 'proposals'
+            ? 'proposals'
+            : 'fixed';
+    },
+
+    resolveScheduleModeFromRehearsal(rehearsal) {
+        if (!rehearsal) return 'fixed';
+
+        if (rehearsal.status === 'confirmed' || rehearsal.confirmedDate) {
+            return 'fixed';
+        }
+
+        if (Array.isArray(rehearsal.proposedDates) && rehearsal.proposedDates.length > 0) {
+            return 'proposals';
+        }
+
+        return 'fixed';
+    },
+
+    getProposalInputValues(proposal = null) {
+        const startTime = proposal?.startTime || proposal?.start || '';
+        let endTime = proposal?.endTime || proposal?.end || '';
+
+        if (startTime && !endTime) {
+            endTime = new Date(new Date(startTime).getTime() + 2 * 60 * 60 * 1000).toISOString();
+        }
+
+        return {
+            date: startTime ? startTime.slice(0, 10) : '',
+            start: startTime ? startTime.slice(11, 16) : '18:30',
+            end: endTime ? endTime.slice(11, 16) : '21:30'
+        };
+    },
+
+    setFixedDateFields(values = {}) {
+        const dateInput = document.getElementById('rehearsalFixedDate');
+        const startInput = document.getElementById('rehearsalFixedStartTime');
+        const endInput = document.getElementById('rehearsalFixedEndTime');
+        const normalized = {
+            date: values?.date || '',
+            start: values?.start || '18:30',
+            end: values?.end || '21:30'
+        };
+
+        if (dateInput) dateInput.value = normalized.date;
+        if (startInput) startInput.value = normalized.start;
+        if (endInput) endInput.value = normalized.end;
+    },
+
+    getFixedDateFromForm() {
+        const date = document.getElementById('rehearsalFixedDate')?.value || '';
+        const start = document.getElementById('rehearsalFixedStartTime')?.value || '';
+        const end = document.getElementById('rehearsalFixedEndTime')?.value || '';
+
+        if (!date || !start || !end || end <= start) {
+            return [];
+        }
+
+        return [{
+            startTime: `${date}T${start}`,
+            endTime: `${date}T${end}`,
+            confirmed: true
+        }];
+    },
+
+    createDateProposalItem(values = {}) {
+        const newItem = document.createElement('div');
+        const normalized = {
+            date: values?.date || '',
+            start: values?.start || '18:30',
+            end: values?.end || '21:30'
+        };
+
+        newItem.className = 'date-proposal-item';
+        newItem.dataset.confirmed = 'false';
+        newItem.innerHTML = `
+            <div class="date-time-range">
+                <input type="date" class="date-input-date" value="${normalized.date}">
+                <input type="time" class="date-input-start" value="${normalized.start}">
+                <span class="time-separator">bis</span>
+                <input type="time" class="date-input-end" value="${normalized.end}">
+            </div>
+            <div class="date-proposal-footer">
+                <span class="date-availability"></span>
+                <div class="date-proposal-actions">
+                    <button type="button" class="btn-icon remove-date">🗑️</button>
+                </div>
+            </div>
+        `;
+
+        this.attachVoteHandlers(newItem);
+
+        newItem.querySelector('.remove-date')?.addEventListener('click', () => {
+            newItem.remove();
+            this.updateRemoveButtons();
+        });
+
+        return newItem;
+    },
+
+    resetDateProposalRows(initialValues = [{}]) {
+        const container = document.getElementById('dateProposals');
+        if (!container) return;
+
+        const rows = Array.isArray(initialValues) && initialValues.length > 0 ? initialValues : [{}];
+        container.innerHTML = '';
+        rows.forEach(values => {
+            container.appendChild(this.createDateProposalItem(values));
+        });
+
+        this.updateRemoveButtons();
+        this.attachAvailabilityListeners();
+    },
+
+    setScheduleMode(mode = 'fixed', options = {}) {
+        const normalizedMode = mode === 'proposals' ? 'proposals' : 'fixed';
+        const fixedRadio = document.getElementById('rehearsalScheduleModeFixed');
+        const proposalsRadio = document.getElementById('rehearsalScheduleModeProposals');
+        const modeSection = document.getElementById('rehearsalScheduleModeSection');
+        const fixedSection = document.getElementById('rehearsalFixedDateSection');
+        const proposalsSection = document.getElementById('rehearsalDateProposalsSection');
+        const proposalsContainer = document.getElementById('dateProposals');
+        const fixedInputs = [
+            document.getElementById('rehearsalFixedDate'),
+            document.getElementById('rehearsalFixedStartTime'),
+            document.getElementById('rehearsalFixedEndTime')
+        ];
+        const updateEmailSection = document.getElementById('updateEmailSection');
+        const sendUpdateCheckbox = document.getElementById('sendUpdateEmail');
+
+        if (fixedRadio) fixedRadio.checked = normalizedMode === 'fixed';
+        if (proposalsRadio) proposalsRadio.checked = normalizedMode === 'proposals';
+
+        if (modeSection) {
+            modeSection.style.display = options.lockMode ? 'none' : '';
+        }
+
+        if (fixedSection) {
+            fixedSection.style.display = normalizedMode === 'fixed' ? '' : 'none';
+        }
+
+        if (proposalsSection) {
+            proposalsSection.style.display = normalizedMode === 'proposals' ? '' : 'none';
+        }
+
+        fixedInputs.forEach(input => {
+            if (input) input.required = normalizedMode === 'fixed';
+        });
+
+        if (normalizedMode === 'proposals' && proposalsContainer && !proposalsContainer.querySelector('.date-proposal-item')) {
+            this.resetDateProposalRows();
+        }
+
+        if (normalizedMode !== 'fixed') {
+            this.clearFixedDateAvailability();
+        }
+
+        if (updateEmailSection && this.originalRehearsal) {
+            updateEmailSection.style.display = normalizedMode === 'fixed' ? 'block' : 'none';
+            if (normalizedMode !== 'fixed' && sendUpdateCheckbox) {
+                sendUpdateCheckbox.checked = false;
+            }
+        }
+
+        if (options.refreshAvailability !== false) {
+            this.updateAvailabilityIndicators();
+        }
+    },
 
     // Clear all cached data (called during logout)
     clearCache() {
@@ -2129,10 +2341,46 @@ const Rehearsals = {
         return Array.from(document.querySelectorAll('#rehearsalBandMembers input:checked')).map(cb => cb.value);
     },
 
+    buildRehearsalPayload({ bandId, title, description, dates, locationId = null, eventId = null, scheduleMode = 'proposals', proposedBy = null } = {}) {
+        const normalizedMode = scheduleMode === 'fixed' ? 'fixed' : 'proposals';
+        const normalizedDates = Array.isArray(dates)
+            ? dates
+                .filter(date => date && date.startTime && date.endTime)
+                .map(date => ({
+                    startTime: date.startTime,
+                    endTime: date.endTime,
+                    confirmed: normalizedMode === 'fixed'
+                }))
+            : [];
+        const primaryDate = normalizedDates[0] || null;
+        const payload = {
+            bandId,
+            title,
+            description,
+            locationId: locationId || null,
+            eventId: eventId || null,
+            proposedDates: normalizedDates,
+            status: normalizedMode === 'fixed' ? 'confirmed' : 'pending',
+            confirmedDate: normalizedMode === 'fixed' && primaryDate ? primaryDate.startTime : null,
+            confirmedLocation: normalizedMode === 'fixed' ? (locationId || null) : null,
+            endTime: normalizedMode === 'fixed' && primaryDate ? primaryDate.endTime : null
+        };
+
+        if (proposedBy) {
+            payload.proposedBy = proposedBy;
+        }
+
+        return payload;
+    },
+
     // Create new rehearsal
-    async createRehearsal(bandId, title, description, dates, locationId = null, eventId = null) {
+    async createRehearsal(bandId, title, description, dates, locationId = null, eventId = null, options = {}) {
         const user = Auth.getCurrentUser();
         if (!user) return;
+        const scheduleMode = options.scheduleMode === 'fixed' ? 'fixed' : 'proposals';
+        const normalizedDates = Array.isArray(dates)
+            ? dates.filter(date => date && date.startTime && date.endTime)
+            : [];
 
         if (!(await Auth.canProposeRehearsal(bandId))) {
             UI.showToast('Keine Berechtigung – nur Leiter und Co-Leiter dürfen Proben vorschlagen.', 'error');
@@ -2141,9 +2389,9 @@ const Rehearsals = {
 
         // Check location availability if location is calendar-linked
         if (locationId && typeof App !== 'undefined' && App.checkLocationAvailability) {
-            for (const date of dates) {
-                const startDate = new Date(`${date.date}T${date.startTime}`);
-                const endDate = new Date(`${date.date}T${date.endTime}`);
+            for (const date of normalizedDates) {
+                const startDate = new Date(date.startTime);
+                const endDate = new Date(date.endTime);
 
                 const availability = await App.checkLocationAvailability(locationId, startDate, endDate);
 
@@ -2168,16 +2416,16 @@ const Rehearsals = {
             }
         }
 
-        const rehearsal = {
+        const rehearsal = this.buildRehearsalPayload({
             bandId,
             proposedBy: user.id,
             title,
             description,
+            dates: normalizedDates,
             locationId,
             eventId,
-            proposedDates: dates,
-            status: 'pending'
-        };
+            scheduleMode
+        });
 
         const savedRehearsal = await Storage.createRehearsal(rehearsal);
 
@@ -2187,7 +2435,7 @@ const Rehearsals = {
         // No auto-vote for proposer anymore - they start with 'maybe' (no vote)
         // Votes will be created when they interact with the buttons
 
-        UI.showToast('Probetermin vorgeschlagen', 'success');
+        UI.showToast(scheduleMode === 'fixed' ? 'Probetermin erstellt' : 'Probetermin vorgeschlagen', 'success');
         UI.closeModal('createRehearsalModal');
 
         // Force a true refresh from DB to get all context (votes, creators etc)
@@ -2259,72 +2507,19 @@ const Rehearsals = {
             document.getElementById('rehearsalEvent').value = rehearsal.eventId || '';
         }
 
-
-        // Nur initial die Felder aus der Datenbank hinzufügen, vorhandene DOM-Felder beibehalten
-        const container = document.getElementById('dateProposals');
-        container.innerHTML = '';
         const proposedDates = Array.isArray(rehearsal.proposedDates) ? rehearsal.proposedDates : [];
-        // Zeige alle Vorschläge als Kärtchen mit Details (wie bei Neuanlage)
-        // Zeige alle Vorschläge als Kärtchen mit Verfügbarkeits-/Konfliktinfo
-        const locationId = rehearsal.locationId;
-        (async () => {
-            for (const date of proposedDates) {
-                if (typeof date === 'object' && date !== null && date.startTime && date.endTime) {
-                    const dateObj = new Date(date.startTime);
-                    const dateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
-                    const timeStr = `${date.startTime.slice(11, 16)} - ${date.endTime.slice(11, 16)}`;
-                    let availability = { available: true, conflicts: [] };
-                    if (locationId && typeof App !== 'undefined' && App.checkLocationAvailability) {
-                        availability = await this.checkSingleDateAvailability(locationId, date.startTime, date.endTime);
-                    }
-                    const locationConflicts = availability.conflicts || [];
-                    const memberConflicts = this.collectMemberConflicts(date.startTime, date.endTime);
-                    const hasConflict = locationConflicts.length > 0 || memberConflicts.length > 0;
-                    const conflictDetails = hasConflict
-                        ? `<div class="availability-details-stack">${this.buildAvailabilityDetailsHtml({ locationConflicts, memberConflicts })}</div>`
-                        : '';
-                    const card = document.createElement('div');
-                    card.className = 'date-proposal-item';
-                    card.dataset.confirmed = date.confirmed ? 'true' : 'false';
-                    card.dataset.hasConflict = hasConflict ? 'true' : 'false';
-                    card.dataset.startTime = date.startTime;
-                    card.dataset.endTime = date.endTime;
-                    const statusMarkup = this.buildProposalStatusMarkup({
-                        locationId,
-                        locationConflicts,
-                        memberConflicts
-                    });
-                    card.innerHTML = `
-                        <div class="date-proposal-summary">
-                            <div class="confirmed-proposal-display">
-                                <span class="confirmed-date">📅 ${dateStr}, ${timeStr}</span>
-                                ${statusMarkup}
-                            </div>
-                            <div class="date-proposal-actions date-proposal-actions-compact">
-                                <button type="button" class="btn-icon remove-confirmed">🗑️</button>
-                            </div>
-                        </div>
-                        ${conflictDetails}
-                    `;
-                    card.querySelector('.remove-confirmed').addEventListener('click', () => {
-                        card.remove();
-                        this.updateRemoveButtons();
-                    });
-                    container.appendChild(card);
-                }
-            }
-        })();
-        // Event-Handler für Bestätigen-Buttons neu setzen
-        this.attachVoteHandlers(container);
+        const scheduleMode = this.resolveScheduleModeFromRehearsal(rehearsal);
+        const fixedSource = rehearsal.confirmedDate
+            ? { startTime: rehearsal.confirmedDate, endTime: rehearsal.endTime }
+            : (proposedDates[0] || null);
+        const proposalRows = proposedDates.length > 0
+            ? proposedDates.map(date => this.getProposalInputValues(date))
+            : (fixedSource ? [this.getProposalInputValues(fixedSource)] : [{}]);
 
-        // Attach remove handlers und Availability
-        container.querySelectorAll('.remove-date').forEach(btn => {
-            btn.addEventListener('click', () => {
-                btn.closest('.date-proposal-item').remove();
-                this.updateRemoveButtons();
-            });
-        });
-        this.updateRemoveButtons();
+        this.setFixedDateFields(this.getProposalInputValues(fixedSource));
+        this.resetDateProposalRows(proposalRows);
+        this.setScheduleMode(scheduleMode, { lockMode: false, refreshAvailability: false });
+
         if (typeof App !== 'undefined') {
             this.attachAvailabilityListeners();
             UI.showLoading('Kalender wird geladen…');
@@ -2348,18 +2543,20 @@ const Rehearsals = {
     },
 
     // Update rehearsal
-    async updateRehearsal(rehearsalId, bandId, title, description, dates, locationId, eventId, notifyMembers = false) {
+    async updateRehearsal(rehearsalId, bandId, title, description, dates, locationId, eventId, notifyMembers = false, options = {}) {
         // Get old rehearsal data before updating
         const oldRehearsal = await Storage.getRehearsal(rehearsalId);
-
-        const updatedRehearsal = await Storage.updateRehearsal(rehearsalId, {
+        const payload = this.buildRehearsalPayload({
             bandId,
             title,
             description,
+            dates,
             locationId,
             eventId,
-            proposedDates: dates
+            scheduleMode: options.scheduleMode
         });
+
+        const updatedRehearsal = await Storage.updateRehearsal(rehearsalId, payload);
 
         // Send update email if requested and rehearsal was confirmed
         if (notifyMembers && oldRehearsal && oldRehearsal.status === 'confirmed' && updatedRehearsal) {
@@ -2458,13 +2655,65 @@ const Rehearsals = {
     },
 
     async updateAvailabilityIndicators() {
+        const scheduleMode = this.getScheduleMode();
         const locationId = document.getElementById('rehearsalLocation')?.value || '';
+        const fixedDateInput = document.getElementById('rehearsalFixedDate');
+        const fixedStartInput = document.getElementById('rehearsalFixedStartTime');
+        const fixedEndInput = document.getElementById('rehearsalFixedEndTime');
+        const fixedIndicator = document.getElementById('rehearsalFixedDateAvailability');
+        const fixedSection = document.getElementById('rehearsalFixedDateSection');
         const items = document.querySelectorAll('#dateProposals .date-proposal-item');
 
         // Reset any generic member conflict highlighting.
         document.querySelectorAll('.member-select-card').forEach(card => {
             card.classList.remove('has-conflict');
         });
+
+        this.bindTimeRangeValidation(fixedStartInput, fixedEndInput);
+        this.clearFixedDateAvailability();
+
+        if (scheduleMode === 'fixed' && fixedDateInput && fixedStartInput && fixedEndInput && fixedIndicator) {
+            if (fixedDateInput.value && fixedStartInput.value && fixedEndInput.value && fixedEndInput.value > fixedStartInput.value) {
+                const startDateTime = `${fixedDateInput.value}T${fixedStartInput.value}`;
+                const endDateTime = `${fixedDateInput.value}T${fixedEndInput.value}`;
+                const availability = locationId
+                    ? await this.checkSingleDateAvailability(locationId, startDateTime, endDateTime)
+                    : { available: true, conflicts: [] };
+                const locationConflicts = availability.available ? [] : (availability.conflicts || []);
+                const memberConflicts = this.collectMemberConflicts(startDateTime, endDateTime);
+                const hasConflicts = locationConflicts.length > 0 || memberConflicts.length > 0;
+
+                fixedIndicator.innerHTML = this.buildProposalStatusMarkup({
+                    locationId,
+                    locationConflicts,
+                    memberConflicts
+                });
+                fixedIndicator.className = `date-availability ${hasConflicts ? 'has-conflict' : 'is-available'}`;
+
+                const detailsHtml = hasConflicts
+                    ? `<div class="availability-details-stack">${this.buildAvailabilityDetailsHtml({ locationConflicts, memberConflicts })}</div>`
+                    : '';
+
+                if (detailsHtml && fixedSection) {
+                    fixedIndicator.insertAdjacentHTML('afterend', detailsHtml);
+                }
+            } else if (fixedIndicator) {
+                fixedIndicator.innerHTML = '';
+                fixedIndicator.className = 'date-availability';
+            }
+        }
+
+        if (scheduleMode !== 'proposals') {
+            items.forEach(item => {
+                const indicator = item.querySelector('.date-availability');
+                if (indicator) {
+                    indicator.innerHTML = '';
+                    indicator.className = 'date-availability';
+                }
+                item.querySelectorAll('.availability-details-stack, .conflict-details-box, .member-details-box').forEach(details => details.remove());
+            });
+            return;
+        }
 
         for (const item of items) {
             // Skip confirmed proposals
@@ -2492,13 +2741,8 @@ const Rehearsals = {
             let locationConflicts = [];
 
             // Check location availability
-            if (locationId && typeof App !== 'undefined' && App.checkLocationAvailability) {
-                const availability = await App.checkLocationAvailability(
-                    locationId,
-                    new Date(startDateTime),
-                    new Date(endDateTime)
-                );
-
+            if (locationId) {
+                const availability = await this.checkSingleDateAvailability(locationId, startDateTime, endDateTime);
                 if (!availability.available) {
                     locationConflicts = availability.conflicts || [];
                 }
@@ -2532,23 +2776,7 @@ const Rehearsals = {
         items.forEach(item => {
             const startInput = item.querySelector('.date-input-start');
             const endInput = item.querySelector('.date-input-end');
-
-            if (startInput && endInput && !startInput._timeValidationBound) {
-                const validateTimes = () => {
-                    if (startInput.value && endInput.value) {
-                        if (endInput.value <= startInput.value) {
-                            endInput.setCustomValidity('Endzeit muss nach Startzeit liegen');
-                            endInput.reportValidity();
-                        } else {
-                            endInput.setCustomValidity('');
-                        }
-                    }
-                };
-
-                startInput.addEventListener('change', validateTimes);
-                endInput.addEventListener('change', validateTimes);
-                startInput._timeValidationBound = true;
-            }
+            this.bindTimeRangeValidation(startInput, endInput);
         });
     },
 
@@ -2633,39 +2861,11 @@ const Rehearsals = {
         const container = document.getElementById('dateProposals');
         if (!container) return;
 
-        // Neues Feld als zusätzlicher Vorschlag, ohne bestehende zu überschreiben
-        const newItem = document.createElement('div');
-        newItem.className = 'date-proposal-item';
-        newItem.dataset.confirmed = 'false';
-        newItem.innerHTML = `
-            <div class="date-time-range">
-                <input type="date" class="date-input-date" required>
-                <input type="time" class="date-input-start" value="18:30" required>
-                <span class="time-separator">bis</span>
-                <input type="time" class="date-input-end" value="21:30" required>
-            </div>
-            <div class="date-proposal-footer">
-                <span class="date-availability"></span>
-                <div class="date-proposal-actions">
-                    <button type="button" class="btn-icon remove-date">🗑️</button>
-                </div>
-            </div>
-        `;
-
+        const newItem = this.createDateProposalItem();
         container.appendChild(newItem);
 
-        // Attach event handlers to the new item
-        this.attachVoteHandlers(newItem);
-
-        newItem.querySelector('.remove-date').addEventListener('click', () => {
-            newItem.remove();
-            this.updateRemoveButtons();
-        });
-
         this.updateRemoveButtons();
-        // Bind availability checks for new input
         this.attachAvailabilityListeners();
-        // Run an immediate check to render status, with loader if slow
         UI.showLoading('Kalender wird geladen…');
         Promise.resolve(this.updateAvailabilityIndicators())
             .finally(() => UI.hideLoading());
@@ -2682,24 +2882,21 @@ const Rehearsals = {
         });
     },
 
-    // Get dates from form
-    getDatesFromForm() {
+    getProposalDatesFromForm() {
         const items = document.querySelectorAll('#dateProposals .date-proposal-item');
         const dates = [];
         items.forEach(item => {
-            // Try to get from inputs first (new proposals)
             const dateInput = item.querySelector('.date-input-date');
             const startInput = item.querySelector('.date-input-start');
             const endInput = item.querySelector('.date-input-end');
+            const isConfirmed = item.dataset.confirmed === 'true';
 
-            if (dateInput && startInput && endInput && dateInput.value && startInput.value && endInput.value) {
+            if (dateInput && startInput && endInput && dateInput.value && startInput.value && endInput.value && endInput.value > startInput.value) {
                 const startTime = `${dateInput.value}T${startInput.value}`;
                 const endTime = `${dateInput.value}T${endInput.value}`;
-                dates.push({ startTime, endTime, confirmed: true });
+                dates.push({ startTime, endTime, confirmed: isConfirmed });
             }
-            // Fallback to dataset (existing confirmed cards)
             else if (item.dataset.startTime && item.dataset.endTime) {
-                const isConfirmed = item.dataset.confirmed === 'true';
                 dates.push({
                     startTime: item.dataset.startTime,
                     endTime: item.dataset.endTime,
@@ -2708,6 +2905,11 @@ const Rehearsals = {
             }
         });
         return dates;
+    },
+
+    // Get dates from form
+    getDatesFromForm() {
+        return this.getProposalDatesFromForm();
     }
 };
 

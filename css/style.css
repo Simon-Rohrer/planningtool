@@ -220,6 +220,64 @@
     line-height: 1.5;
 }
 
+.scheduler-panel-schedule {
+    gap: 1.1rem;
+}
+
+.scheduler-schedule-stack {
+    display: grid;
+    gap: 1rem;
+}
+
+.scheduler-schedule-subpanel {
+    padding: 1rem 1.05rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 84%, rgba(99, 102, 241, 0.18));
+    border-radius: 1rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 72%),
+        var(--color-bg-secondary);
+}
+
+.scheduler-schedule-subpanel-head {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 0.9rem;
+}
+
+.scheduler-schedule-subpanel-head h4 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.scheduler-schedule-subpanel-head p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+}
+
+.scheduler-panel-schedule .scheduler-choice-label {
+    margin-bottom: 0.75rem;
+}
+
+.scheduler-panel-schedule .scheduler-field-note {
+    margin-top: 0.7rem;
+}
+
+.scheduler-panel-schedule .date-proposals {
+    margin-bottom: 0;
+}
+
+.scheduler-panel-schedule .scheduler-inline-actions {
+    margin-top: 0.95rem;
+}
+
+.scheduler-panel-schedule #eventFixedDateAvailability,
+.scheduler-panel-schedule #rehearsalFixedDateAvailability {
+    margin-top: 0.6rem;
+}
+
 .scheduler-choice-label {
     display: block;
     margin-bottom: 0.65rem;
@@ -717,6 +775,7 @@
 .event-setlist-table td {
     font-size: 0.92rem;
     color: var(--color-text-secondary);
+    vertical-align: top;
 }
 
 .event-setlist-table td.event-setlist-title-cell {
@@ -21279,18 +21338,55 @@ body:not(.landing-active) .calendar-submenu {
 }
 
 #bandDetailsModal .tab-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.48rem;
     min-height: 42px;
     padding: 0.7rem 0.95rem;
+    border: 1px solid transparent;
     border-radius: 12px;
+    background: transparent;
     color: var(--text-secondary);
     font-size: 0.92rem;
     font-weight: 600;
+    transition:
+        background var(--transition-base),
+        color var(--transition-base),
+        border-color var(--transition-base),
+        box-shadow var(--transition-base),
+        transform var(--transition-base);
+}
+
+#bandDetailsModal .tab-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--surface) 72%, white 4%);
 }
 
 #bandDetailsModal .tab-btn.active {
-    background: var(--surface);
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--accent-soft) 88%, rgba(255, 255, 255, 0.04)),
+        color-mix(in srgb, var(--surface) 82%, var(--accent-soft) 18%)
+    );
+    border-color: color-mix(in srgb, var(--color-primary) 42%, var(--border));
     color: var(--text-primary);
-    box-shadow: var(--shadow-xs);
+    box-shadow:
+        0 12px 22px -18px rgba(59, 130, 246, 0.85),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
+}
+
+#bandDetailsModal .tab-btn.active::after {
+    content: "";
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 6px;
+    height: 2px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 72%, white 10%);
 }
 
 #bandDetailsModal .band-details-tab-icon {
@@ -21299,6 +21395,12 @@ body:not(.landing-active) .calendar-submenu {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    color: color-mix(in srgb, var(--text-secondary) 84%, white 8%);
+    transition: color var(--transition-base);
+}
+
+#bandDetailsModal .tab-btn.active .band-details-tab-icon {
+    color: color-mix(in srgb, var(--color-primary) 62%, white 16%);
 }
 
 #bandDetailsModal .band-details-tab-icon svg {
@@ -21539,10 +21641,33 @@ body:not(.landing-active) .calendar-submenu {
     border-bottom: none;
 }
 
+#bandDetailsModal .absence-panel-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: end;
+}
+
+#bandDetailsModal .absence-panel-intro-copy {
+    min-width: 0;
+}
+
 #bandDetailsModal .absence-view-controls {
-    margin-bottom: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 12px;
     align-items: center;
+    margin-bottom: 0;
+}
+
+#bandDetailsModal .absence-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+#bandDetailsModal .absence-actions .btn {
+    white-space: nowrap;
 }
 
 #bandDetailsModal .absence-filters {
@@ -21711,6 +21836,16 @@ body:not(.landing-active) .calendar-submenu {
     #bandDetailsModal .band-details-panel-section,
     #bandDetailsModal .band-details-panel-intro {
         padding: 14px;
+    }
+
+    #bandDetailsModal .absence-panel-intro {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    #bandDetailsModal .absence-view-controls,
+    #bandDetailsModal .absence-actions {
+        justify-content: flex-start;
     }
 
     #bandDetailsModal .song-search-container {
@@ -23064,40 +23199,30 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
     gap: 12px;
 }
 
-#setlistTab .band-details-panel-intro {
-    padding: 14px 16px;
-    gap: 6px;
-}
-
-#setlistTab .band-details-panel-intro p {
-    margin: 0;
-    max-width: 36rem;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
 #bandDetailsModal .band-setlist-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 0 0 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+#bandDetailsModal .band-setlist-toolbar-top {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
-    padding: 14px 16px;
-    border-radius: 18px;
-    border: 1px solid var(--border);
-    background: var(--surface-secondary);
+    gap: 14px;
+    align-items: start;
 }
 
 #bandDetailsModal .band-setlist-toolbar-main {
-    display: flex;
-    align-items: center;
-    gap: 14px;
     min-width: 0;
 }
 
 #bandDetailsModal .band-setlist-titleblock {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    min-width: fit-content;
+    gap: 6px;
+    min-width: 0;
 }
 
 #bandDetailsModal .band-setlist-kicker {
@@ -23117,6 +23242,14 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
     line-height: 1.2;
 }
 
+#bandDetailsModal .band-setlist-description {
+    margin: 0;
+    max-width: 42rem;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
 #bandDetailsModal .band-setlist-count {
     color: var(--text-muted);
     font-size: 0.94rem;
@@ -23124,9 +23257,9 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
 }
 
 #bandDetailsModal .band-setlist-search {
-    flex: 1;
-    min-width: 220px;
-    max-width: 520px;
+    width: 100%;
+    min-width: 0;
+    max-width: 640px;
 }
 
 #bandDetailsModal .band-setlist-search .modern-search-input {
@@ -23214,6 +23347,7 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
 #bandDetailsModal .band-setlist-table td {
     font-size: 0.9rem;
     line-height: 1.42;
+    vertical-align: top;
 }
 
 #bandDetailsModal .band-setlist-table td[data-label="Infos"] {
@@ -23231,7 +23365,12 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
     color: var(--text-secondary);
 }
 
-#bandDetailsModal .band-setlist-table td:last-child > div {
+#bandDetailsModal .band-setlist-table .band-setlist-actions-cell {
+    min-width: 108px;
+    white-space: nowrap;
+}
+
+#bandDetailsModal .band-setlist-table .band-setlist-actions-cell > div {
     gap: 6px !important;
 }
 
@@ -23418,10 +23557,10 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
 }
 
 @media (max-width: 1100px) {
-    #bandDetailsModal .band-setlist-table th:nth-child(7),
-    #bandDetailsModal .band-setlist-table td:nth-child(7),
-    #bandDetailsModal .band-setlist-table th:nth-child(13),
-    #bandDetailsModal .band-setlist-table td:nth-child(13) {
+    #bandDetailsModal .band-setlist-table th:nth-child(8),
+    #bandDetailsModal .band-setlist-table td:nth-child(8),
+    #bandDetailsModal .band-setlist-table th:nth-child(14),
+    #bandDetailsModal .band-setlist-table td:nth-child(14) {
         display: none;
     }
 }
@@ -23451,13 +23590,17 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
         align-items: flex-start;
     }
 
+    #bandDetailsModal .band-setlist-toolbar-top,
     #bandDetailsModal .band-setlist-toolbar {
-        grid-template-columns: 1fr;
+        gap: 12px;
     }
 
     #bandDetailsModal .band-setlist-toolbar-main {
-        flex-direction: column;
-        align-items: stretch;
+        width: 100%;
+    }
+
+    #bandDetailsModal .band-setlist-toolbar-top {
+        grid-template-columns: 1fr;
     }
 
     #bandDetailsModal .band-setlist-search {
@@ -23502,7 +23645,10 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
         padding: 12px 14px;
     }
 
-    #bandDetailsModal .band-setlist-toolbar,
+    #bandDetailsModal .band-setlist-toolbar {
+        padding-bottom: 12px;
+    }
+
     #bandDetailsModal .band-setlist-bulkbar {
         padding: 12px;
     }
@@ -25597,6 +25743,14 @@ html[data-theme="light"] .multiselect-menu,
     .scheduler-modal .scheduler-panel {
         padding: 0.95rem;
         border-radius: 18px;
+    }
+
+    .scheduler-modal .scheduler-schedule-subpanel {
+        padding: 0.9rem;
+    }
+
+    .scheduler-modal .scheduler-schedule-subpanel-head {
+        margin-bottom: 0.75rem;
     }
 
     .scheduler-modal .scheduler-panel-head {
@@ -29327,110 +29481,209 @@ html[data-theme="light"] #landingPage .auth-white-card .custom-multiselect .mult
 
 /* ===== Compact Band Settings Refinement ===== */
 .band-settings-compact-panel {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 0;
     position: relative;
     overflow: hidden;
+    box-shadow: none;
 }
 
 .band-settings-compact-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
     align-items: flex-start;
-    margin-bottom: var(--spacing-lg);
-    border-bottom: 1px solid var(--sidebar-separator);
-    padding-bottom: var(--spacing-md);
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 48%, transparent), transparent 80%),
+        var(--surface-secondary);
+}
+
+.band-settings-compact-copy {
+    display: grid;
+    gap: 0.38rem;
+    min-width: 0;
+}
+
+.band-settings-compact-copy h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.band-settings-compact-copy p {
+    margin: 0;
+    max-width: 40rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
 }
 
 .band-settings-date-badge {
     font-size: 0.75rem;
-    color: var(--color-text-secondary);
-    background: var(--color-bg-secondary);
-    padding: 0.25rem 0.6rem;
-    border-radius: var(--radius-pill);
-    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.38rem 0.72rem;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 .band-settings-compact-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--spacing-xl);
-    margin-bottom: var(--spacing-xl);
+    gap: 1rem;
+    padding: 1.2rem 1.25rem;
+    margin: 0;
+}
+
+.band-settings-card {
+    display: grid;
+    gap: 0.95rem;
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--surface-secondary);
+}
+
+.band-settings-card-head {
+    display: grid;
+    gap: 0.35rem;
 }
 
 .compact-setting-label {
     display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--color-text-secondary);
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: var(--spacing-sm);
+    letter-spacing: 0.08em;
 }
 
 .band-settings-media-compact {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: 1rem;
 }
 
 .band-settings-media-frame-sm {
-    width: 64px;
-    height: 64px;
-    border-radius: var(--radius-md);
+    width: 86px;
+    height: 86px;
+    border-radius: 22px;
     overflow: hidden;
-    background: var(--color-bg-secondary);
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 78%, transparent), transparent 90%),
+        var(--surface);
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .band-settings-media-fallback-sm {
-    font-size: 1.5rem;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 34%, transparent), color-mix(in srgb, var(--accent-soft) 68%, transparent));
+}
+
+.band-settings-media-actions {
+    display: grid;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.band-settings-media-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.band-settings-action-btn {
+    min-height: 40px;
+    padding: 0.6rem 0.95rem;
+    border-radius: 12px;
     font-weight: 700;
-    color: var(--color-text-secondary);
+}
+
+.band-settings-action-btn-primary {
+    box-shadow: var(--shadow-xs);
 }
 
 .band-settings-status-sm {
-    font-size: 0.75rem;
+    min-height: 1.15rem;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
     display: block;
-    margin-top: 4px;
 }
 
 .join-code-row-compact {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    background: var(--color-bg-secondary);
-    padding: 0.5rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
+    gap: 0.7rem;
+    background: var(--surface);
+    padding: 0.6rem;
+    border-radius: 16px;
+    border: 1px solid var(--border);
 }
 
 .join-code-sm {
     font-family: var(--font-mono, monospace);
-    font-size: 1.1rem;
+    font-size: 1.12rem;
     font-weight: 700;
     color: var(--color-primary);
     flex: 1;
+    overflow-wrap: anywhere;
 }
 
 .compact-setting-note {
-    font-size: 0.8rem;
-    color: var(--color-text-light);
-    margin-top: 0.5rem;
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
 }
 
 .band-settings-compact-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding: 1rem 1.25rem 1.25rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 70%),
+        var(--surface);
+}
+
+.band-settings-danger-copy {
+    display: grid;
+    gap: 0.28rem;
+    min-width: 0;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.band-settings-danger-copy strong {
+    color: var(--text-primary);
+    font-size: 0.92rem;
+}
+
+.band-settings-compact-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
-    gap: var(--spacing-md);
-    border-top: 1px solid var(--sidebar-separator);
-    padding-top: var(--spacing-lg);
-    margin-top: var(--spacing-md);
+    gap: 0.75rem;
 }
 
 .btn-text-danger {
@@ -29442,6 +29695,35 @@ html[data-theme="light"] #landingPage .auth-white-card .custom-multiselect .mult
 
 .btn-text-danger:hover {
     text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+    .band-settings-compact-header,
+    .band-settings-compact-footer {
+        grid-template-columns: 1fr;
+    }
+
+    .band-settings-compact-grid {
+        padding: 1rem;
+    }
+
+    .band-settings-media-compact,
+    .join-code-row-compact {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .band-settings-media-buttons,
+    .band-settings-compact-actions {
+        width: 100%;
+    }
+
+    .band-settings-media-buttons .band-settings-action-btn,
+    .band-settings-compact-actions .btn,
+    .join-code-row-compact .btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 /* ===== Auth Window CSS Fixes (Light Mode & Sizing) ===== */
@@ -29860,7 +30142,8 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
     max-width: none;
 }
 
-.scheduler-modal-event .scheduler-panel-basics .event-schedule-mode-grid {
+.scheduler-modal-event .scheduler-panel-schedule .event-schedule-mode-grid,
+.scheduler-modal-rehearsal .scheduler-panel-schedule .event-schedule-mode-grid {
     width: 100%;
     max-width: 52rem;
     grid-template-columns: minmax(0, 1fr);
@@ -29936,6 +30219,16 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 .scheduler-modal-rehearsal #rehearsalDescription {
     width: 100%;
     max-width: none;
+}
+
+.scheduler-modal-rehearsal #rehearsalFixedDateSection .date-time-range {
+    width: 100%;
+}
+
+.scheduler-modal-rehearsal #rehearsalFixedDateAvailability {
+    min-width: 0;
+    min-height: 0;
+    line-height: 1.45;
 }
 
 .scheduler-modal-rehearsal .date-proposal-item {
@@ -30164,14 +30457,22 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 #dashboardView .next-event-hero-card {
     min-height: 286px;
     width: 100%;
-    padding: clamp(1.6rem, 2vw, 2.2rem);
+    padding: clamp(1.35rem, 1.8vw, 1.85rem);
     border-radius: var(--dashboard-panel-radius);
 }
 
 #dashboardView .hero-welcome {
     display: grid;
     align-content: center;
-    gap: 1rem;
+    gap: 0.85rem;
+}
+
+#dashboardView .hero-welcome-copy {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+    align-items: end;
+    gap: clamp(0.9rem, 2vw, 2.2rem);
+    width: 100%;
 }
 
 #dashboardView .dashboard-section-kicker,
@@ -30193,18 +30494,19 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 
 #dashboardView .welcome-text {
     margin: 0;
-    max-width: 8ch;
-    font-size: clamp(2.1rem, 2.2vw, 3.25rem);
+    max-width: none;
+    font-size: clamp(2rem, 2.5vw, 3rem);
     line-height: 0.98;
     letter-spacing: -0.06em;
     color: var(--text-primary);
+    text-wrap: balance;
 }
 
 #dashboardView .hero-subtitle {
     margin: 0;
-    max-width: 34rem;
-    font-size: 1.04rem;
-    line-height: 1.68;
+    max-width: 30rem;
+    font-size: 1rem;
+    line-height: 1.62;
     color: var(--text-secondary);
 }
 
@@ -30907,6 +31209,10 @@ html[data-theme="light"] #dashboardView,
     #dashboardView .hero-welcome,
     #dashboardView .next-event-hero-card {
         padding: 1.2rem;
+    }
+
+    #dashboardView .hero-welcome-copy {
+        gap: 0.8rem;
     }
 
     #dashboardView .dashboard-card.stat-card {

@@ -2488,10 +2488,13 @@ const App = {
                 const planningBands = await this.getPlanningManagerBands();
 
                 // Reset form for new rehearsal
-                document.getElementById('rehearsalModalTitle').textContent = 'Neuen Probetermin vorschlagen';
+                document.getElementById('rehearsalModalTitle').textContent = 'Neuen Probetermin erstellen';
                 document.getElementById('saveRehearsalBtn').textContent = 'Probetermin erstellen';
                 document.getElementById('editRehearsalId').value = '';
                 UI.clearForm('createRehearsalForm');
+                if (typeof Rehearsals !== 'undefined') {
+                    Rehearsals.originalRehearsal = null;
+                }
 
                 // Hide delete button for new rehearsal
                 const deleteBtn = document.getElementById('deleteRehearsalBtn');
@@ -2499,27 +2502,12 @@ const App = {
                     deleteBtn.style.display = 'none';
                 }
 
-                // Reset date proposals
-                const container = document.getElementById('dateProposals');
-                container.innerHTML = `
-                    <div class="date-proposal-item" data-confirmed="false">
-                        <div class="date-time-range">
-                            <input type="date" class="date-input-date">
-                            <input type="time" class="date-input-start" value="18:30">
-                            <span class="time-separator">bis</span>
-                            <input type="time" class="date-input-end" value="21:30">
-                        </div>
-                        <div class="date-proposal-footer">
-                            <span class="date-availability"></span>
-                            <div class="date-proposal-actions">
-                                <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                // Attach event handlers to the new elements
-                Rehearsals.attachVoteHandlers(container);
+                if (typeof Rehearsals !== 'undefined') {
+                    Rehearsals.setFixedDateFields();
+                    Rehearsals.resetDateProposalRows();
+                    Rehearsals.setScheduleMode('fixed', { lockMode: false, refreshAvailability: false });
+                    Rehearsals.clearFixedDateAvailability();
+                }
 
                 await Bands.populateBandSelects();
                 await this.populateLocationSelect();
@@ -2534,6 +2522,7 @@ const App = {
                 // Attach availability listeners for initial input
                 if (typeof Rehearsals !== 'undefined' && Rehearsals.attachAvailabilityListeners) {
                     Rehearsals.attachAvailabilityListeners();
+                    Rehearsals.updateAvailabilityIndicators();
                 }
 
                 // Event-Dropdown richtig vorbelegen
@@ -2553,6 +2542,12 @@ const App = {
                 if (notifyGroup) {
                     notifyGroup.style.display = 'none';
                     document.getElementById('notifyMembersOnUpdate').checked = false;
+                }
+                const updateEmailSection = document.getElementById('updateEmailSection');
+                if (updateEmailSection) {
+                    updateEmailSection.style.display = 'none';
+                    const sendUpdateEmail = document.getElementById('sendUpdateEmail');
+                    if (sendUpdateEmail) sendUpdateEmail.checked = false;
                 }
 
                 UI.openModal('createRehearsalModal');
@@ -2580,6 +2575,26 @@ const App = {
                     if (typeof Rehearsals !== 'undefined' && Rehearsals.loadBandMembers) {
                         await Rehearsals.loadBandMembers('', []);
                     }
+                }
+            });
+        }
+
+        document.querySelectorAll('input[name="rehearsalScheduleMode"]').forEach(input => {
+            if (input.dataset.initialized) return;
+            input.dataset.initialized = 'true';
+            input.addEventListener('change', () => {
+                if (typeof Rehearsals !== 'undefined' && typeof Rehearsals.setScheduleMode === 'function') {
+                    Rehearsals.setScheduleMode(input.value);
+                }
+            });
+        });
+
+        const rehearsalLocationSelect = document.getElementById('rehearsalLocation');
+        if (rehearsalLocationSelect && !rehearsalLocationSelect.dataset.availabilityBound) {
+            rehearsalLocationSelect.dataset.availabilityBound = 'true';
+            rehearsalLocationSelect.addEventListener('change', () => {
+                if (typeof Rehearsals !== 'undefined' && typeof Rehearsals.updateAvailabilityIndicators === 'function') {
+                    Rehearsals.updateAvailabilityIndicators();
                 }
             });
         }
@@ -5202,6 +5217,7 @@ const App = {
                             <th style="text-align: center; width: 40px;">
                                 <input type="checkbox" id="selectAllEventSongs">
                             </th>
+                            <th style="text-align: center; width: 108px;">Aktionen</th>
                             <th>Titel</th>
                             <th>Interpret</th>
                             <th>BPM</th>
@@ -5214,7 +5230,6 @@ const App = {
                             <th style="text-align: center;">PDF</th>
                             <th>Infos</th>
                             <th>CCLI</th>
-                            <th style="text-align: center; width: 108px;">Aktionen</th>
                         </tr>
                     </thead>
                     <tbody id="eventSongsTableBody">
@@ -5223,6 +5238,14 @@ const App = {
                                 <td class="drag-handle" data-label="Pos.">☰</td>
                                 <td style="text-align: center;" data-label="Auswählen">
                                     <input type="checkbox" class="event-song-checkbox-row" value="${song.id}">
+                                </td>
+                                <td class="event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
+                                    <div class="event-setlist-actions">
+                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">
+                                            <span aria-hidden="true">✎</span>
+                                        </button>
+                                        <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen" aria-label="Song aus der Setlist löschen">🗑️</button>
+                                    </div>
                                 </td>
                                 <td class="event-setlist-title-cell" data-label="Titel">${this.escapeHtml(song.title)}</td>
                                 <td data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
@@ -5238,14 +5261,6 @@ const App = {
                                 </td>
                                 <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
                                 <td style="font-family: monospace;" data-label="CCLI">${song.ccli || '-'}</td>
-                                <td class="event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
-                                    <div class="event-setlist-actions">
-                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">
-                                            <span aria-hidden="true">✎</span>
-                                        </button>
-                                        <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen" aria-label="Song aus der Setlist löschen">🗑️</button>
-                                    </div>
-                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -5823,6 +5838,12 @@ const App = {
                     <td style="padding: var(--spacing-sm); text-align: center;" data-label="Auswählen">
                         <input type="checkbox" class="band-song-checkbox-row" value="${song.id}">
                     </td>
+                    <td class="band-setlist-actions-cell" style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
+                        <div style="display: flex; gap: 8px; justify-content: center;">
+                            <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
+                            <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                        </div>
+                    </td>
                     <td style="padding: var(--spacing-sm); white-space: nowrap;" data-label="Titel">${this.escapeHtml(song.title)}</td>
                     <td style="padding: var(--spacing-sm);" data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
                     <td style="padding: var(--spacing-sm);" data-label="BPM">${song.bpm || '-'}</td>
@@ -5837,12 +5858,6 @@ const App = {
                     </td>
                     <td style="padding: var(--spacing-sm); font-size: 0.9em;" data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
                     <td style="padding: var(--spacing-sm); font-family: monospace; font-size: 0.9em;" data-label="CCLI">${song.ccli || '-'}</td>
-                    <td style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
-                        <div style="display: flex; gap: 8px; justify-content: center;">
-                            <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
-                            <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
-                        </div>
-                    </td>
                 </tr>
             `).join('') :
             `<tr><td colspan="14" style="padding: var(--spacing-xl); text-align: center; color: var(--color-text-light);">${searchTerm ? 'Keine Songs gefunden.' : 'Noch keine Songs hinzugefügt.'}</td></tr>`;
@@ -5858,25 +5873,28 @@ const App = {
         container.innerHTML = `
         <div class="band-setlist-workspace">
             <div class="band-setlist-toolbar">
-                <div class="band-setlist-toolbar-main">
+                <div class="band-setlist-toolbar-top">
                     <div class="band-setlist-titleblock">
                         <span class="band-setlist-kicker">Repertoire</span>
-                        <h3>Songs <span class="band-setlist-count">(${this.currentBandSongs.length})</span></h3>
+                        <h3>Setlist <span class="band-setlist-count">(${this.currentBandSongs.length})</span></h3>
+                        <p class="band-setlist-description">Verwalte Songs, Reihenfolge und Material der Band an einem Ort.</p>
                     </div>
+                    <div class="band-setlist-toolbar-actions">
+                        <button class="btn btn-secondary btn-sm" id="bandSongsExportPDF" title="Gesamte Setliste als PDF">
+                            <img src="images/pdf-download.png" class="btn-icon-img" alt="PDF icon"><span class="btn-text-mobile-hide">Als PDF herunterladen</span>
+                        </button>
+                        <input type="file" id="csvSongUpload" accept=".csv" style="display: none;">
+                        <button class="btn btn-secondary btn-sm" onclick="UI.openModal('importSongsModal')" title="Import-Anleitung anzeigen">
+                            <img src="images/csv-import.png" class="btn-icon-img" alt="CSV icon"><span class="btn-text-mobile-hide">CSV Import</span>
+                        </button>
+                        <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song hinzufügen</button>
+                    </div>
+                </div>
+                <div class="band-setlist-toolbar-main">
                     <div class="search-wrapper band-setlist-search">
                         <span class="search-icon">🔍</span>
                         <input type="text" id="bandSongSearch" placeholder="Setliste durchsuchen..." class="modern-search-input" value="${searchTerm}">
                     </div>
-                </div>
-                <div class="band-setlist-toolbar-actions">
-                    <button class="btn btn-secondary btn-sm" id="bandSongsExportPDF" title="Gesamte Setliste als PDF">
-                        <img src="images/pdf-download.png" class="btn-icon-img" alt="PDF icon"><span class="btn-text-mobile-hide">Als PDF herunterladen</span>
-                    </button>
-                    <input type="file" id="csvSongUpload" accept=".csv" style="display: none;">
-                    <button class="btn btn-secondary btn-sm" onclick="UI.openModal('importSongsModal')" title="Import-Anleitung anzeigen">
-                        <img src="images/csv-import.png" class="btn-icon-img" alt="CSV icon"><span class="btn-text-mobile-hide">CSV Import</span>
-                    </button>
-                    <button id="addBandSongBtn" class="btn btn-primary btn-sm">+ Song hinzufügen</button>
                 </div>
             </div>
 
@@ -5898,6 +5916,7 @@ const App = {
                     <th style="padding: var(--spacing-sm); text-align: center; width: 40px;">
                         <input type="checkbox" id="selectAllBandSongs">
                     </th>
+                    <th style="padding: var(--spacing-sm); text-align: center; width: 108px;">Aktionen</th>
                     <th class="sortable-header ${getSortClass('title')}" data-field="title" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Titel</th>
                     <th class="sortable-header ${getSortClass('artist')}" data-field="artist" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">Interpret</th>
                     <th class="sortable-header ${getSortClass('bpm')}" data-field="bpm" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">BPM</th>
@@ -5910,7 +5929,6 @@ const App = {
                     <th style="padding: var(--spacing-sm); text-align: center;">PDF</th>
                     <th style="padding: var(--spacing-sm); text-align: left; min-width: 250px;">Infos</th>
                     <th class="sortable-header ${getSortClass('ccli')}" data-field="ccli" style="padding: var(--spacing-sm); text-align: left; cursor: pointer;">CCLI</th>
-                    <th style="padding: var(--spacing-sm); text-align: center;">Aktionen</th>
                 </tr>
             </thead>
             <tbody id="bandSongsTableBody">
@@ -6099,6 +6117,7 @@ const App = {
                 <tr>
                     <th style="text-align: center; width: 40px;">Pos.</th>
                     <th style="width: 30px;">#</th>
+                    <th style="text-align: center; width: 108px;">Aktionen</th>
                     <th>Titel</th>
                     <th>Interpret</th>
                     <th style="text-align: center;">BPM</th>
@@ -6111,7 +6130,6 @@ const App = {
                     <th style="text-align: center;">PDF</th>
                     <th>Infos</th>
                     <th>CCLI</th>
-                    <th style="text-align: center; width: 108px;">Aktionen</th>
                 </tr>
             </thead>
             <tbody id="draftEventSongsTableBody">
@@ -6121,6 +6139,14 @@ const App = {
                     <tr draggable="true" data-song-id="${song.id}">
                         <td class="drag-handle" data-label="Pos.">☰</td>
                         <td style="color: var(--color-text-muted);" data-label="#">${idx + 1}</td>
+                        <td class="event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
+                            <div class="event-setlist-actions">
+                                <button type="button" class="btn-icon edit-draft-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">
+                                    <span aria-hidden="true">✎</span>
+                                </button>
+                                <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen" aria-label="Song aus der Setlist entfernen">❌</button>
+                            </div>
+                        </td>
                         <td class="event-setlist-title-cell" data-label="Titel">${this.escapeHtml(draftSong.title)}</td>
                         <td data-label="Interpret">${this.escapeHtml(draftSong.artist || '-')}</td>
                         <td style="text-align: center;" data-label="BPM">${draftSong.bpm || '-'}</td>
@@ -6135,14 +6161,6 @@ const App = {
                         </td>
                         <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(draftSong))}</td>
                         <td style="font-family: monospace;" data-label="CCLI">${draftSong.ccli || '-'}</td>
-                        <td class="event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
-                            <div class="event-setlist-actions">
-                                <button type="button" class="btn-icon edit-draft-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">
-                                    <span aria-hidden="true">✎</span>
-                                </button>
-                                <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen" aria-label="Song aus der Setlist entfernen">❌</button>
-                            </div>
-                        </td>
                     </tr>
                 `;
                 }).join('')}
@@ -9733,16 +9751,39 @@ const App = {
         const bandId = document.getElementById('rehearsalBand').value;
         const locationId = document.getElementById('rehearsalLocation').value;
         const eventId = document.getElementById('rehearsalEvent').value || null;
+        const scheduleMode = (typeof Rehearsals !== 'undefined' && typeof Rehearsals.getScheduleMode === 'function')
+            ? Rehearsals.getScheduleMode()
+            : 'fixed';
 
         if (!title || !bandId) {
             UI.showToast('Bitte Titel und Band auswählen', 'error');
             return;
         }
 
-        const dates = Rehearsals.getDatesFromForm();
+        const fixedDate = (scheduleMode === 'fixed' && typeof Rehearsals !== 'undefined' && typeof Rehearsals.getFixedDateFromForm === 'function')
+            ? Rehearsals.getFixedDateFromForm()
+            : [];
+        const proposalDates = (scheduleMode === 'proposals' && typeof Rehearsals !== 'undefined' && typeof Rehearsals.getProposalDatesFromForm === 'function')
+            ? Rehearsals.getProposalDatesFromForm()
+            : [];
+        const dates = scheduleMode === 'fixed' ? fixedDate : proposalDates;
+
+        if (scheduleMode === 'fixed') {
+            const startTime = document.getElementById('rehearsalFixedStartTime')?.value || '';
+            const endTime = document.getElementById('rehearsalFixedEndTime')?.value || '';
+            if (startTime && endTime && endTime <= startTime) {
+                UI.showToast('Die Endzeit muss nach der Startzeit liegen.', 'error');
+                return;
+            }
+        }
 
         if (dates.length === 0) {
-            UI.showToast('Bitte mindestens einen vollständigen Terminvorschlag eingeben', 'error');
+            UI.showToast(
+                scheduleMode === 'fixed'
+                    ? 'Bitte trage den festen Termin vollständig ein.'
+                    : 'Bitte mindestens einen vollständigen Terminvorschlag eingeben.',
+                'error'
+            );
             return;
         }
 
@@ -9751,11 +9792,11 @@ const App = {
                 // Update existing
                 Logger.userAction('Form', 'rehearsalForm', 'Submit', { action: 'Update Rehearsal', rehearsalId: editId, title, bandId });
                 const notifyMembers = document.getElementById('sendUpdateEmail')?.checked || false;
-                await Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId, notifyMembers);
+                await Rehearsals.updateRehearsal(editId, bandId, title, description, dates, locationId, eventId, notifyMembers, { scheduleMode });
             } else {
                 // Create new
                 Logger.userAction('Form', 'rehearsalForm', 'Submit', { action: 'Create Rehearsal', title, bandId });
-                await Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId);
+                await Rehearsals.createRehearsal(bandId, title, description, dates, locationId, eventId, { scheduleMode });
             }
         };
 
@@ -9855,7 +9896,8 @@ const App = {
         }
 
         // Check for absence conflicts
-        const conflicts = await this.getAbsenceConflicts(bandId, dates);
+        const datesToCheck = dates.map(date => date?.startTime).filter(Boolean);
+        const conflicts = await this.getAbsenceConflicts(bandId, datesToCheck);
         if (conflicts && conflicts.length > 0) {
             const lines = conflicts.map(c => `• ${c.name}: ${c.dates.join(', ')}`);
             const msg = `Folgende Mitglieder haben für die ausgewählten Probetermine Abwesenheiten eingetragen:\n\n${lines.join('\n')}\n\nMöchtest du die Probe trotzdem anlegen?`;

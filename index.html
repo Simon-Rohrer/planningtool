@@ -1016,9 +1016,10 @@
                         <div class="view-page-shell dashboard-view-shell">
                             <div id="dashboardHero" class="dashboard-hero">
                                 <div class="dashboard-panel hero-welcome">
-                                    <span class="dashboard-section-kicker">Überblick</span>
-                                    <h2 class="welcome-text">Willkommen zurück, <span id="welcomeUserName">Musiker</span>!</h2>
-                                    <p class="hero-subtitle">Hier ist dein kompakter Überblick für Termine, Aktivitäten und Bandorganisation.</p>
+                                    <div class="hero-welcome-copy">
+                                        <h2 class="welcome-text">Willkommen zurück, <span id="welcomeUserName">Musiker</span>!</h2>
+                                        <p class="hero-subtitle">Hier ist dein kompakter Überblick für Termine, Aktivitäten und Bandorganisation.</p>
+                                    </div>
                                 </div>
                                 <div id="nextEventHero" class="dashboard-panel next-event-hero-card">
                                     <div class="next-event-badge">Nächster Termin</div>
@@ -2371,12 +2372,7 @@
 
                 <!-- Setlist Tab -->
                 <div id="setlistTab" class="tab-content">
-                    <div class="section band-details-panel-section">
-                        <div class="band-details-panel-intro">
-                            <span class="band-details-section-eyebrow">Repertoire</span>
-                            <h3>Setlist</h3>
-                            <p>Verwalte Songs, Reihenfolge und Material der Band an einem Ort.</p>
-                        </div>
+                    <div class="section band-details-panel-section band-setlist-panel">
                         <div id="bandSongsList"></div>
                     </div>
                 </div>
@@ -2563,8 +2559,8 @@
             <div class="modal-header scheduler-modal-header">
                 <div class="scheduler-modal-title-group">
                     <span class="scheduler-modal-kicker">Planung</span>
-                    <h2 id="rehearsalModalTitle">Neuen Probetermin vorschlagen</h2>
-                    <p class="scheduler-modal-subtitle">Erstelle eine saubere Abstimmung mit Band, Ort und möglichen Terminen.</p>
+                    <h2 id="rehearsalModalTitle">Neuen Probetermin erstellen</h2>
+                    <p class="scheduler-modal-subtitle">Plane festen Termin oder Abstimmung mit Band, Ort und Beteiligten in einer klaren Arbeitsfläche.</p>
                 </div>
                 <button class="modal-close">&times;</button>
             </div>
@@ -2613,32 +2609,80 @@
                         </div>
                     </section>
 
-                    <section class="scheduler-panel scheduler-panel-highlight">
+                    <section class="scheduler-panel scheduler-panel-highlight scheduler-panel-schedule">
                         <div class="scheduler-panel-head">
                             <div>
-                                <span class="scheduler-panel-eyebrow">Terminvorschläge</span>
-                                <h3>Abstimmung vorbereiten</h3>
+                                <span class="scheduler-panel-eyebrow">Termin</span>
+                                <h3>Terminfestlegung</h3>
                             </div>
-                            <p>Lege einen oder mehrere Vorschläge an. Vollständig ausgefüllte Vorschläge werden beim Speichern automatisch übernommen.</p>
+                            <p>Lege fest, ob die Probe schon verbindlich steht oder ob du zuerst mehrere Terminoptionen mit der Band abstimmst.</p>
                         </div>
-                        <div id="dateProposals" class="date-proposals">
-                            <div class="date-proposal-item" data-confirmed="false">
-                                <div class="date-time-range">
-                                    <input type="date" class="date-input-date" id="dateInputDate">
-                                    <input type="time" class="date-input-start" id="dateInputStart">
-                                    <span class="time-separator">bis</span>
-                                    <input type="time" class="date-input-end" id="dateInputEnd">
+                        <div class="scheduler-schedule-stack">
+                            <div class="form-group scheduler-span-2" id="rehearsalScheduleModeSection">
+                                <span class="scheduler-choice-label">Terminart</span>
+                                <div class="event-schedule-mode-grid" role="radiogroup" aria-label="Terminart des Probetermins">
+                                    <label class="event-schedule-mode-option">
+                                        <input type="radio" name="rehearsalScheduleMode" id="rehearsalScheduleModeFixed" value="fixed" checked>
+                                        <span class="event-schedule-mode-option-body">
+                                            <strong>Termin steht fest</strong>
+                                            <small>Datum und Uhrzeit der Probe sind bereits verbindlich.</small>
+                                        </span>
+                                    </label>
+                                    <label class="event-schedule-mode-option">
+                                        <input type="radio" name="rehearsalScheduleMode" id="rehearsalScheduleModeProposals" value="proposals">
+                                        <span class="event-schedule-mode-option-body">
+                                            <strong>Termin wird abgestimmt</strong>
+                                            <small>Du sammelst mehrere mögliche Probezeiten für die Band.</small>
+                                        </span>
+                                    </label>
                                 </div>
-                                <div class="date-proposal-footer">
-                                    <span class="date-availability"></span>
-                                    <div class="date-proposal-actions">
-                                        <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
+                                <small class="scheduler-field-note">Wähle eine Variante. Danach zeigt dir die Karte nur noch die passenden Termin-Felder.</small>
+                            </div>
+
+                            <div id="rehearsalFixedDateSection" class="scheduler-schedule-subpanel">
+                                <div class="scheduler-schedule-subpanel-head">
+                                    <span class="scheduler-panel-eyebrow">Fixer Termin</span>
+                                    <h4>Datum und Uhrzeit</h4>
+                                    <p>Trage hier den endgültigen Termin ein, wenn die Probe bereits fix ist.</p>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rehearsalFixedDate">Datum und Uhrzeit</label>
+                                    <div class="date-time-range rehearsal-fixed-date-range">
+                                        <input type="date" id="rehearsalFixedDate">
+                                        <input type="time" id="rehearsalFixedStartTime" value="18:30">
+                                        <span class="time-separator">bis</span>
+                                        <input type="time" id="rehearsalFixedEndTime" value="21:30">
+                                    </div>
+                                    <div id="rehearsalFixedDateAvailability" class="date-availability"></div>
+                                </div>
+                            </div>
+
+                            <div id="rehearsalDateProposalsSection" class="scheduler-schedule-subpanel">
+                                <div class="scheduler-schedule-subpanel-head">
+                                    <span class="scheduler-panel-eyebrow">Terminfindung</span>
+                                    <h4>Terminvorschläge</h4>
+                                    <p>Falls der Probetermin noch nicht feststeht, kannst du hier mehrere mögliche Zeitfenster sammeln.</p>
+                                </div>
+                                <div id="dateProposals" class="date-proposals">
+                                    <div class="date-proposal-item" data-confirmed="false">
+                                        <div class="date-time-range">
+                                            <input type="date" class="date-input-date" id="dateInputDate">
+                                            <input type="time" class="date-input-start" id="dateInputStart">
+                                            <span class="time-separator">bis</span>
+                                            <input type="time" class="date-input-end" id="dateInputEnd">
+                                        </div>
+                                        <div class="date-proposal-footer">
+                                            <span class="date-availability"></span>
+                                            <div class="date-proposal-actions">
+                                                <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+                                <div class="scheduler-inline-actions">
+                                    <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin hinzufügen</button>
+                                </div>
                             </div>
-                        </div>
-                        <div class="scheduler-inline-actions">
-                            <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin hinzufügen</button>
                         </div>
                     </section>
 
@@ -2685,8 +2729,7 @@
                     <button type="button" class="btn cancel">Abbrechen</button>
                     <button type="button" class="btn btn-danger" id="deleteRehearsalBtn"
                         style="display:none; margin-right: auto;">🗑️ Löschen</button>
-                    <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Vorschlag
-                        erstellen</button>
+                    <button type="submit" class="btn btn-primary" id="saveRehearsalBtn">Probetermin erstellen</button>
                 </div>
             </form>
         </div>
@@ -2933,7 +2976,7 @@
                                 <span class="scheduler-panel-eyebrow">Grunddaten</span>
                                 <h3>Rahmen des Auftritts</h3>
                             </div>
-                            <p>Lege Titel, Band, Ort und Terminart in einer klaren Reihenfolge fest.</p>
+                            <p>Lege Titel, Band und Ort in einer klaren Reihenfolge fest.</p>
                         </div>
                         <div class="form-grid-2 scheduler-grid scheduler-grid-basics">
                             <div class="form-group scheduler-span-2">
@@ -2953,6 +2996,18 @@
                                 <input type="text" id="eventLocation" placeholder="Musterstadt, Hauptstr 1">
                                 <small class="scheduler-field-note">Trage hier den Veranstaltungsort oder die vollständige Adresse ein.</small>
                             </div>
+                        </div>
+                    </section>
+
+                    <section class="scheduler-panel scheduler-panel-highlight scheduler-panel-schedule">
+                        <div class="scheduler-panel-head">
+                            <div>
+                                <span class="scheduler-panel-eyebrow">Termin</span>
+                                <h3>Terminfestlegung</h3>
+                            </div>
+                            <p>Lege fest, ob der Auftritt bereits verbindlich steht oder ob du zuerst mögliche Termine zur Abstimmung sammelst.</p>
+                        </div>
+                        <div class="scheduler-schedule-stack">
                             <div class="form-group scheduler-span-2" id="eventScheduleModeSection">
                                 <span class="scheduler-choice-label">Terminart</span>
                                 <div class="event-schedule-mode-grid" role="radiogroup" aria-label="Terminart des Auftritts">
@@ -2971,37 +3026,42 @@
                                         </span>
                                     </label>
                                 </div>
-                                <small class="scheduler-field-note">Wähle eine Variante. Danach zeigt dir das Formular nur noch die passenden Termin-Felder.</small>
+                                <small class="scheduler-field-note">Wähle eine Variante. Danach zeigt dir die Karte nur noch die passenden Termin-Felder.</small>
                             </div>
-                            <div class="form-group scheduler-span-2" id="eventFixedDateSection">
-                                <label for="eventDate">Datum und Uhrzeit</label>
-                                <input type="datetime-local" id="eventDate">
-                                <div id="eventFixedDateAvailability" class="date-availability" style="margin-top: 4px;"></div>
-                                <small class="help-text">Trage hier den endgültigen Termin ein, wenn der Auftritt bereits fix ist.</small>
-                            </div>
-                        </div>
-                    </section>
 
-                    <section class="scheduler-panel scheduler-panel-highlight" id="eventDateProposalsSection">
-                        <div class="scheduler-panel-head">
-                            <div>
-                                <span class="scheduler-panel-eyebrow">Terminfindung</span>
-                                <h3>Terminvorschläge</h3>
-                            </div>
-                            <p>Falls der Auftritt noch nicht fix ist, kannst du hier mögliche Termine sammeln.</p>
-                        </div>
-                        <div id="eventDateProposals" class="date-proposals">
-                            <div class="date-proposal-item" data-confirmed="false">
-                                <div class="date-time-range">
-                                    <input type="date" class="event-date-input-date">
-                                    <input type="time" class="event-date-input-start">
+                            <div id="eventFixedDateSection" class="scheduler-schedule-subpanel">
+                                <div class="scheduler-schedule-subpanel-head">
+                                    <span class="scheduler-panel-eyebrow">Fixer Termin</span>
+                                    <h4>Datum und Uhrzeit</h4>
+                                    <p>Trage hier den endgültigen Termin ein, wenn der Auftritt bereits fix ist.</p>
                                 </div>
-                                <span class="event-date-availability date-availability" style="margin-left:8px"></span>
-                                <button type="button" class="btn-icon remove-event-date" disabled>🗑️</button>
+                                <div class="form-group">
+                                    <label for="eventDate">Datum und Uhrzeit</label>
+                                    <input type="datetime-local" id="eventDate">
+                                    <div id="eventFixedDateAvailability" class="date-availability"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="scheduler-inline-actions">
-                            <button type="button" id="addEventDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin hinzufügen</button>
+
+                            <div id="eventDateProposalsSection" class="scheduler-schedule-subpanel">
+                                <div class="scheduler-schedule-subpanel-head">
+                                    <span class="scheduler-panel-eyebrow">Terminfindung</span>
+                                    <h4>Terminvorschläge</h4>
+                                    <p>Falls der Auftritt noch nicht fix ist, kannst du hier mögliche Termine sammeln.</p>
+                                </div>
+                                <div id="eventDateProposals" class="date-proposals">
+                                    <div class="date-proposal-item" data-confirmed="false">
+                                        <div class="date-time-range">
+                                            <input type="date" class="event-date-input-date">
+                                            <input type="time" class="event-date-input-start">
+                                        </div>
+                                        <span class="event-date-availability date-availability" style="margin-left:8px"></span>
+                                        <button type="button" class="btn-icon remove-event-date" disabled>🗑️</button>
+                                    </div>
+                                </div>
+                                <div class="scheduler-inline-actions">
+                                    <button type="button" id="addEventDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin hinzufügen</button>
+                                </div>
+                            </div>
                         </div>
                     </section>
 

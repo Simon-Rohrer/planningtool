@@ -429,7 +429,7 @@ const Bands = {
 
         // Clean up settings tab for a fresh start
         const settingsTab = document.getElementById('settingsTab');
-        const oldSections = settingsTab.querySelectorAll('.band-details-panel-section, .band-details-settings-meta');
+        const oldSections = settingsTab.querySelectorAll('.band-details-panel-intro, .band-details-panel-section, .band-details-settings-meta');
         oldSections.forEach(s => s.remove());
 
         // Prepare the compact settings panel
@@ -450,9 +450,10 @@ const Bands = {
 
         compactPanel.innerHTML = `
             <div class="band-settings-compact-header">
-                <div>
+                <div class="band-settings-compact-copy">
                     <span class="band-details-section-eyebrow">Verwaltung</span>
-                    <h3>Band-Einstellungen</h3>
+                    <h3>Einstellungen</h3>
+                    <p>Beitrittscode, Profilbild und Bandverwaltung in einer kompakten Übersicht.</p>
                 </div>
                 ${createdAtLabel ? `<span class="band-settings-date-badge" title="Erstellungsdatum">Erstellt am ${createdAtLabel}</span>` : ''}
             </div>
@@ -460,8 +461,11 @@ const Bands = {
             <div class="band-settings-compact-grid">
                 <!-- Profile Image Area -->
                 ${canManage ? `
-                    <div class="band-settings-compact-item profile-image-item">
-                        <label class="compact-setting-label">Profilbild</label>
+                    <section class="band-settings-card band-settings-compact-item profile-image-item">
+                        <div class="band-settings-card-head">
+                            <label class="compact-setting-label">Profilbild</label>
+                            <p class="compact-setting-note">Verwalte hier das Bild deiner Band fuer Uebersicht, Details und Einladungen.</p>
+                        </div>
                         <div class="band-settings-media-compact">
                             <div class="band-settings-media-frame-sm">
                                 ${band.image_url
@@ -470,29 +474,41 @@ const Bands = {
                                 }
                             </div>
                             <div class="band-settings-media-actions">
-                                <label for="settingsBandImage" class="btn btn-sm btn-outline-secondary">Bild ändern</label>
-                                <input type="file" id="settingsBandImage" accept="image/*" style="display: none;">
-                                ${band.image_url ? `<button class="btn btn-text-danger btn-sm" id="deleteBandImageBtn">Löschen</button>` : ''}
+                                <div class="band-settings-media-buttons">
+                                    <label for="settingsBandImage" class="btn btn-secondary btn-sm band-settings-action-btn band-settings-action-btn-primary">Bild ändern</label>
+                                    <input type="file" id="settingsBandImage" accept="image/*" style="display: none;">
+                                    ${band.image_url ? `<button class="btn btn-danger btn-sm band-settings-action-btn" id="deleteBandImageBtn">Bild löschen</button>` : ''}
+                                </div>
                                 <span id="uploadStatus" class="band-settings-status-sm"></span>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 ` : ''}
 
                 <!-- Join Code Area -->
-                <div class="band-settings-compact-item join-code-item">
-                    <label class="compact-setting-label">Beitrittscode</label>
+                <section class="band-settings-card band-settings-compact-item join-code-item">
+                    <div class="band-settings-card-head">
+                        <label class="compact-setting-label">Beitrittscode</label>
+                        <p class="compact-setting-note">Teile diesen Code mit neuen Mitgliedern, damit sie deiner Band beitreten koennen.</p>
+                    </div>
                     <div class="join-code-row-compact">
                         <code class="join-code-sm" id="bandJoinCode">${band.joinCode || 'Kein Code'}</code>
                         <button class="btn btn-sm btn-secondary" id="copyJoinCodeBtn">Kopieren</button>
                     </div>
-                    <p class="compact-setting-note">Teile diesen Code für neue Mitglieder.</p>
-                </div>
+                </section>
             </div>
 
             <div class="band-settings-compact-footer">
-                <button class="btn btn-warning btn-sm" id="leaveBandBtn">Band verlassen</button>
-                ${canManage ? `<button class="btn btn-text-danger btn-sm" id="deleteBandBtn">Band löschen</button>` : ''}
+                <div class="band-settings-danger-copy">
+                    <strong>Bandverwaltung</strong>
+                    <span>${canManage
+                        ? 'Band verlassen beendet nur deine Mitgliedschaft. Band loeschen entfernt Songs, Proben und Auftritte dauerhaft.'
+                        : 'Wenn du die Band verlaesst, endet nur deine Mitgliedschaft in dieser Band.'}</span>
+                </div>
+                <div class="band-settings-compact-actions">
+                    <button class="btn btn-warning btn-sm" id="leaveBandBtn">Band verlassen</button>
+                    ${canManage ? `<button class="btn btn-danger btn-sm" id="deleteBandBtn">Band löschen</button>` : ''}
+                </div>
             </div>
         `;
 
@@ -508,7 +524,7 @@ const Bands = {
                 fileInput.addEventListener('change', async () => {
                     if (fileInput.files.length > 0) {
                         const statusSpan = compactPanel.querySelector('#uploadStatus');
-                        if (statusSpan) statusSpan.innerHTML = '⏳...';
+                        if (statusSpan) statusSpan.textContent = 'Bild wird aktualisiert...';
                         fileInput.disabled = true;
                         
                         let result = false;
@@ -517,7 +533,8 @@ const Bands = {
                         }
                         
                         fileInput.disabled = false;
-                        if (statusSpan) statusSpan.innerHTML = result ? '✅' : '❌';
+                        fileInput.value = '';
+                        if (statusSpan) statusSpan.textContent = result ? 'Bild aktualisiert' : 'Upload fehlgeschlagen';
                     }
                 });
             }
@@ -531,12 +548,8 @@ const Bands = {
             }
 
             if (deleteBandBtn) {
-                deleteBandBtn.addEventListener('click', () => {
-                    // Triggers the deletion logic (assumed to be handled globally or elsewhere)
-                    // In the original code, it was likely handled by a global listener or direct call.
-                    // For now, we'll assume the button ID is enough if there's a global listener,
-                    // otherwise we might need to trigger the deletion logic here.
-                    // Let's check for deletion logic in bands.js
+                deleteBandBtn.addEventListener('click', async () => {
+                    await this.deleteBand(bandId);
                 });
             }
         }
@@ -802,29 +815,24 @@ const Bands = {
 
         // Reset content with structure
         container.innerHTML = `
-            <div class="band-details-panel-intro band-details-panel-intro-compact" style="position: relative;">
-                <span class="band-details-section-eyebrow">Kalender</span>
-                <h3>Abwesenheiten</h3>
-                <p>Behalte Verfuegbarkeiten der Band im Blick und plane transparenter.</p>
-                
-                <div class="absence-info-badge" style="position: absolute; top: 0; right: 0; margin: 0;">
-                    <div class="info-icon">i</div>
-                    <div class="info-text">
-                        Die Abwesenheiten erscheinen auch in der Verfügbarkeitsübersicht und der Datumsauswahl für neue Termine.
-                    </div>
+            <div class="band-details-panel-intro band-details-panel-intro-compact absence-panel-intro">
+                <div class="absence-panel-intro-copy">
+                    <span class="band-details-section-eyebrow">Kalender</span>
+                    <h3>Abwesenheiten</h3>
+                    <p>Behalte Verfuegbarkeiten der Band im Blick, plane transparenter und sieh Abwesenheiten direkt in der Verfuegbarkeitsuebersicht sowie bei neuen Terminen.</p>
                 </div>
-            </div>
-            <div class="absence-view-controls">
-                <div class="filter-group">
-                    <div class="absence-filters">
-                        <button class="absence-filter-btn active" data-filter="all">Alle</button>
-                        <button class="absence-filter-btn" data-filter="own">Deine eigenen</button>
+                <div class="absence-view-controls">
+                    <div class="filter-group">
+                        <div class="absence-filters">
+                            <button class="absence-filter-btn active" data-filter="all">Alle</button>
+                            <button class="absence-filter-btn" data-filter="own">Deine eigenen</button>
+                        </div>
                     </div>
-                </div>
-                <div class="absence-actions">
-                    <button type="button" id="openAbsenceSettingsShortcut" class="btn btn-primary btn-sm">
-                        + Abwesenheit anlegen
-                    </button>
+                    <div class="absence-actions">
+                        <button type="button" id="openAbsenceSettingsShortcut" class="btn btn-primary btn-sm">
+                            + Abwesenheit anlegen
+                        </button>
+                    </div>
                 </div>
             </div>
 
