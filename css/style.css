@@ -27930,14 +27930,14 @@ html[data-theme="light"] #landingPage .auth-white-card .custom-multiselect .mult
 
 @media (max-width: 768px) {
     #landingPage .landing-auth-overlay {
-        padding: 16px;
+        padding: 20px;
         align-items: center;
     }
 
     #landingPage .auth-white-card,
     #landingPage .auth-white-card.auth-mode-register,
     #landingPage .auth-white-card:has(#registerForm.active) {
-        width: min(100%, 420px);
+        width: min(100%, 408px);
         max-width: 420px;
         max-height: min(90dvh, 820px);
         border-radius: 24px;
@@ -28030,13 +28030,13 @@ html[data-theme="light"] #landingPage .auth-white-card .custom-multiselect .mult
 
 @media (max-width: 420px) {
     #landingPage .landing-auth-overlay {
-        padding: 12px;
+        padding: 16px;
     }
 
     #landingPage .auth-white-card,
     #landingPage .auth-white-card.auth-mode-register,
     #landingPage .auth-white-card:has(#registerForm.active) {
-        width: calc(100vw - 24px);
+        width: calc(100vw - 32px);
         max-height: min(92dvh, 820px);
         border-radius: 22px;
     }
@@ -30313,31 +30313,37 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 }
 
 #dashboardView .dashboard-reorder-hint {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 0.65rem;
+    justify-content: flex-end;
+    gap: 0.42rem;
     width: 100%;
-    min-height: 48px;
-    padding: 0.82rem 1rem;
-    border-radius: 18px;
-    border: 1px dashed color-mix(in srgb, var(--accent-secondary) 28%, var(--border));
-    background: color-mix(in srgb, var(--surface-secondary) 86%, var(--surface));
-    color: var(--text-secondary);
-    font-size: 0.88rem;
-    font-weight: 600;
-    line-height: 1.45;
+    min-height: 0;
+    margin-top: 0.45rem;
+    margin-bottom: 0.1rem;
+    padding: 0 0.2rem 0 0;
+    border: none;
+    background: transparent;
+    color: color-mix(in srgb, var(--text-muted) 90%, transparent);
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 
 #dashboardView .dashboard-reorder-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--surface) 88%, var(--surface-secondary));
-    color: var(--text-secondary);
-    font-weight: 800;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    color: color-mix(in srgb, var(--text-muted) 78%, transparent);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1;
 }
 
 #dashboardView .dashboard-card.stat-card {
@@ -30397,6 +30403,11 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
     grid-template-columns: minmax(0, 1.34fr) minmax(320px, 0.9fr);
     gap: var(--dashboard-gap);
     align-items: start;
+}
+
+#dashboardView .dashboard-bento-grid > .dashboard-section {
+    grid-column: 1 / -1;
+    width: 100%;
 }
 
 #dashboardView .dashboard-section {
@@ -30878,9 +30889,11 @@ html[data-theme="light"] #dashboardView,
     }
 
     #dashboardView .dashboard-reorder-hint {
-        width: 100%;
-        justify-content: center;
-        padding-inline: 0.9rem;
+        justify-content: flex-start;
+        margin-top: 0.3rem;
+        padding-right: 0;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
     }
 
     #dashboardView .dashboard-panel,
@@ -31131,6 +31144,28 @@ html[data-theme="light"] #dashboardView,
     padding: 0;
 }
 
+#landingPage .landing-showcase {
+    position: relative;
+    inset: auto;
+    display: flex;
+    width: 100%;
+    margin: 0;
+    min-height: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+    pointer-events: none;
+}
+
+#landingPage .landing-showcase::after {
+    display: none;
+}
+
+#landingPage .landing-mobile-stage {
+    display: none !important;
+}
+
 #landingPage .landing-hero-image-frame {
     width: min(100%, 760px);
     margin-left: auto;
@@ -31330,17 +31365,56 @@ html[data-theme="light"] #landingPage .landing-hero-features span:not(.dot),
 
 @media (max-width: 820px) {
     #landingPage .landing-scene {
-        max-width: calc(100vw - 24px);
-        padding: 18px 0 22px;
-        gap: 20px;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: env(safe-area-inset-top) 12px 22px;
+        box-sizing: border-box;
+        gap: 18px;
     }
 
     #landingPage .landing-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
         padding: 0;
+        margin-top: 0;
     }
 
     #landingPage .landing-main {
-        gap: 20px;
+        width: 100%;
+        gap: 18px;
+        padding-top: 0;
+        position: static;
+        align-items: stretch;
+    }
+
+    #landingPage .landing-logo {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    #landingPage .landing-nav {
+        width: auto;
+        margin-left: 0;
+        padding: 0;
+        gap: 0;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    #landingPage .landing-nav-theme,
+    #landingPage .landing-nav-register {
+        display: none;
+    }
+
+    #landingPage .landing-nav-login {
+        display: inline-flex;
+        min-height: 40px;
+        padding: 0 0.95rem;
+        border-radius: 14px;
     }
 
     #landingPage .landing-copy-column {
@@ -31353,14 +31427,37 @@ html[data-theme="light"] #landingPage .landing-hero-features span:not(.dot),
         font-size: clamp(2rem, 6vw, 2.9rem);
     }
 
+    #landingPage .landing-hero-grid {
+        display: grid;
+        position: static;
+        min-height: 0;
+        grid-template-columns: 1fr;
+    }
+
     #landingPage .hero-sub,
     #landingPage .landing-hero-tagline {
         max-width: none;
     }
 
+    #landingPage .landing-showcase {
+        position: relative;
+        inset: auto;
+        min-height: 0;
+        margin-top: 2px;
+        pointer-events: none;
+    }
+
+    #landingPage .landing-showcase-visual {
+        width: 100%;
+        justify-content: center;
+    }
+
     #landingPage .landing-hero-image-frame {
+        width: min(100%, 460px);
+        margin: 0 auto;
         padding: 0;
         border-radius: 0;
+        aspect-ratio: 1 / 0.86;
     }
 
     #landingPage .landing-feature-strip {
@@ -31387,14 +31484,20 @@ html[data-theme="light"] #landingPage .landing-hero-features span:not(.dot),
 
 @media (max-width: 560px) {
     #landingPage .landing-scene {
-        max-width: calc(100vw - 16px);
-        padding: 10px 0 18px;
-        gap: 14px;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: env(safe-area-inset-top) 12px 18px;
+        box-sizing: border-box;
+        gap: 12px;
     }
 
     #landingPage .landing-header {
+        display: flex;
+        justify-content: flex-start;
         gap: 10px;
         align-items: center;
+        margin-top: 0;
     }
 
     #landingPage .landing-logo-mark {
@@ -31413,9 +31516,11 @@ html[data-theme="light"] #landingPage .landing-hero-features span:not(.dot),
     }
 
     #landingPage .landing-nav {
-        gap: 6px;
-        padding: 0.24rem;
-        border-radius: 18px;
+        width: auto;
+        justify-content: flex-start;
+        gap: 0;
+        padding: 0;
+        border-radius: 0;
     }
 
     #landingPage .landing-nav-action {
@@ -31431,9 +31536,14 @@ html[data-theme="light"] #landingPage .landing-hero-features span:not(.dot),
     }
 
     #landingPage .landing-copy-column {
+        width: 100%;
+        max-width: none;
+        margin: 0;
         padding: 0;
         border-radius: 0;
         gap: 0.85rem;
+        align-items: flex-start;
+        text-align: left;
     }
 
     #landingPage .landing-hero-eyebrow {
@@ -31466,7 +31576,13 @@ html[data-theme="light"] #landingPage .landing-hero-features span:not(.dot),
         line-height: 1.58;
     }
 
+    #landingPage .landing-showcase {
+        margin-top: 2px;
+    }
+
     #landingPage .landing-hero-image-frame {
+        width: min(100%, 320px);
+        margin: 0 auto;
         padding: 0;
         border-radius: 0;
         aspect-ratio: 1 / 0.9;
