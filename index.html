@@ -61,7 +61,7 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/style.css?v=20260407-22">
     <link rel="stylesheet" href="css/sidebar.css?v=20260407-2">
-    <link rel="stylesheet" href="css/calendar.css">
+    <link rel="stylesheet" href="css/calendar.css?v=20260407-1">
     <!-- <link rel="stylesheet" href="css/loader.css"> Removed: Consolidated into style.css -->
     <link rel="stylesheet" href="css/settings_modal.css">
     <link rel="stylesheet" href="css/statistics.css">
@@ -1662,31 +1662,10 @@
 
                     <!-- Kalender View -->
                     <div id="kalenderView" class="view">
-                        <div class="view-page-shell">
-                            <section class="page-overview-card">
-                                <div class="page-overview-copy">
-                                    <span class="page-overview-kicker">Planung</span>
-                                    <h2>Mein Kalender</h2>
-                                    <p>Sieh alle persönlichen Termine in einer Übersicht und abonniere deinen Kalender für Apple, Google oder Samsung.</p>
-                                </div>
-                                <div class="page-overview-meta">
-                                    <span class="page-overview-caption">Persönliche Termine, Export und Synchronisation</span>
-                                </div>
-                            </section>
-
-                            <div class="section page-section-card">
+                        <div class="view-page-shell personal-calendar-page-shell">
+                            <div class="section page-section-card personal-calendar-section">
                                 <div id="personalCalendarContainer">
                                     <!-- Personal calendar will be rendered here -->
-                                </div>
-                                <div class="calendar-subscription-block">
-                                    <span class="calendar-subscription-copy">
-                                        Abonniere deinen Kalender auf dem Smartphone oder Desktop und behalte neue Termine automatisch im Blick.
-                                    </span>
-                                    <button id="subscribePersonalCalendarBtn" class="btn btn-secondary"
-                                        onclick="PersonalCalendar.exportICS()"
-                                        style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                                        Kalender abonnieren
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -3870,7 +3849,7 @@
     <script src="js/rehearsals.js?v=20260311"></script>
     <script src="js/statistics.js?v=20260311"></script>
     <script src="js/calendar.js?v=20260311"></script>
-    <script src="js/personal-calendar.js?v=20260311"></script>
+    <script src="js/personal-calendar.js?v=20260407-1"></script>
     <script src="js/churchtools-api.js?v=20260311"></script>
     <script src="js/musikpool.js?v=20260311"></script>
     <script src="js/ui.js?v=20260311"></script>

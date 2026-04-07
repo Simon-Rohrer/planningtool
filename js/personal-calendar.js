@@ -364,34 +364,46 @@ const PersonalCalendar = {
         const canCreate = Auth.isAdmin() || Object.values(this.userRoles || {}).some(role => role === 'leader' || role === 'co-leader');
 
         // Build calendar HTML
-        let html = '';
-
-        if (canCreate) {
-            html += `
-                <div class="calendar-actions" style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="App.openCreateRehearsalModal()" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span>➕</span> Probe anlegen
-                    </button>
-                    <button class="btn btn-secondary" onclick="App.openCreateEventModal()" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span>🎤</span> Auftritt anlegen
-                    </button>
-                    <button class="btn btn-ghost" onclick="App.openAbsencesSettings()" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span>🗓️</span> Abwesenheit eintragen
+        let html = `
+            <div class="personal-calendar-head">
+                <div class="personal-calendar-head-top">
+                    <div class="personal-calendar-head-copy">
+                        <span class="personal-calendar-head-kicker">Persönliche Termine und Synchronisation</span>
+                        <p>Alle persönlichen Termine, schnelle Aktionen und dein Kalender-Abo in einem kompakten Bereich.</p>
+                    </div>
+                    <button class="btn btn-secondary personal-calendar-subscribe-btn" onclick="PersonalCalendar.exportICS()">
+                        <span aria-hidden="true">🔗</span>
+                        <span>Kalender abonnieren</span>
                     </button>
                 </div>
-            `;
-        }
-
-        html += `
-            <div class="calendar-header">
-                <button onclick="PersonalCalendar.previousMonth()" class="btn btn-icon" style="font-size: 1.5rem;">‹</button>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <h3 style="color: var(--color-text); margin: 0; font-size: 1.5rem; font-weight: 700;">${monthName}</h3>
-                    <button onclick="PersonalCalendar.goToToday()" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">📅 Heute</button>
+                <div class="personal-calendar-toolbar">
+                    ${canCreate ? `
+                        <div class="personal-calendar-toolbar-actions">
+                            <button class="btn btn-primary personal-calendar-action-btn" onclick="App.openCreateRehearsalModal()">
+                                <span aria-hidden="true">➕</span>
+                                <span>Probe anlegen</span>
+                            </button>
+                            <button class="btn btn-secondary personal-calendar-action-btn" onclick="App.openCreateEventModal()">
+                                <span aria-hidden="true">🎤</span>
+                                <span>Auftritt anlegen</span>
+                            </button>
+                            <button class="btn btn-ghost personal-calendar-action-btn" onclick="App.openAbsencesSettings()">
+                                <span aria-hidden="true">🗓️</span>
+                                <span>Abwesenheit eintragen</span>
+                            </button>
+                        </div>
+                    ` : ''}
+                    <div class="personal-calendar-toolbar-nav">
+                        <button onclick="PersonalCalendar.previousMonth()" class="btn btn-icon personal-calendar-nav-btn" type="button" aria-label="Vorheriger Monat">‹</button>
+                        <div class="personal-calendar-toolbar-title">
+                            <h3>${monthName}</h3>
+                            <button onclick="PersonalCalendar.goToToday()" class="btn btn-secondary personal-calendar-today-btn" type="button">Heute</button>
+                        </div>
+                        <button onclick="PersonalCalendar.nextMonth()" class="btn btn-icon personal-calendar-nav-btn" type="button" aria-label="Nächster Monat">›</button>
+                    </div>
                 </div>
-                <button onclick="PersonalCalendar.nextMonth()" class="btn btn-icon" style="font-size: 1.5rem;">›</button>
             </div>
-            
+
             <div class="calendar-grid personal-calendar-grid">
                 <div class="calendar-day-headers">
                     <div class="calendar-day-header">Mo</div>

@@ -29,6 +29,137 @@
     gap: 1px;
 }
 
+#kalenderView .personal-calendar-page-shell {
+    gap: 0;
+}
+
+#kalenderView .personal-calendar-section {
+    padding: 0.8rem;
+}
+
+#kalenderView .personal-calendar-head {
+    display: grid;
+    gap: 0.9rem;
+    margin-bottom: 0.8rem;
+    padding: 0.9rem 0.95rem;
+    border-radius: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    background:
+        radial-gradient(circle at top right, rgba(99, 102, 241, 0.14), transparent 38%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
+        var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+#kalenderView .personal-calendar-head-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+#kalenderView .personal-calendar-head-copy {
+    min-width: 0;
+    display: grid;
+    gap: 0.28rem;
+}
+
+#kalenderView .personal-calendar-head-kicker {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+#kalenderView .personal-calendar-head-copy p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    max-width: 43rem;
+}
+
+#kalenderView .personal-calendar-subscribe-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 42px;
+    white-space: nowrap;
+}
+
+#kalenderView .personal-calendar-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+}
+
+#kalenderView .personal-calendar-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+#kalenderView .personal-calendar-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 42px;
+    padding: 0.68rem 0.95rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+#kalenderView .personal-calendar-toolbar-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+#kalenderView .personal-calendar-toolbar-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+#kalenderView .personal-calendar-toolbar-title h3 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1.6rem;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+}
+
+#kalenderView .personal-calendar-nav-btn {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    font-size: 1.3rem;
+    padding: 0;
+}
+
+#kalenderView .personal-calendar-today-btn {
+    min-height: 38px;
+    padding: 0.42rem 0.8rem;
+    font-size: 0.86rem;
+    white-space: nowrap;
+}
+
 .calendar-day-headers {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -118,17 +249,17 @@
     background: var(--color-primary);
     color: white;
     text-align: center;
-    padding: var(--spacing-sm);
+    padding: 0.7rem 0.35rem;
     font-weight: 700;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
 }
 
 /* Calendar Day Cell */
 .calendar-day {
     background: var(--color-surface);
-    min-height: 100px;
-    padding: 6px;
+    min-height: 74px;
+    padding: 4px;
     display: flex;
     flex-direction: column;
     transition: all var(--transition-fast);
@@ -148,7 +279,7 @@
     font-weight: 700;
     font-size: 0.75rem;
     color: var(--color-text);
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
 
 .calendar-day.today .calendar-day-number {
@@ -232,8 +363,20 @@
 
 /* Responsive Design */
 @media (max-width: 1024px) {
+    #kalenderView .personal-calendar-head {
+        padding: 0.9rem 0.95rem;
+    }
+
+    #kalenderView .personal-calendar-toolbar {
+        align-items: flex-start;
+    }
+
+    #kalenderView .personal-calendar-toolbar-title h3 {
+        font-size: 1.4rem;
+    }
+
     .calendar-day {
-        min-height: 85px;
+        min-height: 68px;
     }
 
     .calendar-week-row.has-absence-bars {
@@ -246,6 +389,37 @@
 }
 
 @media (max-width: 768px) {
+    #kalenderView .personal-calendar-head-top,
+    #kalenderView .personal-calendar-toolbar,
+    #kalenderView .personal-calendar-toolbar-actions,
+    #kalenderView .personal-calendar-toolbar-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #kalenderView .personal-calendar-toolbar-nav {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    #kalenderView .personal-calendar-toolbar-title {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    #kalenderView .personal-calendar-subscribe-btn,
+    #kalenderView .personal-calendar-action-btn,
+    #kalenderView .personal-calendar-today-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #kalenderView .personal-calendar-head-copy p {
+        font-size: 0.86rem;
+    }
+
     .calendar-week-row.has-absence-bars {
         padding-top: calc((var(--absence-lanes, 0) * 18px) + 6px);
     }
@@ -268,7 +442,7 @@
     }
 
     .calendar-day {
-        min-height: 70px;
+        min-height: 58px;
         padding: 3px;
     }
 
@@ -287,11 +461,6 @@
 }
 
 @media (max-width: 480px) {
-    .calendar-header {
-        flex-direction: column;
-        gap: var(--spacing-sm);
-    }
-
     .calendar-grid {
         grid-template-columns: repeat(7, minmax(40px, 1fr));
     }
@@ -300,8 +469,23 @@
         display: flex;
     }
 
+    #kalenderView .personal-calendar-head {
+        gap: 0.75rem;
+        padding: 0.85rem;
+        border-radius: 18px;
+    }
+
+    #kalenderView .personal-calendar-head-kicker {
+        font-size: 0.66rem;
+        letter-spacing: 0.12em;
+    }
+
+    #kalenderView .personal-calendar-toolbar-title h3 {
+        font-size: 1.15rem;
+    }
+
     .calendar-day {
-        min-height: 60px;
+        min-height: 52px;
         padding: 2px;
     }
 
