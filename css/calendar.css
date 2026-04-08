@@ -1549,3 +1549,380 @@
         padding: 0 0.12rem 0.28rem;
     }
 }
+
+/* ===== Probeorte matches Meine Termine exactly ===== */
+#probeorteView.probeorte-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+#probeorteView .personal-calendar-page-shell {
+    gap: 0;
+}
+
+#probeorteView .personal-calendar-section {
+    padding: 0.8rem;
+}
+
+#probeorteView .probeorte-calendar-panel {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+#probeorteView .personal-calendar-head {
+    display: grid;
+    gap: 0.9rem;
+    margin-bottom: 0.8rem;
+    padding: 0.9rem 0.95rem;
+    border-radius: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    background:
+        radial-gradient(circle at top right, rgba(99, 102, 241, 0.14), transparent 38%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
+        var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+#probeorteView .personal-calendar-head-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+#probeorteView .personal-calendar-head-copy {
+    min-width: 0;
+    display: grid;
+    gap: 0.28rem;
+}
+
+#probeorteView .personal-calendar-head-kicker {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+#probeorteView .personal-calendar-head-copy p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    max-width: 43rem;
+}
+
+#probeorteView .personal-calendar-subscribe-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 42px;
+    white-space: nowrap;
+}
+
+#probeorteView .probeorte-calendar-head-caption {
+    font-size: 0.88rem;
+    line-height: 1.3;
+    text-align: center;
+    cursor: default;
+    pointer-events: none;
+}
+
+#probeorteView .personal-calendar-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+}
+
+#probeorteView .personal-calendar-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+#probeorteView .calendar-submenu.probeorte-submenu {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    flex-wrap: wrap;
+    overflow: visible;
+    scroll-snap-type: none;
+}
+
+#probeorteView .calendar-submenu.probeorte-submenu::-webkit-scrollbar {
+    display: none;
+}
+
+#probeorteView .personal-calendar-action-btn,
+#probeorteView .calendar-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 42px;
+    padding: 0.68rem 0.95rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+#probeorteView .calendar-tab.btn-secondary {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+        rgba(15, 23, 42, 0.18);
+    border-color: rgba(129, 162, 255, 0.14);
+    color: var(--color-text-secondary);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+#probeorteView .calendar-tab.btn-secondary:hover {
+    background:
+        linear-gradient(180deg, rgba(96, 165, 250, 0.08), transparent),
+        rgba(15, 23, 42, 0.24);
+    border-color: rgba(129, 162, 255, 0.24);
+    color: var(--color-text);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+}
+
+#probeorteView .calendar-tab.btn-primary,
+#probeorteView .calendar-tab.active {
+    background:
+        linear-gradient(135deg, rgba(96, 165, 250, 0.98), rgba(99, 102, 241, 0.92) 78%, rgba(139, 92, 246, 0.76));
+    border-color: rgba(147, 197, 253, 0.28);
+    color: #f8fbff;
+    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
+}
+
+#probeorteView .calendar-tab.btn-primary:hover,
+#probeorteView .calendar-tab.active:hover {
+    background:
+        linear-gradient(135deg, rgba(125, 211, 252, 0.98), rgba(96, 165, 250, 0.95) 72%, rgba(129, 140, 248, 0.82));
+    color: #ffffff;
+}
+
+#probeorteView .calendar-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.95;
+}
+
+#probeorteView .calendar-tab-label {
+    white-space: nowrap;
+}
+
+#probeorteView .probeorte-calendar-toolbar-host {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: auto;
+}
+
+#probeorteView .personal-calendar-toolbar-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+#probeorteView .personal-calendar-toolbar-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+#probeorteView .personal-calendar-toolbar-title h3 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1.6rem;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+}
+
+#probeorteView .personal-calendar-nav-btn {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    font-size: 1.3rem;
+    padding: 0;
+}
+
+#probeorteView .personal-calendar-today-btn {
+    min-height: 38px;
+    padding: 0.42rem 0.8rem;
+    font-size: 0.86rem;
+    white-space: nowrap;
+}
+
+#probeorteView .calendar-grid.personal-calendar-grid {
+    margin-top: 0.35rem;
+}
+
+#probeorteView .calendar-day-header {
+    background: var(--color-primary);
+    color: white;
+    text-align: center;
+    padding: 0.7rem 0.35rem;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+#probeorteView .calendar-day {
+    background: var(--color-surface);
+    min-height: 88px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: all var(--transition-fast);
+}
+
+#probeorteView .calendar-event {
+    position: relative;
+    overflow: hidden;
+    padding: 0.34rem 0.52rem;
+    border-radius: 12px;
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    background:
+        linear-gradient(135deg, rgba(96, 165, 250, 0.96), rgba(59, 130, 246, 0.92) 68%, rgba(139, 92, 246, 0.72));
+    box-shadow: 0 10px 18px rgba(30, 64, 175, 0.16);
+    gap: 0.14rem;
+}
+
+#probeorteView .calendar-event::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 45%);
+    pointer-events: none;
+}
+
+#probeorteView .calendar-event:hover {
+    box-shadow: 0 14px 24px rgba(30, 64, 175, 0.2);
+    border-color: rgba(191, 219, 254, 0.24);
+}
+
+#probeorteView .calendar-event .event-time {
+    position: relative;
+    z-index: 1;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: rgba(239, 246, 255, 0.92);
+    letter-spacing: 0.01em;
+}
+
+#probeorteView .calendar-event .event-title {
+    position: relative;
+    z-index: 1;
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1.18;
+    color: #ffffff;
+}
+
+@media (max-width: 1024px) {
+    #probeorteView .personal-calendar-head {
+        padding: 0.9rem 0.95rem;
+    }
+
+    #probeorteView .personal-calendar-toolbar {
+        align-items: flex-start;
+    }
+
+    #probeorteView .personal-calendar-toolbar-title h3 {
+        font-size: 1.4rem;
+    }
+
+    #probeorteView .calendar-day {
+        min-height: 82px;
+    }
+}
+
+@media (max-width: 768px) {
+    #probeorteView.probeorte-view {
+        padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    }
+
+    #probeorteView .personal-calendar-head-top,
+    #probeorteView .personal-calendar-toolbar,
+    #probeorteView .personal-calendar-toolbar-actions,
+    #probeorteView .personal-calendar-toolbar-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #probeorteView .personal-calendar-toolbar-nav {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    #probeorteView .personal-calendar-toolbar-title {
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    #probeorteView .personal-calendar-subscribe-btn,
+    #probeorteView .personal-calendar-action-btn,
+    #probeorteView .personal-calendar-today-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #probeorteView .personal-calendar-head-copy p {
+        font-size: 0.86rem;
+    }
+
+    #probeorteView .calendar-grid.personal-calendar-grid {
+        margin-top: 0.25rem;
+    }
+
+    #probeorteView .calendar-day {
+        min-height: 76px;
+    }
+}
+
+@media (max-width: 520px) {
+    #probeorteView .calendar-tab {
+        font-size: 0.84rem;
+    }
+
+    #probeorteView .calendar-event {
+        padding: 0.28rem 0.42rem;
+        border-radius: 10px;
+    }
+
+    #probeorteView .calendar-event .event-time {
+        font-size: 0.58rem;
+    }
+
+    #probeorteView .calendar-event .event-title {
+        font-size: 0.62rem;
+    }
+}

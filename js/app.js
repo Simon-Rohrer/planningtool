@@ -3434,7 +3434,14 @@ const App = {
                 const calendarType = tab.dataset.calendar;
 
                 // Update active tab
-                document.querySelectorAll('.calendar-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.calendar-tab').forEach(t => {
+                    t.classList.remove('active', 'btn-primary');
+                    if (!t.classList.contains('btn-secondary')) {
+                        t.classList.add('btn-secondary');
+                    }
+                });
+                tab.classList.remove('btn-secondary');
+                tab.classList.add('btn-primary');
                 tab.classList.add('active');
 
                 // Show/hide calendar containers
@@ -9370,7 +9377,8 @@ const App = {
 
             // Create tab button
             const button = document.createElement('button');
-            button.className = `calendar-tab ${index === 0 ? 'active' : ''}`;
+            button.type = 'button';
+            button.className = `btn ${index === 0 ? 'btn-primary active' : 'btn-secondary'} personal-calendar-action-btn calendar-tab`;
             button.dataset.calendar = calId;
             button.innerHTML = `
                 <span class="calendar-tab-icon" aria-hidden="true">${this.escapeHtml(icon)}</span>
@@ -9378,10 +9386,17 @@ const App = {
             `;
             button.addEventListener('click', async () => {
                 // Remove active class from all tabs and containers
-                submenu.querySelectorAll('.calendar-tab').forEach(tab => tab.classList.remove('active'));
+                submenu.querySelectorAll('.calendar-tab').forEach(tab => {
+                    tab.classList.remove('active', 'btn-primary');
+                    if (!tab.classList.contains('btn-secondary')) {
+                        tab.classList.add('btn-secondary');
+                    }
+                });
                 calendarSection.querySelectorAll('.calendar-container').forEach(cont => cont.classList.remove('active'));
 
                 // Add active class to clicked tab and its container
+                button.classList.remove('btn-secondary');
+                button.classList.add('btn-primary');
                 button.classList.add('active');
                 const container = document.getElementById(`${calId}Calendar`);
                 if (container) {

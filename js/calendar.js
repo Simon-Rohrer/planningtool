@@ -240,97 +240,99 @@ const Calendar = {
         const month = calendar.currentMonth.getMonth();
 
         const monthName = calendar.currentMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-
-        // Get first day of month and last day
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-
-        // Get day of week for first day (0 = Sunday, we want Monday = 0)
-        let startDay = firstDay.getDay() - 1;
-        if (startDay === -1) startDay = 6; // Sunday becomes 6
-
-        const daysInMonth = lastDay.getDate();
+        const weeks = this.buildCalendarWeeks(year, month);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
         // Build calendar HTML
         let html = `
-            <div class="probeorte-calendar-grid-scroll">
-                <div class="probeorte-calendar-mobile-hint">Seitlich wischen, um alle Wochentage bequem zu sehen.</div>
-                <div class="calendar-grid probeorte-calendar-grid">
-                <div class="calendar-day-header">Mo</div>
-                <div class="calendar-day-header">Di</div>
-                <div class="calendar-day-header">Mi</div>
-                <div class="calendar-day-header">Do</div>
-                <div class="calendar-day-header">Fr</div>
-                <div class="calendar-day-header">Sa</div>
-                <div class="calendar-day-header">So</div>
+            <div class="calendar-grid personal-calendar-grid">
+                <div class="calendar-day-headers">
+                    <div class="calendar-day-header">Mo</div>
+                    <div class="calendar-day-header">Di</div>
+                    <div class="calendar-day-header">Mi</div>
+                    <div class="calendar-day-header">Do</div>
+                    <div class="calendar-day-header">Fr</div>
+                    <div class="calendar-day-header">Sa</div>
+                    <div class="calendar-day-header">So</div>
+                </div>
+                <div class="calendar-weeks">
         `;
-
-        // Add empty cells for days before month starts
-        for (let i = 0; i < startDay; i++) {
-            html += '<div class="calendar-day empty"></div>';
-        }
-
-        // Add actual days
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
         const canQuickCreate = this.canQuickCreate();
 
         if (toolbarHost) {
             toolbarHost.innerHTML = `
-                <div class="probeorte-calendar-toolbar-nav">
-                    <button onclick="Calendar.previousMonth()" class="btn btn-icon probeorte-calendar-nav" type="button" aria-label="Vorheriger Monat">‹</button>
-                    <div class="probeorte-calendar-toolbar-title">
+                <div class="personal-calendar-toolbar-nav probeorte-calendar-toolbar-nav">
+                    <button onclick="Calendar.previousMonth()" class="btn btn-icon personal-calendar-nav-btn probeorte-calendar-nav" type="button" aria-label="Vorheriger Monat">‹</button>
+                    <div class="personal-calendar-toolbar-title probeorte-calendar-toolbar-title">
                         <h3 class="probeorte-calendar-title">${monthName}</h3>
-                        <button onclick="Calendar.goToToday()" class="btn btn-secondary probeorte-calendar-today" type="button">📅 Heute</button>
+                        <button onclick="Calendar.goToToday()" class="btn btn-secondary personal-calendar-today-btn probeorte-calendar-today" type="button">Heute</button>
                     </div>
-                    <button onclick="Calendar.nextMonth()" class="btn btn-icon probeorte-calendar-nav" type="button" aria-label="Nächster Monat">›</button>
+                    <button onclick="Calendar.nextMonth()" class="btn btn-icon personal-calendar-nav-btn probeorte-calendar-nav" type="button" aria-label="Nächster Monat">›</button>
                 </div>
             `;
         }
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            const currentDate = new Date(year, month, day);
-            currentDate.setHours(0, 0, 0, 0);
+        weeks.forEach(weekDates => {
+            html += `
+                <div class="calendar-week-row">
+                    <div class="calendar-week-days">
+            `;
 
-            const isToday = currentDate.getTime() === today.getTime();
-            const dayEvents = this.getEventsForDate(currentDate);
-            const canDayQuickCreate = canQuickCreate && dayEvents.length === 0;
-            const dateValue = this.formatDateForInput(currentDate);
+            weekDates.forEach(currentDate => {
+                if (!currentDate) {
+                    html += '<div class="calendar-day empty"></div>';
+                    return;
+                }
 
-            let dayClass = 'calendar-day';
-            if (isToday) dayClass += ' today';
-            if (dayEvents.length > 0) dayClass += ' has-events';
-            if (canDayQuickCreate) dayClass += ' can-create';
+                const isToday = currentDate.getTime() === today.getTime();
+                const dayEvents = this.getEventsForDate(currentDate);
+                const canDayQuickCreate = canQuickCreate && dayEvents.length === 0;
+                const dateValue = this.formatDateForInput(currentDate);
+
+                let dayClass = 'calendar-day';
+                if (isToday) dayClass += ' today';
+                if (dayEvents.length > 0) dayClass += ' has-events';
+                if (canDayQuickCreate) dayClass += ' can-create';
+
+                html += `
+                    <div class="${dayClass}"${canDayQuickCreate ? ` data-date="${dateValue}" onclick="Calendar.toggleDayCreateMenu(event, '${dateValue}')"` : ''}>
+                        <div class="calendar-day-top">
+                            <div class="calendar-day-number">${currentDate.getDate()}</div>
+                            ${canDayQuickCreate ? `
+                                <button
+                                    type="button"
+                                    class="calendar-day-quick-create-trigger"
+                                    aria-label="Probe am ${dateValue} anlegen"
+                                    aria-expanded="false"
+                                    onclick="Calendar.toggleDayCreateMenu(event, '${dateValue}')"
+                                >
+                                    +
+                                </button>
+                            ` : ''}
+                        </div>
+                        ${canDayQuickCreate ? `
+                            <div class="calendar-day-quick-create-menu" data-date="${dateValue}" hidden onclick="event.stopPropagation()">
+                                <button type="button" class="calendar-day-quick-create-option" onclick="Calendar.createRehearsalForDate(event, '${dateValue}')">Probe hier anlegen</button>
+                            </div>
+                        ` : ''}
+                        <div class="calendar-day-events">
+                            ${dayEvents.map(event => this.renderCalendarEvent(event)).join('')}
+                        </div>
+                    </div>
+                `;
+            });
 
             html += `
-                <div class="${dayClass}"${canDayQuickCreate ? ` data-date="${dateValue}" onclick="Calendar.toggleDayCreateMenu(event, '${dateValue}')"` : ''}>
-                    <div class="calendar-day-top">
-                        <div class="calendar-day-number">${day}</div>
-                        ${canDayQuickCreate ? `
-                            <button
-                                type="button"
-                                class="calendar-day-quick-create-trigger"
-                                aria-label="Probe am ${dateValue} anlegen"
-                                aria-expanded="false"
-                                onclick="Calendar.toggleDayCreateMenu(event, '${dateValue}')"
-                            >
-                                +
-                            </button>
-                        ` : ''}
-                    </div>
-                    ${canDayQuickCreate ? `
-                        <div class="calendar-day-quick-create-menu" data-date="${dateValue}" hidden onclick="event.stopPropagation()">
-                            <button type="button" class="calendar-day-quick-create-option" onclick="Calendar.createRehearsalForDate(event, '${dateValue}')">Probe hier anlegen</button>
-                        </div>
-                    ` : ''}
-                    <div class="calendar-day-events">
-                        ${dayEvents.map(event => this.renderCalendarEvent(event)).join('')}
                     </div>
                 </div>
             `;
-        }
+        });
 
-        html += '</div></div>';
+        html += `
+                </div>
+            </div>
+        `;
 
         container.innerHTML = html;
 
@@ -343,6 +345,41 @@ const Calendar = {
         });
 
         this.ensureDayCreateMenuListeners();
+    },
+
+    buildCalendarWeeks(year, month) {
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+
+        let startDay = firstDay.getDay() - 1;
+        if (startDay === -1) startDay = 6;
+
+        const weeks = [];
+        let currentWeek = [];
+
+        for (let i = 0; i < startDay; i++) {
+            currentWeek.push(null);
+        }
+
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const date = new Date(year, month, day);
+            date.setHours(0, 0, 0, 0);
+            currentWeek.push(date);
+
+            if (currentWeek.length === 7) {
+                weeks.push(currentWeek);
+                currentWeek = [];
+            }
+        }
+
+        if (currentWeek.length > 0) {
+            while (currentWeek.length < 7) {
+                currentWeek.push(null);
+            }
+            weeks.push(currentWeek);
+        }
+
+        return weeks;
     },
 
     canQuickCreate() {
