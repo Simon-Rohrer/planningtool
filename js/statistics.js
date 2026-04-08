@@ -17,6 +17,58 @@ const Statistics = {
         return count === 1 ? singular : plural;
     },
 
+    getStatIcon(type = 'default') {
+        const icons = {
+            events: `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98l9.06-9.06"></path>
+                    <path d="M12 8a2.82 2.82 0 1 0 3.98 3.98l9.06-9.06"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            `,
+            rehearsals: `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+            `,
+            repertoire: `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 18V5l12-2v13"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+            `,
+            bands: `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            `,
+            feature: `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M8 21h8"></path>
+                    <path d="M12 17v4"></path>
+                    <path d="M7 4h10v3a5 5 0 0 1-10 0Z"></path>
+                    <path d="M17 5h2a2 2 0 0 1 0 4h-2"></path>
+                    <path d="M7 5H5a2 2 0 0 0 0 4h2"></path>
+                </svg>
+            `,
+            location: `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 21s-6-4.35-6-10a6 6 0 0 1 12 0c0 5.65-6 10-6 10Z"></path>
+                    <circle cx="12" cy="11" r="2.5"></circle>
+                </svg>
+            `
+        };
+
+        return icons[type] || icons.repertoire;
+    },
+
     getSelectedBandLabel(bandId = null) {
         if (!bandId) return 'Alle Bands';
         const select = document.getElementById('statsBandSelect');
@@ -266,10 +318,18 @@ const Statistics = {
         const summarySentence = data.totalEvents + data.totalRehearsals > 0
             ? `${data.totalEvents} ${this.pluralize(data.totalEvents, 'Auftritt', 'Auftritte')} · ${data.totalRehearsals} ${this.pluralize(data.totalRehearsals, 'Probe', 'Proben')}`
             : 'Noch keine Termine';
+        const overviewSentence = data.totalEvents + data.totalRehearsals + data.repertoireSize > 0
+            ? `${summarySentence} · ${data.repertoireSize} ${this.pluralize(data.repertoireSize, 'Song', 'Songs')} im Repertoire.`
+            : 'Sobald Auftritte, Proben oder Songs vorhanden sind, füllt sich dieser Überblick automatisch.';
 
         if (summaryContainer) {
             summaryContainer.innerHTML = `
                 <section class="stats-overview-panel">
+                    <div class="stats-overview-copy">
+                        <span class="stats-panel-kicker">Überblick</span>
+                        <h3>${bandLabel}</h3>
+                        <p>${this.escapeHtml(overviewSentence)}</p>
+                    </div>
                     <div class="stats-overview-meta">
                         <span class="stats-scope-chip">${bandLabel}</span>
                         <span class="stats-year-chip">${year}</span>
@@ -282,25 +342,37 @@ const Statistics = {
             <div class="stats-shell">
                 <div class="stats-kpi-grid">
                     <article class="stats-kpi-card stats-kpi-card-events">
-                        <span class="stats-kpi-kicker">Auftritte</span>
+                        <div class="stats-card-head">
+                            <span class="stats-kpi-kicker">Auftritte</span>
+                            <span class="stats-card-icon" aria-hidden="true">${this.getStatIcon('events')}</span>
+                        </div>
                         <div class="stats-kpi-value">${data.totalEvents}</div>
                         <p>${this.escapeHtml(eventSentence)}</p>
                     </article>
 
                     <article class="stats-kpi-card stats-kpi-card-rehearsals">
-                        <span class="stats-kpi-kicker">Proben</span>
+                        <div class="stats-card-head">
+                            <span class="stats-kpi-kicker">Proben</span>
+                            <span class="stats-card-icon" aria-hidden="true">${this.getStatIcon('rehearsals')}</span>
+                        </div>
                         <div class="stats-kpi-value">${data.totalRehearsals}</div>
                         <p>${this.escapeHtml(rehearsalSentence)}</p>
                     </article>
 
                     <article class="stats-kpi-card stats-kpi-card-repertoire">
-                        <span class="stats-kpi-kicker">Repertoire</span>
+                        <div class="stats-card-head">
+                            <span class="stats-kpi-kicker">Repertoire</span>
+                            <span class="stats-card-icon" aria-hidden="true">${this.getStatIcon('repertoire')}</span>
+                        </div>
                         <div class="stats-kpi-value">${data.repertoireSize}</div>
                         <p>${this.escapeHtml(repertoireSentence)}</p>
                     </article>
 
                     <article class="stats-kpi-card stats-kpi-card-bands">
-                        <span class="stats-kpi-kicker">Bands</span>
+                        <div class="stats-card-head">
+                            <span class="stats-kpi-kicker">Bands</span>
+                            <span class="stats-card-icon" aria-hidden="true">${this.getStatIcon('bands')}</span>
+                        </div>
                         <div class="stats-kpi-value">${data.totalBands}</div>
                         <p>${this.escapeHtml(bandSentence)}</p>
                     </article>
@@ -308,13 +380,19 @@ const Statistics = {
 
                 <div class="stats-insights-grid">
                     <article class="stats-insight-card stats-insight-card-feature">
-                        <span class="stats-panel-kicker">Meistgespielt</span>
+                        <div class="stats-card-head">
+                            <span class="stats-panel-kicker">Meistgespielt</span>
+                            <span class="stats-card-icon" aria-hidden="true">${this.getStatIcon('feature')}</span>
+                        </div>
                         <h4>${topSongName}</h4>
                         <p>${this.escapeHtml(topSongSentence)}</p>
                     </article>
 
                     <article class="stats-insight-card stats-insight-card-location">
-                        <span class="stats-panel-kicker">Lieblings-Location</span>
+                        <div class="stats-card-head">
+                            <span class="stats-panel-kicker">Lieblings-Location</span>
+                            <span class="stats-card-icon" aria-hidden="true">${this.getStatIcon('location')}</span>
+                        </div>
                         <h4>${favLocationName}</h4>
                         <p>${this.escapeHtml(favLocationSentence)}</p>
                     </article>

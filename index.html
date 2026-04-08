@@ -59,7 +59,7 @@
     <link rel="apple-touch-icon" href="images/branding/bandmate-logo-only.svg" id="appleTouchIcon">
 
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="css/style.css?v=20260407-27">
+    <link rel="stylesheet" href="css/style.css?v=20260407-28">
     <link rel="stylesheet" href="css/sidebar.css?v=20260407-2">
     <link rel="stylesheet" href="css/calendar.css?v=20260407-6">
     <!-- <link rel="stylesheet" href="css/loader.css"> Removed: Consolidated into style.css -->
@@ -1388,32 +1388,45 @@
 
                     <!-- Statistics View -->
                     <div id="statisticsView" class="view statistics-view">
-                        <section class="statistics-top-shell">
-                            <div class="page-overview-card statistics-page-overview">
-                                <div class="page-overview-copy">
-                                    <span class="page-overview-kicker">Analyse</span>
-                                    <h2>Statistiken</h2>
-                                </div>
-                                <div class="page-overview-meta">
-                                    <div class="statistics-filter-shell">
-                                        <select id="statsBandSelect" class="form-select statistics-band-select">
-                                            <option value="">Band auswählen</option>
-                                        </select>
+                        <div class="view-page-shell statistics-view-shell">
+                            <section class="statistics-top-shell">
+                                <div class="page-overview-card statistics-page-overview">
+                                    <div class="page-overview-copy">
+                                        <span class="page-overview-kicker">Analyse</span>
+                                        <h2>Statistiken</h2>
+                                        <p>Auftritte, Proben, Repertoire und Lieblingsorte auf einen Blick.</p>
+                                    </div>
+                                    <div class="page-overview-meta">
+                                        <div class="statistics-filter-shell">
+                                            <div class="statistics-filter-copy">
+                                                <span class="statistics-filter-kicker">Filter</span>
+                                                <strong>Band auswählen</strong>
+                                                <small>Optional nur eine einzelne Band auswerten.</small>
+                                            </div>
+                                            <select id="statsBandSelect" class="form-select statistics-band-select">
+                                                <option value="">Band auswählen</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div id="statsSummaryContainer" class="stats-summary-container">
-                                <div class="stats-summary-placeholder">
-                                    <span class="stats-panel-kicker">Überblick</span>
-                                    <h3>Auf einen Blick</h3>
-                                    <p>Wähle optional eine Band aus.</p>
+                                <div id="statsSummaryContainer" class="stats-summary-container">
+                                    <div class="stats-summary-placeholder">
+                                        <div class="stats-overview-copy">
+                                            <span class="stats-panel-kicker">Überblick</span>
+                                            <h3>Auf einen Blick</h3>
+                                            <p>Wähle optional eine Band aus und erhalte deine wichtigsten Kennzahlen in einem modernen Überblick.</p>
+                                        </div>
+                                        <div class="stats-overview-meta">
+                                            <span class="stats-scope-chip">Alle Bands</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </section>
-                        <div id="statisticsContent" class="statistics-content-modern statistics-content-shell">
-                            <!-- Helper container for the dashboard -->
-                            <div id="statsDashboardContainer" class="stats-dashboard-container">
-                                <!-- Content will be injected via JS -->
+                            </section>
+                            <div id="statisticsContent" class="statistics-content-modern statistics-content-shell">
+                                <!-- Helper container for the dashboard -->
+                                <div id="statsDashboardContainer" class="stats-dashboard-container">
+                                    <!-- Content will be injected via JS -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3922,7 +3935,7 @@
     <script src="js/pdf-generator.js?v=20260311"></script>
     <script src="js/events.js?v=20260311"></script>
     <script src="js/rehearsals.js?v=20260311"></script>
-    <script src="js/statistics.js?v=20260311"></script>
+    <script src="js/statistics.js?v=20260407-1"></script>
     <script src="js/calendar.js?v=20260407-3"></script>
     <script src="js/personal-calendar.js?v=20260407-4"></script>
     <script src="js/churchtools-api.js?v=20260311"></script>
