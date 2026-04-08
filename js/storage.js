@@ -6,6 +6,9 @@ const Storage = {
     calendarsCacheTimestamp: 0,
     locationsCache: null,
     locationsCacheTimestamp: 0,
+    lastPastItemsCleanupAt: 0,
+    pastItemsCleanupPromise: null,
+    PAST_ITEMS_CLEANUP_INTERVAL_MS: 120000,
     CACHE_DURATION: 300000, // 5 Minutes
     SONG_CHORDPRO_MARKER: '[[CHORDPRO]]',
     SONG_CHORDPRO_PREVIEW_LABEL: 'ChordPro hinterlegt',
@@ -29,6 +32,28 @@ const Storage = {
 
     generateId() {
         return Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+    },
+
+    getStartOfDay(dateLike = new Date()) {
+        const date = dateLike instanceof Date ? new Date(dateLike.getTime()) : new Date(dateLike);
+        if (Number.isNaN(date.getTime())) return null;
+        date.setHours(0, 0, 0, 0);
+        return date;
+    },
+
+    isPastCalendarDay(dateLike, referenceDate = new Date()) {
+        const targetDate = this.getStartOfDay(dateLike);
+        const today = this.getStartOfDay(referenceDate);
+        if (!targetDate || !today) return false;
+        return targetDate < today;
+    },
+
+    getRehearsalConfirmedDateValue(rehearsal) {
+        if (!rehearsal) return null;
+        if (typeof rehearsal.confirmedDate === 'object' && rehearsal.confirmedDate?.startTime) {
+            return rehearsal.confirmedDate.startTime;
+        }
+        return rehearsal.confirmedDate || rehearsal.finalDate || null;
     },
 
     getSongChordProSaveFieldPreference() {
@@ -1407,49 +1432,79 @@ const Storage = {
     },
 
     // Cleanup operations
-    async cleanupPastItems() {
+    async cleanupPastItems(force = false) {
+        if (this.pastItemsCleanupPromise && !force) {
+            return this.pastItemsCleanupPromise;
+        }
+
+        if (!force && this.lastPastItemsCleanupAt && (Date.now() - this.lastPastItemsCleanupAt) < this.PAST_ITEMS_CLEANUP_INTERVAL_MS) {
+            return {
+                deletedEventsCount: 0,
+                deletedRehearsalsCount: 0,
+                trimmedArchivedEventsCount: 0,
+                trimmedArchivedRehearsalsCount: 0,
+                skipped: true
+            };
+        }
+
+        this.pastItemsCleanupPromise = (async () => {
         try {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0); // Set to start of today
+            const today = this.getStartOfDay(new Date());
+            if (!today) {
+                throw new Error('Konnte heutiges Datum nicht bestimmen');
+            }
 
             // Clean up past events
             const allEvents = await this.getAll('events');
             let deletedEventsCount = 0;
+            let trimmedArchivedEventsCount = 0;
+            const archivedConfirmedEvents = [];
 
             for (const event of allEvents) {
-                if (event.date) {
-                    const eventDate = new Date(event.date);
-                    eventDate.setHours(0, 0, 0, 0);
-
-                    if (eventDate < now) {
-                        await this.deleteEvent(event.id);
-                        deletedEventsCount++;
-                    }
+                if (!event?.date || !this.isPastCalendarDay(event.date, today)) {
+                    continue;
                 }
+
+                if (event.status === 'confirmed') {
+                    archivedConfirmedEvents.push(event);
+                    continue;
+                }
+
+                await this.deleteEvent(event.id);
+                deletedEventsCount++;
+            }
+
+            const staleArchivedEvents = archivedConfirmedEvents
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(20);
+
+            for (const event of staleArchivedEvents) {
+                await this.deleteEvent(event.id);
+                trimmedArchivedEventsCount++;
             }
 
             // Clean up past rehearsals
             const allRehearsals = await this.getAll('rehearsals');
             let deletedRehearsalsCount = 0;
+            let trimmedArchivedRehearsalsCount = 0;
+            const archivedConfirmedRehearsals = [];
 
             for (const rehearsal of allRehearsals) {
                 let shouldDelete = false;
+                const confirmedDateValue = this.getRehearsalConfirmedDateValue(rehearsal);
 
-                // Check confirmed rehearsals with finalDate
-                if (rehearsal.finalDate) {
-                    const rehearsalDate = new Date(rehearsal.finalDate);
-                    rehearsalDate.setHours(0, 0, 0, 0);
-
-                    if (rehearsalDate < now) {
-                        shouldDelete = true;
-                    }
+                if (rehearsal.status === 'confirmed' && confirmedDateValue && this.isPastCalendarDay(confirmedDateValue, today)) {
+                    archivedConfirmedRehearsals.push(rehearsal);
+                    continue;
                 }
+
                 // Check unconfirmed rehearsals - delete if ALL proposed dates are in the past
-                else if (rehearsal.proposedDates && Array.isArray(rehearsal.proposedDates) && rehearsal.proposedDates.length > 0) {
+                if (rehearsal.proposedDates && Array.isArray(rehearsal.proposedDates) && rehearsal.proposedDates.length > 0) {
                     const allDatesInPast = rehearsal.proposedDates.every(dateStr => {
-                        const proposedDate = new Date(dateStr);
-                        proposedDate.setHours(0, 0, 0, 0);
-                        return proposedDate < now;
+                        const proposedDateValue = typeof dateStr === 'string'
+                            ? dateStr
+                            : dateStr?.startTime || dateStr?.start || '';
+                        return proposedDateValue ? this.isPastCalendarDay(proposedDateValue, today) : false;
                     });
 
                     if (allDatesInPast) {
@@ -1463,15 +1518,44 @@ const Storage = {
                 }
             }
 
-            if (deletedEventsCount > 0 || deletedRehearsalsCount > 0) {
-                Logger.info(`Cleanup complete: ${deletedEventsCount} events and ${deletedRehearsalsCount} rehearsals deleted`);
+            const staleArchivedRehearsals = archivedConfirmedRehearsals
+                .sort((a, b) => {
+                    const dateA = this.getRehearsalConfirmedDateValue(a) || '';
+                    const dateB = this.getRehearsalConfirmedDateValue(b) || '';
+                    return new Date(dateB) - new Date(dateA);
+                })
+                .slice(20);
+
+            for (const rehearsal of staleArchivedRehearsals) {
+                await this.deleteRehearsal(rehearsal.id);
+                trimmedArchivedRehearsalsCount++;
             }
 
-            return { deletedEventsCount, deletedRehearsalsCount };
+            if (deletedEventsCount > 0 || deletedRehearsalsCount > 0 || trimmedArchivedEventsCount > 0 || trimmedArchivedRehearsalsCount > 0) {
+                Logger.info(`Cleanup complete: ${deletedEventsCount} events deleted, ${trimmedArchivedEventsCount} archived events trimmed, ${deletedRehearsalsCount} rehearsals deleted and ${trimmedArchivedRehearsalsCount} archived rehearsals trimmed`);
+            }
+
+            return {
+                deletedEventsCount,
+                deletedRehearsalsCount,
+                trimmedArchivedEventsCount,
+                trimmedArchivedRehearsalsCount
+            };
         } catch (error) {
             Logger.error('Error during cleanup:', error);
-            return { deletedEventsCount: 0, deletedRehearsalsCount: 0 };
+            return {
+                deletedEventsCount: 0,
+                deletedRehearsalsCount: 0,
+                trimmedArchivedEventsCount: 0,
+                trimmedArchivedRehearsalsCount: 0
+            };
+        } finally {
+            this.lastPastItemsCleanupAt = Date.now();
+            this.pastItemsCleanupPromise = null;
         }
+        })();
+
+        return this.pastItemsCleanupPromise;
     },
 
     // Calendar operations

@@ -464,12 +464,70 @@ const Rehearsals = {
         return rehearsal.confirmedDate;
     },
 
+    getRehearsalSortDate(rehearsal) {
+        const confirmedDateValue = this.getConfirmedDateValue(rehearsal);
+        if (rehearsal?.status === 'confirmed' && confirmedDateValue) {
+            return new Date(confirmedDateValue);
+        }
+
+        if (Array.isArray(rehearsal?.proposedDates) && rehearsal.proposedDates.length > 0) {
+            return rehearsal.proposedDates.reduce((earliest, current) => {
+                const dateValue = current?.startTime || current?.start || current;
+                const date = new Date(dateValue);
+                return date < earliest ? date : earliest;
+            }, new Date(8640000000000000));
+        }
+
+        return new Date(rehearsal?.createdAt || 0);
+    },
+
+    isArchivedResolvedRehearsal(rehearsal) {
+        const confirmedDateValue = this.getConfirmedDateValue(rehearsal);
+        return rehearsal?.status === 'confirmed' && !!confirmedDateValue && Storage.isPastCalendarDay(confirmedDateValue);
+    },
+
+    buildResolvedSectionMarkup(activeCardsHtml = '', archivedCardsHtml = '', archiveTitle = 'Abgeschlossen', options = {}) {
+        const sections = [];
+        const archiveOnly = !activeCardsHtml && !!archivedCardsHtml;
+
+        if (activeCardsHtml) {
+            sections.push(`<div class="schedule-active-list">${activeCardsHtml}</div>`);
+        } else if (archiveOnly && options.activeEmptyMessage) {
+            sections.push(`
+                <div class="schedule-active-placeholder">
+                    <div class="empty-state-compact schedule-active-empty">
+                        <p>${options.activeEmptyMessage}</p>
+                    </div>
+                </div>
+            `);
+        }
+
+        if (archivedCardsHtml) {
+            sections.push(`
+                <section class="schedule-archive-section ${archiveOnly ? 'is-archive-only' : ''}">
+                    <div class="schedule-archive-divider">
+                        <span>${archiveTitle}</span>
+                    </div>
+                    <div class="schedule-archive-list">
+                        ${archivedCardsHtml}
+                    </div>
+                </section>
+            `);
+        }
+
+        return sections.join('');
+    },
+
     // Render all rehearsals
     async renderRehearsals(filterBandId = '', forceRefresh = false) {
         if (this.isLoading) {
             Logger.warn('[Rehearsals] Already loading, skipping.');
             return;
         }
+
+        Storage.cleanupPastItems().catch(error => {
+            console.warn('[Rehearsals] Could not cleanup past items in background:', error);
+        });
 
         // Check if we have cached data and should use it
         if (!forceRefresh && this.rehearsalsCache && this.dataContextCache) {
@@ -543,26 +601,12 @@ const Rehearsals = {
             }
             // Sort by effective date (Upcoming first, then past)
             const now = new Date();
-            const getEffectiveDate = (r) => {
-                const confirmedDateValue = this.getConfirmedDateValue(r);
-                if (r.status === 'confirmed' && confirmedDateValue) {
-                    return new Date(confirmedDateValue);
-                }
-                if (r.proposedDates && r.proposedDates.length > 0) {
-                    // Find earliest proposed date
-                    return r.proposedDates.reduce((earliest, current) => {
-                        const d = current.startTime ? new Date(current.startTime) : new Date(current);
-                        return d < earliest ? d : earliest;
-                    }, new Date(8640000000000000));
-                }
-                return new Date(r.createdAt); // Fallback
-            };
 
             rehearsals.sort((a, b) => {
-                const dateA = getEffectiveDate(a);
-                const dateB = getEffectiveDate(b);
-                const isPastA = dateA < now;
-                const isPastB = dateB < now;
+                const dateA = this.getRehearsalSortDate(a);
+                const dateB = this.getRehearsalSortDate(b);
+                const isPastA = Storage.isPastCalendarDay(dateA, now);
+                const isPastB = Storage.isPastCalendarDay(dateB, now);
 
                 if (isPastA && !isPastB) return 1; // Past at bottom
                 if (!isPastA && isPastB) return -1; // Future at top
@@ -602,6 +646,7 @@ const Rehearsals = {
         const pendingRehearsals = [];
         const votedRehearsals = [];
         const resolvedRehearsals = [];
+        const archivedResolvedRehearsals = [];
 
         const userVotesBatch = dataContext.userVotes || [];
 
@@ -613,13 +658,20 @@ const Rehearsals = {
             const isDone = rehearsal.status === 'confirmed' || rehearsal.status === 'cancelled';
 
             if (isDone) {
-                resolvedRehearsals.push(rehearsal);
+                if (this.isArchivedResolvedRehearsal(rehearsal)) {
+                    archivedResolvedRehearsals.push(rehearsal);
+                } else {
+                    resolvedRehearsals.push(rehearsal);
+                }
             } else if (hasVoted) {
                 votedRehearsals.push(rehearsal);
             } else {
                 pendingRehearsals.push(rehearsal);
             }
         }
+
+        resolvedRehearsals.sort((a, b) => this.getRehearsalSortDate(b) - this.getRehearsalSortDate(a));
+        archivedResolvedRehearsals.sort((a, b) => this.getRehearsalSortDate(b) - this.getRehearsalSortDate(a));
 
         this.updateStatusSummary({
             pending: pendingRehearsals.length,
@@ -648,12 +700,26 @@ const Rehearsals = {
         // Render Resolved List (New)
         const containerResolved = document.getElementById('rehearsalsListResolved');
         if (containerResolved) {
-            if (resolvedRehearsals.length === 0) {
+            const activeResolvedHtml = resolvedRehearsals.length > 0
+                ? (await Promise.all(resolvedRehearsals.map(rehearsal =>
+                    this.renderRehearsalCard(rehearsal, dataContext)
+                ))).join('')
+                : '';
+            const archivedResolvedHtml = archivedResolvedRehearsals.length > 0
+                ? (await Promise.all(archivedResolvedRehearsals.slice(0, 20).map(rehearsal =>
+                    this.renderRehearsalCard(rehearsal, dataContext)
+                ))).join('')
+                : '';
+
+            if (!activeResolvedHtml && !archivedResolvedHtml) {
                 UI.showCompactEmptyState(containerResolved, 'Keine bestätigten Proben');
             } else {
-                containerResolved.innerHTML = (await Promise.all(resolvedRehearsals.map(rehearsal =>
-                    this.renderRehearsalCard(rehearsal, dataContext)
-                ))).join('');
+                containerResolved.innerHTML = this.buildResolvedSectionMarkup(
+                    activeResolvedHtml,
+                    archivedResolvedHtml,
+                    'Abgeschlossen',
+                    { activeEmptyMessage: 'Keine anstehenden bestätigten Proben' }
+                );
             }
         }
 
@@ -689,6 +755,7 @@ const Rehearsals = {
         const isExpanded = this.expandedRehearsalId === rehearsal.id;
         const currentUserVotes = (dataContext.userVotes || []).filter(v => String(v.rehearsalId) === String(rehearsal.id));
         const allRehearsalVotes = (dataContext.allVotes && dataContext.allVotes[rehearsal.id]) || [];
+        const isArchived = this.isArchivedResolvedRehearsal(rehearsal);
 
         // Get location from context or fetch fallback
         const bandName = band ? band.name : 'Unbekannte Band';
@@ -774,11 +841,15 @@ const Rehearsals = {
         const cardStateClass = rehearsal.status === 'pending'
             ? (hasCurrentUserVoted ? 'schedule-state-voted' : 'schedule-state-pending')
             : 'schedule-state-resolved';
+        const statusText = rehearsal.status === 'pending'
+            ? 'Offen'
+            : (isArchived ? 'Abgeschlossen' : 'Bestätigt');
+        const statusClass = isArchived ? 'status-completed' : `status-${rehearsal.status}`;
 
 
 
         return `
-            <div class="rehearsal-card accordion-card ${cardStateClass} ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}" style="--band-accent: ${bandColor}">
+            <div class="rehearsal-card accordion-card ${isArchived ? 'schedule-card-completed' : ''} ${cardStateClass} ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}" style="--band-accent: ${bandColor}">
                 <div class="accordion-header" data-rehearsal-id="${rehearsal.id}">
                     <div class="accordion-title">
                         <div class="schedule-card-title-row">
@@ -797,8 +868,8 @@ const Rehearsals = {
                     <div class="accordion-actions">
                         <div class="schedule-card-status-stack">
                             ${showPrimaryStatus ? `
-                                <span class="rehearsal-status status-${rehearsal.status}">
-                                    ${rehearsal.status === 'pending' ? 'Offen' : 'Bestätigt'}
+                                <span class="rehearsal-status ${statusClass}">
+                                    ${statusText}
                                 </span>
                             ` : ''}
                             ${userStateLabel ? `<span class="schedule-card-user-state ${userStateClass}">${userStateLabel}</span>` : ''}

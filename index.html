@@ -59,11 +59,11 @@
     <link rel="apple-touch-icon" href="images/branding/bandmate-logo-only.svg" id="appleTouchIcon">
 
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="css/style.css?v=20260407-28">
+    <link rel="stylesheet" href="css/style.css?v=20260408-3">
     <link rel="stylesheet" href="css/sidebar.css?v=20260407-2">
     <link rel="stylesheet" href="css/calendar.css?v=20260407-6">
     <!-- <link rel="stylesheet" href="css/loader.css"> Removed: Consolidated into style.css -->
-    <link rel="stylesheet" href="css/settings_modal.css?v=20260407-2">
+    <link rel="stylesheet" href="css/settings_modal.css?v=20260408-1">
     <link rel="stylesheet" href="css/statistics.css">
 
     <!-- Quill Rich Text Editor -->
@@ -667,7 +667,7 @@
                         </button>
                     </div>
 
-                    <!-- 5. SONSTIGES -->
+                    <!-- 5. STUDIO -->
                     <div class="sidebar-group has-submenu">
                         <button class="sidebar-item sidebar-main">
                             <span class="sidebar-icon" aria-hidden="true">
@@ -678,7 +678,7 @@
                                     <path d="M17 16v-5"></path>
                                 </svg>
                             </span>
-                            <span class="sidebar-label">Sonstiges</span>
+                            <span class="sidebar-label">Studio</span>
                             <span class="submenu-arrow">▼</span>
                         </button>
                         <div class="sidebar-submenu">
@@ -698,7 +698,7 @@
                                         <path d="M8 8h8M8 12h8M8 16h5"></path>
                                     </svg>
                                 </span>
-                                <span class="sidebar-label">News</span>
+                                <span class="sidebar-label">Neuigkeiten</span>
                             </button>
                             <button class="sidebar-subitem" data-view="pdftochordpro">
                                 <span class="sidebar-icon" aria-hidden="true">
@@ -950,7 +950,7 @@
                             </button>
                         </div>
 
-                        <!-- Sonstiges (Hauptreiter) -->
+                        <!-- Studio (Hauptreiter) -->
                         <div class="nav-group">
                             <button class="nav-item nav-main" data-view="statistics">
                                 <span class="nav-icon" aria-hidden="true">
@@ -961,7 +961,7 @@
                                         <path d="M17 16v-5"></path>
                                     </svg>
                                 </span>
-                                <span class="nav-label">Sonstiges</span>
+                                <span class="nav-label">Studio</span>
                             </button>
                             <div class="nav-submenu">
                                 <button class="nav-subitem" data-view="statistics">
@@ -982,7 +982,7 @@
                                             <path d="M8 8h8M8 12h8M8 16h5"></path>
                                         </svg>
                                     </span>
-                                    <span class="nav-label">News</span>
+                                    <span class="nav-label">Neuigkeiten</span>
                                 </button>
                                 <button class="nav-subitem" data-view="pdftochordpro">
                                     <span class="nav-icon" aria-hidden="true">
@@ -1861,14 +1861,6 @@
                     <!-- Profile Tab -->
                     <div id="profileSettingsTab" class="settings-tab-content active">
                         <div class="settings-pane">
-                            <div class="settings-pane-intro">
-                                <div>
-                                    <span class="settings-pane-kicker">Profil</span>
-                                    <h3>Mein Profil</h3>
-                                    <p>Verwalte persönliche Daten, Instrumente und deinen sicheren Zugang an einem Ort.</p>
-                                </div>
-                            </div>
-
                             <form id="updateProfileForm" class="profile-settings-grid">
                                 <div class="profile-sidebar-column profile-settings-summary">
                                     <div class="profile-summary-card">
@@ -1922,29 +1914,16 @@
                                                 <input type="text" id="profileLastName" class="profile-form-input"
                                                     required placeholder="Dein Nachname">
                                             </div>
-                                            <div class="form-group full-width">
+                                            <div class="form-group">
                                                 <label for="profileUsername">Benutzername</label>
                                                 <input type="text" id="profileUsername" class="profile-form-input"
                                                     required placeholder="@username">
                                             </div>
-                                            <div class="form-group full-width">
+                                            <div class="form-group">
                                                 <label for="profileEmail">E-Mail Adresse</label>
                                                 <input type="email" id="profileEmail" class="profile-form-input"
                                                     required placeholder="name@example.com">
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Artist Info -->
-                                    <div class="profile-section">
-                                        <div class="profile-section-title">
-                                            <span>🎸</span> Musiker Profil
-                                        </div>
-                                        <div class="form-group full-width">
-                                            <label>Hauptinstrument(e)</label>
-                                            <div class="instrument-selector" id="profileInstrumentSelector"></div>
-                                            <!-- Hidden input to store comma-separated value for form submission -->
-                                            <input type="hidden" id="profileInstrument" value="">
                                         </div>
                                     </div>
 
@@ -1967,6 +1946,19 @@
                                             </div>
                                         </div>
                                         <small class="settings-inline-note">Leer lassen, wenn du dein Passwort nicht ändern möchtest.</small>
+                                    </div>
+
+                                    <!-- Artist Info -->
+                                    <div class="profile-section">
+                                        <div class="profile-section-title">
+                                            <span>🎸</span> Musiker Profil
+                                        </div>
+                                        <div class="form-group full-width">
+                                            <label>Instrument</label>
+                                            <div class="instrument-selector" id="profileInstrumentSelector"></div>
+                                            <!-- Hidden input to store comma-separated value for form submission -->
+                                            <input type="hidden" id="profileInstrument" value="">
+                                        </div>
                                     </div>
 
                                     <div class="profile-section profile-theme-mobile-only">
@@ -3928,13 +3920,13 @@
     <script src="js/proxy-service.js?v=20260311"></script>
     <script src="js/config.js"></script>
     <script src="js/supabase.js?v=20260407-17"></script>
-    <script src="js/storage.js?v=20260311"></script>
+    <script src="js/storage.js?v=20260408-1"></script>
     <script src="js/auth.js?v=20260407-19"></script>
     <script src="js/email-service.js?v=20260311"></script>
     <script src="js/bands.js?v=20260311"></script>
     <script src="js/pdf-generator.js?v=20260311"></script>
-    <script src="js/events.js?v=20260311"></script>
-    <script src="js/rehearsals.js?v=20260311"></script>
+    <script src="js/events.js?v=20260408-2"></script>
+    <script src="js/rehearsals.js?v=20260408-2"></script>
     <script src="js/statistics.js?v=20260407-1"></script>
     <script src="js/calendar.js?v=20260407-3"></script>
     <script src="js/personal-calendar.js?v=20260407-4"></script>
@@ -3944,7 +3936,7 @@
     <script src="js/feedback-service.js?v=20260311"></script>
     <script src="js/chordpro-converter.js?v=20260407-8"></script>
     <script src="js/notifications.js?v=20260328"></script>
-    <script src="js/app.js?v=20260407-17"></script>
+    <script src="js/app.js?v=20260408-4"></script>
 
     <!-- Skip duplicated pdf.js block -->
 

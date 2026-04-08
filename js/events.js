@@ -26,6 +26,48 @@ const Events = {
         if (typeof Statistics !== 'undefined') Statistics.invalidateCache();
     },
 
+    getEventSortDate(event) {
+        if (event?.date) return new Date(event.date);
+        if (event?.proposedDates?.[0]?.start) return new Date(event.proposedDates[0].start);
+        return new Date(0);
+    },
+
+    isArchivedResolvedEvent(event) {
+        return event?.status === 'confirmed' && !!event?.date && Storage.isPastCalendarDay(event.date);
+    },
+
+    buildResolvedSectionMarkup(activeCardsHtml = '', archivedCardsHtml = '', archiveTitle = 'Abgeschlossen', options = {}) {
+        const sections = [];
+        const archiveOnly = !activeCardsHtml && !!archivedCardsHtml;
+
+        if (activeCardsHtml) {
+            sections.push(`<div class="schedule-active-list">${activeCardsHtml}</div>`);
+        } else if (archiveOnly && options.activeEmptyMessage) {
+            sections.push(`
+                <div class="schedule-active-placeholder">
+                    <div class="empty-state-compact schedule-active-empty">
+                        <p>${options.activeEmptyMessage}</p>
+                    </div>
+                </div>
+            `);
+        }
+
+        if (archivedCardsHtml) {
+            sections.push(`
+                <section class="schedule-archive-section ${archiveOnly ? 'is-archive-only' : ''}">
+                    <div class="schedule-archive-divider">
+                        <span>${archiveTitle}</span>
+                    </div>
+                    <div class="schedule-archive-list">
+                        ${archivedCardsHtml}
+                    </div>
+                </section>
+            `);
+        }
+
+        return sections.join('');
+    },
+
     setupStatusSwitcher() {
         const view = document.getElementById('eventsView');
         if (!view) return;
@@ -100,6 +142,10 @@ const Events = {
         Logger.time('Load Events');
 
         try {
+            Storage.cleanupPastItems().catch(error => {
+                console.warn('[Events] Could not cleanup past items in background:', error);
+            });
+
             let events = (await Storage.getUserEvents(user.id)) || [];
 
             // 1. Collect all IDs for batch fetching
@@ -168,10 +214,15 @@ const Events = {
             const pendingEvents = [];
             const votedEvents = [];
             const resolvedEvents = [];
+            const archivedResolvedEvents = [];
 
             for (const event of events) {
                 if (event.status !== 'pending') {
-                    resolvedEvents.push(event);
+                    if (this.isArchivedResolvedEvent(event)) {
+                        archivedResolvedEvents.push(event);
+                    } else {
+                        resolvedEvents.push(event);
+                    }
                     continue;
                 }
 
@@ -191,8 +242,8 @@ const Events = {
             // Helper to sort events
             const sortByDate = (arr, ascending = true) => {
                 arr.sort((a, b) => {
-                    const dateA = a.date ? new Date(a.date) : (a.proposedDates?.[0] ? new Date(a.proposedDates[0].start) : new Date(0));
-                    const dateB = b.date ? new Date(b.date) : (b.proposedDates?.[0] ? new Date(b.proposedDates[0].start) : new Date(0));
+                    const dateA = this.getEventSortDate(a);
+                    const dateB = this.getEventSortDate(b);
                     return ascending ? dateA - dateB : dateB - dateA;
                 });
             };
@@ -200,6 +251,7 @@ const Events = {
             sortByDate(pendingEvents);
             sortByDate(votedEvents);
             sortByDate(resolvedEvents, false); // Bestätigte: Neueste zuerst
+            sortByDate(archivedResolvedEvents, false); // Abgeschlossen: Neueste zuerst
 
             this.updateStatusSummary({
                 pending: pendingEvents.length,
@@ -229,8 +281,20 @@ const Events = {
                 document.getElementById('eventsListVotedHeader').style.display = 'block';
             }
             if (resolvedContainer) {
-                if (resolvedEvents.length > 0) {
-                    resolvedContainer.innerHTML = (await Promise.all(resolvedEvents.map(e => this.renderEventCard(e, dataContext)))).join('');
+                const activeResolvedHtml = resolvedEvents.length > 0
+                    ? (await Promise.all(resolvedEvents.map(e => this.renderEventCard(e, dataContext)))).join('')
+                    : '';
+                const archivedResolvedHtml = archivedResolvedEvents.length > 0
+                    ? (await Promise.all(archivedResolvedEvents.slice(0, 20).map(e => this.renderEventCard(e, dataContext)))).join('')
+                    : '';
+
+                if (activeResolvedHtml || archivedResolvedHtml) {
+                    resolvedContainer.innerHTML = this.buildResolvedSectionMarkup(
+                        activeResolvedHtml,
+                        archivedResolvedHtml,
+                        'Abgeschlossen',
+                        { activeEmptyMessage: 'Keine anstehenden bestätigten Auftritte' }
+                    );
                 } else {
                     UI.showCompactEmptyState(resolvedContainer, 'Keine bestätigten Auftritte ✅');
                 }
@@ -252,6 +316,7 @@ const Events = {
         const user = Auth.getCurrentUser();
         const isExpanded = this.expandedEventId === event.id;
         const bandName = band ? band.name : 'Unbekannte Band';
+        const isArchived = this.isArchivedResolvedEvent(event);
 
         let canManage = false;
         if (dataContext.userBands) {
@@ -273,8 +338,8 @@ const Events = {
         const hasVoted = eventVotes.some(vote => String(vote.userId) === String(user.id) && vote.availability !== 'none');
         const proposals = this.getEventProposals(event);
         const firstProposal = proposals.length > 0 ? proposals[0] : null;
-        let statusText = event.status === 'pending' ? 'Offen' : 'Bestätigt';
-        let statusClass = `status-${event.status}`;
+        let statusText = event.status === 'pending' ? 'Offen' : (isArchived ? 'Abgeschlossen' : 'Bestätigt');
+        let statusClass = isArchived ? 'status-completed' : `status-${event.status}`;
 
         let cardContent = '';
         if (event.status === 'pending') {
@@ -310,7 +375,7 @@ const Events = {
             : 'schedule-state-resolved';
 
         return `
-            <div class="event-card accordion-card ${event.status === 'confirmed' && new Date(event.date) < new Date() ? 'event-past' : ''} ${cardStateClass} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}" style="--band-accent: ${bandColor}">
+            <div class="event-card accordion-card ${isArchived ? 'schedule-card-completed' : ''} ${cardStateClass} ${isExpanded ? 'expanded' : ''}" data-event-id="${event.id}" style="--band-accent: ${bandColor}">
                 <div class="accordion-header" data-event-id="${event.id}">
                     <div class="accordion-title">
                         <div class="schedule-card-title-row">

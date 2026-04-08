@@ -6498,6 +6498,106 @@ input:checked+.slider:before {
     gap: 1rem;
 }
 
+.schedule-active-list,
+.schedule-archive-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.schedule-archive-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 0.35rem;
+}
+
+.schedule-archive-section.is-archive-only {
+    margin-top: clamp(2.25rem, 9vh, 5rem);
+}
+
+.schedule-active-placeholder {
+    min-height: clamp(170px, 26vh, 280px);
+    display: flex;
+    align-items: flex-end;
+}
+
+.schedule-active-empty {
+    width: 100%;
+    opacity: 0.82;
+}
+
+.schedule-archive-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    color: var(--color-text-secondary);
+    opacity: 0.88;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.schedule-archive-divider::before,
+.schedule-archive-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.04), rgba(148, 163, 184, 0.28), rgba(148, 163, 184, 0.04));
+}
+
+.schedule-archive-divider span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.34rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(148, 163, 184, 0.08);
+}
+
+.accordion-card.schedule-card-completed,
+.event-card.schedule-card-completed,
+.rehearsal-card.schedule-card-completed {
+    background:
+        linear-gradient(180deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.03)),
+        color-mix(in srgb, var(--color-surface) 88%, rgba(148, 163, 184, 0.12));
+    border-color: rgba(148, 163, 184, 0.14);
+    box-shadow: none;
+    opacity: 0.72;
+    filter: grayscale(0.42) saturate(0.58);
+}
+
+.accordion-card.schedule-card-completed .accordion-header {
+    opacity: 0.82;
+}
+
+.accordion-card.schedule-card-completed h3,
+.accordion-card.schedule-card-completed .event-band,
+.accordion-card.schedule-card-completed .rehearsal-band,
+.accordion-card.schedule-card-completed .schedule-card-band {
+    color: color-mix(in srgb, var(--color-text) 65%, var(--color-text-secondary) 35%);
+}
+
+.accordion-card.schedule-card-completed .schedule-card-chip {
+    background: rgba(148, 163, 184, 0.09);
+    border-color: rgba(148, 163, 184, 0.14);
+    color: var(--color-text-secondary);
+}
+
+.accordion-card.schedule-card-completed .schedule-card-chip-primary,
+.accordion-card.schedule-card-completed .schedule-card-date-highlight {
+    background: rgba(148, 163, 184, 0.1);
+    color: color-mix(in srgb, var(--color-text) 72%, var(--color-text-secondary) 28%);
+}
+
+.status-completed {
+    background: rgba(148, 163, 184, 0.18);
+    color: color-mix(in srgb, var(--color-text-secondary) 92%, white 8%);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
 .rehearsal-description {
     color: var(--color-text-secondary);
     margin-bottom: var(--spacing-lg);

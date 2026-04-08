@@ -254,8 +254,7 @@
 }
 
 #deleteAccountBtn {
-    margin-top: 1rem;
-    /* Extra breathing room */
+    margin-top: 0;
 }
 
 /* Responsive */
@@ -1319,6 +1318,9 @@
 
 #settingsModal .settings-form-actions .btn {
     min-width: 180px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #settingsModal .settings-meta-links {
@@ -1350,6 +1352,11 @@
     min-height: 44px;
     border-radius: 14px !important;
     box-shadow: none;
+    align-self: center;
+}
+
+#settingsModal #deleteAccountBtn {
+    margin-top: 0;
 }
 
 #settingsModal .absences-settings-grid {
@@ -2076,11 +2083,30 @@
 }
 
 #settingsModal .multiselect-trigger {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
     min-height: 54px;
     border-color: var(--settings-border-soft);
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
         var(--settings-input-bg);
+}
+
+#settingsModal .multiselect-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 1.4rem;
+}
+
+#settingsModal .multiselect-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    line-height: 1;
 }
 
 #settingsModal .multiselect-trigger:hover {
@@ -2103,6 +2129,21 @@
     color: var(--settings-muted);
 }
 
+#settingsModal .multiselect-placeholder {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.2rem;
+    line-height: 1.25;
+}
+
+#settingsModal .multiselect-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    margin-top: 0;
+}
+
 #settingsModal .multiselect-menu {
     z-index: 9001;
     border-color: color-mix(in srgb, var(--settings-border) 92%, rgba(255, 255, 255, 0.08));
@@ -2118,6 +2159,10 @@
 }
 
 #settingsModal .multiselect-option {
+    display: grid;
+    grid-template-columns: 1.2rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.72rem;
     position: relative;
     min-height: 50px;
     border-color: transparent;
@@ -2137,6 +2182,8 @@
 }
 
 #settingsModal .multiselect-option-indicator {
+    margin: 0;
+    align-self: center;
     background: color-mix(in srgb, var(--color-surface) 96%, #0d1728);
     border-color: color-mix(in srgb, var(--color-primary) 24%, var(--settings-border));
 }
@@ -2148,8 +2195,16 @@
 }
 
 #settingsModal .multiselect-option-label {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.2rem;
+    line-height: 1.25;
     color: var(--color-text);
     font-weight: 600;
+}
+
+#settingsModal .multiselect-option:has(input[type="checkbox"]:checked) .multiselect-option-indicator::before {
+    line-height: 1;
 }
 
 html[data-theme="light"] #settingsModal .multiselect-menu,

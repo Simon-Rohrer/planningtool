@@ -938,7 +938,7 @@ const App = {
         const cancelBtn = document.getElementById('cancelQuickAccessBtn');
         const quickLinks = [
             { key: 'kalender', label: 'Meine Termine', view: 'kalender' },
-            { key: 'news', label: 'News', view: 'news' },
+            { key: 'news', label: 'Neuigkeiten', view: 'news' },
             { key: 'musikpool', label: 'Musikerpool', view: 'musikpool' },
             { key: 'bands', label: 'Meine Bands', view: 'bands' },
             { key: 'rehearsals', label: 'Probetermine', view: 'rehearsals' },
@@ -1183,7 +1183,7 @@ const App = {
             kalender: { label: 'Meine Termine', description: 'Synchronisation und Terminansicht' },
             events: { label: 'Auftritte', description: 'Anfragen, Zusagen und feste Termine' },
             statistics: { label: 'Statistiken', description: 'Auswertungen und Kennzahlen' },
-            news: { label: 'News', description: 'Updates und Ankündigungen' },
+            news: { label: 'Neuigkeiten', description: 'Updates und Ankündigungen' },
             settings: { label: 'Einstellungen', description: 'Profil, Abwesenheiten und Verwaltung' },
             pdftochordpro: { label: 'PDF to ChordPro', description: 'Songs konvertieren und zuordnen' }
         };
@@ -1793,12 +1793,41 @@ const App = {
             { value: 'Strings', label: 'Streicher' }
         ];
 
+        const instrumentValueMap = instrumentOptions.reduce((map, option) => {
+            map[option.value.toLowerCase()] = option.value;
+            map[option.label.toLowerCase()] = option.value;
+            return map;
+        }, {
+            vocals: 'Vocals',
+            gesang: 'Vocals',
+            guitar: 'Guitar',
+            gitarre: 'Guitar',
+            bass: 'Bass',
+            drums: 'Drums',
+            schlagzeug: 'Drums',
+            keys: 'Keys',
+            piano: 'Keys',
+            'keys / piano': 'Keys',
+            'keys/piano': 'Keys',
+            bläser: 'Brass',
+            blaeser: 'Brass',
+            brass: 'Brass',
+            streicher: 'Strings',
+            strings: 'Strings'
+        });
+
+        const toCanonicalInstrumentValue = (value) => {
+            const normalizedValue = String(value || '').trim();
+            if (!normalizedValue) return '';
+            return instrumentValueMap[normalizedValue.toLowerCase()] || normalizedValue;
+        };
+
         const normalizeInstrumentValues = (values) => {
             const seen = new Set();
-            return values.filter(value => {
-                const normalizedValue = String(value || '').trim();
-                if (!normalizedValue) return false;
-                const key = normalizedValue.toLowerCase();
+            return values.map(toCanonicalInstrumentValue).filter(value => {
+                const canonicalValue = String(value || '').trim();
+                if (!canonicalValue) return false;
+                const key = canonicalValue.toLowerCase();
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
@@ -2094,6 +2123,12 @@ const App = {
                                 root: document.querySelector('#settingsModal .modal-body') || document
                             });
                             UI._originalCloseModal.call(UI, modalId);
+                        },
+                        null,
+                        {
+                            kicker: 'Profil',
+                            title: 'Ungespeicherte Änderungen',
+                            confirmText: 'Trotzdem schließen'
                         }
                     );
                     return;
@@ -9573,7 +9608,7 @@ const App = {
             if (quickLinksDiv) {
                 const quickLinks = [
                     { key: 'kalender', label: 'Meine Termine', view: 'kalender', meta: 'Persönliche Termine und Abo', accent: '#38bdf8' },
-                    { key: 'news', label: 'News', view: 'news', meta: 'Updates und Ankündigungen', accent: '#5b8cff' },
+                    { key: 'news', label: 'Neuigkeiten', view: 'news', meta: 'Updates und Ankündigungen', accent: '#5b8cff' },
                     { key: 'musikpool', label: 'Musikerpool', view: 'musikpool', meta: 'Kontakte und Musiker', accent: '#f59e0b' },
                     { key: 'bands', label: 'Meine Bands', view: 'bands', meta: 'Bands, Rollen und Mitglieder', accent: '#8b5cf6' },
                     { key: 'rehearsals', label: 'Probetermine', view: 'rehearsals', meta: 'Abstimmungen und feste Proben', accent: '#14b8a6' },
@@ -9739,9 +9774,17 @@ const App = {
             const nowTs = Date.now();
             const bandMap = new Map((bands || []).map(band => [band.id, band]));
             const formatCountLabel = (count, singular, plural) => `${count} ${count === 1 ? singular : plural}`;
+            const getConfirmedRehearsalDateValue = (rehearsal) => {
+                if (!rehearsal) return null;
+                if (typeof rehearsal.confirmedDate === 'object' && rehearsal.confirmedDate?.startTime) {
+                    return rehearsal.confirmedDate.startTime;
+                }
+                return rehearsal.confirmedDate || rehearsal.finalDate || null;
+            };
+            const isVisibleFixedDate = (dateValue) => !!dateValue && !Storage.isPastCalendarDay(dateValue, now);
 
             // Upcoming Events Count
-            const upcomingEvents = events.filter(e => new Date(e.date) >= now);
+            const upcomingEvents = events.filter(e => isVisibleFixedDate(e.date));
             const upcomingEventsEl = document.getElementById('upcomingEvents');
             if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingEvents.length;
             const upcomingEventsCaptionEl = document.getElementById('upcomingEventsCaption');
@@ -9765,7 +9808,9 @@ const App = {
             }
 
             // Total Rehearsals Count (open polls + confirmed)
-            const confirmedRehearsals = rehearsals.filter(r => r.status === 'confirmed');
+            const confirmedRehearsals = rehearsals.filter(r =>
+                r.status === 'confirmed' && isVisibleFixedDate(getConfirmedRehearsalDateValue(r))
+            );
             const totalRehearsalsCount = openPollsCount + confirmedRehearsals.length;
             const totalRehearsalsEl = document.getElementById('totalRehearsals');
             if (totalRehearsalsEl) totalRehearsalsEl.textContent = totalRehearsalsCount;
@@ -9791,10 +9836,15 @@ const App = {
                 try {
                     const allItems = [
                         ...(upcomingEvents.map(e => ({ ...e, type: 'Gig', date: new Date(e.date) }))),
-                        ...(confirmedRehearsals.filter(r => r.confirmedDate).map(r => ({ ...r, type: 'Probe', date: new Date(r.confirmedDate) })))
+                        ...(confirmedRehearsals.map(r => ({
+                            ...r,
+                            type: 'Probe',
+                            date: new Date(getConfirmedRehearsalDateValue(r))
+                        })))
                     ];
                     allItems.sort((a, b) => a.date - b.date);
-                    const nextItem = allItems.find(item => item.date >= now);
+                    const nextItem = allItems.find(item => item.date >= now)
+                        || allItems.find(item => !Storage.isPastCalendarDay(item.date, now));
 
                     if (nextItem) {
                         const dateStr = nextItem.date.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' });
