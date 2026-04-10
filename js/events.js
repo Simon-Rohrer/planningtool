@@ -1228,6 +1228,39 @@ const Events = {
         return 'fixed';
     },
 
+    getFixedDateTimeValue() {
+        const date = document.getElementById('eventFixedDate')?.value || '';
+        const time = document.getElementById('eventFixedTime')?.value || '';
+        if (!date || !time) return '';
+        return `${date}T${time}`;
+    },
+
+    setFixedDateTimeFields(value = '') {
+        const dateInput = document.getElementById('eventFixedDate');
+        const timeInput = document.getElementById('eventFixedTime');
+        const normalizedValue = typeof value === 'string' ? value : '';
+        const [date = '', timePart = ''] = normalizedValue.split('T');
+        const time = timePart ? timePart.slice(0, 5) : '19:00';
+
+        if (dateInput) dateInput.value = date || '';
+        if (timeInput) timeInput.value = time || '19:00';
+    },
+
+    getDateProposalRemoveIcon() {
+        if (typeof App !== 'undefined' && typeof App.getRundownInlineIcon === 'function') {
+            return App.getRundownInlineIcon('trash');
+        }
+
+        return `
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4.75 6h10.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M7.25 6V4.75c0-.41.34-.75.75-.75h4c.41 0 .75.34.75.75V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M6.25 6.75 6.9 14.7c.05.74.67 1.3 1.4 1.3h3.4c.73 0 1.35-.56 1.4-1.3l.65-7.95" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+                <path d="M8.35 9.15v4.2M11.65 9.15v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+            </svg>
+        `;
+    },
+
     collectDateProposals() {
         const proposals = [];
 
@@ -1261,7 +1294,10 @@ const Events = {
         const modeSection = document.getElementById('eventScheduleModeSection');
         const fixedSection = document.getElementById('eventFixedDateSection');
         const proposalsSection = document.getElementById('eventDateProposalsSection');
-        const fixedDateInput = document.getElementById('eventDate');
+        const fixedInputs = [
+            document.getElementById('eventFixedDate'),
+            document.getElementById('eventFixedTime')
+        ];
         const fixedDateIndicator = document.getElementById('eventFixedDateAvailability');
         const proposalsContainer = document.getElementById('eventDateProposals');
 
@@ -1280,9 +1316,9 @@ const Events = {
             proposalsSection.style.display = normalizedMode === 'proposals' ? '' : 'none';
         }
 
-        if (fixedDateInput) {
-            fixedDateInput.required = normalizedMode === 'fixed';
-        }
+        fixedInputs.forEach((input) => {
+            if (input) input.required = normalizedMode === 'fixed';
+        });
 
         if (fixedDateIndicator && normalizedMode !== 'fixed') {
             fixedDateIndicator.textContent = '';
@@ -1323,8 +1359,14 @@ const Events = {
                 <input type="date" class="event-date-input-date">
                 <input type="time" class="event-date-input-start">
             </div>
-            <span class="event-date-availability date-availability" style="margin-left:8px"></span>
-            <button type="button" class="btn-icon remove-event-date">🗑️</button>
+            <div class="date-proposal-footer">
+                <span class="event-date-availability date-availability"></span>
+                <div class="date-proposal-actions">
+                    <button type="button" class="btn-icon remove-event-date" aria-label="Terminvorschlag löschen" title="Terminvorschlag löschen">
+                        ${this.getDateProposalRemoveIcon()}
+                    </button>
+                </div>
+            </div>
         `;
         container.appendChild(row);
 
@@ -1468,7 +1510,7 @@ const Events = {
         const bandId = document.getElementById('eventBand').value;
         const title = document.getElementById('eventTitle').value;
         const scheduleMode = this.getScheduleMode();
-        const fixedDate = scheduleMode === 'fixed' ? document.getElementById('eventDate').value : '';
+        const fixedDate = scheduleMode === 'fixed' ? this.getFixedDateTimeValue() : '';
         const location = document.getElementById('eventLocation').value;
         const extrasEnabled = document.getElementById('eventShowExtras').checked;
         const visibleEventInfo = document.getElementById('eventInfo').value;
@@ -1635,7 +1677,7 @@ const Events = {
 
         // If confirming, use the passed date. Otherwise, use existing date if confirmed.
         const dateValue = confirmDate || ((event.status === 'confirmed' && event.date) ? event.date.slice(0, 16) : '');
-        document.getElementById('eventDate').value = dateValue;
+        this.setFixedDateTimeFields(dateValue);
 
         document.getElementById('eventLocation').value = event.location || '';
         document.getElementById('eventSoundcheckLocation').value = event.soundcheckLocation || '';
@@ -1696,8 +1738,14 @@ const Events = {
                             <input type="date" class="event-date-input-date" value="${d}">
                             <input type="time" class="event-date-input-start" value="${s}">
                         </div>
-                        <span class="event-date-availability date-availability" style="margin-left:8px"></span>
-                        <button type="button" class="btn-icon remove-event-date">🗑️</button>
+                        <div class="date-proposal-footer">
+                            <span class="event-date-availability date-availability"></span>
+                            <div class="date-proposal-actions">
+                                <button type="button" class="btn-icon remove-event-date" aria-label="Terminvorschlag löschen" title="Terminvorschlag löschen">
+                                    ${this.getDateProposalRemoveIcon()}
+                                </button>
+                            </div>
+                        </div>
                     `;
                     container.appendChild(row);
                     row.querySelector('.remove-event-date').onclick = () => {
@@ -1961,11 +2009,13 @@ const Events = {
 
     async updateAvailabilityIndicators() {
         const scheduleMode = this.getScheduleMode();
-        const fixedDateInput = document.getElementById('eventDate');
+        const fixedDateInput = document.getElementById('eventFixedDate');
+        const fixedTimeInput = document.getElementById('eventFixedTime');
         const fixedDateIndicator = document.getElementById('eventFixedDateAvailability');
         const fixedDateSection = document.getElementById('eventFixedDateSection');
+        const fixedDateValue = this.getFixedDateTimeValue();
 
-        if (fixedDateIndicator && (scheduleMode !== 'fixed' || !fixedDateInput?.value)) {
+        if (fixedDateIndicator && (scheduleMode !== 'fixed' || !fixedDateValue)) {
             fixedDateIndicator.textContent = '';
             fixedDateIndicator.className = 'date-availability';
         }
@@ -1977,9 +2027,9 @@ const Events = {
         if (typeof App === 'undefined' || !App.checkMembersAvailabilityLocally || !this.currentBandMemerAbsences) return;
 
         // 1. Fixed Date
-        if (fixedDateInput && fixedDateIndicator) {
-            if (scheduleMode === 'fixed' && fixedDateInput.value) {
-                const dateValue = new Date(fixedDateInput.value).toISOString();
+        if (fixedDateInput && fixedTimeInput && fixedDateIndicator) {
+            if (scheduleMode === 'fixed' && fixedDateValue) {
+                const dateValue = new Date(fixedDateValue).toISOString();
                 const memberConflicts = this.collectMemberConflicts(dateValue, dateValue);
 
                 fixedDateIndicator.innerHTML = this.buildMemberStatusMarkup(memberConflicts);

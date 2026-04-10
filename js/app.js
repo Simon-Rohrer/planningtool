@@ -1960,7 +1960,9 @@ const App = {
         ].filter(Boolean);
 
         const title = document.getElementById('eventTitle')?.value?.trim() || 'Ablauf';
-        const eventDateValue = document.getElementById('eventDate')?.value || '';
+        const eventDateValue = (typeof Events !== 'undefined' && typeof Events.getFixedDateTimeValue === 'function')
+            ? Events.getFixedDateTimeValue()
+            : '';
         const dateLabel = eventDateValue ? UI.formatDate(eventDateValue) : '';
         const visibleInfo = document.getElementById('eventInfo')?.value?.trim() || '';
         const techInfo = document.getElementById('eventTechInfo')?.value?.trim() || '';
@@ -3994,9 +3996,13 @@ const App = {
             UI.clearForm('createEventForm');
 
             // Do not pre-fill date, keep it empty as requested by user
-            const eventDateInput = document.getElementById('eventDate');
+            const eventDateInput = document.getElementById('eventFixedDate');
+            const eventTimeInput = document.getElementById('eventFixedTime');
             if (eventDateInput) {
                 eventDateInput.value = '';
+            }
+            if (eventTimeInput) {
+                eventTimeInput.value = '19:00';
             }
 
             // Reset Date Proposals
@@ -4046,8 +4052,13 @@ const App = {
         });
 
         // Event fixed date change
-        const eventDateInput = document.getElementById('eventDate');
-        if (eventDateInput) {
+        const eventFixedInputs = [
+            document.getElementById('eventFixedDate'),
+            document.getElementById('eventFixedTime')
+        ].filter(Boolean);
+        eventFixedInputs.forEach((eventDateInput) => {
+            if (eventDateInput.dataset.rundownBound === 'true') return;
+            eventDateInput.dataset.rundownBound = 'true';
             eventDateInput.addEventListener('change', () => {
                 if (typeof Events !== 'undefined' && typeof Events.updateAvailabilityIndicators === 'function') {
                     Events.updateAvailabilityIndicators();
@@ -4055,7 +4066,7 @@ const App = {
                 this.syncDraftEventRundownStartFromEventDate(true);
                 this.renderEventRundownEditor();
             });
-        }
+        });
 
         const eventRundownPdfBtn = document.getElementById('eventRundownPdfBtn');
         if (eventRundownPdfBtn && !eventRundownPdfBtn.dataset.bound) {
@@ -6345,8 +6356,9 @@ const App = {
     },
 
     getEventRundownFallbackStartTime() {
-        const eventDateInput = document.getElementById('eventDate');
-        const eventDateValue = eventDateInput?.value || '';
+        const eventDateValue = (typeof Events !== 'undefined' && typeof Events.getFixedDateTimeValue === 'function')
+            ? Events.getFixedDateTimeValue()
+            : '';
         if (eventDateValue.includes('T')) {
             return this.normalizeEventRundownTime(eventDateValue.split('T')[1].slice(0, 5));
         }
@@ -6500,7 +6512,6 @@ const App = {
             container.innerHTML = `
                 <div class="event-rundown-empty">
                     <strong>Noch kein Ablauf hinterlegt.</strong>
-                    <p>Nutze oben die Schnellbausteine, um Countdown, Predigt, Liederblöcke oder Pausen direkt einzufügen.</p>
                 </div>
             `;
             return;
@@ -12276,9 +12287,13 @@ const App = {
             Events.setScheduleMode('fixed', { lockMode: false, refreshAvailability: false });
         }
 
-        const eventDateInput = document.getElementById('eventDate');
+        const eventDateInput = document.getElementById('eventFixedDate');
+        const eventTimeInput = document.getElementById('eventFixedTime');
         const formattedDateTime = this.formatPrefilledModalDateTime(defaults.dateTime || defaults.date, defaults.time || '19:00');
-        this.setPrefilledModalControlValue(eventDateInput, formattedDateTime);
+        const [date = '', timePart = ''] = formattedDateTime.split('T');
+
+        this.setPrefilledModalControlValue(eventDateInput, date);
+        this.setPrefilledModalControlValue(eventTimeInput, timePart ? timePart.slice(0, 5) : '19:00');
 
         if (typeof Events !== 'undefined' && typeof Events.updateAvailabilityIndicators === 'function') {
             Promise.resolve(Events.updateAvailabilityIndicators()).catch(error => {
@@ -15083,7 +15098,9 @@ const App = {
         const editId = document.getElementById('editEventId').value;
         const bandId = document.getElementById('eventBand').value;
         const title = document.getElementById('eventTitle').value;
-        const eventDateValue = document.getElementById('eventDate').value;
+        const eventDateValue = (typeof Events !== 'undefined' && typeof Events.getFixedDateTimeValue === 'function')
+            ? Events.getFixedDateTimeValue()
+            : '';
         const scheduleMode = (typeof Events !== 'undefined' && typeof Events.getScheduleMode === 'function')
             ? Events.getScheduleMode()
             : 'fixed';
@@ -15111,7 +15128,7 @@ const App = {
             return;
         }
 
-        const date = scheduleMode === 'fixed' && eventDateValue ? new Date(eventDateValue).toISOString() : null;
+        const date = scheduleMode === 'fixed' && eventDateValue ? eventDateValue : null;
 
         const location = document.getElementById('eventLocation').value;
         const visibleEventInfo = document.getElementById('eventInfo').value;

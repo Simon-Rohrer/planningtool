@@ -327,7 +327,18 @@ const UI = {
             }
 
             if (messageEl) {
-                messageEl.textContent = message;
+                const normalizedTitle = String(title || '')
+                    .toLowerCase()
+                    .replace(/[?!.,:;]/g, '')
+                    .trim();
+                const normalizedMessage = String(message || '')
+                    .toLowerCase()
+                    .replace(/[?!.,:;]/g, '')
+                    .trim();
+                const shouldHideMessage = !normalizedMessage || normalizedMessage === normalizedTitle;
+
+                messageEl.textContent = shouldHideMessage ? '' : message;
+                messageEl.hidden = shouldHideMessage;
             }
 
             modal.classList.remove('is-danger', 'is-warning', 'is-primary');

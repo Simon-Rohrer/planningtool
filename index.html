@@ -2716,55 +2716,79 @@
                     <section class="scheduler-panel scheduler-panel-highlight scheduler-panel-schedule">
                         <div class="scheduler-schedule-stack">
                             <div class="form-group scheduler-span-2" id="rehearsalScheduleModeSection">
-                                <div class="event-schedule-mode-grid" role="radiogroup" aria-label="Terminart des Probetermins">
-                                    <label class="event-schedule-mode-option">
-                                        <input type="radio" name="rehearsalScheduleMode" id="rehearsalScheduleModeFixed" value="fixed" checked>
-                                        <span class="event-schedule-mode-option-body">
-                                            <strong>Termin steht fest</strong>
-                                        </span>
-                                    </label>
-                                    <label class="event-schedule-mode-option">
-                                        <input type="radio" name="rehearsalScheduleMode" id="rehearsalScheduleModeProposals" value="proposals">
-                                        <span class="event-schedule-mode-option-body">
-                                            <strong>Termin wird abgestimmt</strong>
-                                        </span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div id="rehearsalFixedDateSection" class="scheduler-schedule-subpanel">
-                                <div class="form-group">
-                                    <label for="rehearsalFixedDate">Datum und Uhrzeit</label>
-                                    <div class="date-time-range rehearsal-fixed-date-range">
-                                        <input type="date" id="rehearsalFixedDate">
-                                        <input type="time" id="rehearsalFixedStartTime" value="18:30">
-                                        <span class="time-separator">bis</span>
-                                        <input type="time" id="rehearsalFixedEndTime" value="21:30">
+                                <div class="scheduler-mode-row">
+                                    <div class="event-schedule-mode-grid" role="radiogroup" aria-label="Terminart des Probetermins">
+                                        <label class="event-schedule-mode-option">
+                                            <input type="radio" name="rehearsalScheduleMode" id="rehearsalScheduleModeFixed" value="fixed" checked>
+                                            <span class="event-schedule-mode-option-body">
+                                                <strong>Termin steht fest</strong>
+                                            </span>
+                                        </label>
+                                        <label class="event-schedule-mode-option">
+                                            <input type="radio" name="rehearsalScheduleMode" id="rehearsalScheduleModeProposals" value="proposals">
+                                            <span class="event-schedule-mode-option-body">
+                                                <strong>Termin wird abgestimmt</strong>
+                                            </span>
+                                        </label>
                                     </div>
-                                    <div id="rehearsalFixedDateAvailability" class="date-availability"></div>
                                 </div>
                             </div>
 
-                            <div id="rehearsalDateProposalsSection" class="scheduler-schedule-subpanel">
-                                <div id="dateProposals" class="date-proposals">
-                                    <div class="date-proposal-item" data-confirmed="false">
-                                        <div class="date-time-range">
-                                            <input type="date" class="date-input-date" id="dateInputDate">
-                                            <input type="time" class="date-input-start" id="dateInputStart">
-                                            <span class="time-separator">bis</span>
-                                            <input type="time" class="date-input-end" id="dateInputEnd">
+                            <div class="scheduler-schedule-content-row">
+                                <div class="scheduler-schedule-content-main">
+                                    <div id="rehearsalFixedDateSection" class="scheduler-schedule-subpanel">
+                                        <div class="form-group">
+                                            <label for="rehearsalFixedDate" class="scheduler-schedule-date-label">Datum und Uhrzeit</label>
+                                            <div class="date-time-range rehearsal-fixed-date-range">
+                                                <input type="date" id="rehearsalFixedDate">
+                                                <input type="time" id="rehearsalFixedStartTime" value="18:30">
+                                                <span class="time-separator">bis</span>
+                                                <input type="time" id="rehearsalFixedEndTime" value="21:30">
+                                            </div>
+                                            <div id="rehearsalFixedDateAvailability" class="date-availability"></div>
                                         </div>
-                                        <div class="date-proposal-footer">
-                                            <span class="date-availability"></span>
-                                            <div class="date-proposal-actions">
-                                                <button type="button" class="btn-icon remove-date" disabled>🗑️</button>
+                                    </div>
+
+                                    <div id="rehearsalDateProposalsSection" class="scheduler-schedule-subpanel">
+                                        <label class="scheduler-subpanel-label scheduler-schedule-date-label">Datum und Uhrzeit</label>
+                                        <div id="dateProposals" class="date-proposals">
+                                            <div class="date-proposal-item" data-confirmed="false">
+                                                <div class="date-time-range">
+                                                    <input type="date" class="date-input-date" id="dateInputDate">
+                                                    <input type="time" class="date-input-start" id="dateInputStart">
+                                                    <span class="time-separator">bis</span>
+                                                    <input type="time" class="date-input-end" id="dateInputEnd">
+                                                    <button type="button" class="btn-icon remove-date" disabled aria-label="Terminvorschlag löschen" title="Terminvorschlag löschen">
+                                                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                                            <path d="M4.75 6h10.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                            <path d="M7.25 6V4.75c0-.41.34-.75.75-.75h4c.41 0 .75.34.75.75V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                            <path d="M6.25 6.75 6.9 14.7c.05.74.67 1.3 1.4 1.3h3.4c.73 0 1.35-.56 1.4-1.3l.65-7.95" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+                                                            <path d="M8.35 9.15v4.2M11.65 9.15v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <div class="date-proposal-footer">
+                                                    <span class="date-availability"></span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <div class="scheduler-inline-actions">
+                                            <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm scheduler-add-date-btn">
+                                                <span class="btn-inline-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 20 20" fill="none">
+                                                        <path d="M10 4.5v11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+                                                        <path d="M4.5 10h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+                                                    </svg>
+                                                </span>
+                                                <span>Weiteren Termin hinzufügen</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="scheduler-inline-actions">
-                                    <button type="button" id="addDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin hinzufügen</button>
-                                </div>
+                                <aside class="scheduler-mode-hint scheduler-mode-hint-side" aria-label="Info zur Terminauswahl">
+                                    <span class="scheduler-mode-hint-badge">i</span>
+                                    <p>Ist das genaue Datum noch nicht sicher, wähle die Abstimmung und sammle zuerst mögliche Termine.</p>
+                                </aside>
                             </div>
                         </div>
                     </section>
@@ -3074,44 +3098,77 @@
                     <section class="scheduler-panel scheduler-panel-highlight scheduler-panel-schedule">
                         <div class="scheduler-schedule-stack">
                             <div class="form-group scheduler-span-2" id="eventScheduleModeSection">
-                                <div class="event-schedule-mode-grid" role="radiogroup" aria-label="Terminart des Auftritts">
-                                    <label class="event-schedule-mode-option">
-                                        <input type="radio" name="eventScheduleMode" id="eventScheduleModeFixed" value="fixed" checked>
-                                        <span class="event-schedule-mode-option-body">
-                                            <strong>Termin steht fest</strong>
-                                        </span>
-                                    </label>
-                                    <label class="event-schedule-mode-option">
-                                        <input type="radio" name="eventScheduleMode" id="eventScheduleModeProposals" value="proposals">
-                                        <span class="event-schedule-mode-option-body">
-                                            <strong>Termin wird abgestimmt</strong>
-                                        </span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div id="eventFixedDateSection" class="scheduler-schedule-subpanel">
-                                <div class="form-group">
-                                    <label for="eventDate">Datum und Uhrzeit</label>
-                                    <input type="datetime-local" id="eventDate">
-                                    <div id="eventFixedDateAvailability" class="date-availability"></div>
-                                </div>
-                            </div>
-
-                            <div id="eventDateProposalsSection" class="scheduler-schedule-subpanel">
-                                <div id="eventDateProposals" class="date-proposals">
-                                    <div class="date-proposal-item" data-confirmed="false">
-                                        <div class="date-time-range">
-                                            <input type="date" class="event-date-input-date">
-                                            <input type="time" class="event-date-input-start">
-                                        </div>
-                                        <span class="event-date-availability date-availability" style="margin-left:8px"></span>
-                                        <button type="button" class="btn-icon remove-event-date" disabled>🗑️</button>
+                                <div class="scheduler-mode-row">
+                                    <div class="event-schedule-mode-grid" role="radiogroup" aria-label="Terminart des Auftritts">
+                                        <label class="event-schedule-mode-option">
+                                            <input type="radio" name="eventScheduleMode" id="eventScheduleModeFixed" value="fixed" checked>
+                                            <span class="event-schedule-mode-option-body">
+                                                <strong>Termin steht fest</strong>
+                                            </span>
+                                        </label>
+                                        <label class="event-schedule-mode-option">
+                                            <input type="radio" name="eventScheduleMode" id="eventScheduleModeProposals" value="proposals">
+                                            <span class="event-schedule-mode-option-body">
+                                                <strong>Termin wird abgestimmt</strong>
+                                            </span>
+                                        </label>
                                     </div>
                                 </div>
-                                <div class="scheduler-inline-actions">
-                                    <button type="button" id="addEventDateBtn" class="btn btn-secondary btn-sm">+ Weiteren Termin hinzufügen</button>
+                            </div>
+
+                            <div class="scheduler-schedule-content-row">
+                                <div class="scheduler-schedule-content-main">
+                                    <div id="eventFixedDateSection" class="scheduler-schedule-subpanel">
+                                        <div class="form-group">
+                                            <label for="eventFixedDate" class="scheduler-schedule-date-label">Datum und Uhrzeit</label>
+                                            <div class="date-time-range event-fixed-date-range">
+                                                <input type="date" id="eventFixedDate">
+                                                <input type="time" id="eventFixedTime" value="19:00">
+                                            </div>
+                                            <div id="eventFixedDateAvailability" class="date-availability"></div>
+                                        </div>
+                                    </div>
+
+                                    <div id="eventDateProposalsSection" class="scheduler-schedule-subpanel">
+                                        <label class="scheduler-subpanel-label scheduler-schedule-date-label">Datum und Uhrzeit</label>
+                                        <div id="eventDateProposals" class="date-proposals">
+                                            <div class="date-proposal-item" data-confirmed="false">
+                                                <div class="date-time-range">
+                                                    <input type="date" class="event-date-input-date">
+                                                    <input type="time" class="event-date-input-start">
+                                                </div>
+                                                <div class="date-proposal-footer">
+                                                    <span class="event-date-availability date-availability"></span>
+                                                    <div class="date-proposal-actions">
+                                                        <button type="button" class="btn-icon remove-event-date" disabled aria-label="Terminvorschlag löschen" title="Terminvorschlag löschen">
+                                                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                                                <path d="M4.75 6h10.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                                <path d="M7.25 6V4.75c0-.41.34-.75.75-.75h4c.41 0 .75.34.75.75V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                                <path d="M6.25 6.75 6.9 14.7c.05.74.67 1.3 1.4 1.3h3.4c.73 0 1.35-.56 1.4-1.3l.65-7.95" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+                                                                <path d="M8.35 9.15v4.2M11.65 9.15v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="scheduler-inline-actions">
+                                            <button type="button" id="addEventDateBtn" class="btn btn-secondary btn-sm scheduler-add-date-btn">
+                                                <span class="btn-inline-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 20 20" fill="none">
+                                                        <path d="M10 4.5v11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+                                                        <path d="M4.5 10h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+                                                    </svg>
+                                                </span>
+                                                <span>Weiteren Termin hinzufügen</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
+                                <aside class="scheduler-mode-hint scheduler-mode-hint-side" aria-label="Info zur Terminauswahl">
+                                    <span class="scheduler-mode-hint-badge">i</span>
+                                    <p>Ist das genaue Datum noch nicht sicher, wähle die Abstimmung und sammle zuerst mögliche Termine.</p>
+                                </aside>
                             </div>
                         </div>
                     </section>
@@ -3127,17 +3184,50 @@
 
                         <div id="eventExtrasFields" class="form-optional-section scheduler-optional-section" style="display:none;">
                             <div class="form-group">
-                                <label for="eventSoundcheckLocation">🎚️ Soundcheck Infos</label>
+                                <label for="eventSoundcheckLocation" class="scheduler-label-with-icon">
+                                    <span class="scheduler-label-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 20 20" fill="none">
+                                            <path d="M4 5.25h7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                            <path d="M4 10h4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                            <path d="M4 14.75h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                            <circle cx="13.75" cy="5.25" r="1.75" stroke="currentColor" stroke-width="1.6"></circle>
+                                            <circle cx="10.75" cy="10" r="1.75" stroke="currentColor" stroke-width="1.6"></circle>
+                                            <circle cx="15.25" cy="14.75" r="1.75" stroke="currentColor" stroke-width="1.6"></circle>
+                                        </svg>
+                                    </span>
+                                    <span>Soundcheck Infos</span>
+                                </label>
                                 <input type="text" id="eventSoundcheckLocation"
                                     placeholder="Uhrzeit, konkreter Ort im Gebäude...">
                             </div>
                             <div class="form-grid-2 scheduler-grid">
                                 <div class="form-group">
-                                    <label for="eventInfo">ℹ️ Event-Infos</label>
+                                    <label for="eventInfo" class="scheduler-label-with-icon">
+                                        <span class="scheduler-label-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 20 20" fill="none">
+                                                <circle cx="10" cy="10" r="6.75" stroke="currentColor" stroke-width="1.6"></circle>
+                                                <path d="M10 8.15v4.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                <circle cx="10" cy="5.85" r="0.9" fill="currentColor"></circle>
+                                            </svg>
+                                        </span>
+                                        <span>Event-Infos</span>
+                                    </label>
                                     <textarea id="eventInfo" rows="3" placeholder="Ablauf, Ansprechpartner..."></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="eventTechInfo">🔧 Technik / PA</label>
+                                    <label for="eventTechInfo" class="scheduler-label-with-icon">
+                                        <span class="scheduler-label-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 20 20" fill="none">
+                                                <path d="M5 5.25h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                <path d="M5 10h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                <path d="M5 14.75h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                <circle cx="8" cy="5.25" r="1.6" fill="currentColor"></circle>
+                                                <circle cx="12.5" cy="10" r="1.6" fill="currentColor"></circle>
+                                                <circle cx="9.75" cy="14.75" r="1.6" fill="currentColor"></circle>
+                                            </svg>
+                                        </span>
+                                        <span>Technik / PA</span>
+                                    </label>
                                     <textarea id="eventTechInfo" rows="3"
                                         placeholder="Was wird benötigt? Monitoring?"></textarea>
                                 </div>
@@ -3148,28 +3238,37 @@
                     <section class="scheduler-panel scheduler-panel-members">
                         <div class="scheduler-panel-head">
                             <div>
-                                <span class="scheduler-panel-eyebrow">Bandmitglieder</span>
-                                <h3>Beteiligte auswählen</h3>
+                                <span class="scheduler-panel-eyebrow">Beteiligte</span>
+                                <h3>Bandmitglieder & Gäste</h3>
                             </div>
-                            <p>Wähle die Musiker aus, die an diesem Auftritt beteiligt sind.</p>
+                            <p>Wähle die Musiker aus und ergänze bei Bedarf Gäste oder Aushilfen im selben Bereich.</p>
                         </div>
                         <div id="eventBandMembers" class="checkbox-list members-grid member-selection-grid">
                             <div class="member-selection-empty">Bitte zuerst eine Band auswählen.</div>
                         </div>
-                    </section>
-
-                    <section class="scheduler-panel scheduler-panel-soft">
-                        <div class="form-group toggle-group scheduler-toggle-group">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="eventShowGuests">
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <label for="eventShowGuests" class="toggle-label">Gäste / Aushilfen eintragen</label>
-                        </div>
-                        <div id="eventGuestsField" class="form-optional-section scheduler-optional-section" style="display:none;">
-                            <div class="form-group">
-                                <label for="eventGuests">🎭 Gästeliste</label>
-                                <textarea id="eventGuests" rows="3" placeholder="Name (Instrument/Rolle)"></textarea>
+                        <div class="scheduler-members-extra-block">
+                            <div class="form-group toggle-group scheduler-toggle-group">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="eventShowGuests">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label for="eventShowGuests" class="toggle-label">Gäste / Aushilfen eintragen</label>
+                            </div>
+                            <div id="eventGuestsField" class="form-optional-section scheduler-optional-section" style="display:none;">
+                                <div class="form-group">
+                                    <label for="eventGuests" class="scheduler-label-with-icon">
+                                        <span class="scheduler-label-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 20 20" fill="none">
+                                                <path d="M6.5 9.1a2.55 2.55 0 1 0 0-5.1 2.55 2.55 0 0 0 0 5.1Z" stroke="currentColor" stroke-width="1.6"></path>
+                                                <path d="M13.6 8.15a2.1 2.1 0 1 0 0-4.2 2.1 2.1 0 0 0 0 4.2Z" stroke="currentColor" stroke-width="1.6"></path>
+                                                <path d="M3.75 15.9c.35-2.25 2.2-3.65 4.7-3.65 2.55 0 4.45 1.45 4.8 3.65" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                                <path d="M12.4 15.1c.3-1.55 1.55-2.5 3.2-2.5 1.05 0 1.9.35 2.55 1.05" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                                            </svg>
+                                        </span>
+                                        <span>Gästeliste</span>
+                                    </label>
+                                    <textarea id="eventGuests" rows="3" placeholder="Name (Instrument/Rolle)"></textarea>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -3179,6 +3278,7 @@
                             <div>
                                 <span class="scheduler-panel-eyebrow">Ablauf & Musik</span>
                                 <label class="section-title">Ablauf & Setlist</label>
+                                <p class="event-rundown-inline-hint">Nutze oben die Schnellbausteine, um Countdown, Predigt, Liederblöcke oder Pausen direkt einzufügen.</p>
                             </div>
                             <div class="event-rundown-toolbar" id="eventRundownPresetToolbar">
                                 <button type="button" id="eventRundownSaveTemplateBtn" class="btn btn-secondary btn-sm">

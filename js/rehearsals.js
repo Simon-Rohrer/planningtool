@@ -126,6 +126,21 @@ const Rehearsals = {
         }];
     },
 
+    getDateProposalRemoveIcon() {
+        if (typeof App !== 'undefined' && typeof App.getRundownInlineIcon === 'function') {
+            return App.getRundownInlineIcon('trash');
+        }
+
+        return `
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4.75 6h10.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M7.25 6V4.75c0-.41.34-.75.75-.75h4c.41 0 .75.34.75.75V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M6.25 6.75 6.9 14.7c.05.74.67 1.3 1.4 1.3h3.4c.73 0 1.35-.56 1.4-1.3l.65-7.95" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+                <path d="M8.35 9.15v4.2M11.65 9.15v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+            </svg>
+        `;
+    },
+
     createDateProposalItem(values = {}) {
         const newItem = document.createElement('div');
         const normalized = {
@@ -142,12 +157,10 @@ const Rehearsals = {
                 <input type="time" class="date-input-start" value="${normalized.start}">
                 <span class="time-separator">bis</span>
                 <input type="time" class="date-input-end" value="${normalized.end}">
+                <button type="button" class="btn-icon remove-date" aria-label="Terminvorschlag löschen" title="Terminvorschlag löschen">${this.getDateProposalRemoveIcon()}</button>
             </div>
             <div class="date-proposal-footer">
                 <span class="date-availability"></span>
-                <div class="date-proposal-actions">
-                    <button type="button" class="btn-icon remove-date">🗑️</button>
-                </div>
             </div>
         `;
 
@@ -739,6 +752,67 @@ const Rehearsals = {
         return UI.getUserDisplayName(user);
     },
 
+    _renderRehearsalDetailsGrid(rehearsal, { creator = null, creatorName = 'Unbekannt', locationName = 'Nicht angegeben', linkedEvent = null } = {}) {
+        const confirmedDateValue = this.getConfirmedDateValue(rehearsal);
+        const creatorAvatarContent = creator && creator.profile_image_url
+            ? `<img src="${creator.profile_image_url}" class="creator-avatar-img" alt="${Bands.escapeHtml(creatorName)}">`
+            : UI.getUserInitials(creatorName);
+        const detailRows = [];
+
+        detailRows.push(`
+            <div class="detail-item detail-item-compact detail-item-creator">
+                <div class="detail-label">Erstellt von</div>
+                <div class="detail-stack-value">
+                    <div class="creator-avatar detail-meta-avatar" style="background: ${creator ? UI.getAvatarColor(creatorName) : 'var(--color-primary)'};">
+                        ${creatorAvatarContent}
+                    </div>
+                    <span class="detail-value">${Bands.escapeHtml(creatorName)}</span>
+                </div>
+            </div>
+        `);
+
+        if (rehearsal.status === 'confirmed' && confirmedDateValue) {
+            detailRows.push(`
+                <div class="detail-item detail-item-compact">
+                    <div class="detail-label">Datum & Zeit</div>
+                    <div class="detail-value">${UI.formatDate(confirmedDateValue)}</div>
+                </div>
+            `);
+        }
+
+        detailRows.push(`
+            <div class="detail-item detail-item-compact">
+                <div class="detail-label">Ort</div>
+                <div class="detail-value">${Bands.escapeHtml(locationName || 'Nicht angegeben')}</div>
+            </div>
+        `);
+
+        if (linkedEvent) {
+            detailRows.push(`
+                <div class="detail-item detail-item-compact">
+                    <div class="detail-label">Verknüpfter Auftritt</div>
+                    <div class="detail-value">${Bands.escapeHtml(linkedEvent.title || 'Auftritt')}</div>
+                </div>
+            `);
+        }
+
+        let detailGridHtml = `
+            <div class="event-details-grid rehearsal-details-grid">
+                <div class="event-details-meta-row">
+                    ${detailRows.join('')}
+                </div>
+                ${rehearsal.description ? `
+                    <div class="detail-item detail-item-wide detail-item-text">
+                        <div class="detail-label">Beschreibung</div>
+                        <div class="detail-value">${Bands.escapeHtml(rehearsal.description)}</div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        return detailGridHtml;
+    },
+
     // Render single rehearsal card
     async renderRehearsalCard(rehearsal, dataContext = {}) {
         // Use joined band data if available, otherwise fetch
@@ -792,21 +866,6 @@ const Rehearsals = {
                 await Storage.getEvent(rehearsal.eventId);
         }
 
-        // Prepare compact metadata items
-        const metaItems = [];
-        if (locationName && locationName !== 'Kein Ort') {
-            metaItems.push(`<span class="meta-tag"><span class="meta-icon">📍</span> ${Bands.escapeHtml(locationName)}</span>`);
-        }
-        if (event) {
-            metaItems.push(`<span class="meta-tag"><span class="meta-icon">🎫</span> Auftritt: ${Bands.escapeHtml(event.title)}</span>`);
-        }
-
-        const metaHtml = metaItems.length > 0 ? `
-            <div class="rehearsal-meta-compact">
-                ${metaItems.join('')}
-            </div>
-        ` : '';
-
         const respondedCount = new Set(
             allRehearsalVotes
                 .filter(vote => vote.availability && vote.availability !== 'none')
@@ -845,8 +904,12 @@ const Rehearsals = {
             ? 'Offen'
             : (isArchived ? 'Abgeschlossen' : 'Bestätigt');
         const statusClass = isArchived ? 'status-completed' : `status-${rehearsal.status}`;
-
-
+        const detailsGridHtml = this._renderRehearsalDetailsGrid(rehearsal, {
+            creator,
+            creatorName,
+            locationName,
+            linkedEvent: event
+        });
 
         return `
             <div class="rehearsal-card accordion-card ${isArchived ? 'schedule-card-completed' : ''} ${cardStateClass} ${isExpanded ? 'expanded' : ''}" data-rehearsal-id="${rehearsal.id}" style="--band-accent: ${bandColor}">
@@ -882,31 +945,9 @@ const Rehearsals = {
                 
                 <div class="accordion-content" style="display: ${isExpanded ? 'block' : 'none'};">
                     <div class="accordion-body">
-                        <div class="rehearsal-info">
-                            <div class="rehearsal-creator-info">
-                                <div class="creator-avatar" style="background: ${creator ? UI.getAvatarColor(creatorName) : 'var(--color-primary)'}">
-                                    ${creator && creator.profile_image_url ?
-                `<img src="${creator.profile_image_url}" alt="${creatorName}" class="creator-avatar-img">` :
-                UI.getUserInitials(creatorName)}
-                                </div>
-                                <div class="creator-details">
-                                    <strong>Probe erstellt von:</strong>
-                                    <span class="creator-name">${Bands.escapeHtml(creatorName)}</span>
-                                </div>
-                            </div>
-                            ${rehearsal.description ? `
-                                <p><strong>Beschreibung:</strong> ${Bands.escapeHtml(rehearsal.description)}</p>
-                            ` : ''}
-                            
-                            ${metaHtml}
-
-                            ${rehearsal.status === 'confirmed' && confirmedDateValue ? `
-                                <p><strong>✅ Bestätigter Termin:</strong> ${UI.formatDate(confirmedDateValue)}</p>
-                                ${locationName ? `<p><strong>📍 Ort:</strong> ${locationName}</p>` : ''}
-                            ` : ''}
-
+                        <div class="event-details-expanded rehearsal-details-expanded">
+                            ${detailsGridHtml}
                         </div>
-
 
                         <div class="rehearsal-action-buttons">
                             ${rehearsal.status === 'pending' ? `
@@ -1025,7 +1066,7 @@ const Rehearsals = {
                 const suggName = suggUser ? UI.getUserDisplayName(suggUser) : 'Unbekannt';
                 return `
                     <div class="time-suggestion-pill" title="Vorschlag von ${Bands.escapeHtml(suggName)}">
-                        <span class="icon">🕐</span> ${Bands.escapeHtml(s.suggestedTime)} (${Bands.escapeHtml(suggName.split(' ')[0])})
+                        ${Bands.escapeHtml(s.suggestedTime)} (${Bands.escapeHtml(suggName.split(' ')[0])})
                     </div>
                 `;
             }))).join('');
@@ -1348,7 +1389,7 @@ const Rehearsals = {
                 const deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
                 deleteBtn.className = 'btn-icon remove-confirmed';
-                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.innerHTML = this.getDateProposalRemoveIcon();
                 deleteBtn.addEventListener('click', () => {
                     item.remove();
                     this.updateRemoveButtons();

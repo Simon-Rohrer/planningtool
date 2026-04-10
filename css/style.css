@@ -220,6 +220,28 @@
     line-height: 1.5;
 }
 
+.scheduler-label-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.scheduler-label-icon {
+    width: 1rem;
+    height: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+}
+
+.scheduler-label-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
 .scheduler-panel-schedule {
     gap: 1.1rem;
 }
@@ -286,9 +308,95 @@
 }
 
 .event-schedule-mode-grid {
+    position: relative;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.22rem;
+    padding: 0.22rem;
+    border-radius: 0.88rem;
+    border: 1px solid var(--color-border);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+        var(--color-bg-secondary);
+}
+
+.event-schedule-mode-grid::before {
+    content: '';
+    position: absolute;
+    top: 0.22rem;
+    left: 0.22rem;
+    width: calc((100% - 0.66rem) / 2);
+    height: calc(100% - 0.44rem);
+    border-radius: 0.68rem;
+    background:
+        linear-gradient(180deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.08)),
+        var(--color-surface);
+    box-shadow:
+        0 0 0 1px rgba(99, 102, 241, 0.14),
+        0 8px 16px rgba(15, 23, 42, 0.08);
+    transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
+    pointer-events: none;
+}
+
+.event-schedule-mode-grid:has(.event-schedule-mode-option input[value="proposals"]:checked)::before {
+    transform: translateX(calc(100% + 0.22rem));
+}
+
+.scheduler-mode-row {
+    display: flex;
+    align-items: flex-start;
+}
+
+.scheduler-schedule-content-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(11.5rem, 13.5rem);
     gap: 0.85rem;
+    align-items: start;
+}
+
+.scheduler-schedule-content-main {
+    display: grid;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+.scheduler-mode-hint {
+    display: grid;
+    grid-template-columns: 1.65rem minmax(0, 1fr);
+    gap: 0.65rem;
+    max-width: 13.5rem;
+    padding: 0.78rem 0.85rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    background:
+        linear-gradient(180deg, rgba(99, 102, 241, 0.1), transparent 75%),
+        var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+.scheduler-mode-hint-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.14);
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    color: var(--color-text);
+    font-size: 0.84rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.scheduler-mode-hint p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.scheduler-mode-hint-side {
+    justify-self: start;
 }
 
 .event-schedule-mode-option {
@@ -306,25 +414,25 @@
 .event-schedule-mode-option-body {
     display: block;
     min-height: 100%;
-    padding: 1rem 1.05rem;
-    border-radius: 1rem;
-    border: 1px solid var(--color-border);
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
-        var(--color-bg-secondary);
-    transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base), background var(--transition-base);
+    padding: 0.58rem 0.65rem;
+    border-radius: 0.68rem;
+    border: 1px solid transparent;
+    background: transparent;
+    transition: color var(--transition-base), transform var(--transition-base), opacity var(--transition-base);
+    text-align: center;
+    position: relative;
+    z-index: 1;
 }
 
 .event-schedule-mode-option:hover .event-schedule-mode-option-body {
     transform: translateY(-1px);
-    border-color: rgba(99, 102, 241, 0.3);
 }
 
 .event-schedule-mode-option-body strong {
     display: block;
     color: var(--color-text);
-    font-size: 0.98rem;
-    line-height: 1.35;
+    font-size: 0.82rem;
+    line-height: 1.18;
 }
 
 .event-schedule-mode-option-body small {
@@ -335,11 +443,11 @@
 }
 
 .event-schedule-mode-option input:checked + .event-schedule-mode-option-body {
-    border-color: var(--scheduler-accent);
-    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.18), 0 16px 28px rgba(15, 23, 42, 0.12);
-    background:
-        linear-gradient(180deg, rgba(99, 102, 241, 0.14), transparent 74%),
-        var(--color-bg-secondary);
+    color: var(--color-text);
+}
+
+.event-schedule-mode-option input:not(:checked) + .event-schedule-mode-option-body {
+    opacity: 0.72;
 }
 
 .scheduler-modal .date-proposals {
@@ -349,11 +457,11 @@
 
 .scheduler-modal .date-proposal-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 0.85rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.75rem;
     margin-bottom: 0;
-    padding: 1rem;
+    padding: 0.95rem;
     border-radius: 1rem;
     border: 1px solid var(--color-border);
     background: var(--color-bg-secondary);
@@ -374,11 +482,27 @@
 }
 
 .scheduler-modal .date-time-range {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: center;
-    flex-wrap: wrap;
     gap: 0.75rem;
     min-width: 0;
+}
+
+.scheduler-subpanel-label {
+    display: block;
+    margin: 0 0 0.65rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.scheduler-modal .scheduler-schedule-date-label {
+    display: block;
+    margin: 0 0 0.65rem;
+    color: var(--color-text);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.35;
 }
 
 .scheduler-modal .date-time-range input[type="date"],
@@ -406,6 +530,17 @@
     color: var(--color-text-secondary);
     font-weight: 700;
     white-space: nowrap;
+}
+
+.scheduler-add-date-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.scheduler-add-date-btn .btn-inline-icon {
+    width: 1rem;
+    height: 1rem;
 }
 
 .scheduler-modal .date-availability {
@@ -459,6 +594,22 @@
     white-space: nowrap;
 }
 
+.scheduler-modal .date-proposal-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.scheduler-modal .date-proposal-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    margin-left: auto;
+}
+
 .scheduler-modal .btn-icon.remove-date,
 .scheduler-modal .btn-icon.remove-event-date {
     width: 2.6rem;
@@ -474,6 +625,12 @@
     color: var(--color-text-secondary);
 }
 
+.scheduler-modal .btn-icon.remove-date svg,
+.scheduler-modal .btn-icon.remove-event-date svg {
+    width: 1rem;
+    height: 1rem;
+}
+
 .scheduler-modal .btn-icon.remove-date:hover,
 .scheduler-modal .btn-icon.remove-event-date:hover {
     border-color: var(--color-primary);
@@ -486,6 +643,25 @@
     padding: 0;
     background: transparent;
     border: none;
+}
+
+.scheduler-members-extra-block {
+    display: grid;
+    gap: 0.8rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.scheduler-panel-members #eventGuestsField {
+    max-width: 40rem;
+}
+
+.event-rundown-inline-hint {
+    margin: 0.42rem 0 0;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 38rem;
 }
 
 .member-selection-grid {
@@ -26219,17 +26395,9 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
 #songpoolView .band-setlist-scrollbar-dock {
     display: none;
     flex-shrink: 0;
-    padding: 10px 14px 14px;
-    background: var(--surface);
-    position: sticky;
-    bottom: 0;
-    z-index: 4;
-    margin-top: -1px;
-    width: 100%;
-    border: 1px solid var(--color-border);
-    border-top: 0;
-    border-radius: 0 0 18px 18px;
-    box-shadow: none;
+    padding: 0 14px 14px;
+    background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0), color-mix(in srgb, var(--surface) 96%, transparent) 48%);
 }
 
 #songpoolView .band-setlist-scrollbar-dock.is-visible {
@@ -26239,14 +26407,14 @@ html[data-theme="dark"] .schedule-card-user-state.is-confirmed,
 #songpoolView .band-setlist-scrollbar-top {
     overflow-x: auto;
     overflow-y: hidden;
-    height: 14px;
+    height: 18px;
     border-radius: 999px;
     border: 1px solid var(--border);
     background:
-        linear-gradient(180deg, color-mix(in srgb, var(--surface-secondary) 72%, transparent), transparent),
+        linear-gradient(180deg, color-mix(in srgb, var(--surface-secondary) 70%, transparent), transparent),
         color-mix(in srgb, var(--surface) 92%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    scrollbar-width: none;
+    box-shadow: 0 -10px 24px -22px rgba(15, 23, 42, 0.72);
+    scrollbar-gutter: stable;
 }
 
 #songpoolView .band-setlist-scrollbar-top::-webkit-scrollbar {
@@ -33985,23 +34153,27 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 
 .scheduler-modal-event .scheduler-panel-basics .scheduler-grid-basics,
 .scheduler-modal-rehearsal .scheduler-panel-basics .scheduler-grid-basics {
-    width: min(100%, 52rem);
+    width: min(100%, 40rem);
     grid-template-columns: minmax(0, 1fr);
 }
 
 .scheduler-modal-event #eventTitle,
 .scheduler-modal-event #eventBand,
 .scheduler-modal-event #eventLocation,
+.scheduler-modal-rehearsal #rehearsalTitle,
+.scheduler-modal-rehearsal #rehearsalBand,
+.scheduler-modal-rehearsal #rehearsalLocation,
+.scheduler-modal-rehearsal #rehearsalEvent,
 .scheduler-modal-event #eventDate {
     width: 100%;
-    max-width: none;
+    max-width: 40rem;
 }
 
 .scheduler-modal-event .scheduler-panel-schedule .event-schedule-mode-grid,
 .scheduler-modal-rehearsal .scheduler-panel-schedule .event-schedule-mode-grid {
     width: 100%;
-    max-width: 52rem;
-    grid-template-columns: minmax(0, 1fr);
+    max-width: 17.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .scheduler-modal-event .scheduler-panel-schedule .scheduler-schedule-stack,
@@ -34011,12 +34183,34 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 
 .scheduler-modal-event .scheduler-panel-schedule .event-schedule-mode-option-body,
 .scheduler-modal-rehearsal .scheduler-panel-schedule .event-schedule-mode-option-body {
-    padding: 0.9rem 1rem;
+    padding: 0.58rem 0.65rem;
 }
 
-.scheduler-modal-event .scheduler-panel-schedule .scheduler-schedule-subpanel,
+.scheduler-modal-event .scheduler-panel-schedule .scheduler-schedule-subpanel {
+    padding: 0.85rem 0.95rem;
+    width: 100%;
+    max-width: 31rem;
+}
+
 .scheduler-modal-rehearsal .scheduler-panel-schedule .scheduler-schedule-subpanel {
     padding: 0.85rem 0.95rem;
+    width: 100%;
+    max-width: 40rem;
+}
+
+.scheduler-modal-event #eventFixedDateSection .form-group,
+.scheduler-modal-rehearsal #rehearsalFixedDateSection .form-group {
+    width: 100%;
+}
+
+.scheduler-modal-event #eventTitle,
+.scheduler-modal-event #eventBand,
+.scheduler-modal-event #eventLocation,
+.scheduler-modal-rehearsal #rehearsalTitle,
+.scheduler-modal-rehearsal #rehearsalBand,
+.scheduler-modal-rehearsal #rehearsalLocation,
+.scheduler-modal-rehearsal #rehearsalEvent {
+    max-width: 34rem;
 }
 
 .scheduler-modal-rehearsal .scheduler-form-scroll,
@@ -34084,15 +34278,82 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 
 .scheduler-modal-rehearsal #rehearsalTitle,
 .scheduler-modal-rehearsal #rehearsalBand,
-.scheduler-modal-rehearsal #rehearsalLocation,
-.scheduler-modal-rehearsal #rehearsalEvent,
 .scheduler-modal-rehearsal #rehearsalDescription {
     width: 100%;
+}
+
+.scheduler-modal-rehearsal #rehearsalTitle,
+.scheduler-modal-rehearsal #rehearsalBand {
+    max-width: 40rem;
+}
+
+.scheduler-modal-rehearsal #rehearsalDescription {
     max-width: none;
 }
 
 .scheduler-modal-rehearsal #rehearsalFixedDateSection .date-time-range {
+    width: min(100%, 31rem);
+}
+
+.scheduler-modal-event .scheduler-schedule-content-row {
+    grid-template-columns: minmax(0, 31rem) minmax(11.5rem, 13.5rem);
+}
+
+.scheduler-modal-rehearsal .scheduler-schedule-content-row {
+    grid-template-columns: minmax(0, 40rem) minmax(11.5rem, 13.5rem);
+}
+
+.scheduler-modal-event #eventFixedDateSection .date-time-range,
+.scheduler-modal-event #eventDateProposalsSection .date-time-range {
+    width: min(100%, 29rem);
+    grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr);
+}
+
+.scheduler-modal-rehearsal #rehearsalFixedDateSection .date-time-range,
+.scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-time-range {
+    width: min(100%, 31rem);
+}
+
+.scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-time-range {
+    grid-template-columns: minmax(170px, 1.1fr) minmax(104px, 0.82fr) auto minmax(104px, 0.82fr) auto;
+    align-items: center;
+}
+
+.scheduler-modal-event #eventDateProposalsSection .date-proposal-item,
+.scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-proposal-item {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    gap: 0.6rem;
+}
+
+.scheduler-modal-event #eventDateProposalsSection .date-proposal-item + .date-proposal-item,
+.scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-proposal-item + .date-proposal-item {
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.scheduler-modal-event #eventDateProposalsSection .date-proposal-footer,
+.scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-proposal-footer {
     width: 100%;
+    max-width: 31rem;
+    gap: 0.65rem;
+}
+
+.scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-proposal-footer {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+    margin-top: -0.15rem;
+}
+
+.scheduler-modal-event #eventDateProposalsSection .date-proposal-actions,
+.scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-proposal-actions {
+    align-self: start;
+}
+
+.scheduler-modal-rehearsal #rehearsalDateProposalsSection .remove-date {
+    margin-left: 0.05rem;
 }
 
 .scheduler-modal-rehearsal #rehearsalFixedDateAvailability {
@@ -34111,8 +34372,8 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 
 .scheduler-modal-rehearsal .date-time-range {
     display: grid;
-    grid-template-columns: minmax(220px, 1.25fr) minmax(128px, 0.88fr) auto minmax(128px, 0.88fr);
-    gap: 0.75rem;
+    grid-template-columns: minmax(170px, 1.1fr) minmax(104px, 0.82fr) auto minmax(104px, 0.82fr);
+    gap: 0.65rem;
     align-items: center;
 }
 
@@ -34190,7 +34451,19 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 }
 
 @media (max-width: 900px) {
+    .scheduler-schedule-content-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .scheduler-mode-hint {
+        max-width: 22rem;
+    }
+
     .scheduler-modal-rehearsal .date-time-range {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-time-range {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -34201,6 +34474,11 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
 }
 
 @media (max-width: 768px) {
+    .scheduler-modal-event .scheduler-schedule-content-row,
+    .scheduler-modal-rehearsal .scheduler-schedule-content-row {
+        grid-template-columns: 1fr;
+    }
+
     .scheduler-modal-rehearsal .scheduler-panel-basics .scheduler-grid-basics {
         width: 100%;
     }
@@ -34214,6 +34492,16 @@ html[data-theme="light"] #landingPage .auth-forgot-password-link,
     }
 
     .scheduler-modal-rehearsal .date-time-range {
+        grid-template-columns: 1fr;
+    }
+
+    .scheduler-modal-event #eventFixedDateSection .date-time-range,
+    .scheduler-modal-event #eventDateProposalsSection .date-time-range {
+        width: 100%;
+        grid-template-columns: 1fr;
+    }
+
+    .scheduler-modal-rehearsal #rehearsalDateProposalsSection .date-time-range {
         grid-template-columns: 1fr;
     }
 
