@@ -570,6 +570,10 @@ const App = {
     EVENT_RUNDOWN_MARKER_START: '[[BANDMATE_EVENT_RUNDOWN]]',
     EVENT_RUNDOWN_MARKER_END: '[[/BANDMATE_EVENT_RUNDOWN]]',
     songLanguageAutoValue: '',
+    currentRundownPdfPreview: null,
+    currentRundownPdfExportSession: null,
+    currentRundownPdfPreviewTimer: null,
+    currentRundownPdfPreviewRequestId: 0,
 
     // Caching for settings lists
     locationsCache: null,
@@ -1807,6 +1811,493 @@ const App = {
         }
     },
 
+    cleanupRundownPdfExportPreview() {
+        const frame = document.getElementById('rundownPdfPreviewFrame');
+        const loading = document.getElementById('rundownPdfPreviewLoading');
+        const titleEl = document.getElementById('rundownPdfPreviewTitle');
+        const filenameEl = document.getElementById('rundownPdfPreviewFilename');
+        const downloadBtn = document.getElementById('rundownPdfExportDownload');
+
+        if (this.currentRundownPdfPreviewTimer) {
+            clearTimeout(this.currentRundownPdfPreviewTimer);
+            this.currentRundownPdfPreviewTimer = null;
+        }
+
+        this.currentRundownPdfPreviewRequestId += 1;
+
+        if (frame) {
+            frame.src = '';
+        }
+
+        if (loading) {
+            loading.hidden = true;
+        }
+
+        if (titleEl) {
+            titleEl.textContent = 'Ablauf PDF';
+        }
+
+        if (filenameEl) {
+            filenameEl.textContent = '-';
+        }
+
+        if (downloadBtn) {
+            downloadBtn.disabled = true;
+        }
+
+        if (this.currentRundownPdfPreview?.blobUrl) {
+            URL.revokeObjectURL(this.currentRundownPdfPreview.blobUrl);
+        }
+
+        this.currentRundownPdfPreview = null;
+        this.currentRundownPdfExportSession = null;
+    },
+
+    getRundownPdfExportModeDefinitions() {
+        return {
+            'full-details': {
+                label: 'Ganzer Ablauf mit Details'
+            },
+            'full-compact': {
+                label: 'Ganzer Ablauf kompakt'
+            },
+            'songs-full': {
+                label: 'Nur Songs mit allen Infos'
+            },
+            'songs-language': {
+                label: 'Nur Songs mit Sprache'
+            },
+            'songs-large': {
+                label: 'Große nummerierte Songtitel'
+            }
+        };
+    },
+
+    getRundownPdfExportModeLabel(mode = 'full-details') {
+        return this.getRundownPdfExportModeDefinitions()[mode]?.label
+            || this.getRundownPdfExportModeDefinitions()['full-details'].label;
+    },
+
+    async resolveRundownPdfMemberNames(memberIds = []) {
+        const uniqueIds = [...new Set((memberIds || []).map((id) => String(id)).filter(Boolean))];
+        if (uniqueIds.length === 0) return [];
+
+        const members = await Promise.all(uniqueIds.map(async (memberId) => {
+            try {
+                return await Storage.getById('users', memberId);
+            } catch (error) {
+                console.warn('[Rundown PDF] Member lookup failed:', error);
+                return null;
+            }
+        }));
+
+        return members
+            .filter(Boolean)
+            .map((member) => ((typeof UI !== 'undefined' && typeof UI.getUserDisplayName === 'function')
+                ? UI.getUserDisplayName(member)
+                : (member.name || member.username || member.email || 'Unbekannt')));
+    },
+
+    buildRundownPdfItemsFromSource(rundown = null, songs = [], fallbackStartTime = '') {
+        const normalizedRundown = this.normalizeEventRundownData(rundown);
+        const normalizedSongs = (Array.isArray(songs) ? songs : []).map((song, index) => ({
+            ...song,
+            orderIndex: index + 1,
+            infoDisplay: this.getSongInfoDisplay(song)
+        }));
+        const songMap = new Map(normalizedSongs.map((song) => [String(song.id), song]));
+        const timeline = this.getEventRundownTimeline(normalizedRundown, fallbackStartTime);
+
+        const items = timeline.map((item) => ({
+            ...item,
+            typeLabel: item.typeMeta?.label || this.getEventRundownTypeMeta(item.type)?.label || 'Programmpunkt',
+            selectedSongs: Array.isArray(item.songIds)
+                ? item.songIds.map((songId) => songMap.get(String(songId))).filter(Boolean)
+                : []
+        }));
+
+        const songsInRundownOrder = [];
+        items.forEach((item) => {
+            item.selectedSongs.forEach((song) => songsInRundownOrder.push(song));
+        });
+
+        return {
+            items,
+            songs: songsInRundownOrder.length > 0 ? songsInRundownOrder : normalizedSongs
+        };
+    },
+
+    async buildDraftRundownPdfExportPayload() {
+        const rundown = this.getPersistableDraftEventRundown();
+        if (!Array.isArray(rundown.items) || rundown.items.length === 0) {
+            return null;
+        }
+
+        const currentUser = Auth.getCurrentUser();
+        const { bandId } = this.getCurrentEventEditorContext();
+        const songs = await this.getDraftEventSongsInRundownOrder();
+        const fallbackStart = this.getEventRundownFallbackStartTime();
+        const { items, songs: songsInOrder } = this.buildRundownPdfItemsFromSource(rundown, songs, fallbackStart);
+
+        const bandSelect = document.getElementById('eventBand');
+        const selectedBandOption = bandSelect?.selectedOptions?.[0];
+        let bandName = selectedBandOption?.textContent?.trim() || '';
+        if (!bandName && bandId) {
+            const band = await Storage.getBand(bandId);
+            bandName = band?.name || '';
+        }
+
+        const selectedMemberIds = (typeof Events !== 'undefined' && typeof Events.getSelectedMembers === 'function')
+            ? Events.getSelectedMembers()
+            : [];
+        const guests = (typeof Events !== 'undefined' && typeof Events.getGuests === 'function')
+            ? Events.getGuests()
+            : [];
+        const lineup = [
+            ...(await this.resolveRundownPdfMemberNames(selectedMemberIds)),
+            ...guests
+        ].filter(Boolean);
+
+        const title = document.getElementById('eventTitle')?.value?.trim() || 'Ablauf';
+        const eventDateValue = document.getElementById('eventDate')?.value || '';
+        const dateLabel = eventDateValue ? UI.formatDate(eventDateValue) : '';
+        const visibleInfo = document.getElementById('eventInfo')?.value?.trim() || '';
+        const techInfo = document.getElementById('eventTechInfo')?.value?.trim() || '';
+        const location = document.getElementById('eventLocation')?.value?.trim() || '';
+        const soundcheckLocation = document.getElementById('eventSoundcheckLocation')?.value?.trim() || '';
+
+        return {
+            title: title ? `Ablauf ${title}` : 'Ablauf',
+            subtitle: [bandName, dateLabel].filter(Boolean).join(' • '),
+            items,
+            songs: songsInOrder,
+            eventMeta: {
+                bandName,
+                createdByName: currentUser ? UI.getUserDisplayName(currentUser) : '',
+                dateLabel,
+                location,
+                soundcheckLocation,
+                info: visibleInfo,
+                techInfo,
+                lineup
+            }
+        };
+    },
+
+    async buildStoredEventRundownPdfExportPayload(eventId) {
+        const event = await Storage.getEvent(eventId);
+        if (!event) return null;
+
+        const rundown = this.extractEventRundown(event.info || '');
+        if (!Array.isArray(rundown.items) || rundown.items.length === 0) {
+            return null;
+        }
+
+        const songs = (await Storage.getEventSongsForMultipleEvents([eventId]))
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+        const fallbackStart = event.date ? String(event.date).slice(11, 16) : '';
+        const { items, songs: songsInOrder } = this.buildRundownPdfItemsFromSource(rundown, songs, fallbackStart);
+
+        const band = event.bandId ? await Storage.getBand(event.bandId) : null;
+        let creator = null;
+        if (event.createdBy) {
+            try {
+                creator = await Storage.getById('users', event.createdBy);
+            } catch (error) {
+                console.warn('[Rundown PDF] Creator lookup failed:', error);
+            }
+        }
+        const lineup = [
+            ...(await this.resolveRundownPdfMemberNames(Array.isArray(event.members) ? event.members : [])),
+            ...((event.guests || []).filter(Boolean))
+        ];
+        const dateLabel = (typeof Events !== 'undefined' && typeof Events.formatDisplayDateForEvent === 'function')
+            ? Events.formatDisplayDateForEvent(event)
+            : (event.date ? UI.formatDate(event.date) : '');
+
+        return {
+            title: event.title ? `Ablauf ${event.title}` : 'Ablauf',
+            subtitle: [band?.name || '', dateLabel].filter(Boolean).join(' • '),
+            items,
+            songs: songsInOrder,
+            eventMeta: {
+                bandName: band?.name || '',
+                createdByName: creator ? UI.getUserDisplayName(creator) : '',
+                dateLabel,
+                location: event.location || '',
+                soundcheckLocation: event.soundcheckLocation || '',
+                info: this.extractEventVisibleInfo(event.info || ''),
+                techInfo: event.techInfo || '',
+                lineup
+            }
+        };
+    },
+
+    bindRundownPdfExportModal() {
+        const modal = document.getElementById('rundownPdfExportModal');
+        if (!modal || modal.dataset.bound === 'true') return;
+
+        const nameInput = document.getElementById('rundownPdfFileName');
+        const modeInputs = modal.querySelectorAll('input[name="rundownPdfMode"]');
+        const cancelBtn = document.getElementById('rundownPdfExportCancel');
+        const downloadBtn = document.getElementById('rundownPdfExportDownload');
+
+        if (nameInput) {
+            nameInput.addEventListener('input', () => {
+                if (!this.currentRundownPdfExportSession) return;
+                this.currentRundownPdfExportSession.title = nameInput.value.trim();
+                this.currentRundownPdfExportSession.isDirty = true;
+                this.updateRundownPdfExportModalMeta();
+                this.scheduleRundownPdfPreviewRefresh(220);
+            });
+        }
+
+        modeInputs.forEach((input) => {
+            input.addEventListener('change', () => {
+                if (!this.currentRundownPdfExportSession) return;
+                this.currentRundownPdfExportSession.mode = input.value;
+                this.currentRundownPdfExportSession.isDirty = true;
+                this.updateRundownPdfExportModalMeta();
+                this.scheduleRundownPdfPreviewRefresh(60);
+            });
+        });
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => UI.closeModal('rundownPdfExportModal'));
+        }
+
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', async () => {
+                await this.downloadCurrentRundownPdfPreview();
+            });
+        }
+
+        modal.dataset.bound = 'true';
+    },
+
+    updateRundownPdfExportModalMeta() {
+        const session = this.currentRundownPdfExportSession;
+        if (!session) return;
+
+        const previewTitle = document.getElementById('rundownPdfPreviewTitle');
+        const previewContext = document.getElementById('rundownPdfPreviewContext');
+        const filenameEl = document.getElementById('rundownPdfPreviewFilename');
+
+        const resolvedTitle = session.title || session.defaultTitle || 'Ablauf';
+        const resolvedFilename = typeof PDFGenerator !== 'undefined' && typeof PDFGenerator.sanitizeFilename === 'function'
+            ? PDFGenerator.sanitizeFilename(resolvedTitle, 'ablauf.pdf')
+            : `${resolvedTitle || 'ablauf'}.pdf`;
+
+        if (previewTitle) {
+            previewTitle.textContent = resolvedTitle;
+        }
+
+        if (previewContext) {
+            previewContext.textContent = `${session.items.length} Punkte · ${session.songs.length} Songs`;
+        }
+
+        if (filenameEl) {
+            filenameEl.textContent = resolvedFilename;
+        }
+    },
+
+    scheduleRundownPdfPreviewRefresh(delay = 160) {
+        if (this.currentRundownPdfPreviewTimer) {
+            clearTimeout(this.currentRundownPdfPreviewTimer);
+        }
+
+        this.currentRundownPdfPreviewTimer = setTimeout(() => {
+            this.currentRundownPdfPreviewTimer = null;
+            this.refreshRundownPdfPreview();
+        }, Math.max(0, delay));
+    },
+
+    setRundownPdfPreviewLoading(isLoading) {
+        const loading = document.getElementById('rundownPdfPreviewLoading');
+        const downloadBtn = document.getElementById('rundownPdfExportDownload');
+
+        if (loading) {
+            loading.hidden = !isLoading;
+        }
+
+        if (downloadBtn && isLoading) {
+            downloadBtn.disabled = isLoading;
+        }
+    },
+
+    async waitForRundownPdfPreviewIdle(maxWaitMs = 15000) {
+        const startedAt = Date.now();
+
+        while (this.currentRundownPdfExportSession?.isRendering) {
+            if ((Date.now() - startedAt) >= maxWaitMs) {
+                break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 120));
+        }
+    },
+
+    async refreshRundownPdfPreview(force = false) {
+        const session = this.currentRundownPdfExportSession;
+        const frame = document.getElementById('rundownPdfPreviewFrame');
+        if (!session || !frame || typeof PDFGenerator === 'undefined' || typeof PDFGenerator.generateRundownPDF !== 'function') {
+            return;
+        }
+
+        if (this.currentRundownPdfPreviewTimer) {
+            clearTimeout(this.currentRundownPdfPreviewTimer);
+            this.currentRundownPdfPreviewTimer = null;
+        }
+
+        if (session.isRendering) {
+            session.refreshQueued = true;
+            return;
+        }
+
+        const requestId = ++this.currentRundownPdfPreviewRequestId;
+        const resolvedTitle = session.title || session.defaultTitle || 'Ablauf';
+
+        session.isRendering = true;
+        session.isDirty = false;
+        this.setRundownPdfPreviewLoading(true);
+        this.updateRundownPdfExportModalMeta();
+
+        try {
+            const pdfData = await PDFGenerator.generateRundownPDF({
+                title: resolvedTitle,
+                subtitle: session.subtitle || '',
+                mode: session.mode || 'full-details',
+                eventMeta: session.eventMeta || {},
+                items: session.items || [],
+                songs: session.songs || [],
+                filename: resolvedTitle,
+                previewOnly: true
+            });
+
+            if (requestId !== this.currentRundownPdfPreviewRequestId || !this.currentRundownPdfExportSession) {
+                if (pdfData?.blobUrl) {
+                    URL.revokeObjectURL(pdfData.blobUrl);
+                }
+                return;
+            }
+
+            if (this.currentRundownPdfPreview?.blobUrl) {
+                URL.revokeObjectURL(this.currentRundownPdfPreview.blobUrl);
+            }
+
+            this.currentRundownPdfPreview = pdfData;
+            frame.src = `${pdfData.blobUrl}#view=FitH`;
+
+            const filenameEl = document.getElementById('rundownPdfPreviewFilename');
+            if (filenameEl && pdfData?.filename) {
+                filenameEl.textContent = pdfData.filename;
+            }
+
+            const downloadBtn = document.getElementById('rundownPdfExportDownload');
+            if (downloadBtn) {
+                downloadBtn.disabled = false;
+            }
+        } catch (error) {
+            console.error('[Rundown PDF] Preview generation failed:', error);
+            UI.showToast('Die Ablauf-PDF konnte nicht erstellt werden.', 'error');
+        } finally {
+            const activeSession = this.currentRundownPdfExportSession;
+            if (activeSession) {
+                activeSession.isRendering = false;
+            }
+            this.setRundownPdfPreviewLoading(false);
+
+            if (activeSession?.refreshQueued) {
+                activeSession.refreshQueued = false;
+                this.refreshRundownPdfPreview(true);
+            }
+
+            const downloadBtn = document.getElementById('rundownPdfExportDownload');
+            if (downloadBtn && !this.currentRundownPdfPreview?.blobUrl) {
+                downloadBtn.disabled = true;
+            }
+        }
+    },
+
+    async downloadCurrentRundownPdfPreview() {
+        const session = this.currentRundownPdfExportSession;
+        if (!session) return;
+
+        if (session.isRendering) {
+            await this.waitForRundownPdfPreviewIdle();
+        }
+
+        if (session.isDirty || !this.currentRundownPdfPreview?.blobUrl) {
+            await this.refreshRundownPdfPreview(true);
+            await this.waitForRundownPdfPreviewIdle();
+        }
+
+        const pdfData = this.currentRundownPdfPreview;
+        if (!pdfData?.blobUrl) {
+            UI.showToast('Es konnte keine PDF-Datei vorbereitet werden.', 'warning');
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = pdfData.blobUrl;
+        link.download = pdfData.filename || 'ablauf.pdf';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    },
+
+    async openRundownPdfExportModal(payload = null) {
+        if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) {
+            UI.showToast('Kein Ablauf für den PDF-Export vorhanden.', 'warning');
+            return;
+        }
+
+        this.bindRundownPdfExportModal();
+        this.cleanupRundownPdfExportPreview();
+
+        this.currentRundownPdfExportSession = {
+            ...payload,
+            defaultTitle: payload.title || 'Ablauf',
+            title: payload.title || 'Ablauf',
+            mode: 'full-details',
+            isDirty: true,
+            isRendering: false,
+            refreshQueued: false
+        };
+
+        const nameInput = document.getElementById('rundownPdfFileName');
+        if (nameInput) {
+            nameInput.value = this.currentRundownPdfExportSession.title;
+        }
+
+        document.querySelectorAll('#rundownPdfExportModal input[name="rundownPdfMode"]').forEach((input) => {
+            input.checked = input.value === 'full-details';
+        });
+
+        this.updateRundownPdfExportModalMeta();
+        UI.openModal('rundownPdfExportModal');
+        this.refreshRundownPdfPreview(true);
+    },
+
+    async openDraftEventRundownPdfExport() {
+        const payload = await this.buildDraftRundownPdfExportPayload();
+        if (!payload) {
+            UI.showToast('Bitte lege zuerst einen Ablauf an.', 'warning');
+            return;
+        }
+
+        await this.openRundownPdfExportModal(payload);
+    },
+
+    async openStoredEventRundownPdfExport(eventId) {
+        const payload = await this.buildStoredEventRundownPdfExportPayload(eventId);
+        if (!payload) {
+            UI.showToast('Für diesen Termin ist kein Ablauf hinterlegt.', 'warning');
+            return;
+        }
+
+        await this.openRundownPdfExportModal(payload);
+    },
+
     showPDFPreview(pdfData) {
         const iframe = document.getElementById('pdfPreviewFrame');
         if (!iframe) return;
@@ -1840,7 +2331,7 @@ const App = {
                     data-title="${safeTitle}"
                     title="PDF öffnen"
                     aria-label="PDF öffnen"
-                >📄</button>
+                >${this.getRundownInlineIcon('pdf')}</button>
             `);
         }
 
@@ -1853,7 +2344,7 @@ const App = {
                     data-title="${safeTitle}"
                     title="ChordPro Vorschau öffnen"
                     aria-label="ChordPro Vorschau öffnen"
-                >🎼</button>
+                >${this.getRundownInlineIcon('chordpro')}</button>
             `);
         }
 
@@ -2267,6 +2758,9 @@ const App = {
                 }
                 if (modalId === 'pdfPreviewModal') {
                     this.cleanupPDFPreview();
+                }
+                if (modalId === 'rundownPdfExportModal') {
+                    this.cleanupRundownPdfExportPreview();
                 }
                 if (modalId === 'chordproPreviewModal') {
                     this.cleanupChordProPreview();
@@ -3297,16 +3791,12 @@ const App = {
         if (eventRundownPdfBtn && !eventRundownPdfBtn.dataset.bound) {
             eventRundownPdfBtn.dataset.bound = 'true';
             eventRundownPdfBtn.addEventListener('click', async () => {
-                const songs = await this.getDraftEventSongsInRundownOrder();
-                if (!songs.length) {
-                    UI.showToast('Keine Songs im Ablauf vorhanden.', 'warning');
+                const hasRundown = Array.isArray(this.draftEventRundown?.items) && this.draftEventRundown.items.length > 0;
+                if (!hasRundown) {
+                    UI.showToast('Bitte lege zuerst einen Ablauf an.', 'warning');
                     return;
                 }
-
-                const title = document.getElementById('eventTitle')?.value?.trim() || 'Auftritt';
-                const eventDate = document.getElementById('eventDate')?.value || '';
-                const subtitle = eventDate ? UI.formatDate(eventDate) : 'Ablauf-Setlist';
-                this.downloadSongListPDF(songs, `Setlist: ${title}`, subtitle, true);
+                await this.openDraftEventRundownPdfExport();
             });
         }
 
@@ -5304,6 +5794,91 @@ const App = {
         return div.innerHTML;
     },
 
+    escapeHtmlAttr(text) {
+        return this.escapeHtml(text).replace(/"/g, '&quot;');
+    },
+
+    getRundownInlineIcon(name = 'trash') {
+        const icons = {
+            drag: `
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="6" cy="5" r="1.2" fill="currentColor"></circle>
+                    <circle cx="6" cy="10" r="1.2" fill="currentColor"></circle>
+                    <circle cx="6" cy="15" r="1.2" fill="currentColor"></circle>
+                    <circle cx="13.5" cy="5" r="1.2" fill="currentColor"></circle>
+                    <circle cx="13.5" cy="10" r="1.2" fill="currentColor"></circle>
+                    <circle cx="13.5" cy="15" r="1.2" fill="currentColor"></circle>
+                </svg>
+            `,
+            edit: `
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M4 13.75V16h2.25L14.8 7.45l-2.25-2.25L4 13.75Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+                    <path d="M11.95 5.8 14.2 8.05" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                </svg>
+            `,
+            trash: `
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M4.75 6h10.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                    <path d="M7.25 6V4.75c0-.41.34-.75.75-.75h4c.41 0 .75.34.75.75V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                    <path d="M6.25 6.75 6.9 14.7c.05.74.67 1.3 1.4 1.3h3.4c.73 0 1.35-.56 1.4-1.3l.65-7.95" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+                    <path d="M8.35 9.15v4.2M11.65 9.15v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                </svg>
+            `,
+            pdf: `
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M6 3.75h5.2l3.55 3.55V16a.75.75 0 0 1-.75.75H6A.75.75 0 0 1 5.25 16V4.5A.75.75 0 0 1 6 3.75Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+                    <path d="M10.95 3.75V7.3h3.55" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+                    <path d="M7.5 10.15h5M7.5 12.6h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+                </svg>
+            `,
+            chordpro: `
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M12.75 4.25v8.15a2.35 2.35 0 1 1-1.5-2.22V7.1l4-1.2v5.1a2.35 2.35 0 1 1-1.5-2.22V4.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+            `,
+            chevron: `
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="m6.25 8 3.75 4 3.75-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+            `
+        };
+
+        return icons[name] || icons.trash;
+    },
+
+    renderRundownSongSummaryChips(songs = [], options = {}) {
+        const limit = Number.isFinite(options.limit) ? Math.max(1, Number(options.limit)) : 5;
+        const emptyText = options.emptyText || 'Noch keine Songs ausgewählt';
+        const style = options.style === 'list' ? 'list' : 'pills';
+
+        if (!Array.isArray(songs) || songs.length === 0) {
+            return `<span class="event-rundown-song-summary-empty">${this.escapeHtml(emptyText)}</span>`;
+        }
+
+        const visibleSongs = songs.slice(0, limit);
+        const remaining = songs.length - visibleSongs.length;
+
+        if (style === 'list') {
+            return `
+                <div class="event-rundown-song-summary-lines">
+                    ${visibleSongs.map((song) => `
+                        <span class="event-rundown-song-summary-line">- ${this.escapeHtml(song?.title || 'Ohne Titel')}</span>
+                    `).join('')}
+                    ${remaining > 0 ? `<span class="event-rundown-song-summary-line is-muted">- ${remaining} weitere</span>` : ''}
+                </div>
+            `;
+        }
+
+        return `
+            <div class="event-rundown-song-summary-list">
+                ${visibleSongs.map((song) => `
+                    <span class="event-rundown-song-summary-pill">${this.escapeHtml(song?.title || 'Ohne Titel')}</span>
+                `).join('')}
+                ${remaining > 0 ? `<span class="event-rundown-song-summary-pill is-muted">+${remaining}</span>` : ''}
+            </div>
+        `;
+    },
+
     getSongInfoDisplay(song) {
         return Storage.getSongInfoPreview(song) || '-';
     },
@@ -5378,7 +5953,8 @@ const App = {
             duration: meta.defaultDuration,
             notes: '',
             songIds: [],
-            isPickerOpen: false
+            isPickerOpen: false,
+            isCollapsed: false
         };
     },
 
@@ -5403,7 +5979,8 @@ const App = {
                     duration,
                     notes: typeof item.notes === 'string' ? item.notes : '',
                     songIds: Array.isArray(item.songIds) ? item.songIds.map(String).filter(Boolean) : [],
-                    isPickerOpen: Boolean(item.isPickerOpen)
+                    isPickerOpen: Boolean(item.isPickerOpen),
+                    isCollapsed: Boolean(item.isCollapsed)
                 };
             }).filter(Boolean)
         };
@@ -5420,7 +5997,8 @@ const App = {
                 title: item.title,
                 duration: item.duration,
                 notes: item.notes,
-                songIds: [...item.songIds]
+                songIds: [...item.songIds],
+                isCollapsed: Boolean(item.isCollapsed)
             }))
         };
     },
@@ -5473,7 +6051,8 @@ const App = {
                 title: item.title,
                 duration: item.duration,
                 notes: item.notes,
-                songIds: [...item.songIds]
+                songIds: [...item.songIds],
+                isCollapsed: Boolean(item.isCollapsed)
             }))
         });
 
@@ -5637,7 +6216,7 @@ const App = {
 
         this.syncDraftEventSongIdsFromRundown();
         if (pdfButton) {
-            pdfButton.disabled = this.draftEventSongIds.length === 0;
+            pdfButton.disabled = normalized.items.length === 0;
         }
 
         const fallbackStart = this.getEventRundownFallbackStartTime();
@@ -5655,109 +6234,145 @@ const App = {
             return;
         }
 
+        const renderSongTable = (item, selectedSongs) => `
+            <div class="event-rundown-song-table-wrap">
+                <table class="songs-table band-setlist-table event-setlist-table event-rundown-song-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: center; width: 40px;">Pos.</th>
+                            <th style="text-align: center; width: 108px;">Aktionen</th>
+                            <th>Titel</th>
+                            <th>Interpret</th>
+                            <th>BPM</th>
+                            <th>Time</th>
+                            <th>Tonart</th>
+                            <th>Orig.</th>
+                            <th>Lead</th>
+                            <th>Sprache</th>
+                            <th>Tracks</th>
+                            <th style="text-align: center;">PDF</th>
+                            <th>Infos</th>
+                            <th>CCLI</th>
+                        </tr>
+                    </thead>
+                    <tbody data-rundown-song-table-body="${item.id}">
+                        ${selectedSongs.map((song) => `
+                            <tr draggable="true" data-rundown-song-id="${song.id}" data-rundown-item-id="${item.id}">
+                                <td class="drag-handle" data-label="Pos.">⋮⋮</td>
+                                <td class="band-setlist-actions-cell event-setlist-actions-cell" data-label="Aktionen">
+                                    <div class="event-setlist-actions">
+                                        <button type="button" class="btn-icon event-rundown-song-edit" title="Song bearbeiten">
+                                            ${this.getRundownInlineIcon('edit')}
+                                        </button>
+                                        <button type="button" class="btn-icon event-rundown-song-remove" title="Song aus Liedblock entfernen">
+                                            ${this.getRundownInlineIcon('trash')}
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="event-setlist-title-cell" data-label="Titel">${this.escapeHtml(song.title)}</td>
+                                <td data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
+                                <td data-label="BPM">${song.bpm || '-'}</td>
+                                <td data-label="Time">${song.timeSignature || '-'}</td>
+                                <td class="event-setlist-key-cell" data-label="Tonart">${song.key || '-'}</td>
+                                <td data-label="Orig.">${song.originalKey || '-'}</td>
+                                <td data-label="Lead">${song.leadVocal || '-'}</td>
+                                <td data-label="Sprache">${song.language || '-'}</td>
+                                <td data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                                <td style="text-align: center;" data-label="PDF">
+                                    ${song.pdf_url ? `
+                                        <button type="button" class="btn btn-secondary btn-sm event-rundown-inline-pdf event-rundown-song-pdf" title="PDF öffnen">
+                                            PDF
+                                        </button>
+                                    ` : '-'}
+                                </td>
+                                <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
+                                <td data-label="CCLI">${song.ccli || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
         container.innerHTML = `
-            <div class="event-rundown-items">
-                ${timeline.map((item, index) => {
+            <div class="event-rundown-board">
+                <div class="event-rundown-board-head is-editor">
+                    <span class="event-rundown-board-head-cell event-rundown-head-drag">Reihenfolge</span>
+                    <span class="event-rundown-board-head-cell event-rundown-head-main">Ablaufpunkt</span>
+                    <span class="event-rundown-board-head-cell event-rundown-head-timing">Timing</span>
+                    <span class="event-rundown-board-head-cell event-rundown-head-actions">Aktionen</span>
+                </div>
+                <div class="event-rundown-items">
+                ${timeline.map((item) => {
                     const selectedSongs = item.songIds
                         .map((songId) => availableSongMap.get(String(songId)))
                         .filter(Boolean);
+                    const isSongblock = item.type === 'songblock';
+                    const timeRange = item.startLabel === '—' && item.endLabel === '—'
+                        ? 'Zeit offen'
+                        : `${item.startLabel} - ${item.endLabel}`;
+                    const songCountLabel = `${selectedSongs.length} Song${selectedSongs.length === 1 ? '' : 's'}`;
 
                     return `
-                        <article class="event-rundown-item" draggable="true" data-rundown-id="${item.id}">
-                            <div class="event-rundown-item-head">
-                                <button type="button" class="btn-icon event-rundown-drag-handle" title="Ziehen zum Verschieben" aria-label="Ziehen zum Verschieben">
-                                    <span aria-hidden="true">⋮⋮</span>
-                                </button>
-                                <span class="event-rundown-type-chip" data-rundown-type="${this.escapeHtml(item.type)}">
-                                    <span class="event-rundown-type-icon" aria-hidden="true">${item.typeMeta.icon}</span>
-                                    <span>${this.escapeHtml(item.typeMeta.label)}</span>
-                                </span>
-                                <div class="event-rundown-note-inline-field">
-                                    <input type="text" class="event-rundown-notes-input" value="${this.escapeHtml(item.notes || '')}" placeholder="Notiz">
+                        <article class="event-rundown-item ${isSongblock ? 'is-songblock' : ''} ${item.isCollapsed ? 'is-collapsed' : 'is-expanded'}" draggable="true" data-rundown-id="${item.id}">
+                            <div class="event-rundown-row-grid is-editor">
+                                <div class="event-rundown-row-cell event-rundown-cell-drag">
+                                    <button type="button" class="btn-icon event-rundown-drag-handle" title="Ziehen zum Verschieben" aria-label="Ziehen zum Verschieben">
+                                        ${this.getRundownInlineIcon('drag')}
+                                    </button>
                                 </div>
-                                <div class="event-rundown-duration-field">
-                                    <div class="event-rundown-duration-input-wrap">
-                                        <input type="number" min="1" max="240" class="event-rundown-duration-input" value="${Number(item.duration) || 0}">
-                                        <span>min</span>
+                                <div class="event-rundown-row-cell event-rundown-cell-main">
+                                    <div class="event-rundown-field-stack">
+                                        <input type="text" class="event-rundown-title-input" value="${this.escapeHtmlAttr(item.title || '')}" placeholder="${this.escapeHtmlAttr(item.typeMeta.defaultTitle || item.typeMeta.label)}">
+                                        <input type="text" class="event-rundown-notes-input" value="${this.escapeHtmlAttr(item.notes || '')}" placeholder="Kurze Notiz oder Moderation">
+                                    </div>
+                                    ${isSongblock ? `
+                                        <div class="event-rundown-song-summary-row">
+                                            <span class="event-rundown-song-counter">${songCountLabel}</span>
+                                            ${item.isCollapsed ? this.renderRundownSongSummaryChips(selectedSongs, {
+                                                limit: 6,
+                                                emptyText: 'Noch keine Songs für diesen Block gewählt',
+                                                style: 'list'
+                                            }) : ''}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div class="event-rundown-row-cell event-rundown-cell-timing">
+                                    <div class="event-rundown-timing-shell">
+                                        <div class="event-rundown-time-range event-rundown-time-range-pill">${timeRange}</div>
+                                        <label class="event-rundown-duration-inline" for="rundownDuration-${item.id}">
+                                            <span class="event-rundown-duration-inline-label">Dauer</span>
+                                        </label>
+                                        <div class="event-rundown-duration-input-wrap">
+                                            <input type="number" min="1" max="240" id="rundownDuration-${item.id}" class="event-rundown-duration-input" value="${Number(item.duration) || 0}">
+                                            <span>min</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="event-rundown-time-stack">
-                                    <span class="event-rundown-time-main">${item.startLabel}</span>
-                                    <span class="event-rundown-time-sub">bis ${item.endLabel}</span>
-                                </div>
-                                <div class="event-rundown-row-actions">
+                                <div class="event-rundown-row-cell event-rundown-row-actions">
+                                    ${isSongblock ? `
+                                        <button type="button" class="btn btn-secondary btn-sm event-rundown-toggle" aria-expanded="${item.isCollapsed ? 'false' : 'true'}" title="${item.isCollapsed ? 'Songs anzeigen' : 'Songs einklappen'}">
+                                            ${item.isCollapsed ? 'Öffnen' : 'Schließen'}
+                                        </button>
+                                    ` : ''}
                                     <button type="button" class="btn-icon event-rundown-delete" title="Baustein entfernen">
-                                        <span aria-hidden="true">🗑️</span>
+                                        ${this.getRundownInlineIcon('trash')}
                                     </button>
                                 </div>
                             </div>
-                            ${item.type === 'songblock' ? `
-                            <div class="event-rundown-item-body">
+                            ${isSongblock ? `
+                            <div class="event-rundown-item-body" ${item.isCollapsed ? 'hidden' : ''}>
                                 <div class="event-rundown-song-block">
                                     <div class="event-rundown-song-block-top">
-                                        <button type="button" class="btn btn-secondary btn-sm event-rundown-song-pool">📋 Band-Pool</button>
-                                        <button type="button" class="btn btn-secondary btn-sm event-rundown-songpool-pool">🎧 Songpool</button>
-                                        <button type="button" class="btn btn-secondary btn-sm event-rundown-song-new">+ Neuer Song</button>
-                                        <span class="event-rundown-song-hint">${selectedSongs.length > 0 ? `${selectedSongs.length} Song${selectedSongs.length === 1 ? '' : 's'} in diesem Block.` : 'Füge Songs direkt hier (z.B. aus dem Band-Pool) hinzu.'}</span>
+                                        <div class="event-rundown-song-block-actions">
+                                            <button type="button" class="btn btn-secondary btn-sm event-rundown-song-pool">Band-Pool</button>
+                                            <button type="button" class="btn btn-secondary btn-sm event-rundown-songpool-pool">Songpool</button>
+                                            <button type="button" class="btn btn-secondary btn-sm event-rundown-song-new">Neuen Song anlegen</button>
+                                        </div>
+                                        <span class="event-rundown-song-hint">${selectedSongs.length > 0 ? `${songCountLabel} in diesem Block. Reihenfolge per Drag-and-drop anpassen.` : 'Füge Songs direkt aus dem Band-Pool, Songpool oder über einen neuen Song hinzu.'}</span>
                                     </div>
                                     ${selectedSongs.length > 0 ? `
-                                        <div class="event-rundown-song-table-wrap">
-                                            <table class="songs-table band-setlist-table event-setlist-table event-rundown-song-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th style="text-align: center; width: 40px;">Pos.</th>
-                                                        <th style="text-align: center; width: 108px;">Aktionen</th>
-                                                        <th>Titel</th>
-                                                        <th>Interpret</th>
-                                                        <th>BPM</th>
-                                                        <th>Time</th>
-                                                        <th>Tonart</th>
-                                                        <th>Orig.</th>
-                                                        <th>Lead</th>
-                                                        <th>Sprache</th>
-                                                        <th>Tracks</th>
-                                                        <th style="text-align: center;">PDF</th>
-                                                        <th>Infos</th>
-                                                        <th>CCLI</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody data-rundown-song-table-body="${item.id}">
-                                                    ${selectedSongs.map((song) => `
-                                                        <tr draggable="true" data-rundown-song-id="${song.id}" data-rundown-item-id="${item.id}">
-                                                            <td class="drag-handle" data-label="Pos.">☰</td>
-                                                            <td class="band-setlist-actions-cell event-setlist-actions-cell" data-label="Aktionen">
-                                                                <div class="event-setlist-actions">
-                                                                    <button type="button" class="btn-icon event-rundown-song-edit" title="Song bearbeiten">
-                                                                        <span aria-hidden="true">✏️</span>
-                                                                    </button>
-                                                                    <button type="button" class="btn-icon event-rundown-song-remove" title="Song aus Liedblock entfernen">
-                                                                        <span aria-hidden="true">🗑️</span>
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                            <td class="event-setlist-title-cell" data-label="Titel">${this.escapeHtml(song.title)}</td>
-                                                            <td data-label="Interpret">${this.escapeHtml(song.artist || '-')}</td>
-                                                            <td data-label="BPM">${song.bpm || '-'}</td>
-                                                            <td data-label="Time">${song.timeSignature || '-'}</td>
-                                                            <td class="event-setlist-key-cell" data-label="Tonart">${song.key || '-'}</td>
-                                                            <td data-label="Orig.">${song.originalKey || '-'}</td>
-                                                            <td data-label="Lead">${song.leadVocal || '-'}</td>
-                                                            <td data-label="Sprache">${song.language || '-'}</td>
-                                                            <td data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
-                                                            <td style="text-align: center;" data-label="PDF">
-                                                                ${song.pdf_url ? `
-                                                                    <button type="button" class="btn-icon event-rundown-song-pdf" title="PDF öffnen">
-                                                                        <span aria-hidden="true">📄</span>
-                                                                    </button>
-                                                                ` : '-'}
-                                                            </td>
-                                                            <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
-                                                            <td data-label="CCLI">${song.ccli || '-'}</td>
-                                                        </tr>
-                                                    `).join('')}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                        ${renderSongTable(item, selectedSongs)}
                                     ` : '<div class="event-rundown-song-empty">Noch keine Songs für diesen Block ausgewählt.</div>'}
                                 </div>
                             </div>
@@ -5765,8 +6380,17 @@ const App = {
                         </article>
                     `;
                 }).join('')}
+                </div>
             </div>
         `;
+
+        container.querySelectorAll('.event-rundown-title-input').forEach((input) => {
+            input.addEventListener('input', (event) => {
+                const itemId = event.target.closest('.event-rundown-item')?.dataset?.rundownId;
+                const item = this.draftEventRundown.items.find((entry) => entry.id === itemId);
+                if (item) item.title = event.target.value;
+            });
+        });
 
         container.querySelectorAll('.event-rundown-notes-input').forEach((input) => {
             input.addEventListener('input', (event) => {
@@ -5792,6 +6416,13 @@ const App = {
             button.addEventListener('click', () => {
                 const itemId = button.closest('.event-rundown-item')?.dataset?.rundownId;
                 this.deleteDraftEventRundownItem(itemId);
+            });
+        });
+
+        container.querySelectorAll('.event-rundown-toggle').forEach((button) => {
+            button.addEventListener('click', () => {
+                const itemId = button.closest('.event-rundown-item')?.dataset?.rundownId;
+                this.toggleDraftEventRundownItemCollapse(itemId);
             });
         });
 
@@ -5967,6 +6598,14 @@ const App = {
         this.renderEventRundownEditor();
     },
 
+    toggleDraftEventRundownItemCollapse(itemId) {
+        if (!itemId || !Array.isArray(this.draftEventRundown?.items)) return;
+        const item = this.draftEventRundown.items.find((entry) => entry.id === itemId);
+        if (!item || item.type !== 'songblock') return;
+        item.isCollapsed = !item.isCollapsed;
+        this.renderEventRundownEditor();
+    },
+
     moveDraftEventRundownItem(itemId, direction = 1) {
         if (!itemId || !Array.isArray(this.draftEventRundown?.items)) return;
         const currentIndex = this.draftEventRundown.items.findIndex((item) => item.id === itemId);
@@ -6037,6 +6676,7 @@ const App = {
 
         item.songIds = [...new Set([...(item.songIds || []).map(String), ...nextSongIds])];
         item.isPickerOpen = false;
+        item.isCollapsed = false;
         this.syncDraftEventSongIdsFromRundown();
         await this.renderDraftEventSongs();
     },
@@ -6277,7 +6917,8 @@ const App = {
                     title: item.title,
                     duration: item.duration,
                     notes: item.notes,
-                    songIds: [] // intentionally empty
+                    songIds: [], // intentionally empty
+                    isCollapsed: Boolean(item.isCollapsed)
                 }))
             };
 
@@ -6324,7 +6965,7 @@ const App = {
                     <div class="rundown-template-meta">${Array.isArray(t.data?.items) ? t.data.items.length : 0} Blöcke</div>
                     <div class="rundown-template-actions">
                         <button class="btn btn-primary btn-sm rundown-template-load-btn" data-id="${t.id}">Laden</button>
-                        <button class="btn btn-danger btn-sm rundown-template-delete-btn" data-id="${t.id}">🗑️</button>
+                        <button class="btn btn-danger btn-sm rundown-template-delete-btn" data-id="${t.id}">Entfernen</button>
                     </div>
                 </div>
             `).join('');
@@ -7924,8 +8565,8 @@ const App = {
                                 </td>
                                 <td class="band-setlist-actions-cell event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
                                     <div class="event-setlist-actions">
-                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">✏️</button>
-                                        <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen" aria-label="Song aus der Setlist löschen">🗑️</button>
+                                        <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">${this.getRundownInlineIcon('edit')}</button>
+                                        <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen" aria-label="Song aus der Setlist löschen">${this.getRundownInlineIcon('trash')}</button>
                                     </div>
                                 </td>
                                 <td class="event-setlist-title-cell" data-label="Titel">${this.escapeHtml(song.title)}</td>
@@ -7938,7 +8579,7 @@ const App = {
                                 <td data-label="Sprache">${song.language || '-'}</td>
                                 <td data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
                                 <td style="text-align: center;" data-label="PDF">
-                                    ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">📄</button>` : '-'}
+                                    ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${this.escapeHtml(song.title)}')">${this.getRundownInlineIcon('pdf')}</button>` : '-'}
                                 </td>
                                 <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(song))}</td>
                                 <td style="font-family: monospace;" data-label="CCLI">${song.ccli || '-'}</td>
@@ -9130,8 +9771,8 @@ const App = {
                     </td>
                     <td class="band-setlist-actions-cell" style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
                         <div style="display: flex; gap: 8px; justify-content: center;">
-                            <button class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
-                            <button class="btn-icon delete-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                            <button type="button" class="btn-icon edit-song" data-id="${song.id}" title="Bearbeiten" aria-label="Song bearbeiten">${this.getRundownInlineIcon('edit')}</button>
+                            <button type="button" class="btn-icon delete-song" data-id="${song.id}" title="Löschen" aria-label="Song löschen">${this.getRundownInlineIcon('trash')}</button>
                         </div>
                     </td>
                     <td style="padding: var(--spacing-sm); white-space: nowrap;" data-label="Titel">${this.escapeHtml(song.title)}</td>
@@ -9523,8 +10164,8 @@ const App = {
                     <td class="band-setlist-actions-cell" style="padding: var(--spacing-sm); text-align: center;" data-label="Aktionen">
                         ${song.canManage ? `
                             <div style="display: flex; gap: 8px; justify-content: center;">
-                                <button class="btn-icon edit-songpool-song" data-id="${song.id}" title="Bearbeiten">✏️</button>
-                                <button class="btn-icon delete-songpool-song" data-id="${song.id}" title="Löschen">🗑️</button>
+                                <button type="button" class="btn-icon edit-songpool-song" data-id="${song.id}" title="Bearbeiten" aria-label="Song bearbeiten">${this.getRundownInlineIcon('edit')}</button>
+                                <button type="button" class="btn-icon delete-songpool-song" data-id="${song.id}" title="Löschen" aria-label="Song löschen">${this.getRundownInlineIcon('trash')}</button>
                             </div>
                         ` : `
                             <div
@@ -10102,8 +10743,8 @@ const App = {
                         <td style="color: var(--color-text-muted);" data-label="#">${idx + 1}</td>
                         <td class="band-setlist-actions-cell event-setlist-actions-cell" style="text-align: center;" data-label="Aktionen">
                             <div class="event-setlist-actions">
-                                <button type="button" class="btn-icon edit-draft-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">✏️</button>
-                                <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen" aria-label="Song aus der Setlist entfernen">🗑️</button>
+                                <button type="button" class="btn-icon edit-draft-song" data-id="${song.id}" title="In Setlist bearbeiten" aria-label="Song in Setlist bearbeiten">${this.getRundownInlineIcon('edit')}</button>
+                                <button type="button" class="btn-icon remove-draft-song" data-id="${song.id}" title="Entfernen" aria-label="Song aus der Setlist entfernen">${this.getRundownInlineIcon('trash')}</button>
                             </div>
                         </td>
                         <td class="event-setlist-title-cell" data-label="Titel">${this.escapeHtml(draftSong.title)}</td>
@@ -10116,7 +10757,7 @@ const App = {
                         <td data-label="Sprache">${draftSong.language || '-'}</td>
                         <td data-label="Tracks">${draftSong.tracks === 'yes' ? 'Ja' : (draftSong.tracks === 'no' ? 'Nein' : '-')}</td>
                         <td style="text-align: center;" data-label="PDF">
-                            ${draftSong.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${draftSong.pdf_url}', '${this.escapeHtml(draftSong.title)}')">📄</button>` : '-'}
+                            ${draftSong.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${draftSong.pdf_url}', '${this.escapeHtml(draftSong.title)}')">${this.getRundownInlineIcon('pdf')}</button>` : '-'}
                         </td>
                         <td data-label="Infos">${this.escapeHtml(this.getSongInfoDisplay(draftSong))}</td>
                         <td style="font-family: monospace;" data-label="CCLI">${draftSong.ccli || '-'}</td>

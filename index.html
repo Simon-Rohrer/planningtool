@@ -3243,17 +3243,17 @@
                         <div class="section-header-row event-rundown-header-row">
                             <div>
                                 <span class="scheduler-panel-eyebrow">Ablauf & Musik</span>
-                                <label class="section-title">🕒 Ablauf & Setlist</label>
+                                <label class="section-title">Ablauf & Setlist</label>
                             </div>
                             <div class="event-rundown-start-group">
                                 <button type="button" id="eventRundownSaveTemplateBtn" class="btn btn-secondary btn-sm">
-                                    💾 Als Vorlage speichern
+                                    Als Vorlage speichern
                                 </button>
                                 <button type="button" id="eventRundownLoadTemplateBtn" class="btn btn-secondary btn-sm">
-                                    📂 Aus Vorlage laden
+                                    Aus Vorlage laden
                                 </button>
                                 <button type="button" id="eventRundownPdfBtn" class="btn btn-secondary btn-sm">
-                                    📄 Setlist PDF
+                                    Ablauf als PDF
                                 </button>
                                 <label for="eventRundownStart">Start des Abends</label>
                                 <input type="time" id="eventRundownStart" step="60">
@@ -3262,20 +3262,20 @@
                         <div class="event-rundown-preset-toolbar" id="eventRundownPresetToolbar">
                             <div class="rundown-dropdown-wrapper" style="position: relative; display: inline-block;">
                                 <button type="button" class="btn btn-secondary btn-sm" id="eventRundownDropdownBtn">
-                                    <span aria-hidden="true">➕</span> Punkt hinzufügen
+                                    Punkt hinzufügen
                                 </button>
                                 <div id="eventRundownDropdownMenu" class="rundown-dropdown-menu">
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="countdown">⏱️ Countdown</button>
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="songblock">🎵 Liederblock</button>
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="vortrag">🎙️ Vortrag</button>
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="predigt">📖 Predigt</button>
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="abendmahl">🍞 Abendmahl</button>
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="pause">☕ Pause</button>
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="video">🎬 Video Vortrag</button>
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="rede">🗣️ Rede</button>
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="ankuendigungen">📣 Ankündigungen</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="countdown">Countdown</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="songblock">Liederblock</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="vortrag">Vortrag</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="predigt">Predigt</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="abendmahl">Abendmahl</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="pause">Pause</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="video">Video Vortrag</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="rede">Rede</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="ankuendigungen">Ankündigungen</button>
                                     <hr class="rundown-dropdown-separator">
-                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="custom">➕ Leerer Block</button>
+                                    <button type="button" class="rundown-dropdown-item event-rundown-preset-btn" data-rundown-type="custom">Leerer Block</button>
                                 </div>
                             </div>
                         </div>
@@ -3874,6 +3874,92 @@
         </div>
     </div>
 
+    <div id="rundownPdfExportModal" class="modal">
+        <div class="modal-content modal-xl rundown-pdf-modal-content">
+            <div class="modal-header rundown-pdf-modal-header">
+                <div class="rundown-pdf-modal-copy">
+                    <span class="rundown-pdf-modal-kicker">Ablauf PDF</span>
+                    <h2>Ablauf exportieren</h2>
+                    <p>Links stellst du den Export ein, rechts siehst du sofort die fertige PDF-Vorschau.</p>
+                </div>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body rundown-pdf-modal-body">
+                <aside class="rundown-pdf-editor-panel">
+                    <div class="rundown-pdf-editor-section">
+                        <label for="rundownPdfFileName" class="rundown-pdf-section-label">PDF-Name</label>
+                        <input type="text" id="rundownPdfFileName" class="form-input" placeholder="z. B. Abendplan Hochzeit">
+                        <p class="rundown-pdf-input-hint">Dieser Name erscheint in der Vorschau und wird als Dateiname verwendet.</p>
+                    </div>
+
+                    <div class="rundown-pdf-editor-section">
+                        <div class="rundown-pdf-section-head">
+                            <span class="rundown-pdf-section-label">Anzeige</span>
+                            <span class="rundown-pdf-preview-context" id="rundownPdfPreviewContext">Live-Vorschau</span>
+                        </div>
+                        <div class="rundown-pdf-mode-list" id="rundownPdfModeList">
+                            <label class="rundown-pdf-mode-option">
+                                <input type="radio" name="rundownPdfMode" value="full-details" checked>
+                                <span class="rundown-pdf-mode-copy">
+                                    <strong>Ganzer Ablauf mit Details</strong>
+                                    <span>Alle Ablaufpunkte, Zeiten, Notizen, Songs und ausgefüllten Event-Infos.</span>
+                                </span>
+                            </label>
+                            <label class="rundown-pdf-mode-option">
+                                <input type="radio" name="rundownPdfMode" value="full-compact">
+                                <span class="rundown-pdf-mode-copy">
+                                    <strong>Ganzer Ablauf kompakt</strong>
+                                    <span>Der komplette Ablauf in einer klaren, reduzierten Listenansicht.</span>
+                                </span>
+                            </label>
+                            <label class="rundown-pdf-mode-option">
+                                <input type="radio" name="rundownPdfMode" value="songs-full">
+                                <span class="rundown-pdf-mode-copy">
+                                    <strong>Nur Songs mit allen Infos</strong>
+                                    <span>Alle Songs aus dem Ablauf mit voller Song-Info und Reihenfolge.</span>
+                                </span>
+                            </label>
+                            <label class="rundown-pdf-mode-option">
+                                <input type="radio" name="rundownPdfMode" value="songs-language">
+                                <span class="rundown-pdf-mode-copy">
+                                    <strong>Nur Songs mit Sprache</strong>
+                                    <span>Songtitel plus Sprache, wenn sie hinterlegt ist.</span>
+                                </span>
+                            </label>
+                            <label class="rundown-pdf-mode-option">
+                                <input type="radio" name="rundownPdfMode" value="songs-large">
+                                <span class="rundown-pdf-mode-copy">
+                                    <strong>Große nummerierte Songtitel</strong>
+                                    <span>Nur die Songtitel, groß und gut lesbar auf dem Blatt.</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </aside>
+
+                <div class="rundown-pdf-preview-panel">
+                    <div class="rundown-pdf-preview-head">
+                        <div>
+                            <span class="rundown-pdf-preview-kicker">Vorschau</span>
+                            <h3 id="rundownPdfPreviewTitle">Ablauf PDF</h3>
+                        </div>
+                        <span class="rundown-pdf-preview-filename" id="rundownPdfPreviewFilename">-</span>
+                    </div>
+                    <div class="rundown-pdf-preview-stage">
+                        <div class="rundown-pdf-preview-loading" id="rundownPdfPreviewLoading" hidden>
+                            Vorschau wird aktualisiert...
+                        </div>
+                        <iframe id="rundownPdfPreviewFrame" title="Ablauf PDF Vorschau" src=""></iframe>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions rundown-pdf-modal-actions">
+                <button type="button" class="btn cancel" id="rundownPdfExportCancel">Schließen</button>
+                <button type="button" class="btn btn-primary" id="rundownPdfExportDownload">PDF exportieren</button>
+            </div>
+        </div>
+    </div>
+
     <div id="chordproPreviewModal" class="modal">
         <div class="modal-content modal-xl chordpro-preview-modal-content">
             <div class="modal-header">
@@ -3889,7 +3975,14 @@
                 </div>
             </div>
             <div class="modal-actions chordpro-preview-modal-actions">
-                <a id="chordproPreviewDownload" href="#" download class="btn btn-secondary">🎼 ChordPro herunterladen</a>
+                <a id="chordproPreviewDownload" href="#" download class="btn btn-secondary">
+                    <span class="btn-inline-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none">
+                            <path d="M12.75 4.25v8.15a2.35 2.35 0 1 1-1.5-2.22V7.1l4-1.2v5.1a2.35 2.35 0 1 1-1.5-2.22V4.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </span>
+                    <span>ChordPro herunterladen</span>
+                </a>
                 <button type="button" class="btn cancel" id="chordproPreviewCancel">Schließen</button>
             </div>
         </div>

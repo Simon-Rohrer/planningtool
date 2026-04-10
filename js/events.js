@@ -524,14 +524,18 @@ const Events = {
         });
         const guests = Array.isArray(event.guests) ? event.guests : [];
         const eventDateTimeLabel = this.formatDisplayDateForEvent(event) || (event.date ? UI.formatDate(event.date) : 'Nicht festgelegt');
+        const visibleInfo = (typeof App !== 'undefined' && typeof App.extractEventVisibleInfo === 'function')
+            ? App.extractEventVisibleInfo(event.info || '')
+            : (event.info || '');
         const creatorAvatarContent = proposedBy && proposedBy.profile_image_url
             ? `<img src="${proposedBy.profile_image_url}" class="creator-avatar-img" alt="${Bands.escapeHtml(proposedByName)}">`
             : UI.getUserInitials(proposedByName);
+        const hasLineup = members.length > 0 || guests.length > 0;
 
         let html = `
             <div class="event-details-grid">
-                <div class="detail-item detail-item-meta-stack">
-                    <div class="detail-stack-row">
+                <div class="event-details-meta-row">
+                    <div class="detail-item detail-item-compact detail-item-creator">
                         <div class="detail-label">Erstellt von</div>
                         <div class="detail-stack-value">
                             <div class="creator-avatar detail-meta-avatar" style="background: ${proposedBy ? UI.getAvatarColor(proposedByName) : 'var(--color-primary)'};">
@@ -542,50 +546,45 @@ const Events = {
                     </div>
 
                     ${event.status === 'confirmed' ? `
-                    <div class="detail-stack-row">
+                    <div class="detail-item detail-item-compact">
                         <div class="detail-label">Datum & Zeit</div>
                         <div class="detail-value">${eventDateTimeLabel}</div>
                     </div>
                     ` : ''}
 
-                    <div class="detail-stack-row">
-                        <div class="detail-label">📍 Ort</div>
+                    <div class="detail-item detail-item-compact">
+                        <div class="detail-label">Ort</div>
                         <div class="detail-value">${Bands.escapeHtml(event.location || 'Nicht angegeben')}</div>
                     </div>
+
+                    ${event.soundcheckLocation ? `
+                    <div class="detail-item detail-item-compact">
+                        <div class="detail-label">Soundcheck</div>
+                        <div class="detail-value">${Bands.escapeHtml(event.soundcheckLocation)}</div>
+                    </div>
+                    ` : ''}
                 </div>
 
-                ${event.soundcheckLocation ? `
-                <div class="detail-item">
-                    <div class="detail-label">🎚️ Soundcheck</div>
-                    <div class="detail-value">${Bands.escapeHtml(event.soundcheckLocation)}</div>
+                ${visibleInfo ? `
+                <div class="detail-item detail-item-wide detail-item-text">
+                    <div class="detail-label">Event-Infos</div>
+                    <div class="detail-value">${Bands.escapeHtml(visibleInfo)}</div>
                 </div>
                 ` : ''}
-
-                ${(() => {
-                    const visibleInfo = (typeof App !== 'undefined' && typeof App.extractEventVisibleInfo === 'function')
-                        ? App.extractEventVisibleInfo(event.info || '')
-                        : (event.info || '');
-
-                    return visibleInfo ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                    <div class="detail-label">ℹ️ Event-Infos</div>
-                    <div class="detail-value" style="white-space: pre-wrap; font-weight: normal;">${Bands.escapeHtml(visibleInfo)}</div>
-                </div>
-                ` : '';
-                })()}
 
                 ${event.techInfo ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                    <div class="detail-label">🔧 Technik / PA</div>
-                    <div class="detail-value" style="white-space: pre-wrap; font-size: 0.9rem; color: var(--color-text-secondary); font-weight: normal;">${Bands.escapeHtml(event.techInfo)}</div>
+                <div class="detail-item detail-item-wide detail-item-text detail-item-muted">
+                    <div class="detail-label">Technik / PA</div>
+                    <div class="detail-value">${Bands.escapeHtml(event.techInfo)}</div>
                 </div>
                 ` : ''}
 
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                    <div class="detail-label">👥 Besetzung</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
-                        ${members.map(m => `<span class="member-tag" style="font-size: 0.75rem; padding: 2px 8px;">${Bands.escapeHtml(m)}</span>`).join('')}
-                        ${guests.map(g => `<span class="member-tag guest-tag" style="font-size: 0.75rem; padding: 2px 8px;">🎭 ${Bands.escapeHtml(g)} (Gast)</span>`).join('')}
+                <div class="detail-item detail-item-wide detail-item-lineup">
+                    <div class="detail-label">Besetzung</div>
+                    <div class="detail-value detail-chip-list ${hasLineup ? '' : 'is-empty'}">
+                        ${members.map(m => `<span class="member-tag">${Bands.escapeHtml(m)}</span>`).join('')}
+                        ${guests.map(g => `<span class="member-tag guest-tag">${Bands.escapeHtml(g)} (Gast)</span>`).join('')}
+                        ${!hasLineup ? '<span class="detail-empty-copy">Noch keine Besetzung hinterlegt</span>' : ''}
                     </div>
                 </div>
             </div>
@@ -673,8 +672,6 @@ const Events = {
         const songMap = new Map(sortedSongs.map((song, index) => [String(song.id), { ...song, orderIndex: index + 1 }]));
         const fallbackStart = event.date ? String(event.date).slice(11, 16) : '';
         const timeline = App.getEventRundownTimeline(rundown, fallbackStart);
-        const totalDuration = timeline.reduce((sum, item) => sum + (Number(item.duration) || 0), 0);
-
         return `
             <div class="event-rundown-display">
                 <div class="event-rundown-display-head">
@@ -683,80 +680,136 @@ const Events = {
                         <h4>Abendplan</h4>
                     </div>
                     <div class="event-rundown-display-meta">
-                        ${sortedSongs.length > 0 ? `<button type="button" class="btn btn-secondary btn-sm download-setlist-pdf" data-event-id="${event.id}">📄 Setlist PDF</button>` : ''}
-                        <span class="event-rundown-summary-pill">Start ${rundown.startTime || fallbackStart || 'offen'}</span>
-                        <span class="event-rundown-summary-pill">${timeline.length} Punkt${timeline.length === 1 ? '' : 'e'}</span>
-                        <span class="event-rundown-summary-pill">${App.formatRundownDuration(totalDuration)}</span>
+                        <button type="button" class="btn btn-secondary btn-sm download-rundown-pdf" data-event-id="${event.id}">Ablauf als PDF</button>
                     </div>
                 </div>
-                <div class="event-rundown-display-items">
+                <div class="event-rundown-board is-display">
+                    <div class="event-rundown-board-head is-display">
+                        <span class="event-rundown-board-head-cell event-rundown-head-order">Nr.</span>
+                        <span class="event-rundown-board-head-cell event-rundown-head-main">Ablaufpunkt</span>
+                        <span class="event-rundown-board-head-cell event-rundown-head-timing">Timing</span>
+                    </div>
+                    <div class="event-rundown-display-items">
                     ${timeline.map((item) => {
                         const selectedSongs = Array.isArray(item.songIds)
                             ? item.songIds.map((songId) => songMap.get(String(songId))).filter(Boolean)
                             : [];
+                        const timeRange = item.startLabel === '—' && item.endLabel === '—'
+                            ? 'Zeit offen'
+                            : `${item.startLabel} - ${item.endLabel}`;
+                        const songCountLabel = `${selectedSongs.length} Song${selectedSongs.length === 1 ? '' : 's'}`;
+                        const songSummaryCollapsed = App.renderRundownSongSummaryChips(selectedSongs, {
+                            limit: 6,
+                            emptyText: 'Noch keine Songs in diesem Block',
+                            style: 'list'
+                        });
+
+                        if (item.type === 'songblock') {
+                            return `
+                                <details class="event-rundown-display-item event-rundown-display-songblock" data-rundown-type="${Bands.escapeHtml(item.type)}" ${item.isCollapsed ? '' : 'open'}>
+                                    <summary class="event-rundown-display-summary">
+                                        <div class="event-rundown-row-grid is-display">
+                                            <div class="event-rundown-row-cell event-rundown-cell-order">
+                                                <span class="event-rundown-order-marker">${item.index + 1}.</span>
+                                            </div>
+                                            <div class="event-rundown-row-cell event-rundown-cell-main">
+                                                <div class="event-rundown-display-title-row">
+                                                    <div class="event-rundown-display-title-meta">
+                                                        <div class="event-rundown-display-title">${Bands.escapeHtml(item.title)}</div>
+                                                        <span class="event-rundown-song-counter">${Bands.escapeHtml(songCountLabel)}</span>
+                                                    </div>
+                                                    <span class="event-rundown-inline-toggle">
+                                                        <span class="event-rundown-inline-toggle-label event-rundown-inline-toggle-label-closed">Songs aufklappen</span>
+                                                        <span class="event-rundown-inline-toggle-label event-rundown-inline-toggle-label-open">Songs zuklappen</span>
+                                                        ${App.getRundownInlineIcon('chevron')}
+                                                    </span>
+                                                </div>
+                                                ${item.notes ? `<div class="event-rundown-display-notes">${Bands.escapeHtml(item.notes)}</div>` : ''}
+                                                <div class="event-rundown-song-summary-row">
+                                                    <div class="event-rundown-song-summary-collapsed">${songSummaryCollapsed}</div>
+                                                </div>
+                                            </div>
+                                            <div class="event-rundown-row-cell event-rundown-cell-timing">
+                                                <div class="event-rundown-display-timing-row">
+                                                    <span class="event-rundown-summary-pill">${Bands.escapeHtml(item.durationLabel)}</span>
+                                                    <div class="event-rundown-time-range">${Bands.escapeHtml(timeRange)}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </summary>
+                                    <div class="event-rundown-item-body">
+                                        <div class="event-rundown-song-block event-rundown-song-block-display">
+                                            ${selectedSongs.length > 0 ? `
+                                                <div class="event-rundown-song-table-wrap">
+                                                    <table class="songs-table band-setlist-table event-setlist-table event-rundown-song-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style="text-align: center; width: 52px;">Pos.</th>
+                                                                <th>Titel</th>
+                                                                <th>Interpret</th>
+                                                                <th style="text-align: center;">BPM</th>
+                                                                <th style="text-align: center;">Time</th>
+                                                                <th style="text-align: center;">Tonart</th>
+                                                                <th style="text-align: center;">Orig.</th>
+                                                                <th>Lead</th>
+                                                                <th>Sprache</th>
+                                                                <th>Tracks</th>
+                                                                <th style="text-align: center;">PDF</th>
+                                                                <th>Infos</th>
+                                                                <th>CCLI</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            ${selectedSongs.map((song) => `
+                                                                <tr>
+                                                                    <td style="text-align: center;" data-label="Pos.">${song.orderIndex}</td>
+                                                                    <td class="event-setlist-title-cell" data-label="Titel">${Bands.escapeHtml(song.title)}</td>
+                                                                    <td data-label="Interpret">${Bands.escapeHtml(song.artist || '-')}</td>
+                                                                    <td style="text-align: center;" data-label="BPM">${song.bpm || '-'}</td>
+                                                                    <td style="text-align: center;" data-label="Time">${song.timeSignature || '-'}</td>
+                                                                    <td class="event-setlist-key-cell" style="text-align: center;" data-label="Tonart">${song.key || '-'}</td>
+                                                                    <td style="text-align: center;" data-label="Orig.">${song.originalKey || '-'}</td>
+                                                                    <td data-label="Lead">${Bands.escapeHtml(song.leadVocal || '-')}</td>
+                                                                    <td data-label="Sprache">${Bands.escapeHtml(song.language || '-')}</td>
+                                                                    <td data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
+                                                                    <td style="text-align: center;" data-label="PDF">
+                                                                        ${song.pdf_url ? `<button type="button" class="btn btn-secondary btn-sm event-rundown-inline-pdf" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${Bands.escapeHtml(song.title)}')">PDF</button>` : '-'}
+                                                                    </td>
+                                                                    <td data-label="Infos">${Bands.escapeHtml(Storage.getSongInfoPreview(song) || '-')}</td>
+                                                                    <td style="font-family: monospace;" data-label="CCLI">${song.ccli || '-'}</td>
+                                                                </tr>
+                                                            `).join('')}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ` : '<div class="event-rundown-song-empty">Noch keine Songs für diesen Block hinterlegt.</div>'}
+                                        </div>
+                                    </div>
+                                </details>
+                            `;
+                        }
 
                         return `
                             <article class="event-rundown-display-item" data-rundown-type="${Bands.escapeHtml(item.type)}">
-                                <div class="event-rundown-item-head">
-                                    <div class="event-rundown-time-stack">
-                                        <span class="event-rundown-time-main">${Bands.escapeHtml(item.startLabel)}</span>
-                                        <span class="event-rundown-time-sub">bis ${Bands.escapeHtml(item.endLabel)}</span>
+                                <div class="event-rundown-row-grid is-display">
+                                    <div class="event-rundown-row-cell event-rundown-cell-order">
+                                        <span class="event-rundown-order-marker">${item.index + 1}.</span>
                                     </div>
-                                    <span class="event-rundown-type-chip" data-rundown-type="${Bands.escapeHtml(item.type)}">
-                                        <span class="event-rundown-type-icon" aria-hidden="true">${Bands.escapeHtml(item.typeMeta.icon)}</span>
-                                        <span>${Bands.escapeHtml(item.typeMeta.label)}</span>
-                                    </span>
-                                    <span class="event-rundown-summary-pill">${Bands.escapeHtml(item.durationLabel)}</span>
+                                    <div class="event-rundown-row-cell event-rundown-cell-main">
+                                        <div class="event-rundown-display-title">${Bands.escapeHtml(item.title)}</div>
+                                        ${item.notes ? `<div class="event-rundown-display-notes">${Bands.escapeHtml(item.notes)}</div>` : ''}
+                                    </div>
+                                    <div class="event-rundown-row-cell event-rundown-cell-timing">
+                                        <div class="event-rundown-display-timing-row">
+                                            <span class="event-rundown-summary-pill">${Bands.escapeHtml(item.durationLabel)}</span>
+                                            <div class="event-rundown-time-range">${Bands.escapeHtml(timeRange)}</div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="event-rundown-display-title">${Bands.escapeHtml(item.title)}</div>
-                                ${item.notes ? `<div class="event-rundown-display-notes">${Bands.escapeHtml(item.notes)}</div>` : ''}
-                                ${selectedSongs.length > 0 ? `
-                                    <div class="event-rundown-song-table-wrap">
-                                        <table class="songs-table band-setlist-table event-setlist-table event-rundown-song-table">
-                                            <thead>
-                                                <tr>
-                                                    <th style="text-align: center; width: 52px;">Pos.</th>
-                                                    <th>Titel</th>
-                                                    <th>Interpret</th>
-                                                    <th style="text-align: center;">BPM</th>
-                                                    <th style="text-align: center;">Time</th>
-                                                    <th style="text-align: center;">Tonart</th>
-                                                    <th style="text-align: center;">Orig.</th>
-                                                    <th>Lead</th>
-                                                    <th>Sprache</th>
-                                                    <th>Tracks</th>
-                                                    <th style="text-align: center;">PDF</th>
-                                                    <th>Infos</th>
-                                                    <th>CCLI</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                ${selectedSongs.map((song) => `
-                                                    <tr>
-                                                        <td style="text-align: center;" data-label="Pos.">${song.orderIndex}</td>
-                                                        <td class="event-setlist-title-cell" data-label="Titel">${Bands.escapeHtml(song.title)}</td>
-                                                        <td data-label="Interpret">${Bands.escapeHtml(song.artist || '-')}</td>
-                                                        <td style="text-align: center;" data-label="BPM">${song.bpm || '-'}</td>
-                                                        <td style="text-align: center;" data-label="Time">${song.timeSignature || '-'}</td>
-                                                        <td class="event-setlist-key-cell" style="text-align: center;" data-label="Tonart">${song.key || '-'}</td>
-                                                        <td style="text-align: center;" data-label="Orig.">${song.originalKey || '-'}</td>
-                                                        <td data-label="Lead">${Bands.escapeHtml(song.leadVocal || '-')}</td>
-                                                        <td data-label="Sprache">${Bands.escapeHtml(song.language || '-')}</td>
-                                                        <td data-label="Tracks">${song.tracks === 'yes' ? 'Ja' : (song.tracks === 'no' ? 'Nein' : '-')}</td>
-                                                        <td style="text-align: center;" data-label="PDF">
-                                                            ${song.pdf_url ? `<button type="button" class="btn-icon" title="PDF öffnen" onclick="App.openPdfPreview('${song.pdf_url}', '${Bands.escapeHtml(song.title)}')">📄</button>` : '-'}
-                                                        </td>
-                                                        <td data-label="Infos">${Bands.escapeHtml(Storage.getSongInfoPreview(song) || '-')}</td>
-                                                        <td style="font-family: monospace;" data-label="CCLI">${song.ccli || '-'}</td>
-                                                    </tr>
-                                                `).join('')}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ` : ''}
                             </article>
                         `;
                     }).join('')}
+                    </div>
                 </div>
             </div>
         `;
@@ -954,6 +1007,14 @@ const Events = {
             };
         });
 
+        document.querySelectorAll('.download-rundown-pdf').forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                await App.openStoredEventRundownPdfExport(eventId);
+            };
+        });
+
         // Standard actions
         document.querySelectorAll('.edit-event').forEach(btn => {
             btn.onclick = (e) => {
@@ -993,15 +1054,6 @@ const Events = {
             });
         });
 
-        // Modal close buttons
-        document.querySelectorAll('.modal-close, .btn.cancel').forEach(btn => {
-            if (!btn.dataset.initialized) {
-                btn.dataset.initialized = 'true';
-                btn.addEventListener('click', () => {
-                    UI.closeAllModals();
-                });
-            }
-        });
     },
 
     async openVotingModal(eventId) {
