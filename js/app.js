@@ -550,6 +550,9 @@ const App = {
     currentView: null,
     navigationStateStorageKey: 'bandmate.app.navigationState',
     statePersistenceBound: false,
+    headerQuickActionsBound: false,
+    headerQuickAddHoverCloseTimer: null,
+    _sidebarHoverExpanded: false,
 
     // Sorting state for band songs
     bandSongSort: {
@@ -1027,6 +1030,7 @@ const App = {
     // Call this after DOMContentLoaded
     setupDashboardFeatures() {
         this.setupQuickAccessEdit();
+        this.setupHeaderQuickActions();
 
         // Add interactive click handlers to stat cards
         const ids = [
@@ -1045,6 +1049,103 @@ const App = {
                 }
             }
         });
+    },
+
+    setupHeaderQuickActions() {
+        const shortcutBar = document.getElementById('dashboardHeaderShortcuts');
+        const quickAddWrapper = document.querySelector('.header-quick-add');
+        const quickAddBtn = document.getElementById('headerQuickAddBtn');
+        const quickAddMenu = document.getElementById('headerQuickAddMenu');
+        const createEventShortcut = document.getElementById('dashboardCreateEventShortcut');
+        const createRehearsalShortcut = document.getElementById('dashboardCreateRehearsalShortcut');
+        const openCalendarShortcut = document.getElementById('dashboardOpenCalendarShortcut');
+
+        if (!shortcutBar || !quickAddWrapper || !quickAddBtn || !quickAddMenu || !createEventShortcut || !createRehearsalShortcut || !openCalendarShortcut) {
+            return;
+        }
+
+        shortcutBar.hidden = false;
+
+        const clearQuickAddHoverCloseTimer = () => {
+            if (this.headerQuickAddHoverCloseTimer) {
+                window.clearTimeout(this.headerQuickAddHoverCloseTimer);
+                this.headerQuickAddHoverCloseTimer = null;
+            }
+        };
+
+        const openQuickAddMenu = () => {
+            clearQuickAddHoverCloseTimer();
+            quickAddMenu.hidden = false;
+            quickAddBtn.setAttribute('aria-expanded', 'true');
+            quickAddWrapper.classList.add('is-open');
+        };
+
+        const closeQuickAddMenu = () => {
+            clearQuickAddHoverCloseTimer();
+            quickAddMenu.hidden = true;
+            quickAddBtn.setAttribute('aria-expanded', 'false');
+            quickAddWrapper.classList.remove('is-open');
+        };
+
+        quickAddBtn.onclick = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const shouldOpen = quickAddMenu.hidden;
+            closeQuickAddMenu();
+
+            if (shouldOpen) {
+                openQuickAddMenu();
+            }
+        };
+
+        createEventShortcut.onclick = (event) => {
+            event.preventDefault();
+            closeQuickAddMenu();
+            this.openCreateEventModal();
+        };
+
+        createRehearsalShortcut.onclick = (event) => {
+            event.preventDefault();
+            closeQuickAddMenu();
+            this.openCreateRehearsalModal();
+        };
+
+        openCalendarShortcut.onclick = (event) => {
+            event.preventDefault();
+            closeQuickAddMenu();
+            this.navigateTo('kalender', 'header-shortcut-calendar');
+        };
+
+        const supportsHoverMenu = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+        if (supportsHoverMenu) {
+            quickAddWrapper.addEventListener('mouseenter', () => {
+                openQuickAddMenu();
+            });
+
+            quickAddWrapper.addEventListener('mouseleave', () => {
+                clearQuickAddHoverCloseTimer();
+                this.headerQuickAddHoverCloseTimer = window.setTimeout(() => {
+                    closeQuickAddMenu();
+                }, 110);
+            });
+        }
+
+        if (!this.headerQuickActionsBound) {
+            document.addEventListener('pointerdown', (event) => {
+                if (quickAddMenu.hidden) return;
+                if (quickAddWrapper.contains(event.target)) return;
+                closeQuickAddMenu();
+            }, true);
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeQuickAddMenu();
+                }
+            });
+
+            this.headerQuickActionsBound = true;
+        }
     },
 
     getStoredThemePreference() {
@@ -1105,7 +1206,7 @@ const App = {
         if (savedTheme === 'light' || savedTheme === 'dark') {
             return savedTheme;
         }
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        return 'dark';
     },
 
     getThemeIconMarkup(mode) {
@@ -1129,7 +1230,6 @@ const App = {
         const themeToggleIcon = document.getElementById('themeToggleIcon');
         const themeToggleHeader = document.getElementById('themeToggleHeader');
         const settingsToggle = document.getElementById('themeToggle');
-        const landingThemeToggle = document.getElementById('landingThemeToggle');
 
         if (themeToggleIcon) {
             themeToggleIcon.innerHTML = this.getThemeIconMarkup(mode);
@@ -1140,11 +1240,6 @@ const App = {
         }
         if (settingsToggle) {
             settingsToggle.checked = mode === 'dark';
-        }
-        if (landingThemeToggle) {
-            landingThemeToggle.innerHTML = this.getThemeIconMarkup(mode);
-            landingThemeToggle.title = mode === 'dark' ? 'Hellmodus aktivieren' : 'Dunkelmodus aktivieren';
-            landingThemeToggle.setAttribute('aria-label', landingThemeToggle.title);
         }
 
         try {
@@ -1187,12 +1282,6 @@ const App = {
             themeToggleHeader.addEventListener('click', () => this.toggleThemeMode());
             themeToggleHeader._themeInit = true;
         }
-
-        const landingThemeToggle = document.getElementById('landingThemeToggle');
-        if (landingThemeToggle && !landingThemeToggle._themeInit) {
-            landingThemeToggle.addEventListener('click', () => this.toggleThemeMode());
-            landingThemeToggle._themeInit = true;
-        }
     },
 
     initializeThemeSystem() {
@@ -1233,8 +1322,7 @@ const App = {
     updateHeaderDashboardShortcuts(view) {
         const shortcutBar = document.getElementById('dashboardHeaderShortcuts');
         if (!shortcutBar) return;
-        const isMobileViewport = window.matchMedia('(max-width: 1024px)').matches;
-        shortcutBar.hidden = view !== 'dashboard' || isMobileViewport;
+        shortcutBar.hidden = false;
     },
 
 
@@ -1408,6 +1496,23 @@ const App = {
 
         if (!toggleBtn || !sidebar || !wrapper) return;
 
+        const restoreSidebarAfterTemporaryOpen = () => {
+            if ((!this._autoExpanded && !this._sidebarHoverExpanded) || !sidebar || sidebar.classList.contains('collapsed')) {
+                return;
+            }
+
+            sidebar.classList.add('collapsed');
+            sidebar.classList.remove('hover-expanded');
+            wrapper.classList.add('sidebar-collapsed');
+            this._autoExpanded = false;
+            this._sidebarHoverExpanded = false;
+            localStorage.setItem('sidebarCollapsed', 'true');
+            document.querySelectorAll('.sidebar-nav .sidebar-group.expanded').forEach(group => {
+                group.classList.remove('expanded');
+            });
+            window.dispatchEvent(new Event('resize'));
+        };
+
         // Load saved state
         const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
         if (isCollapsed && window.innerWidth > 768) {
@@ -1416,10 +1521,22 @@ const App = {
         }
 
         toggleBtn.addEventListener('click', () => {
+            if (this._sidebarHoverExpanded) {
+                sidebar.classList.remove('hover-expanded');
+                wrapper.classList.remove('sidebar-collapsed');
+                this._sidebarHoverExpanded = false;
+                this._autoExpanded = false;
+                localStorage.setItem('sidebarCollapsed', 'false');
+                window.dispatchEvent(new Event('resize'));
+                return;
+            }
+
             sidebar.classList.toggle('collapsed');
             wrapper.classList.toggle('sidebar-collapsed');
 
             this._autoExpanded = false; // Reset on manual toggle
+            this._sidebarHoverExpanded = false;
+            sidebar.classList.remove('hover-expanded');
             
             const nowCollapsed = sidebar.classList.contains('collapsed');
             localStorage.setItem('sidebarCollapsed', nowCollapsed);
@@ -1427,6 +1544,26 @@ const App = {
             // Trigger a resize event to layout charts or components if needed
             window.dispatchEvent(new Event('resize'));
         });
+
+        sidebar.addEventListener('mouseenter', () => {
+            if (window.innerWidth <= 768) return;
+            if (!sidebar.classList.contains('collapsed')) return;
+            if (localStorage.getItem('sidebarCollapsed') !== 'true') return;
+
+            sidebar.classList.remove('collapsed');
+            sidebar.classList.add('hover-expanded');
+            wrapper.classList.remove('sidebar-collapsed');
+            this._sidebarHoverExpanded = true;
+            this._autoExpanded = false;
+            window.dispatchEvent(new Event('resize'));
+        });
+
+        sidebar.addEventListener('mouseleave', () => {
+            if (!this._sidebarHoverExpanded) return;
+            restoreSidebarAfterTemporaryOpen();
+        });
+
+        this.restoreSidebarAfterTemporaryOpen = restoreSidebarAfterTemporaryOpen;
 
         this.setupSidebarResize();
     },
@@ -1583,6 +1720,10 @@ const App = {
                     window.dispatchEvent(new Event('resize'));
                 }
 
+                if (this._sidebarHoverExpanded && typeof this.restoreSidebarAfterTemporaryOpen === 'function') {
+                    this.restoreSidebarAfterTemporaryOpen();
+                }
+
                 // Sichertstellen: Schließe alle offenen Dropdowns bei Navigation zu einem anderen Punkt
                 // Aber NICHT, wenn wir auf ein Subitem innerhalb eines offenen Dropdowns klicken
                 // Obwohl... wenn wir auf ein Subitem klicken, navigieren wir weg.
@@ -1615,6 +1756,9 @@ const App = {
                 document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
                     group.classList.remove('expanded');
                 });
+                if (this._sidebarHoverExpanded && typeof this.restoreSidebarAfterTemporaryOpen === 'function') {
+                    this.restoreSidebarAfterTemporaryOpen();
+                }
                 this.openSettings();
             });
             openSettingsBtn._clickHandlerAttached = true;
@@ -1630,6 +1774,9 @@ const App = {
                 document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
                     group.classList.remove('expanded');
                 });
+                if (this._sidebarHoverExpanded && typeof this.restoreSidebarAfterTemporaryOpen === 'function') {
+                    this.restoreSidebarAfterTemporaryOpen();
+                }
                 UI.openModal('feedbackModal');
             });
             feedbackBtn._clickHandlerAttached = true;
@@ -1645,6 +1792,9 @@ const App = {
                 document.querySelectorAll('.sidebar-nav .nav-group.expanded').forEach(group => {
                     group.classList.remove('expanded');
                 });
+                if (this._sidebarHoverExpanded && typeof this.restoreSidebarAfterTemporaryOpen === 'function') {
+                    this.restoreSidebarAfterTemporaryOpen();
+                }
                 this.handleLogout();
             });
             sidebarLogoutBtn._clickHandlerAttached = true;
@@ -1691,7 +1841,7 @@ const App = {
 
                 try {
                     await FeedbackService.submitFeedback('feedback', null, msg);
-                    UI.showToast('Vielen Dank für dein Feedback! 🤘', 'success');
+                    UI.showToast('Vielen Dank für dein Feedback!', 'success');
                     UI.closeModal('feedbackModal');
                     feedbackForm.reset();
                 } catch (err) {
@@ -1709,7 +1859,7 @@ const App = {
 
                 try {
                     await FeedbackService.submitFeedback('bug', title, desc);
-                    UI.showToast('Danke für den Fehlerbericht! Wir schauen uns das an. 🐛', 'success');
+                    UI.showToast('Danke für den Fehlerbericht! Wir schauen uns das an.', 'success');
                     UI.closeModal('feedbackModal');
                     bugForm.reset();
                 } catch (err) {
@@ -13293,7 +13443,9 @@ const App = {
         const timeStr = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 
         const badgeColor = isBug ? '#ef4444' : '#3b82f6';
-        const badgeIcon = isBug ? '🐛' : '💡';
+        const badgeIcon = isBug
+            ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v10M8.5 9.5 6 7M15.5 9.5 18 7M8 13H5M19 13h-3M8.5 16.5 6 19M15.5 16.5 18 19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M9 7.5a3 3 0 1 1 6 0M8 10.5c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v4.5a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
+            : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M8.5 14.5A5.5 5.5 0 1 1 15.5 14.5c-.8.7-1.3 1.3-1.5 2.5h-4c-.2-1.2-.7-1.8-1.5-2.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
         const badgeLabel = isBug ? 'Bug Report' : 'Feedback';
 
         const isResolved = item.status === 'resolved';
@@ -13305,7 +13457,7 @@ const App = {
                 <div class="feedback-card-header">
                     <div class="feedback-badge-row">
                         <span class="feedback-badge" style="background: ${badgeColor}20; color: ${badgeColor};">
-                            ${badgeIcon} ${badgeLabel.toUpperCase()}
+                            ${badgeIcon}<span>${badgeLabel.toUpperCase()}</span>
                         </span>
                         <span class="feedback-date">${dateStr} • ${timeStr}</span>
                     </div>
@@ -13717,13 +13869,39 @@ const App = {
         this.bindDeleteAccountButton(document.querySelector('#settingsModal .modal-body'));
 
         // Theme toggle setup
-        const themeToggle = document.getElementById('themeToggle');
-        if (themeToggle) {
-            themeToggle.checked = this.getResolvedThemeMode() === 'dark';
-            const newToggle = themeToggle.cloneNode(true);
-            themeToggle.parentNode.replaceChild(newToggle, themeToggle);
-            newToggle.checked = this.getResolvedThemeMode() === 'dark';
-            newToggle.addEventListener('change', (e) => this.applyThemeMode(e.target.checked ? 'dark' : 'light'));
+        const themeCard = document.querySelector('#settingsModal .profile-theme-card');
+        if (themeCard) {
+            const newThemeCard = themeCard.cloneNode(true);
+            themeCard.parentNode.replaceChild(newThemeCard, themeCard);
+
+            const themeToggle = newThemeCard.querySelector('#themeToggle');
+            const applyThemeSelection = (isDark) => {
+                if (themeToggle) {
+                    themeToggle.checked = Boolean(isDark);
+                }
+                this.applyThemeMode(isDark ? 'dark' : 'light');
+            };
+
+            if (themeToggle) {
+                themeToggle.checked = this.getResolvedThemeMode() === 'dark';
+                themeToggle.addEventListener('change', (e) => {
+                    applyThemeSelection(e.target.checked);
+                });
+            }
+
+            const themeToggleLabel = newThemeCard.querySelector('label.toggle-switch');
+            if (themeToggleLabel) {
+                themeToggleLabel.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    applyThemeSelection(!(themeToggle && themeToggle.checked));
+                });
+            }
+
+            newThemeCard.addEventListener('click', (event) => {
+                if (event.target.closest('input, label.toggle-switch')) return;
+                applyThemeSelection(!(themeToggle && themeToggle.checked));
+            });
         }
 
         // Donate link setup
@@ -15433,30 +15611,6 @@ const App = {
         const welcomeUserName = document.getElementById('welcomeUserName');
         if (welcomeUserName) {
             welcomeUserName.textContent = user.first_name || user.username || 'Musiker';
-        }
-
-        const createEventShortcut = document.getElementById('dashboardCreateEventShortcut');
-        if (createEventShortcut) {
-            createEventShortcut.onclick = (e) => {
-                e.preventDefault();
-                this.openCreateEventModal();
-            };
-        }
-
-        const createRehearsalShortcut = document.getElementById('dashboardCreateRehearsalShortcut');
-        if (createRehearsalShortcut) {
-            createRehearsalShortcut.onclick = (e) => {
-                e.preventDefault();
-                this.openCreateRehearsalModal();
-            };
-        }
-
-        const openCalendarShortcut = document.getElementById('dashboardOpenCalendarShortcut');
-        if (openCalendarShortcut) {
-            openCalendarShortcut.onclick = (e) => {
-                e.preventDefault();
-                this.navigateTo('kalender', 'dashboard-primary-shortcut-calendar');
-            };
         }
 
         // Stat Cards Click Handlers

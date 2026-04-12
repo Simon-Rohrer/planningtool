@@ -19,19 +19,15 @@
             const DARK_THEME_COLOR = '#08111F';
             const LIGHT_THEME_COLOR = '#F6F8FC';
 
-            let resolvedTheme = 'light';
+            let resolvedTheme = 'dark';
 
             try {
                 const storedTheme = localStorage.getItem(STORAGE_KEY);
                 if (storedTheme === 'light' || storedTheme === 'dark') {
                     resolvedTheme = storedTheme;
-                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    resolvedTheme = 'dark';
                 }
             } catch (error) {
-                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    resolvedTheme = 'dark';
-                }
+                resolvedTheme = 'dark';
             }
 
             document.documentElement.dataset.theme = resolvedTheme;
@@ -279,7 +275,6 @@
                     </div>
                 </div>
                 <nav class="landing-nav" aria-label="Startaktionen">
-                    <button type="button" id="landingThemeToggle" class="landing-nav-action landing-nav-theme" title="Theme umschalten"></button>
                     <button type="button" class="landing-nav-action landing-nav-login"
                         onclick="UI.toggleAuthOverlay(true, 'login')">Login</button>
                     <button type="button" class="landing-nav-action landing-nav-register"
@@ -790,18 +785,53 @@
                             <span class="absence-text">Abwesend bis <span id="absenceEndDate"></span></span>
                         </div>
 
-                        <div id="dashboardHeaderShortcuts" class="header-dashboard-shortcuts" aria-label="Schnellaktionen" hidden>
-                            <button id="dashboardCreateEventShortcut" class="btn btn-primary header-dashboard-shortcut" type="button" title="Direkt neuen Auftritt erstellen">
-                                <span aria-hidden="true">🎤</span>
-                                <span>Auftritt hier anlegen</span>
-                            </button>
-                            <button id="dashboardCreateRehearsalShortcut" class="btn btn-primary header-dashboard-shortcut" type="button" title="Direkt neuen Probetermin erstellen">
-                                <span aria-hidden="true">➕</span>
-                                <span>Probe hier anlegen</span>
-                            </button>
-                            <button id="dashboardOpenCalendarShortcut" class="btn btn-primary header-dashboard-shortcut" type="button" title="Direkt zu Meine Termine wechseln">
-                                <span aria-hidden="true">🗓️</span>
-                                <span>Zur Terminübersicht</span>
+                        <div id="dashboardHeaderShortcuts" class="header-dashboard-shortcuts" aria-label="Schnellaktionen">
+                            <div class="header-quick-add">
+                                <button
+                                    id="headerQuickAddBtn"
+                                    class="btn btn-icon header-dashboard-shortcut header-dashboard-icon-btn"
+                                    type="button"
+                                    title="Neu anlegen"
+                                    aria-label="Neu anlegen"
+                                    aria-haspopup="menu"
+                                    aria-expanded="false"
+                                >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    </svg>
+                                </button>
+                                <div id="headerQuickAddMenu" class="header-quick-add-menu" role="menu" hidden>
+                                    <button id="dashboardCreateEventShortcut" class="header-quick-add-item" type="button" role="menuitem">
+                                        <span class="header-quick-add-item-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M4 8.5h16M8 4v3M16 4v3M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-9A2.5 2.5 0 0 0 17.5 6h-11A2.5 2.5 0 0 0 4 8.5v9A2.5 2.5 0 0 0 6.5 20Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path d="M12 11v5M9.5 13.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </span>
+                                        <span>Auftritt hier anlegen</span>
+                                    </button>
+                                    <button id="dashboardCreateRehearsalShortcut" class="header-quick-add-item" type="button" role="menuitem">
+                                        <span class="header-quick-add-item-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M6 5.5h12M8 5.5V4M16 5.5V4M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-9A2.5 2.5 0 0 0 17.5 6h-11A2.5 2.5 0 0 0 4 8.5v9A2.5 2.5 0 0 0 6.5 20Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path d="M8 12h8M8 15h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </span>
+                                        <span>Probe hier anlegen</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <button
+                                id="dashboardOpenCalendarShortcut"
+                                class="btn btn-icon header-dashboard-shortcut header-dashboard-icon-btn"
+                                type="button"
+                                title="Zur Terminübersicht"
+                                aria-label="Zur Terminübersicht"
+                            >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 8.5h16M8 4v3M16 4v3M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-9A2.5 2.5 0 0 0 17.5 6h-11A2.5 2.5 0 0 0 4 8.5v9A2.5 2.5 0 0 0 6.5 20Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path d="M8 11.5h3M8 15.5h8M14 11.5h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
                             </button>
                         </div>
 
@@ -4148,11 +4178,21 @@
             <div class="modal-body feedback-modal-body">
                 <div class="settings-tabs feedback-modal-tabs">
                     <button class="settings-tab-btn active" data-tab="feedback">
-                        <span class="feedback-tab-icon" aria-hidden="true">💬</span>
+                        <span class="feedback-tab-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M6.5 18.5 3.5 20v-4A7.5 7.5 0 1 1 7 18.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path d="M8 10h8M8 13.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </span>
                         <span>Feedback</span>
                     </button>
                     <button class="settings-tab-btn" data-tab="bug">
-                        <span class="feedback-tab-icon" aria-hidden="true">🐞</span>
+                        <span class="feedback-tab-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 7v10M8.5 9.5 6 7M15.5 9.5 18 7M8 13H5M19 13h-3M8.5 16.5 6 19M15.5 16.5 18 19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path d="M9 7.5a3 3 0 1 1 6 0M8 10.5c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v4.5a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </span>
                         <span>Fehler melden</span>
                     </button>
                 </div>
@@ -4161,7 +4201,11 @@
                 <div id="feedbackTabContent" class="feedback-tab-content active feedback-tab-panel">
                     <div class="feedback-tab-grid">
                         <div class="feedback-info-card">
-                            <span class="feedback-info-icon" aria-hidden="true">💡</span>
+                            <span class="feedback-info-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M9 18h6M10 21h4M8.5 14.5A5.5 5.5 0 1 1 15.5 14.5c-.8.7-1.3 1.3-1.5 2.5h-4c-.2-1.2-.7-1.8-1.5-2.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                            </span>
                             <h3>Was können wir verbessern?</h3>
                             <p>Schreib kurz, was dir auffällt, was dir fehlt oder was sich noch runder anfuehlen sollte.</p>
                             <div class="feedback-info-tags">
@@ -4188,7 +4232,12 @@
                 <div id="bugTabContent" class="feedback-tab-content feedback-tab-panel" style="display: none;">
                     <div class="feedback-tab-grid">
                         <div class="feedback-info-card feedback-info-card-danger">
-                            <span class="feedback-info-icon" aria-hidden="true">🛠️</span>
+                            <span class="feedback-info-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M14.5 6.5a3.5 3.5 0 0 0 4.8 4.8l-7.8 7.8a2 2 0 1 1-2.8-2.8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path d="M13.5 7.5 16.5 4.5M18 9l1.5-1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                            </span>
                             <h3>Fehler strukturiert melden</h3>
                             <p>Beschreibe kurz, was passiert ist und welche Schritte davor ausgeführt wurden. So können wir den Fehler schneller nachstellen.</p>
                             <div class="feedback-info-tags">

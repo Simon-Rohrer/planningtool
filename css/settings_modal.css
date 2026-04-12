@@ -683,6 +683,13 @@
     letter-spacing: 0.02em;
 }
 
+.feedback-badge svg {
+    width: 0.82rem;
+    height: 0.82rem;
+    flex: 0 0 auto;
+    stroke: currentColor;
+}
+
 .feedback-date {
     color: var(--color-text-secondary);
     font-size: 0.75rem;

@@ -2049,9 +2049,13 @@
     justify-content: center;
     width: 1rem;
     height: 1rem;
-    font-size: 0.95rem;
-    line-height: 1;
     flex: 0 0 1rem;
+}
+
+#feedbackModal .feedback-tab-icon svg {
+    width: 1rem;
+    height: 1rem;
+    stroke: currentColor;
 }
 
 #feedbackModal .feedback-tab-panel {
@@ -2095,9 +2099,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.35rem;
     background: rgba(99, 102, 241, 0.14);
     color: var(--color-primary);
+}
+
+#feedbackModal .feedback-info-icon svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    stroke: currentColor;
 }
 
 #feedbackModal .feedback-info-card-danger .feedback-info-icon {
@@ -11590,7 +11599,7 @@ html[data-theme="light"] .loader-overlay,
     }
 
     #dashboardHeaderShortcuts {
-        display: none !important;
+        display: inline-flex !important;
     }
 
     .header-actions .user-name {
@@ -19967,22 +19976,94 @@ textarea:focus,
     display: none !important;
 }
 
-.header-dashboard-shortcuts .header-dashboard-shortcut {
-    min-height: 42px;
-    padding: 0.7rem 0.98rem;
-    border-radius: 14px;
-    gap: 0.45rem;
-    font-size: 0.86rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    box-shadow: 0 10px 24px rgba(29, 78, 216, 0.18);
-    white-space: nowrap;
+.header-quick-add {
+    position: relative;
 }
 
-.header-dashboard-shortcuts .header-dashboard-shortcut span[aria-hidden="true"] {
+.header-dashboard-shortcuts .header-dashboard-shortcut.header-dashboard-icon-btn {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    background: var(--button-secondary-bg);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.header-dashboard-shortcuts .header-dashboard-shortcut.header-dashboard-icon-btn:hover {
+    background: var(--surface-secondary);
+    color: var(--text-primary);
+    border-color: var(--border);
+}
+
+.header-dashboard-shortcuts .header-dashboard-shortcut.header-dashboard-icon-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+}
+
+.header-quick-add-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 220px;
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--border) 88%, rgba(148, 163, 184, 0.14));
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+        color-mix(in srgb, var(--surface) 96%, rgba(8, 12, 24, 0.96));
+    box-shadow: 0 22px 48px rgba(2, 6, 23, 0.34);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 85;
+}
+
+.header-quick-add-menu[hidden] {
+    display: none !important;
+}
+
+.header-quick-add-item {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 0.82rem 0.9rem;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    background: color-mix(in srgb, var(--surface-secondary) 78%, transparent);
+    color: var(--text-primary);
     font-size: 0.9rem;
-    line-height: 1;
-    flex: 0 0 auto;
+    font-weight: 600;
+    text-align: left;
+    transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.header-quick-add-item:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--color-primary) 26%, var(--border));
+    background: color-mix(in srgb, var(--surface-secondary) 94%, transparent);
+}
+
+.header-quick-add-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.header-quick-add-item-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
 }
 
 .user-name {
@@ -20101,6 +20182,10 @@ textarea:focus,
     backdrop-filter: blur(22px);
     -webkit-backdrop-filter: blur(22px);
     z-index: 80;
+}
+
+.notification-dropdown[hidden] {
+    display: none !important;
 }
 
 .notification-dropdown-head {
@@ -21761,7 +21846,14 @@ html[data-theme="light"] #landingPage .landing-phone-device,
     }
 
     #dashboardHeaderShortcuts {
-        display: none !important;
+        display: inline-flex !important;
+        gap: 8px;
+        margin-left: 0;
+    }
+
+    .header-quick-add-menu {
+        right: 0;
+        min-width: 210px;
     }
 
     .notification-dropdown {
