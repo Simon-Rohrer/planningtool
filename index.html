@@ -2054,7 +2054,7 @@
                                         <small class="settings-inline-note">Leer lassen, wenn du dein Passwort nicht ändern möchtest.</small>
                                     </div>
 
-                                    <!-- Artist Info -->
+                                    <!-- Musiker Profil -->
                                     <div class="profile-section">
                                         <div class="profile-section-title">
                                             <span aria-hidden="true">
@@ -2070,6 +2070,47 @@
                                             <div class="instrument-selector" id="profileInstrumentSelector"></div>
                                             <!-- Hidden input to store comma-separated value for form submission -->
                                             <input type="hidden" id="profileInstrument" value="">
+                                        </div>
+                                    </div>
+
+                                    <!-- Kalender & Farben -->
+                                    <div class="profile-section">
+                                        <div class="profile-section-title">
+                                            <span aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                </svg>
+                                            </span> Kalender & Farben
+                                        </div>
+                                        <div class="form-group full-width">
+                                            <label>Externe Kalender (iCal / Webcal Links)</label>
+                                            <div id="externalCalendarsList" class="external-calendars-container" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+                                                <!-- Dynamic rows will be inserted here by App.js -->
+                                            </div>
+                                            <button type="button" id="btnAddCalendar" class="btn btn-ghost btn-sm" style="margin-top: 0.75rem; width: fit-content;">
+                                                <span>➕</span> Weiteren Kalender hinzufügen
+                                            </button>
+                                        </div>
+                                        <div class="profile-form-grid" style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                                            <div class="form-group">
+                                                <label for="profileColorRehearsal">Farbe Proben</label>
+                                                <input type="color" id="profileColorRehearsal" class="profile-color-input" value="#3b82f6">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="profileColorEvent">Farbe Auftritte</label>
+                                                <input type="color" id="profileColorEvent" class="profile-color-input" value="#8b5cf6">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="profileColorAbsence">Farbe Abwesenheit</label>
+                                                <input type="color" id="profileColorAbsence" class="profile-color-input" value="#f59e0b">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="profileColorExternal">Farbe Extern 🌐</label>
+                                                <input type="color" id="profileColorExternal" class="profile-color-input" value="#64748b">
+                                            </div>
                                         </div>
                                     </div>
 
@@ -3586,6 +3627,24 @@
                 <input type="hidden" id="songBandId">
                 <input type="hidden" id="songCollection" value="songs">
                 <div class="song-editor-scroll">
+                    <div class="settings-section">
+                        <h4 class="settings-section-title">
+                            <span class="icon">📅</span> Kalender & Farben
+                        </h4>
+                        <p class="settings-section-description">Synchronisiere bis zu 10 externe Kalender (Apple, Google etc.) und passe deine Kalenderfarben an.</p>
+                        
+                        <div class="settings-grid">
+                            <div class="settings-group full-width">
+                                <label>Externe Kalender (iCal/Webcal)</label>
+                                <div id="externalCalendarsList" class="external-calendars-list">
+                                    <!-- Dynamic rows will be inserted here -->
+                                </div>
+                                <button type="button" id="btnAddCalendar" class="btn btn-secondary btn-sm" style="margin-top: 0.75rem;">
+                                    <span>➕</span> Weiteren Kalender hinzufügen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <section class="song-editor-panel">
                         <div class="song-editor-panel-head">
                             <div>

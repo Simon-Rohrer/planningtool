@@ -4,18 +4,22 @@ const PersonalCalendar = {
     events: [],
     rehearsals: [],
     absences: [],
+    externalEvents: [],
     userBands: [],
     currentMonth: new Date(),
     isLoading: false,
     hasLoaded: false,
     dayCreateMenuListenersBound: false,
 
-    // Clear all cached data (called during logout)
-    clearCache() {
-        this.events = [];
-        this.rehearsals = [];
-        this.absences = [];
-        this.userBands = [];
+    // Clear all cached data (called during logout or to force a full refresh)
+    clearCache(fullReset = true) {
+        if (fullReset) {
+            this.events = [];
+            this.rehearsals = [];
+            this.absences = [];
+            this.externalEvents = [];
+            this.userBands = [];
+        }
         this.hasLoaded = false;
     },
 
@@ -44,11 +48,41 @@ const PersonalCalendar = {
             const userBands = await Storage.getUserBands(user.id);
             const bandIds = (userBands || []).map(b => b.id || b.band_id || b.bandId).filter(Boolean);
 
-            const [allEvents, allRehearsals, allAbsences] = await Promise.all([
+            // 3. Fetch data from Supabase (all sources)
+            const [allEvents, allRehearsals, allAbsences, userCalendars] = await Promise.all([
                 bandIds.length > 0 ? this.loadUserEvents(bandIds) : [],
                 bandIds.length > 0 ? this.loadUserRehearsals(bandIds) : [],
-                this.loadUserAbsences(user.id)
+                this.loadUserAbsences(user.id),
+                Storage.get('external_calendars', { user_id: user.id })
             ]);
+
+            // 4. Fetch all external iCAL feeds concurrently
+            let allExternal = [];
+            if (userCalendars && userCalendars.length > 0) {
+                const externalFeeds = await Promise.all(
+                    userCalendars.map(cal => this.loadExternalCalendar(cal.url, cal.name))
+                );
+                allExternal = externalFeeds.flat();
+            } else if (user.personal_ical_url) {
+                // Migration/Legacy support
+                allExternal = await this.loadExternalCalendar(user.personal_ical_url, 'Hauptkalender');
+            }
+
+            this.events = allEvents;
+            this.rehearsals = allRehearsals;
+            this.absences = allAbsences;
+            this.externalEvents = allExternal;
+            this.userBands = userBands;
+            
+            // Map roles for quick access
+            this.userRoles = {};
+            (userBands || []).forEach(b => {
+                const bId = b.id || b.band_id || b.bandId;
+                if (bId) this.userRoles[bId] = b.role;
+            });
+
+            this.hasLoaded = true;
+            this.isLoading = false;
 
             if ((!Array.isArray(userBands) || userBands.length === 0) && (!Array.isArray(allAbsences) || allAbsences.length === 0)) {
                 container.innerHTML = `
@@ -62,19 +96,6 @@ const PersonalCalendar = {
                 return;
             }
 
-            this.events = allEvents;
-            this.rehearsals = allRehearsals;
-            this.absences = allAbsences;
-            this.userBands = userBands;
-            
-            // Map roles for quick access
-            this.userRoles = {};
-            (userBands || []).forEach(b => {
-                const bId = b.id || b.band_id || b.bandId;
-                if (bId) this.userRoles[bId] = b.role;
-            });
-
-            this.hasLoaded = true;
             this.renderCalendar();
 
             const duration = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -175,6 +196,25 @@ const PersonalCalendar = {
         return date;
     },
 
+    getAlphaColor(hex, alpha = 0.15) {
+        if (!hex || typeof hex !== 'string') return `rgba(128, 128, 128, ${alpha})`;
+        let r, g, b;
+        let h = hex.replace('#', '');
+        
+        if (h.length === 3) {
+            r = parseInt(h[0] + h[0], 16);
+            g = parseInt(h[1] + h[1], 16);
+            b = parseInt(h[2] + h[2], 16);
+        } else if (h.length === 6) {
+            r = parseInt(h.substring(0, 2), 16);
+            g = parseInt(h.substring(2, 4), 16);
+            b = parseInt(h.substring(4, 6), 16);
+        } else {
+            return hex; // Fallback if invalid hex
+        }
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    },
+
     getAbsenceTitle(absence) {
         const reason = Storage.getAbsenceDisplayReason(absence);
         return reason || 'Abwesenheit';
@@ -203,201 +243,6 @@ const PersonalCalendar = {
         }
 
         return timeLabel ? `${startLabel} – ${endLabel} · ${timeLabel}` : `${startLabel} – ${endLabel}`;
-    },
-
-    renderCalendar() {
-        const container = document.getElementById('personalCalendarContainer');
-        if (!container) return;
-
-        // Combine and sort all items by date
-        const allItems = [
-            ...this.events.map(e => ({ ...e, type: 'event', sortDate: new Date(e.date) })),
-            ...this.rehearsals.map(r => ({ ...r, type: 'rehearsal', sortDate: new Date(r.confirmedDate || r.confirmed_date) })),
-            ...this.absences.map(a => ({ ...a, type: 'absence', sortDate: new Date(a.startDate) }))
-        ].sort((a, b) => a.sortDate - b.sortDate);
-
-        if (allItems.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">📅</div>
-                    <p>Keine Termine vorhanden</p>
-                    <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
-                        Proben und Auftritte deiner Bands werden hier angezeigt.
-                    </p>
-                </div>
-            `;
-            return;
-        }
-
-        // Group items by month
-        const itemsByMonth = this.groupByMonth(allItems);
-
-        const canCreate = Auth.isAdmin() || Object.values(this.userRoles || {}).some(role => role === 'leader' || role === 'co-leader');
-
-        let html = '';
-        
-        if (canCreate) {
-            html += `
-                <div class="calendar-actions">
-                    <button class="btn btn-primary" onclick="App.openCreateRehearsalModal()">
-                        <span>➕</span> Probe anlegen
-                    </button>
-                    <button class="btn btn-secondary" onclick="App.openCreateEventModal()">
-                        <span>🎤</span> Auftritt anlegen
-                    </button>
-                    <button class="btn btn-ghost" onclick="App.openAbsencesSettings()">
-                        <span>🗓️</span> Abwesenheit eintragen
-                    </button>
-                </div>
-            `;
-        }
-
-        html += '<div class="personal-calendar-timeline">';
-
-        Object.keys(itemsByMonth).sort().forEach(monthKey => {
-            const items = itemsByMonth[monthKey];
-            const [year, month] = monthKey.split('-');
-            const monthName = new Date(year, month - 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-
-            html += `
-                <div class="calendar-month-section">
-                    <h3 class="calendar-month-header">${monthName}</h3>
-                    <div class="calendar-items-list">
-            `;
-
-            items.forEach(item => {
-                if (item.type === 'event') {
-                    html += this.renderEventItem(item);
-                } else if (item.type === 'rehearsal') {
-                    html += this.renderRehearsalItem(item);
-                } else {
-                    html += this.renderAbsenceItem(item);
-                }
-            });
-
-            html += `
-                    </div>
-                </div>
-            `;
-        });
-
-        html += '</div>';
-        container.innerHTML = html;
-    },
-
-    groupByMonth(items) {
-        const grouped = {};
-        items.forEach(item => {
-            const date = item.type === 'event'
-                ? new Date(item.date)
-                : item.type === 'rehearsal'
-                    ? new Date(item.confirmedDate || item.confirmed_date)
-                    : new Date(item.startDate);
-            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(item);
-        });
-        return grouped;
-    },
-
-    canUserEdit(bandId) {
-        if (Auth.isAdmin()) return true;
-        const role = (this.userRoles && this.userRoles[bandId]) || null;
-        return role === 'leader' || role === 'co-leader';
-    },
-
-    renderEventItem(event) {
-        const band = this.userBands.find(b => b.id === event.bandId);
-        const bandName = band ? band.name : 'Unbekannte Band';
-        const date = new Date(event.date);
-        const dateStr = date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = event.time || '';
-        const isPast = date < new Date();
-
-        return `
-            <div class="calendar-item event-item ${isPast ? 'past-item' : ''}">
-                <div class="calendar-item-icon">🎤</div>
-                <div class="calendar-item-content">
-                    <div class="calendar-item-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-                        <div class="calendar-item-title">${this.escapeHtml(event.title || event.name)}</div>
-                        ${this.canUserEdit(event.bandId) ? `
-                            <button class="btn btn-ghost btn-sm" onclick="App.handleEditEvent('${event.id}')" title="Bearbeiten">
-                                ✏️ Bearbeiten
-                            </button>
-                        ` : ''}
-                    </div>
-                    <div class="calendar-item-meta">
-                        <span class="calendar-item-band">🎸 ${this.escapeHtml(bandName)}</span>
-                        <span class="calendar-item-date">📅 ${dateStr}</span>
-                        ${timeStr ? `<span class="calendar-item-time">🕐 ${this.escapeHtml(timeStr)}</span>` : ''}
-                        ${event.location ? `<span class="calendar-item-location">📍 ${this.escapeHtml(event.location)}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-
-    renderRehearsalItem(rehearsal) {
-        const band = this.userBands.find(b => b.id === rehearsal.bandId);
-        const bandName = band ? band.name : 'Unbekannte Band';
-        const date = new Date(rehearsal.confirmedDate || rehearsal.confirmed_date);
-        const dateStr = date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = rehearsal.confirmedTime || '';
-        const isPast = date < new Date();
-
-        return `
-            <div class="calendar-item rehearsal-item ${isPast ? 'past-item' : ''}">
-                <div class="calendar-item-icon">📅</div>
-                <div class="calendar-item-content">
-                    <div class="calendar-item-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-                        <div class="calendar-item-title">${this.escapeHtml(rehearsal.title || rehearsal.name || 'Probe')}</div>
-                        ${this.canUserEdit(rehearsal.bandId) ? `
-                            <button class="btn btn-ghost btn-sm" onclick="App.handleEditRehearsal('${rehearsal.id}')" title="Bearbeiten">
-                                ✏️ Bearbeiten
-                            </button>
-                        ` : ''}
-                    </div>
-                    <div class="calendar-item-meta">
-                        <span class="calendar-item-band">🎸 ${this.escapeHtml(bandName)}</span>
-                        <span class="calendar-item-date">📅 ${dateStr}</span>
-                        ${timeStr ? `<span class="calendar-item-time">🕐 ${this.escapeHtml(timeStr)}</span>` : ''}
-                        ${(rehearsal.confirmed_location || rehearsal.location) ? `<span class="calendar-item-location">📍 ${this.escapeHtml(rehearsal.confirmed_location || rehearsal.location)}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-
-    renderAbsenceItem(absence) {
-        const startDate = this.normalizeDate(absence.startDate);
-        const endDate = this.normalizeDate(absence.endDate || absence.startDate);
-        const absenceRange = typeof Storage !== 'undefined' && typeof Storage.getAbsenceRange === 'function'
-            ? Storage.getAbsenceRange(absence)
-            : null;
-        const startLabel = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-        const endLabel = endDate.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeLabel = typeof App !== 'undefined' && typeof App.formatAbsenceTimeRangeLabel === 'function'
-            ? App.formatAbsenceTimeRangeLabel(absence.startDate, absence.endDate, absence)
-            : '';
-        const dateLabel = startLabel === endLabel ? startLabel : `${startLabel} – ${endLabel}`;
-        const title = this.getAbsenceTitle(absence);
-        const isPast = absenceRange ? absenceRange.end < new Date() : new Date(absence.endDate || absence.startDate) < new Date();
-
-        return `
-            <div class="calendar-item absence-item ${isPast ? 'past-item' : ''}">
-                <div class="calendar-item-icon">⛔</div>
-                <div class="calendar-item-content">
-                    <div class="calendar-item-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-                        <div class="calendar-item-title">${this.escapeHtml(title)}</div>
-                    </div>
-                    <div class="calendar-item-meta">
-                        <span class="calendar-item-band">Abwesenheit</span>
-                        <span class="calendar-item-date">${this.escapeHtml(dateLabel)}</span>
-                        ${timeLabel ? `<span class="calendar-item-time">${this.escapeHtml(timeLabel)}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
     },
 
     renderCalendar() {
@@ -630,6 +475,15 @@ const PersonalCalendar = {
             }
         });
 
+        // Add external events for this date
+        this.externalEvents.forEach(extEvent => {
+            const extDate = new Date(extEvent.date);
+            extDate.setHours(0, 0, 0, 0);
+            if (extDate.getTime() === date.getTime()) {
+                items.push({ ...extEvent, type: 'external' });
+            }
+        });
+
         return items;
     },
 
@@ -725,6 +579,8 @@ const PersonalCalendar = {
     },
 
     renderAbsenceBar(segment) {
+        const user = Auth.getCurrentUser();
+        const absenceColor = user?.color_absence || '#f59e0b';
         const classes = ['calendar-absence-bar'];
         if (segment.continuesFromPrev) classes.push('is-continued-start');
         if (segment.continuesToNext) classes.push('is-continued-end');
@@ -733,7 +589,7 @@ const PersonalCalendar = {
             <button
                 type="button"
                 class="${classes.join(' ')}"
-                style="grid-column: ${segment.startCol} / ${segment.endCol + 1}; grid-row: ${segment.lane};"
+                style="grid-column: ${segment.startCol} / ${segment.endCol + 1}; grid-row: ${segment.lane}; background: ${absenceColor} !important; border-color: ${this.getAlphaColor(absenceColor, 0.2)} !important; color: white !important;"
                 onclick="PersonalCalendar.showItemDetails('${segment.id}', 'absence')"
             >
                 <span class="calendar-absence-bar-label">${this.escapeHtml(segment.title)}</span>
@@ -742,16 +598,23 @@ const PersonalCalendar = {
     },
 
     renderCalendarItem(item) {
+        const user = Auth.getCurrentUser();
+
         if (item.type === 'event') {
             const band = this.userBands.find(b => b.id === item.bandId);
             const bandName = band ? band.name : 'Unbekannte Band';
             const eventName = item.title || 'Auftritt';
+            const user = Auth.getCurrentUser();
+            const customColor = user?.color_event || '#8b5cf6';
+            const bgColor = this.getAlphaColor(customColor, 0.15);
 
             return `
-                <div class="calendar-event event-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'event')" style="cursor: pointer;">
-                    <div class="calendar-event-type">🎤 Auftritt</div>
-                    <div class="calendar-event-title">${this.escapeHtml(eventName)}</div>
-                    <div class="calendar-event-band">${this.escapeHtml(bandName)}</div>
+                <div class="calendar-event event-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'event')" 
+                    style="cursor: pointer; border-left: 2px solid ${customColor} !important; background: ${bgColor} !important; background-image: none !important;">
+                    <div class="calendar-event-type" style="color: ${customColor}; opacity: 0.9; font-weight: 800; font-size: 0.55rem;">🎤 Auftritt</div>
+                    ${item.time ? `<div class="event-time" style="font-weight: 700; font-size: 0.55rem; color: var(--color-text-secondary); opacity: 0.8;">${item.time}</div>` : ''}
+                    <div class="calendar-event-title" style="color: var(--color-text); font-weight: 600;">${this.escapeHtml(eventName)}</div>
+                    ${band ? `<div class="calendar-event-band" style="color: var(--color-text-secondary); opacity: 0.7; font-size: 0.55rem;">${this.escapeHtml(bandName)}</div>` : ''}
                 </div>
             `;
         }
@@ -760,21 +623,245 @@ const PersonalCalendar = {
             const band = this.userBands.find(b => b.id === item.bandId);
             const bandName = band ? band.name : 'Unbekannte Band';
             const title = item.title || 'Probe';
+            const customColor = user?.color_rehearsal || '#3b82f6';
+            const bgColor = this.getAlphaColor(customColor, 0.15);
+            
+            const timeRange = (item.startTime && item.endTime) 
+                ? `${item.startTime} - ${item.endTime}` 
+                : (item.startTime || item.time || '');
 
             return `
-                <div class="calendar-event rehearsal-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'rehearsal')" style="cursor: pointer;">
-                    <div class="calendar-event-type">📅 Probe</div>
-                    <div class="calendar-event-title">${this.escapeHtml(title)}</div>
-                    <div class="calendar-event-band">${this.escapeHtml(bandName)}</div>
+                <div class="calendar-event rehearsal-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'rehearsal')" 
+                    style="cursor: pointer; border-left: 2px solid ${customColor} !important; background: ${bgColor} !important; background-image: none !important;">
+                    <div class="calendar-event-type" style="color: ${customColor}; opacity: 0.9; font-weight: 800; font-size: 0.55rem;">📅 Probe</div>
+                    ${timeRange ? `<div class="event-time" style="font-weight: 700; font-size: 0.55rem; color: var(--color-text-secondary); opacity: 0.8;">${timeRange}</div>` : ''}
+                    <div class="calendar-event-title" style="color: var(--color-text); font-weight: 600;">${this.escapeHtml(title)}</div>
+                    ${band ? `<div class="calendar-event-band" style="color: var(--color-text-secondary); opacity: 0.7; font-size: 0.55rem;">${this.escapeHtml(bandName)}</div>` : ''}
                 </div>
             `;
         }
 
+        if (item.type === 'external') {
+            const customColor = user?.color_external_event || '#64748b';
+            const bgColor = this.getAlphaColor(customColor, 0.15);
+            return `
+                <div class="calendar-event external-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'external')" 
+                    style="cursor: pointer; border-left: 2px solid ${customColor} !important; background: ${bgColor} !important; background-image: none !important;">
+                    <div class="calendar-event-type" style="color: ${customColor}; opacity: 0.9; font-weight: 800; font-size: 0.55rem;">🌐 Extern</div>
+                    ${item.time ? `<div class="event-time" style="font-weight: 700; font-size: 0.55rem; color: var(--color-text-secondary); opacity: 0.8;">${item.time}</div>` : ''}
+                    <div class="calendar-event-title" style="color: var(--color-text); font-weight: 600;">${this.escapeHtml(item.title || 'Externer Termin')}</div>
+                    <div class="calendar-event-band" style="color: var(--color-text-secondary); opacity: 0.7; font-size: 0.55rem;">${this.escapeHtml(item.sourceName || 'Synchronisiert')}</div>
+                </div>
+            `;
+        }
+
+        const absenceColor = user?.color_absence || '#f59e0b';
+        const absenceBg = this.getAlphaColor(absenceColor, 0.15);
+
         return `
-            <div class="calendar-event absence-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'absence')" style="cursor: pointer;">
-                <div class="calendar-event-type">Abwesenheit</div>
-                <div class="calendar-event-title">${this.escapeHtml(this.getAbsenceTitle(item))}</div>
-                <div class="calendar-event-band">${this.escapeHtml(this.getAbsenceMeta(item))}</div>
+            <div class="calendar-event absence-type" onclick="PersonalCalendar.showItemDetails('${item.id}', 'absence')" 
+                style="cursor: pointer; border-left: 2px solid ${absenceColor} !important; background: ${absenceBg} !important; background-image: none !important;">
+                <div class="calendar-event-type" style="color: ${absenceColor}; opacity: 0.9; font-weight: 800; font-size: 0.55rem;">⚠️ Abwesenheit</div>
+                <div class="calendar-event-title" style="color: var(--color-text);">${this.escapeHtml(this.getAbsenceTitle(item))}</div>
+            </div>
+        `;
+    },
+
+    async loadExternalCalendar(url, sourceName = 'Externer Kalender') {
+        try {
+            // Normalize webcal protocol to https for proxy compatibility
+            const normalizedUrl = url.trim().replace(/^webcal(s)?:\/\//i, 'https://');
+            const icalData = await ProxyService.fetch(normalizedUrl);
+            if (!icalData || typeof icalData !== 'string' || !icalData.includes('BEGIN:VCALENDAR')) {
+                console.warn('[PersonalCalendar] Invalid iCal data from:', normalizedUrl);
+                return [];
+            }
+
+            const jcalData = ICAL.parse(icalData);
+            const vcalendar = new ICAL.Component(jcalData);
+            const vevents = vcalendar.getAllSubcomponents('vevent');
+
+            return vevents.map(vevent => {
+                const event = new ICAL.Event(vevent);
+                const dtStart = event.startDate.toJSDate();
+                const dtEnd = event.endDate.toJSDate();
+                
+                // Check if it's an all-day event
+                const isAllDay = event.startDate.isDate;
+
+                return {
+                    id: 'ext_' + Math.random().toString(36).substr(2, 9),
+                    title: event.summary,
+                    location: event.location,
+                    description: event.description,
+                    date: dtStart.toISOString(),
+                    endDate: dtEnd.toISOString(),
+                    isAllDay: isAllDay,
+                    time: isAllDay ? null : `${dtStart.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} - ${dtEnd.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`,
+                    type: 'external',
+                    sourceName: sourceName
+                };
+            }).filter(e => {
+                // Filter events to a reasonable range (e.g., last 6 months to next 18 months)
+                const eventDate = new Date(e.date);
+                const now = new Date();
+                const pastLimit = new Date();
+                pastLimit.setMonth(now.getMonth() - 6);
+                const futureLimit = new Date();
+                futureLimit.setMonth(now.getMonth() + 18);
+                return eventDate >= pastLimit && eventDate <= futureLimit;
+            });
+        } catch (error) {
+            console.error('[PersonalCalendar] Error loading external calendar:', error);
+            return [];
+        }
+    },
+
+    canUserEdit(bandId) {
+        if (Auth.isAdmin()) return true;
+        const role = (this.userRoles && this.userRoles[bandId]) || null;
+        return role === 'leader' || role === 'co-leader';
+    },
+
+    renderTimeline() {
+        const container = document.getElementById('personalCalendarContainer');
+        if (!container) return;
+
+        // Combine and sort all items by date
+        const allItems = [
+            ...this.events.map(e => ({ ...e, type: 'event', sortDate: new Date(e.date) })),
+            ...this.rehearsals.map(r => ({ ...r, type: 'rehearsal', sortDate: new Date(r.confirmedDate || r.confirmed_date) })),
+            ...this.absences.map(a => ({ ...a, type: 'absence', sortDate: new Date(a.startDate) })),
+            ...this.externalEvents.map(e => ({ ...e, type: 'external', sortDate: new Date(e.date) }))
+        ].sort((a, b) => a.sortDate - b.sortDate);
+
+        if (allItems.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📅</div>
+                    <p>Keine Termine vorhanden</p>
+                </div>
+            `;
+            return;
+        }
+
+        const itemsByMonth = this.groupByMonth(allItems);
+        let html = '<div class="personal-calendar-timeline">';
+
+        Object.keys(itemsByMonth).sort().forEach(monthKey => {
+            const items = itemsByMonth[monthKey];
+            const [year, month] = monthKey.split('-');
+            const monthName = new Date(year, month - 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+
+            html += `
+                <div class="calendar-month-section">
+                    <h3 class="calendar-month-header">${monthName}</h3>
+                    <div class="calendar-items-list">
+            `;
+
+            items.forEach(item => {
+                if (item.type === 'event') html += this.renderEventItem(item);
+                else if (item.type === 'rehearsal') html += this.renderRehearsalItem(item);
+                else if (item.type === 'external') html += this.renderExternalEventItem(item);
+                else html += this.renderAbsenceItem(item);
+            });
+
+            html += '</div></div>';
+        });
+
+        html += '</div>';
+        container.insertAdjacentHTML('beforeend', html);
+    },
+
+    groupByMonth(items) {
+        const grouped = {};
+        items.forEach(item => {
+            const date = item.sortDate;
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(item);
+        });
+        return grouped;
+    },
+
+    renderEventItem(event) {
+        const band = this.userBands.find(b => b.id === event.bandId);
+        const bandName = band ? band.name : 'Unbekannte Band';
+        const date = new Date(event.date);
+        const dateStr = date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = event.time || '';
+        const user = Auth.getCurrentUser();
+        const customColor = user?.color_event || '#8b5cf6';
+        const iconBg = this.getAlphaColor(customColor, 0.15);
+        
+        return `
+            <div class="calendar-item event-item" style="border-left: 4px solid ${customColor} !important; background: rgba(255,255,255,0.03);">
+                <div class="calendar-item-icon" style="background: ${iconBg}; color: ${customColor}; border-color: ${this.getAlphaColor(customColor, 0.3)};">🎤</div>
+                <div class="calendar-item-content">
+                    <div class="calendar-item-title">${this.escapeHtml(event.title || 'Auftritt')}</div>
+                    <div class="calendar-item-meta">
+                        <span>🎸 ${this.escapeHtml(bandName)}</span>
+                        <span>📅 ${dateStr}</span>
+                        ${timeStr ? `<span>🕐 ${timeStr}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    renderRehearsalItem(rehearsal) {
+        const band = this.userBands.find(b => b.id === rehearsal.bandId);
+        const bandName = band ? band.name : 'Unbekannte Band';
+        const date = new Date(rehearsal.confirmedDate || rehearsal.confirmed_date);
+        const dateStr = date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+        const user = Auth.getCurrentUser();
+        const customColor = user?.color_rehearsal || '#3b82f6';
+        const iconBg = this.getAlphaColor(customColor, 0.15);
+
+        return `
+            <div class="calendar-item rehearsal-item" style="border-left: 4px solid ${customColor} !important; background: rgba(255,255,255,0.03);">
+                <div class="calendar-item-icon" style="background: ${iconBg}; color: ${customColor}; border-color: ${this.getAlphaColor(customColor, 0.3)};">📅</div>
+                <div class="calendar-item-content">
+                    <div class="calendar-item-title">${this.escapeHtml(rehearsal.title || 'Probe')}</div>
+                    <div class="calendar-item-meta">
+                        <span>🎸 ${this.escapeHtml(bandName)}</span>
+                        <span>📅 ${dateStr}</span>
+                        ${(rehearsal.startTime && rehearsal.endTime) ? `<span>🕐 ${rehearsal.startTime} - ${rehearsal.endTime}</span>` : (rehearsal.startTime || rehearsal.time ? `<span>🕐 ${rehearsal.startTime || rehearsal.time}</span>` : '')}
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    renderAbsenceItem(absence) {
+        const user = Auth.getCurrentUser();
+        const customColor = user?.color_absence || '#f59e0b';
+        const iconBg = this.getAlphaColor(customColor, 0.15);
+        return `
+            <div class="calendar-item absence-item" style="border-left: 4px solid ${customColor} !important; background: rgba(255,255,255,0.03);">
+                <div class="calendar-item-icon" style="background: ${iconBg}; color: ${customColor}; border-color: ${this.getAlphaColor(customColor, 0.3)};">⛔</div>
+                <div class="calendar-item-content">
+                    <div class="calendar-item-title">${this.escapeHtml(this.getAbsenceTitle(absence))}</div>
+                    <div class="calendar-item-meta"><span>Abwesenheit</span></div>
+                </div>
+            </div>
+        `;
+    },
+
+    renderExternalEventItem(event) {
+        const user = Auth.getCurrentUser();
+        const customColor = user?.color_external_event || '#64748b';
+        const iconBg = this.getAlphaColor(customColor, 0.15);
+        return `
+            <div class="calendar-item external-item" style="border-left: 4px solid ${customColor} !important; background: rgba(255,255,255,0.03);">
+                <div class="calendar-item-icon" style="background: ${iconBg}; color: ${customColor}; border-color: ${this.getAlphaColor(customColor, 0.3)};">🌐</div>
+                <div class="calendar-item-content">
+                    <div class="calendar-item-title">${this.escapeHtml(event.title || 'Externer Termin')}</div>
+                    <div class="calendar-item-meta">
+                        <span>${this.escapeHtml(event.sourceName || 'Synchronisiert')}</span>
+                        ${event.time ? `<span>🕐 ${event.time}</span>` : ''}
+                    </div>
+                </div>
             </div>
         `;
     },
@@ -794,6 +881,7 @@ const PersonalCalendar = {
         this.renderCalendar();
     },
 
+
     async showItemDetails(itemId, itemType) {
         let item;
 
@@ -801,22 +889,80 @@ const PersonalCalendar = {
             item = this.events.find(e => e.id === itemId);
         } else if (itemType === 'rehearsal') {
             item = this.rehearsals.find(r => r.id === itemId);
+        } else if (itemType === 'external') {
+            item = this.externalEvents.find(e => e.id === itemId);
         } else {
             item = this.absences.find(a => a.id === itemId);
         }
 
         if (!item) {
-            console.error('Item not found:', itemId, itemType);
+            console.warn('[PersonalCalendar] Item not found (likely being reloaded):', itemId, itemType);
+            // Optional: trigger a refresh if we're not already loading
+            if (!this.isLoading && !this.hasLoaded) {
+                this.loadPersonalCalendar();
+            }
             return;
         }
 
         const band = item.bandId ? this.userBands.find(b => b.id === item.bandId) : null;
-        const bandName = band ? band.name : 'Unbekannte Band';
-        const bandColor = band ? (band.color || '#e11d48') : '#e11d48';
+        const user = Auth.getCurrentUser();
+        const bandName = band ? band.name : (itemType === 'external' ? (item.sourceName || 'Externer Kalender') : 'Unbekannte Band');
+        const bandColor = band ? (band.color || '#e11d48') : (itemType === 'external' ? (user?.color_external_event || '#64748b') : '#e11d48');
 
         let detailsHTML = '';
 
-        if (itemType === 'event') {
+        if (itemType === 'external') {
+            const date = new Date(item.date);
+            const dateStr = date.toLocaleDateString('de-DE', {
+                weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+            });
+            const timeStr = item.time || 'Ganztägig';
+
+            detailsHTML = `
+                <div class="calendar-details-container">
+                    <div class="calendar-detail-header" style="border-left-color: ${bandColor}">
+                        <div class="calendar-detail-icon-large">🌐</div>
+                        <div class="calendar-detail-title-group">
+                            <h2 class="calendar-detail-title">${this.escapeHtml(item.title || 'Externer Termin')}</h2>
+                            <div class="calendar-detail-subtitle" style="color: ${bandColor}">${this.escapeHtml(item.sourceName || 'Synchronisierter Kalender')}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-info-grid">
+                        <div class="calendar-info-item">
+                            <div class="info-icon">📅</div>
+                            <div class="info-content">
+                                <div class="info-label">Datum</div>
+                                <div class="info-value">${dateStr}</div>
+                            </div>
+                        </div>
+                        <div class="calendar-info-item">
+                            <div class="info-icon">🕐</div>
+                            <div class="info-content">
+                                <div class="info-label">Uhrzeit</div>
+                                <div class="info-value">${timeStr}</div>
+                            </div>
+                        </div>
+                        ${item.location ? `
+                        <div class="calendar-info-item">
+                            <div class="info-icon">📍</div>
+                            <div class="info-content">
+                                <div class="info-label">Ort</div>
+                                <div class="info-value">${this.escapeHtml(item.location)}</div>
+                            </div>
+                        </div>` : ''}
+                        ${item.description ? `
+                        <div class="calendar-info-item full-width" style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                            <div class="info-icon">📝</div>
+                            <div class="info-content">
+                                <div class="info-label">Beschreibung</div>
+                                <div class="info-value" style="white-space: pre-wrap; font-size: 0.9rem;">${this.escapeHtml(item.description)}</div>
+                            </div>
+                        </div>` : ''}
+                    </div>
+                </div>
+            `;
+        } else if (itemType === 'event') {
             const date = new Date(item.date);
             const dateStr = date.toLocaleDateString('de-DE', {
                 weekday: 'long',
@@ -824,6 +970,8 @@ const PersonalCalendar = {
                 month: 'long',
                 year: 'numeric'
             });
+
+            const customColor = user?.color_event || '#8b5cf6';
 
             // Get band members for this event, fetch user names
             let membersHTML = '';
@@ -879,11 +1027,11 @@ const PersonalCalendar = {
 
             detailsHTML = `
                 <div class="calendar-details-container">
-                    <div class="calendar-detail-header" style="border-left-color: ${bandColor}">
-                        <div class="calendar-detail-icon-large">🎤</div>
+                    <div class="calendar-detail-header" style="border-left: 4px solid ${customColor} !important;">
+                        <div class="calendar-detail-icon-large" style="background: ${this.getAlphaColor(customColor, 0.1)}; color: ${customColor};">🎤</div>
                         <div class="calendar-detail-title-group">
                             <h2 class="calendar-detail-title">${this.escapeHtml(item.title || 'Auftritt')}</h2>
-                            <div class="calendar-detail-subtitle" style="color: ${bandColor}">🎸 ${this.escapeHtml(bandName)}</div>
+                            <div class="calendar-detail-subtitle" style="color: ${customColor}">🎸 ${this.escapeHtml(bandName)}</div>
                         </div>
                     </div>
                     
@@ -1108,16 +1256,21 @@ const PersonalCalendar = {
                 : '';
             const absenceReason = Storage.getAbsenceDisplayReason(item);
             const detailTitle = absenceReason || durationLabel;
+
+            const user = Auth.getCurrentUser();
+            const customColor = user?.color_absence || '#f59e0b';
+
             const detailSubtitle = absenceReason
                 ? [durationLabel, timeLabel].filter(Boolean).join(' · ')
                 : (timeLabel || 'Nicht verfügbar');
 
             detailsHTML = `
                 <div class="calendar-details-container">
-                    <div class="calendar-detail-header" style="border-left-color: #f59e0b">
+                    <div class="calendar-detail-header" style="border-left: 4px solid ${customColor} !important;">
+                        <div class="calendar-detail-icon-large" style="background: ${this.getAlphaColor(customColor, 0.1)}; color: ${customColor};">⚠️</div>
                         <div class="calendar-detail-title-group">
                             <h2 class="calendar-detail-title">${this.escapeHtml(detailTitle)}</h2>
-                            ${detailSubtitle ? `<div class="calendar-detail-subtitle" style="color: #f59e0b">${this.escapeHtml(detailSubtitle)}</div>` : ''}
+                            ${detailSubtitle ? `<div class="calendar-detail-subtitle" style="color: ${customColor}">${this.escapeHtml(detailSubtitle)}</div>` : ''}
                         </div>
                     </div>
 
@@ -1205,6 +1358,9 @@ const PersonalCalendar = {
      * Generate ICS content string
      */
     generateICSContent() {
+        // IMPORTANT: We only export Bandmate-internal events and rehearsals.
+        // External iCAL events are EXPLICITLY EXCLUDED to avoid circular synchronization (feedback loops)
+        // when users subscribe to this Bandmate feed in the same calendar app that provides the source data.
         if ((!this.events || this.events.length === 0) && (!this.rehearsals || this.rehearsals.length === 0)) {
             return null;
         }

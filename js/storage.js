@@ -292,6 +292,23 @@ const Storage = {
         return data || [];
     },
 
+    // Generic filtered retrieval
+    async get(key, filters = {}) {
+        const sb = SupabaseClient.getClient();
+        let query = sb.from(key).select('*');
+        
+        for (const [col, val] of Object.entries(filters)) {
+            query = query.eq(col, val);
+        }
+        
+        const { data, error } = await query;
+        if (error) {
+            console.error(`Supabase get error in ${key} with filters`, filters, error);
+            return [];
+        }
+        return data || [];
+    },
+
     async getById(key, id) {
         if (!id) return null;
         const sb = SupabaseClient.getClient();

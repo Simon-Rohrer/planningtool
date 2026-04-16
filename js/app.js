@@ -13441,10 +13441,69 @@ const App = {
             profileDisplayNamePreview.textContent = displayName;
         };
 
+        const profileIcalUrl = effectiveRoot.querySelector('#profileIcalUrl');
+        const profileColorRehearsal = effectiveRoot.querySelector('#profileColorRehearsal');
+        const profileColorEvent = effectiveRoot.querySelector('#profileColorEvent');
+        const profileColorAbsence = effectiveRoot.querySelector('#profileColorAbsence');
+        const profileColorExternal = effectiveRoot.querySelector('#profileColorExternal');
+
         if (profileFirstName) profileFirstName.value = user.first_name || '';
         if (profileLastName) profileLastName.value = user.last_name || '';
         if (profileUsername) profileUsername.value = user.username || '';
         if (profileEmail) profileEmail.value = user.email || '';
+        if (profileColorRehearsal) profileColorRehearsal.value = user.color_rehearsal || '#3b82f6';
+        if (profileColorEvent) profileColorEvent.value = user.color_event || '#8b5cf6';
+        if (profileColorAbsence) profileColorAbsence.value = user.color_absence || '#f59e0b';
+        if (profileColorExternal) profileColorExternal.value = user.color_external_event || '#64748b';
+
+        // --- Multi-Calendar Management ---
+        const externalCalendarsList = effectiveRoot.querySelector('#externalCalendarsList');
+        const btnAddCalendar = effectiveRoot.querySelector('#btnAddCalendar');
+
+        const renderCalendarRow = (calendar = { name: '', url: '' }) => {
+            const rowId = 'cal_' + Math.random().toString(36).substr(2, 9);
+            const row = document.createElement('div');
+            row.className = 'external-calendar-row';
+            row.id = rowId;
+            row.style.cssText = 'display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.5rem; align-items: center; background: rgba(255,255,255,0.03); padding: 0.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);';
+            row.innerHTML = `
+                <input type="text" class="profile-form-input calendar-name" placeholder="Name (z.B. Privat)" value="${calendar.name || ''}" style="margin: 0;">
+                <input type="url" class="profile-form-input calendar-url" placeholder="https://..." value="${calendar.url || ''}" style="margin: 0;">
+                <button type="button" class="btn btn-icon btn-sm" onclick="this.closest('.external-calendar-row').remove()" title="Löschen" style="color: var(--color-error); background: rgba(239, 68, 68, 0.1);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                </button>
+            `;
+            externalCalendarsList.appendChild(row);
+        };
+
+        if (btnAddCalendar) {
+            btnAddCalendar.onclick = () => {
+                const currentRows = externalCalendarsList.querySelectorAll('.external-calendar-row');
+                if (currentRows.length >= 10) {
+                    UI.showToast('Maximal 10 Kalender können synchronisiert werden.', 'warning');
+                    return;
+                }
+                renderCalendarRow();
+            };
+        }
+
+        // Fetch existing calendars
+        const loadUserCalendars = async () => {
+            if (externalCalendarsList) externalCalendarsList.innerHTML = '';
+            try {
+                const calendars = await Storage.get('external_calendars', { user_id: user.id });
+                if (calendars && calendars.length > 0) {
+                    calendars.forEach(cal => renderCalendarRow(cal));
+                } else if (user.personal_ical_url) {
+                    // Migration: If user has old single URL, show it as first item
+                    renderCalendarRow({ name: 'Hauptkalender', url: user.personal_ical_url });
+                }
+            } catch (error) {
+                console.error('Error loading external calendars:', error);
+            }
+        };
+        loadUserCalendars();
+
         // if (profileInstrument) profileInstrument.value = user.instrument || ''; // Handled by setupInstrumentSelector
         if (profilePassword) profilePassword.value = '';
 
@@ -13560,8 +13619,22 @@ const App = {
                         last_name: lastName,
                         username,
                         email,
-                        instrument
+                        instrument,
+                        color_rehearsal: (effectiveRoot.querySelector('#profileColorRehearsal') || {}).value || '#3b82f6',
+                        color_event: (effectiveRoot.querySelector('#profileColorEvent') || {}).value || '#8b5cf6',
+                        color_absence: (effectiveRoot.querySelector('#profileColorAbsence') || {}).value || '#f59e0b',
+                        color_external_event: (effectiveRoot.querySelector('#profileColorExternal') || {}).value || '#64748b'
                     };
+
+                    // Extract multiple calendars
+                    const calendarRows = effectiveRoot.querySelectorAll('.external-calendar-row');
+                    const externalCalendars = Array.from(calendarRows).map(row => ({
+                        name: (row.querySelector('.calendar-name') || {}).value || '',
+                        url: (row.querySelector('.calendar-url') || {}).value || '',
+                        user_id: user.id
+                    })).filter(cal => cal.url.trim() !== '');
+
+                    // We'll handle saving these after the main update
 
                     const { previousImageUrl } = await this.applyProfileImageUpdate(user, updates);
 
@@ -13572,6 +13645,20 @@ const App = {
                     }
 
                     const updateResult = await Storage.updateUser(user.id, updates);
+
+                    // Update External Calendars Table
+                    try {
+                        // 1. Delete old entries
+                        const sb = SupabaseClient.getClient();
+                        await sb.from('external_calendars').delete().eq('user_id', user.id);
+                        
+                        // 2. Insert new entries
+                        if (externalCalendars.length > 0) {
+                            await sb.from('external_calendars').insert(externalCalendars);
+                        }
+                    } catch (error) {
+                        console.error('Error updating external calendars records:', error);
+                    }
 
 
                     // Update email in Supabase Auth if changed
@@ -13603,6 +13690,12 @@ const App = {
                     Auth.currentUser = updatedUser;
                     Logger.info('Profile Updated');
 
+                    // Clear Personal Calendar Cache (partial reset) to force refresh without breaking clicks
+                    if (typeof PersonalCalendar !== 'undefined' && typeof PersonalCalendar.clearCache === 'function') {
+                        PersonalCalendar.clearCache(false);
+                        console.log('[App] PersonalCalendar marked for refresh after profile update');
+                    }
+
                     // Update header
                     const currentUserElem = document.getElementById('currentUserName');
                     if (currentUserElem) currentUserElem.textContent = updatedUser.username;
@@ -13612,6 +13705,14 @@ const App = {
                     const welcomeUserName = document.getElementById('welcomeUserName');
                     if (welcomeUserName) {
                         welcomeUserName.textContent = updatedUser.first_name || updatedUser.username || 'Musiker';
+                    }
+
+                    // Trigger immediate UI refresh if calendar is active
+                    if (typeof PersonalCalendar !== 'undefined' && typeof PersonalCalendar.renderCalendar === 'function') {
+                        const calendarView = document.getElementById('kalenderView');
+                        if (calendarView && !calendarView.hidden) {
+                            PersonalCalendar.renderCalendar();
+                        }
                     }
 
                     // Clear password field (scoped to settings view)
