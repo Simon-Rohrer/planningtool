@@ -5509,11 +5509,8 @@ const App = {
         requestAnimationFrame(() => {
             resetScroll();
         });
-        setTimeout(resetScroll, 40);
-        setTimeout(resetScroll, 140);
-        setTimeout(resetScroll, 320);
-        setTimeout(resetScroll, 700);
-        setTimeout(resetScroll, 1200);
+        // One final fallback for slow-rendering layouts, but significantly shorter to avoid jumping after interaction
+        setTimeout(resetScroll, 50);
     },
 
     // Auth tab switching
