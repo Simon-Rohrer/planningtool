@@ -3497,26 +3497,38 @@ const App = {
         if (typeof UI !== 'undefined' && !UI._originalCloseModal) {
             UI._originalCloseModal = UI.closeModal;
             UI.closeModal = (modalId) => {
-                if (modalId === 'settingsModal' && window.isProfileDirty) {
+                // Profiles and Absences guards
+                if (modalId === 'settingsModal' && (window.isProfileDirty || window.isAbsenceFormDirty)) {
+                    const dirtyType = window.isAbsenceFormDirty ? 'Abwesenheit' : 'Profil';
                     UI.showConfirm(
-                        'Du hast ungespeicherte Änderungen. Möchtest du das Fenster wirklich schließen?',
+                        'Deine Eingaben werden nicht gespeichert. Möchtest du trotzdem schließen?',
                         () => {
                             window.isProfileDirty = false;
+                            window.isAbsenceFormDirty = false;
+                            
+                            // Reset absence form
+                            this.resetAbsenceFormSettings();
+                            
+                            // Reset profile drafts if needed
                             this.resetProfileImageDraftState({
                                 resetInput: true,
                                 root: document.querySelector('#settingsModal .modal-body') || document
                             });
+                            
                             UI._originalCloseModal.call(UI, modalId);
                         },
                         null,
                         {
-                            kicker: 'Profil',
+                            kicker: dirtyType,
                             title: 'Ungespeicherte Änderungen',
-                            confirmText: 'Trotzdem schließen'
+                            confirmText: 'Trotzdem schließen',
+                            confirmClass: 'btn-danger',
+                            cancelText: 'Weiter bearbeiten'
                         }
                     );
                     return;
                 }
+                
                 if (modalId === 'settingsModal') {
                     this.resetProfileImageDraftState({
                         resetInput: true,
@@ -13405,6 +13417,11 @@ const App = {
         if (modalBody) {
             container.innerHTML = modalBody.innerHTML;
 
+            // Initialize dirty tracking for absences
+            if (typeof window.isAbsenceFormDirty === 'undefined') {
+                window.isAbsenceFormDirty = false;
+            }
+
             // Re-initialize all event listeners for the cloned content
             await this.initializeSettingsViewListeners(isAdmin);
         }
@@ -14057,6 +14074,26 @@ const App = {
     },
 
     switchSettingsTab(tabName) {
+        if (window.isAbsenceFormDirty) {
+            UI.showConfirm(
+                'Deine Eingaben werden nicht gespeichert. Möchtest du trotzdem den Tab wechseln?',
+                () => {
+                    window.isAbsenceFormDirty = false;
+                    this.resetAbsenceFormSettings();
+                    this.switchSettingsTab(tabName);
+                },
+                null,
+                {
+                    kicker: 'Abwesenheit',
+                    title: 'Ungespeicherte Änderungen',
+                    confirmText: 'Trotzdem wechseln',
+                    confirmClass: 'btn-danger',
+                    cancelText: 'Weiter bearbeiten'
+                }
+            );
+            return;
+        }
+
         // Toggle Buttons
         const settingsModal = document.getElementById('settingsModal');
         if (!settingsModal) return;
@@ -14470,6 +14507,13 @@ const App = {
             });
         }
 
+        // Dirty tracking for absence form
+        if (!form.dataset.dirtyTracking) {
+            form.addEventListener('input', () => { window.isAbsenceFormDirty = true; });
+            form.addEventListener('change', () => { window.isAbsenceFormDirty = true; });
+            form.dataset.dirtyTracking = 'true';
+        }
+
         this.setAbsenceSettingsMode('single');
         this.setAbsenceSettingsQuickDuration(0);
         form.dataset.absenceControlsBound = 'true';
@@ -14495,6 +14539,10 @@ const App = {
         const editSeriesId = editSeriesIdInput?.value || '';
         const user = Auth.getCurrentUser();
         if (!user) return;
+
+        // Force cache invalidation early to prevent stale reads during/after process
+        this.absencesCache = null;
+
         const mode = editId ? 'single' : (editSeriesId ? 'series' : this.getAbsenceSettingsMode());
 
         if (mode === 'series') {
@@ -14525,7 +14573,11 @@ const App = {
 
             const existingAbsences = await Storage.getUserAbsences(user.id) || [];
             const existingKeys = new Set(existingAbsences
-                .filter(absence => Storage.getAbsenceRecurrenceMeta(absence)?.seriesId !== editSeriesId)
+                .filter(absence => {
+                    const meta = Storage.getAbsenceRecurrenceMeta(absence);
+                    const sid = meta?.seriesId ? String(meta.seriesId).trim() : '';
+                    return sid !== String(editSeriesId).trim();
+                })
                 .map(absence => {
                     return `${absence.startDate || ''}__${absence.endDate || ''}`;
                 }));
@@ -14541,7 +14593,9 @@ const App = {
 
             if (editSeriesId) {
                 const currentSeriesEntries = this.getAbsenceSeriesEntries(existingAbsences, editSeriesId);
-                await Promise.all(currentSeriesEntries.map(absence => Storage.deleteAbsence(absence.id)));
+                if (currentSeriesEntries.length > 0) {
+                    await Promise.all(currentSeriesEntries.map(absence => Storage.deleteAbsence(absence.id)));
+                }
             }
 
             const seriesId = editSeriesId || Storage.generateId();
@@ -14630,15 +14684,20 @@ const App = {
 
         this.resetAbsenceFormSettings();
 
-        // Update absence indicator
-        await this.updateAbsenceIndicator();
-        await this.refreshPersonalCalendarAfterAbsenceChange();
+        // Update markers and calendars
+        await Promise.all([
+            this.updateAbsenceIndicator(),
+            this.refreshPersonalCalendarAfterAbsenceChange()
+        ]);
 
-        // Invalidate cache
-        this.absencesCache = null;
+        // Reset dirty flag
+        window.isAbsenceFormDirty = false;
 
-        // Refresh list
-        await this.renderAbsencesListSettings();
+        // Refresh list with a tiny delay to ensure database consistency on read
+        setTimeout(async () => {
+            this.absencesCache = null;
+            await this.renderAbsencesListSettings();
+        }, 300);
     },
 
     resetAbsenceFormSettings() {
@@ -14646,14 +14705,15 @@ const App = {
         if (form) form.reset();
 
         const editIdInput = document.getElementById('editAbsenceIdSettings');
-        if (editIdInput) editIdInput.value = '';
         const editSeriesIdInput = document.getElementById('editAbsenceSeriesIdSettings');
-        if (editSeriesIdInput) editSeriesIdInput.value = '';
-
+        const reasonInput = document.getElementById('absenceReasonSettings');
         const saveBtn = document.getElementById('saveAbsenceBtnSettings');
-        if (saveBtn) saveBtn.textContent = 'Abwesenheit hinzufügen';
-
         const cancelBtn = document.getElementById('cancelEditAbsenceBtnSettings');
+
+        if (editIdInput) editIdInput.value = '';
+        if (editSeriesIdInput) editSeriesIdInput.value = '';
+        if (reasonInput) reasonInput.value = '';
+        if (saveBtn) saveBtn.textContent = 'Abwesenheit hinzufügen';
         if (cancelBtn) {
             cancelBtn.style.display = 'none';
             cancelBtn.onclick = null;
@@ -14663,6 +14723,8 @@ const App = {
         if (seriesWeekdayInput) {
             delete seriesWeekdayInput.dataset.userSet;
         }
+
+        window.isAbsenceFormDirty = false;
 
         this.setAbsenceSettingsModeLocked(false);
         this.setAbsenceSettingsMode('single');
@@ -14697,16 +14759,16 @@ const App = {
         container.innerHTML = groups.map(group => `
             <div class="absence-item-card${group.kind === 'series' ? ' is-series' : ''}"${group.kind === 'series' ? ` data-absence-series-id="${group.seriesId}"` : ` data-absence-id="${group.firstItem.id}"`}>
                 <div class="absence-info">
+                    <div class="absence-card-header">
+                        <div class="absence-card-title">${group.reason ? Bands.escapeHtml(group.reason) : Bands.escapeHtml(group.dateLabel)}</div>
+                        ${group.kind === 'series' ? '<span class="absence-series-pill">Serie</span>' : ''}
+                    </div>
                     <div class="absence-date-row">
-                        <div class="absence-date-range">
-                            ${Bands.escapeHtml(group.dateLabel)}
-                        </div>
+                        <div class="absence-date-range">${Bands.escapeHtml(group.dateLabel)}</div>
                         ${group.timeLabel ? `<div class="absence-time-range">${Bands.escapeHtml(group.timeLabel)}</div>` : ''}
                     </div>
-                    ${group.reason ? `<div class="absence-reason">${Bands.escapeHtml(group.reason)}</div>` : ''}
                     ${group.kind === 'series' ? `
                         <div class="absence-series-meta">
-                            <span class="absence-series-pill">Serie</span>
                             <span>${Bands.escapeHtml(`Jeden ${group.weekdayLabel}`)}</span>
                             <span>${Bands.escapeHtml(group.countLabel)}</span>
                         </div>
@@ -14771,6 +14833,8 @@ const App = {
         cancelBtn.onclick = () => {
             this.resetAbsenceFormSettings();
         };
+
+        window.isAbsenceFormDirty = false;
     },
 
     async editAbsenceSeriesSettings(seriesId) {
@@ -14815,6 +14879,8 @@ const App = {
         cancelBtn.onclick = () => {
             this.resetAbsenceFormSettings();
         };
+
+        window.isAbsenceFormDirty = false;
     },
 
     async deleteAbsenceSettings(absenceId) {

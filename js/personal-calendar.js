@@ -300,7 +300,6 @@ const PersonalCalendar = {
             <div class="personal-calendar-head">
                 <div class="personal-calendar-head-top">
                     <div class="personal-calendar-head-copy">
-                        <span class="personal-calendar-head-kicker">Persönliche Termine und Synchronisation</span>
                         <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.25rem; margin-bottom: 0.25rem;">
                             <h2 style="margin: 0;">Meine Termine</h2>
                             <button type="button" class="btn btn-secondary btn-sm songpool-help-button" onclick="UI.openModal('calendarSetupHelpModal')">

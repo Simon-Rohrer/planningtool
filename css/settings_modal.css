@@ -1480,9 +1480,12 @@
 }
 
 #settingsModal .absence-item-card {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
     border: 1px solid var(--settings-border-soft);
     border-radius: 14px;
-    padding: 0.85rem 0.9rem;
+    padding: 1rem;
     background: var(--settings-surface-muted);
     align-items: flex-start;
 }
@@ -1493,8 +1496,34 @@
     box-shadow: none;
 }
 
+#settingsModal .absence-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+#settingsModal .absence-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 0.15rem;
+}
+
+#settingsModal .absence-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+}
+
 #settingsModal .absence-date-range {
-    font-size: 0.92rem;
+    font-size: 0.88rem;
+    color: var(--settings-muted-strong);
 }
 
 #settingsModal .absence-date-row {
@@ -1507,12 +1536,12 @@
 #settingsModal .absence-time-range {
     display: inline-flex;
     align-items: center;
-    padding: 0.28rem 0.7rem;
+    padding: 0.22rem 0.65rem;
     border-radius: 999px;
-    background: rgba(128, 160, 255, 0.12);
-    border: 1px solid rgba(128, 160, 255, 0.2);
-    color: rgba(218, 229, 255, 0.94);
-    font-size: 0.8rem;
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    color: #c4b5fd;
+    font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.02em;
     white-space: nowrap;
@@ -1524,7 +1553,15 @@
 }
 
 #settingsModal .absence-series-meta {
-    margin-top: 0.35rem;
+    margin-top: 0.15rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#settingsModal .absence-series-pill {
+    padding: 0.22rem 0.5rem;
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
 }
 
 #settingsModal .absence-item-card.is-series {
@@ -1554,29 +1591,31 @@
 }
 
 #settingsModal .absence-quick-select {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: 0.65rem 0.85rem;
-    margin: 0.7rem 0 0.1rem;
-    padding: 0.7rem 0.85rem;
-    border-radius: 14px;
-    background: rgba(15, 23, 42, 0.24);
-    border: 1px solid rgba(148, 163, 184, 0.12);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+    margin: 0.95rem 0 0.25rem;
+    padding: 1rem;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.3);
+    border: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 #settingsModal .absence-quick-select-label {
     margin: 0;
-    white-space: nowrap;
-    font-size: 0.74rem;
-    letter-spacing: 0.12em;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--settings-muted-strong);
 }
 
 #settingsModal .absence-quick-select-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.45rem;
-    width: auto;
+    gap: 0.6rem;
+    width: 100%;
     justify-content: flex-start;
 }
 
@@ -1584,12 +1623,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: auto;
-    min-height: 38px;
-    padding: 0.45rem 0.8rem;
-    font-size: 0.84rem;
+    flex: 1;
+    min-width: 80px;
+    min-height: 40px;
+    padding: 0.45rem 1rem;
+    font-size: 0.86rem;
     line-height: 1;
     white-space: nowrap;
+    border-radius: 12px;
 }
 
 #settingsModal .admin-accordion-card {
